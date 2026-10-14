@@ -74,6 +74,28 @@ describe('quick-review-store', () => {
       expect(s.error).toBeNull();
     });
 
+    it('reviews passing PRs first while preserving order within each group', () => {
+      const failing = { ...makePr(1), overallStatus: 'red' as const };
+      const pending = { ...makePr(2), overallStatus: 'yellow' as const };
+      const unknown = { ...makePr(3), overallStatus: 'gray' as const };
+      const passing = makePr(4);
+      const alsoPassing = makePr(5);
+      const prs = [failing, pending, passing, unknown, alsoPassing];
+      useQuickReviewStore.getState().startSession(prs);
+
+      expect(useQuickReviewStore.getState().currentPr()).toBe(passing);
+      expect(useQuickReviewStore.getState().queue).toEqual([
+        passing,
+        alsoPassing,
+        failing,
+        pending,
+        unknown,
+      ]);
+      expect(prs).toEqual([failing, pending, passing, unknown, alsoPassing]);
+      useQuickReviewStore.getState().advance('skipped');
+      expect(useQuickReviewStore.getState().currentPr()).toBe(alsoPassing);
+    });
+
     it('does nothing when given empty array', () => {
       useQuickReviewStore.getState().startSession([]);
       expect(useQuickReviewStore.getState().state).toBe('idle');

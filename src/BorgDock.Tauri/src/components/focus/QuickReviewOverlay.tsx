@@ -18,6 +18,7 @@ import { isImagePath } from '@/services/github/images';
 import {
   isGeneratedPath,
   markGeneratedReviewed,
+  orderQuickReviewPrs,
   type ReviewCommentDraft,
   type ReviewEvent,
   reviewLineAnchor,
@@ -246,7 +247,9 @@ export function QuickReviewOverlay() {
   const current = queue[index];
   const complete = state === 'complete';
   const reviewedKeys = new Set([...handledInRun.current, ...queue.map(prKey)]);
-  const nextPr = complete ? needsMyReview.find((pr) => !reviewedKeys.has(prKey(pr))) : undefined;
+  const nextPr = complete
+    ? orderQuickReviewPrs(needsMyReview).find((pr) => !reviewedKeys.has(prKey(pr)))
+    : undefined;
   const reviewNext = () => {
     if (!nextPr) return;
     queue.forEach((pr) => {

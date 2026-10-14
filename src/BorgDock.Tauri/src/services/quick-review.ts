@@ -1,6 +1,20 @@
 import { getPRFiles, getPRReviewDetails } from '@/services/github/pulls';
-import type { DiffFile, DiffLine, PullRequest, PullRequestFileChange } from '@/types';
+import type {
+  DiffFile,
+  DiffLine,
+  PullRequest,
+  PullRequestFileChange,
+  PullRequestWithChecks,
+} from '@/types';
 import type { GitHubClient } from './github/client';
+
+export function orderQuickReviewPrs(
+  prs: readonly PullRequestWithChecks[],
+): PullRequestWithChecks[] {
+  return [...prs].sort(
+    (a, b) => Number(b.overallStatus === 'green') - Number(a.overallStatus === 'green'),
+  );
+}
 
 export type ReviewEvent = 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES';
 export interface ReviewCommentDraft {

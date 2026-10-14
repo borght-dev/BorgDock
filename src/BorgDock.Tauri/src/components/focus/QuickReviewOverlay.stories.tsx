@@ -448,23 +448,44 @@ export const LargePrWalkFullscreen: Story = {
   },
 };
 
-export const ReviewNext: Story = {
+function seedNextReview() {
+  resetReviewDisplayPreferences();
+  const nextReview = [
+    makePr({
+      number: 479,
+      repoOwner: 'borght-dev',
+      repoName: 'BorgDock',
+      title: 'Flyout: remember the last scroll position',
+      authorLogin: 'mira',
+    }),
+  ];
+  usePrStore.setState({ needsMyReview: () => nextReview });
+  useQuickReviewStore.getState().startSinglePr(largeWithChecks);
+  useQuickReviewStore.setState({
+    state: 'complete',
+    decisions: new Map([['borght-dev/BorgDock#482', 'approved']]),
+  });
+}
+
+export const ReviewNext: Story = { beforeEach: seedNextReview };
+
+export const ReviewNextPassingFirst: Story = {
+  ...ReviewNext,
   beforeEach: () => {
-    resetReviewDisplayPreferences();
-    const nextReview = [
-      makePr({
-        number: 479,
-        repoOwner: 'borght-dev',
-        repoName: 'BorgDock',
-        title: 'Flyout: remember the last scroll position',
-        authorLogin: 'mira',
-      }),
-    ];
-    usePrStore.setState({ needsMyReview: () => nextReview });
-    useQuickReviewStore.getState().startSinglePr(largeWithChecks);
-    useQuickReviewStore.setState({
-      state: 'complete',
-      decisions: new Map([['borght-dev/BorgDock#482', 'approved']]),
-    });
+    seedNextReview();
+    const passing = usePrStore.getState().needsMyReview();
+    const failing = {
+      ...makePr({ number: 478, title: 'Older request with failing checks' }),
+      overallStatus: 'red' as const,
+      failedCheckNames: ['Tests'],
+    };
+    const candidates = [failing, ...passing];
+    usePrStore.setState({ needsMyReview: () => candidates });
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('region', { name: 'Next review' })).toHaveTextContent(
+      'Flyout: remember the last scroll position',
+    );
   },
 };
