@@ -43,12 +43,21 @@ const FLING_MS = 420;
 /** How many cards peek behind the top one. */
 const PEEKS = 2;
 const FULLSCREEN_KEY = 'borgdock-quick-review-fullscreen';
+const WRAP_LINES_KEY = 'borgdock-quick-review-wrap-lines';
 
-function readFullscreenPreference(): boolean {
+function readReviewPreference(key: string): boolean {
   try {
-    return localStorage.getItem(FULLSCREEN_KEY) === 'true';
+    return localStorage.getItem(key) === 'true';
   } catch {
     return false;
+  }
+}
+
+function writeReviewPreference(key: string, value: boolean) {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {
+    return;
   }
 }
 
@@ -192,7 +201,7 @@ export function QuickReviewOverlay() {
   const decisions = useQuickReviewStore((s) => s.decisions);
   const needsMyReview = usePrStore((s) => s.needsMyReview());
   const [closing, setClosing] = useState(false);
-  const [fullscreen, setFullscreen] = useState(readFullscreenPreference);
+  const [fullscreen, setFullscreen] = useState(() => readReviewPreference(FULLSCREEN_KEY));
   const handledInRun = useRef(new Set<string>());
   const closeTimer = useRef<number | undefined>(undefined);
   const deck = useDeckMotion(queue, index, state === 'complete', decisions);
@@ -200,11 +209,7 @@ export function QuickReviewOverlay() {
   function toggleFullscreen() {
     const next = !fullscreen;
     setFullscreen(next);
-    try {
-      localStorage.setItem(FULLSCREEN_KEY, String(next));
-    } catch {
-      return;
-    }
+    writeReviewPreference(FULLSCREEN_KEY, next);
   }
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
@@ -394,6 +399,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
   const state = useQuickReviewStore((s) => s.state);
   const error = useQuickReviewStore((s) => s.error);
   const [mode, setMode] = useState<Mode>('card');
+  const [wrapLines, setWrapLines] = useState(() => readReviewPreference(WRAP_LINES_KEY));
   const [showingComments, setShowingComments] = useState(false);
   const [commentsOpened, setCommentsOpened] = useState(false);
   const [reattachId, setReattachId] = useState<string | null>(null);
@@ -501,6 +507,16 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
   function scrollFile(delta: number) {
     if (!showingComments) mainRef.current?.scrollBy?.(0, delta * 72);
   }
+  function scrollFileHorizontally(delta: number) {
+    if (showingComments || wrapLines) return;
+    mainRef.current?.querySelector<HTMLElement>('[data-diff-scroll]')?.scrollBy?.(delta * 72, 0);
+  }
+  function toggleWrapLines() {
+    if (showingComments) return;
+    const next = !wrapLines;
+    setWrapLines(next);
+    writeReviewPreference(WRAP_LINES_KEY, next);
+  }
   /** Marks the current file and moves to the next file not reviewed yet. */
   function markAndNext() {
     if (!ready || !file || busy) return;
@@ -546,6 +562,9 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
           j: () => scrollFile(1),
           p: () => step(-1),
           k: () => scrollFile(-1),
+          h: () => scrollFileHorizontally(-1),
+          l: () => scrollFileHorizontally(1),
+          w: toggleWrapLines,
           f: toCard,
           Escape: () => (showingComments ? setShowingComments(false) : toCard()),
         }
@@ -829,6 +848,17 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-pressed={wrapLines}
+                  aria-keyshortcuts="W"
+                  className="qr-wrap-lines"
+                  disabled={showingComments}
+                  onClick={toggleWrapLines}
+                >
+                  Wrap lines
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   aria-pressed={showingComments}
                   onClick={() => {
                     setCommentsOpened(true);
@@ -852,6 +882,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                 ref={mainRef}
                 hidden={showingComments}
                 data-quick-review-content
+                data-wrap-lines={wrapLines}
               >
                 {file && (
                   <div key={file.filename} className="qr-diff">
@@ -936,14 +967,14 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
           </section>
         )}
       </div>
-      <footer className="qr-footer">
+      <footer className="qr-footer" data-walking={walking}>
         <span role="status">
           {busy ? 'Submitting review…' : storageWarning || notice || 'Drafts saved on this device.'}
         </span>
         <span className="qr-spacer" />
         <span className="qr-shortcuts">
           {walking
-            ? 'J/K scroll · V mark reviewed · N/P change file · F finish · Esc back'
+            ? 'H/L scroll horizontally · J/K scroll vertically · W wrap lines · V mark reviewed · N/P change file · F finish · Esc back'
             : mode === 'compose'
               ? 'Esc back to the card'
               : 'A/→ approve when enabled · W write review · ← review later · Enter review files · Esc close'}

@@ -72,7 +72,7 @@ const PRS = [
 ];
 
 /** Answers GitHub for PRs 3 and 4 and records the reviews posted. */
-async function routeGitHub(page: Page) {
+async function routeGitHub(page: Page, patch?: string) {
   const reviews: { number: number; body: unknown }[] = [];
   await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/commits\/[^/]+\/check-runs/, (route) => route.fulfill({ json: { check_runs: [], total_count: 0 } }));
   await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/pulls\/(3|4)(\/|\?|$)/, (route) => {
@@ -90,7 +90,7 @@ async function routeGitHub(page: Page) {
           status: 'modified',
           additions: 8,
           deletions: 1,
-          patch: `@@ -1,2 +1,3 @@\n const a = ${i};\n-const b = 1;\n+const b = 2;\n+const c = 3;`,
+          patch: patch ?? `@@ -1,2 +1,3 @@\n const a = ${i};\n-const b = 1;\n+const b = 2;\n+const c = 3;`,
         })),
       });
     if (/\/(reviews|comments)(\?|$)/.test(url)) return route.fulfill({ json: [] });
@@ -115,9 +115,9 @@ async function routeGitHub(page: Page) {
   return reviews;
 }
 
-async function bootList(page: Page) {
+async function bootList(page: Page, patch?: string) {
   await bootApp(page, '', 'happy-path');
-  const reviews = await routeGitHub(page);
+  const reviews = await routeGitHub(page, patch);
   await seedMainWindow(page, { prs: PRS });
   await page
     .getByRole('navigation', { name: 'Sections' })
@@ -258,6 +258,67 @@ test('full screen preserves the file walk and remembers the size across reloads'
   await expect.poll(() => dialog.boundingBox()).toEqual(fullBounds);
   await dialog.getByRole('button', { name: 'Exit full screen' }).click();
   await expect.poll(async () => (await dialog.boundingBox())?.width).toBe(760);
+});
+
+test('long diff lines scroll with H/L and wrap without changing review or draft state', async ({ page }) => {
+  const longLine = `    const exportNames = '${'abcdefghijklmnopqrstuvwxyz'.repeat(45)}';`;
+  const patch = `@@ -1 +1 @@\n-old();\n+${longLine}`;
+  await bootList(page, patch);
+  const row = page.locator('.bd-wb-rowwrap[data-key="test-org/borgdock#3"]');
+  await row.hover();
+  await row.getByRole('button', { name: 'Review #3' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Quick Review' });
+  await dialog.getByRole('button', { name: 'Review files', exact: true }).click();
+  const scroller = dialog.locator('[data-diff-scroll]');
+  const line = dialog.locator('[data-line-kind="add"] [data-diff-code]').first();
+  const originalText = await line.textContent();
+  const originalHeight = (await line.boundingBox())!.height;
+  await expect.poll(() => scroller.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  await dialog.focus();
+  await page.keyboard.press('l');
+  await expect.poll(() => scroller.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  await page.keyboard.press('H');
+  await expect.poll(() => scroller.evaluate((el) => el.scrollLeft)).toBe(0);
+  await expect(dialog.locator('.qr-shortcuts')).toContainText('H/L scroll horizontally');
+  await expect(dialog.locator('.qr-shortcuts')).toContainText('W wrap lines');
+  await page.screenshot({ path: test.info().outputPath('quick-review-long-line.png') });
+  await page.keyboard.press('w');
+  const wrap = dialog.getByRole('button', { name: 'Wrap lines', exact: true });
+  await expect(wrap).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => scroller.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await expect.poll(async () => (await line.boundingBox())!.height).toBeGreaterThan(originalHeight);
+  expect(await line.textContent()).toBe(originalText);
+  await expect(dialog.getByText('File 1 of 5')).toBeVisible();
+  await expect(dialog.getByText('0 of 5 reviewed, 3 to go')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('quick-review-wrap-lines.png') });
+  await dialog.getByRole('button', { name: 'Comment on new line 1' }).click();
+  const draft = dialog.getByPlaceholder('Describe the issue or suggest a change...');
+  await draft.fill('Please check this long export.');
+  await page.keyboard.type('hlw');
+  await expect(draft).toHaveValue('Please check this long export.hlw');
+  await expect(wrap).toHaveAttribute('aria-pressed', 'true');
+  await wrap.click();
+  await expect(wrap).toHaveAttribute('aria-pressed', 'false');
+  await expect(draft).toHaveValue('Please check this long export.hlw');
+  await dialog.getByRole('button', { name: 'Save draft' }).click();
+  await wrap.click();
+  await dialog.focus();
+  await page.keyboard.press('n');
+  await expect(dialog.getByText('File 2 of 5')).toBeVisible();
+  await expect(wrap).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => scroller.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await bootList(page, patch);
+  await row.hover();
+  await row.getByRole('button', { name: 'Review #3' }).click();
+  await dialog.getByRole('button', { name: /^(Review files|Continue reviewing)/ }).click();
+  await expect(wrap).toHaveAttribute('aria-pressed', 'true');
+  await dialog.getByRole('button', { name: 'Comments', exact: true }).click();
+  await expect(wrap).toBeDisabled();
+  await dialog.focus();
+  await page.keyboard.press('w');
+  await expect(wrap).toHaveAttribute('aria-pressed', 'true');
+  await dialog.getByRole('button', { name: 'Back to diff', exact: true }).click();
 });
 
 test('approving the top card of a queue flings it right and the next card rises', async ({

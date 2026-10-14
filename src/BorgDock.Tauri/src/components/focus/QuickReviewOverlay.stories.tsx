@@ -126,6 +126,7 @@ const meta: Meta<typeof QuickReviewOverlay> = {
   ],
   beforeEach: () => {
     localStorage.removeItem('borgdock-quick-review-fullscreen');
+    localStorage.removeItem('borgdock-quick-review-wrap-lines');
     const control = getControl();
     control.githubResponses.getPRReviewDetails = { pr: pr.pullRequest, baseSha: 'review-base' };
     control.githubResponses.getPRFiles = files;
@@ -256,6 +257,32 @@ export const LoadFailure: Story = {
   ],
 };
 
+export const LongLinesWrapped: Story = {
+  decorators: [
+    (Story) => {
+      getControl().githubResponses.getPRFiles = files.map((file) =>
+        file.filename === 'src/orders/OrderActions.tsx'
+          ? {
+              ...file,
+              patch:
+                '@@ -1,3 +1,4 @@\n return (\n-  <Button onClick={save}>Save</Button>\n+  <ActionBar onSave={() => save(false)} onApprove={() => save(true)} canApprove={canApprove} disabled={saving || approving} onFailure={showApprovalFailure} orderId={order.id} customerName={order.customer.name} assignedEngineer={order.engineer.name} />\n+  <Button title="Save the order and request approval from the assigned dispatcher after validating customer permissions and all required fields">Save & Approve</Button>\n );',
+            }
+          : file,
+      );
+      return <Story />;
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = await openFiles(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: /OrderActions\.tsx/ }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wrap lines' }));
+    await expect(canvas.getByRole('button', { name: 'Wrap lines' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  },
+};
+
 /** Opens the file walk from the card once the files have loaded. */
 async function openFiles(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
@@ -331,6 +358,7 @@ export const LargePrCard: Story = {
   decorators: [largeDecorator],
   beforeEach: () => {
     localStorage.removeItem('borgdock-quick-review-fullscreen');
+    localStorage.removeItem('borgdock-quick-review-wrap-lines');
     useQuickReviewStore.setState({ documents: {} });
     useQuickReviewStore.getState().startSession(queued);
   },
@@ -372,6 +400,7 @@ export const LargePrWalkFullscreen: Story = {
 export const ReviewNext: Story = {
   beforeEach: () => {
     localStorage.removeItem('borgdock-quick-review-fullscreen');
+    localStorage.removeItem('borgdock-quick-review-wrap-lines');
     const nextReview = [
       makePr({
         number: 479,

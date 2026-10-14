@@ -92,7 +92,7 @@ export function DiffLineRow({
       >
         {line.newLineNumber ?? ''}
       </td>
-      <td className="pl-2 whitespace-pre overflow-x-auto">
+      <td className="pl-2 whitespace-pre overflow-x-auto" data-diff-code>
         {onAddComment && (
           <button
             type="button"

@@ -8,7 +8,8 @@ import { useQuickReviewStore } from '@/stores/quick-review-store';
  * - On the card: `ArrowRight` approve (when enabled), `ArrowLeft` review
  *   later, `Enter` review files, `Escape` close.
  * - In the file walk: `v` mark reviewed and next, `n` / `p` change files,
- *   `j` / `k` scroll the diff, `f` finish, `Escape` back to the card.
+ *   `j` / `k` scroll vertically, `h` / `l` scroll horizontally, `w` wraps lines,
+ *   `f` finish, `Escape` back to the card.
  * - On the card: `a` approve and `w` write a review.
  */
 export type QuickReviewKey =
@@ -21,6 +22,8 @@ export type QuickReviewKey =
   | 'p'
   | 'j'
   | 'k'
+  | 'h'
+  | 'l'
   | 'f'
   | 'a'
   | 'w';
