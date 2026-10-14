@@ -96,6 +96,7 @@ export interface RawReview {
 
 // Phase 11 — github service responses
 export type GithubResponses = {
+  getRepositoryObject?: (path: string) => unknown | Promise<unknown>;
   getReviewReadiness?: import('../../src/services/github/review-readiness').ReviewReadiness;
   getPRReviewDetails?:
     | { pr: PullRequest; baseSha: string }

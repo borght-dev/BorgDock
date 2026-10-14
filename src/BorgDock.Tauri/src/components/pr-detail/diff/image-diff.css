@@ -1,0 +1,71 @@
+.bd-image-diff {
+  padding: 20px;
+}
+.bd-image-diff__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.bd-image-diff__revision {
+  min-width: 0;
+  margin: 0;
+}
+.bd-image-diff__revision figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.bd-image-diff__revision code {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.bd-image-diff__canvas {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border: 1px solid var(--color-separator);
+  border-radius: 8px;
+  background-color: var(--color-surface);
+  background-image: repeating-conic-gradient(
+    var(--color-surface-raised) 0% 25%,
+    transparent 0% 50%
+  );
+  background-size: 20px 20px;
+}
+.bd-image-diff__canvas button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.bd-image-diff__canvas button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+.bd-image-diff__canvas img {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+}
+.bd-image-diff__canvas p {
+  margin: 0;
+  padding: 12px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+.bd-image-diff__revision small {
+  display: block;
+  margin-top: 8px;
+  color: var(--color-text-secondary);
+}
+@media (max-width: 800px) {
+  .bd-image-diff__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

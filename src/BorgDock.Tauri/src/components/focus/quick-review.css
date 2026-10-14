@@ -51,6 +51,15 @@
   height: min(520px, calc(100vh - 40px));
   max-height: calc(100vh - 40px);
 }
+.qr-dialog[data-fullscreen="true"] {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+}
 .qr-overlay[data-state="closing"] .qr-dialog {
   animation: qr-close var(--motion-base) var(--ease-in) both;
 }
@@ -723,6 +732,11 @@
   border-bottom: 1px solid var(--color-separator);
   font-size: 12.5px;
 }
+.qr-wrap-lines[aria-pressed="true"],
+.qr-rich-diff[aria-pressed="true"] {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
 .qr-pane__path {
   min-width: 0;
   overflow: hidden;
@@ -789,12 +803,29 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  height: 32px;
+  min-height: 32px;
   padding: 5px 16px;
   border-top: 1px solid var(--color-separator);
   font-family: var(--font-ui);
   font-size: 11px;
   color: var(--color-text-muted);
+}
+.qr-main[data-wrap-lines="true"] [data-diff-scroll] > table {
+  table-layout: fixed;
+}
+.qr-main[data-wrap-lines="true"] [data-line-kind] > td {
+  vertical-align: top;
+}
+.qr-main[data-wrap-lines="true"] [data-diff-code] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.qr-main[data-wrap-lines="true"] [data-hunk-header] {
+  overflow-wrap: anywhere;
+}
+.qr-footer[data-walking="true"] .qr-shortcuts {
+  display: block;
+  text-align: right;
 }
 .qr-footer [role="status"] {
   min-width: 0;

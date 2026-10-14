@@ -34,6 +34,7 @@ interface DiffFileSectionProps {
   onToggleThread?: (id: string) => void;
   onAddComment?: (line: DiffLine) => void;
   renderLineAttachment?: (line: DiffLine) => ReactNode;
+  richContent?: ReactNode;
 }
 
 function statusPillTone(status: DiffFile['status']): PillTone {
@@ -72,6 +73,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
       onToggleThread,
       onAddComment,
       renderLineAttachment,
+      richContent,
     },
     ref,
   ) {
@@ -236,48 +238,49 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
 
         {/* Diff content */}
         {!collapsed && (
-          <div className="overflow-x-auto select-text">
-            {file.isBinary ? (
-              <div className="px-4 py-6 text-center text-[11px] text-[var(--color-text-muted)]">
-                Binary file not shown
-              </div>
-            ) : file.isTruncated ? (
-              <div className="px-4 py-6 text-center text-[11px] text-[var(--color-text-muted)]">
-                Diff too large to display inline
-              </div>
-            ) : hunks.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[11px] text-[var(--color-text-muted)]">
-                {file.status === 'renamed'
-                  ? 'File renamed without changes'
-                  : 'No changes to display'}
-              </div>
-            ) : viewMode === 'unified' ? (
-              <UnifiedDiffView
-                onAddComment={onAddComment}
-                renderLineAttachment={renderLineAttachment}
-                hunks={hunks}
-                syntaxHighlights={syntaxHighlights}
-                threadsByLine={threadsByLine}
-                openThreadIds={openThreadIds}
-                onToggleThread={onToggleThread}
-                onResolve={onResolve}
-                onUnresolve={onUnresolve}
-                onReply={onReply}
-                highlightLine={highlightLine ?? null}
-              />
-            ) : (
-              <SplitDiffView
-                hunks={hunks}
-                syntaxHighlights={syntaxHighlights}
-                threadsByLine={threadsByLine}
-                openThreadIds={openThreadIds}
-                onToggleThread={onToggleThread}
-                onResolve={onResolve}
-                onUnresolve={onUnresolve}
-                onReply={onReply}
-                highlightLine={highlightLine ?? null}
-              />
-            )}
+          <div className="overflow-x-auto select-text" data-diff-scroll>
+            {richContent ??
+              (file.isBinary ? (
+                <div className="px-4 py-6 text-center text-[11px] text-[var(--color-text-muted)]">
+                  Binary file not shown
+                </div>
+              ) : file.isTruncated ? (
+                <div className="px-4 py-6 text-center text-[11px] text-[var(--color-text-muted)]">
+                  Diff too large to display inline
+                </div>
+              ) : hunks.length === 0 ? (
+                <div className="px-4 py-6 text-center text-[11px] text-[var(--color-text-muted)]">
+                  {file.status === 'renamed'
+                    ? 'File renamed without changes'
+                    : 'No changes to display'}
+                </div>
+              ) : viewMode === 'unified' ? (
+                <UnifiedDiffView
+                  onAddComment={onAddComment}
+                  renderLineAttachment={renderLineAttachment}
+                  hunks={hunks}
+                  syntaxHighlights={syntaxHighlights}
+                  threadsByLine={threadsByLine}
+                  openThreadIds={openThreadIds}
+                  onToggleThread={onToggleThread}
+                  onResolve={onResolve}
+                  onUnresolve={onUnresolve}
+                  onReply={onReply}
+                  highlightLine={highlightLine ?? null}
+                />
+              ) : (
+                <SplitDiffView
+                  hunks={hunks}
+                  syntaxHighlights={syntaxHighlights}
+                  threadsByLine={threadsByLine}
+                  openThreadIds={openThreadIds}
+                  onToggleThread={onToggleThread}
+                  onResolve={onResolve}
+                  onUnresolve={onUnresolve}
+                  onReply={onReply}
+                  highlightLine={highlightLine ?? null}
+                />
+              ))}
           </div>
         )}
       </div>

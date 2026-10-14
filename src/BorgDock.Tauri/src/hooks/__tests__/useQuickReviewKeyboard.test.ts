@@ -13,19 +13,33 @@ function press(key: string, init: KeyboardEventInit = {}, target: EventTarget = 
 }
 
 function walkKeys() {
-  return { v: vi.fn(), n: vi.fn(), p: vi.fn(), j: vi.fn(), k: vi.fn(), Escape: vi.fn() };
+  return {
+    v: vi.fn(),
+    n: vi.fn(),
+    p: vi.fn(),
+    j: vi.fn(),
+    k: vi.fn(),
+    h: vi.fn(),
+    l: vi.fn(),
+    w: vi.fn(),
+    Escape: vi.fn(),
+  };
 }
 
 describe('Quick review keyboard', () => {
   it('runs the walk keys and never approves or skips from them', () => {
     const keys = walkKeys();
     renderHook(() => useQuickReviewKeyboard(keys));
-    for (const key of ['n', 'p', 'v', 'j', 'k', 'a', 's', 'ArrowRight', 'ArrowLeft']) press(key);
+    for (const key of ['n', 'p', 'v', 'j', 'k', 'h', 'l', 'w', 'a', 's', 'ArrowRight', 'ArrowLeft'])
+      press(key);
     expect(keys.n).toHaveBeenCalledTimes(1);
     expect(keys.p).toHaveBeenCalledTimes(1);
     expect(keys.v).toHaveBeenCalledTimes(1);
     expect(keys.j).toHaveBeenCalledTimes(1);
     expect(keys.k).toHaveBeenCalledTimes(1);
+    expect(keys.h).toHaveBeenCalledTimes(1);
+    expect(keys.l).toHaveBeenCalledTimes(1);
+    expect(keys.w).toHaveBeenCalledTimes(1);
     expect(useQuickReviewStore.getState().state).toBe('reviewing');
   });
 
@@ -67,15 +81,25 @@ describe('Quick review keyboard', () => {
     document.body.append(input);
     press('n', {}, input);
     press('Escape', {}, input);
+    press('h', {}, input);
+    press('l', {}, input);
+    press('w', {}, input);
     input.remove();
     press('n', { ctrlKey: true });
+    press('l', { ctrlKey: true });
     const handled = new KeyboardEvent('keydown', { key: 'n', cancelable: true });
     handled.preventDefault();
     document.dispatchEvent(handled);
     useQuickReviewStore.setState({ state: 'submitting' });
     press('n');
+    press('h');
+    press('l');
+    press('w');
     expect(keys.n).not.toHaveBeenCalled();
     expect(keys.Escape).not.toHaveBeenCalled();
+    expect(keys.h).not.toHaveBeenCalled();
+    expect(keys.l).not.toHaveBeenCalled();
+    expect(keys.w).not.toHaveBeenCalled();
   });
 
   it('follows the latest keymap and unregisters on unmount or when turned off', () => {
