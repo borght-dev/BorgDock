@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.1.1 — 2026-10-14
+
+### Bug Fixes
+
+- The Review button stays available on open pull requests by other authors, even without a review request. It also stays available beside Merge or Rerun.
+
 ## 4.1.0 — 2026-10-14
 
 ### New Features

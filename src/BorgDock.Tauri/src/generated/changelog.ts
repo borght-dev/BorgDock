@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.1.1",
+    "date": "2026-10-14",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "The Review button stays available on open pull requests by other authors, even without a review request. It also stays available beside Merge or Rerun."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.1.0",
     "date": "2026-10-14",
     "summary": "See what changed in your images, Give Quick Review the whole window, and Read long lines your way.",
