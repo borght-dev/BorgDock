@@ -12,9 +12,10 @@ on:
       - "src/BorgDock.Tauri/src/styles/motion.css"
       - "scripts/site-tokens-check.ts"
       - ".github/workflows/deploy-site.yml"
-  # A new release changes the download page: refresh it as soon as it is out.
-  release:
-    types: [published]
+  # Releases published by GITHUB_TOKEN do not trigger another workflow.
+  workflow_run:
+    workflows: ["Release Tauri"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -28,7 +29,13 @@ concurrency:
 
 jobs:
   build:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'chore: release '))
     runs-on: ubuntu-latest
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact_id }}
     steps:
       - uses: actions/checkout@v4
 
@@ -46,15 +53,27 @@ jobs:
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
+        id: upload
         with:
           path: site/dist
+          retention-days: 1
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      actions: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Remove deployed Pages artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ needs.build.outputs.artifact-id }}
+        run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"

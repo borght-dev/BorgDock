@@ -47,14 +47,7 @@ jobs:
         with:
           name: playwright-report
           path: src/BorgDock.Tauri/playwright-report
-          retention-days: 14
-      - name: Upload test-results
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-test-results
-          path: src/BorgDock.Tauri/test-results
-          retention-days: 14
+          retention-days: 3
 
   site:
     name: site (build and link check)
