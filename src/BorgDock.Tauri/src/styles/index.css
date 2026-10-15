@@ -290,7 +290,7 @@
 
 :root {
   /* Background — porcelain */
-  --color-background: #f5f5f7;
+  --color-background: #ffffff;
   --color-card-background: #ffffff;
   --color-card-border: #e5e6ea;
   --color-card-border-my-pr: rgba(79, 70, 229, 0.24);
@@ -3714,7 +3714,7 @@ body.sql-resizing-v .sql-resize-handle {
     border: 1px solid var(--color-subtle-border);
     border-left: 3px solid var(--color-toast-info-stripe);
     border-radius: 8px;
-    background: var(--color-surface-raised);
+    background: var(--color-toast-bg);
     box-shadow: var(--elevation-2);
     font-family: var(--font-ui);
     font-size: 12.5px;
@@ -3732,6 +3732,53 @@ body.sql-resizing-v .sql-resize-handle {
     min-width: 0;
     flex: 1;
     overflow-wrap: anywhere;
+  }
+  .bd-toast--card {
+    align-items: flex-start;
+    width: 360px;
+    max-width: 100%;
+    padding: 12px 8px 12px 12px;
+    border-left: 1px solid var(--color-subtle-border);
+    border-radius: 12px;
+  }
+  .bd-toast__icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--color-toast-info-icon-bg);
+    color: var(--color-toast-info-stripe);
+  }
+  .bd-toast--success .bd-toast__icon {
+    background: var(--color-toast-success-icon-bg);
+    color: var(--color-toast-success-stripe);
+  }
+  .bd-toast__content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding-top: 1px;
+  }
+  .bd-toast__title {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .bd-toast--card .bd-toast__message {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+  }
+  .bd-toast__actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .bd-toast__action--quiet {
+    border-color: transparent;
   }
   .bd-toast__action {
     flex-shrink: 0;

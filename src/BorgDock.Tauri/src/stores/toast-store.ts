@@ -5,6 +5,8 @@ import { parseError } from '@/utils/parse-error';
 export type ToastTone = 'info' | 'success' | 'error' | 'progress';
 
 export interface ToastInput {
+  /** A bold first line: the toast becomes a card, the message its detail. */
+  title?: string;
   message: ReactNode;
   tone?: ToastTone;
   /** Shown before the message, e.g. a "Merging" pill. */
@@ -13,6 +15,10 @@ export interface ToastInput {
   actionLabel?: string;
   /** Runs when the action is clicked; the toast then goes away. */
   onAction?: () => void;
+  /** A quieter second action, e.g. "Show me". Needs `onSecondary`. */
+  secondaryLabel?: string;
+  /** Runs when the second action is clicked; the toast then goes away. */
+  onSecondary?: () => void;
   /** Auto-dismiss after this long. Default `TOAST_DURATION_MS`; 0 keeps it until dismissed. */
   durationMs?: number;
   /** Runs when the toast times out (not when it is dismissed or its action is clicked). */
@@ -39,8 +45,8 @@ interface ToastState {
   toasts: ToastItem[];
   show: (input: ToastInput) => string;
   dismiss: (id: string) => void;
-  /** Clicks the toast's action: runs `onAction`, then dismisses. */
-  act: (id: string) => void;
+  /** Clicks the toast's action (or its second one): runs it, then dismisses. */
+  act: (id: string, which?: 'secondary') => void;
   clear: () => void;
 }
 
@@ -107,11 +113,12 @@ export const useToastStore = create<ToastState>()((set, get) => ({
     stopTimer(id);
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
   },
-  act: (id) => {
+  act: (id, which) => {
     const toast = get().toasts.find((t) => t.id === id);
     if (!toast) return;
     get().dismiss(id);
-    toast.onAction?.();
+    if (which === 'secondary') toast.onSecondary?.();
+    else toast.onAction?.();
   },
   clear: () => {
     for (const id of timers.keys()) stopTimer(id);

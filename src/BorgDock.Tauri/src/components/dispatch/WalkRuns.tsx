@@ -1,12 +1,16 @@
 import { X } from 'lucide-react';
+import { useMemo } from 'react';
 import { Markdown } from '@/components/shared/Markdown';
 import { Button, IconButton } from '@/components/shared/primitives';
 import { dispatchActions } from '@/services/dispatch/actions';
 import { currentIteration } from '@/services/dispatch/launch';
 import type { AgentThread, DispatchItem, SyncScope, Tone } from '@/services/dispatch/types';
+import { runProgress } from '@/services/dispatch/walk';
 import { type AgentRun, useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useUiStore } from '@/stores/ui-store';
 import type { DispatchSyncSchedule } from '@/types';
+import { shortAge } from './unit-copy';
 
 /** The newest sync of many items that took items in `state`. */
 function laneRun(runs: readonly AgentRun[], state: string): AgentRun | undefined {
@@ -50,99 +54,181 @@ export function runStatus(
   }
 }
 
-function RunPill({ run }: { run: AgentRun }) {
-  const thread = useRunThread(run);
-  const status = runStatus(run, thread);
+/**
+ * Show a run's card: switch Dispatch to States, open the lane it sits in and
+ * scroll it into view once it is drawn.
+ */
+export function revealRun(threadId: string): void {
+  useDispatchStore.getState().setViewMode('walk');
+  requestAnimationFrame(() => {
+    const card = document.querySelector(`[data-run-id="${CSS.escape(threadId)}"]`);
+    const lane = card?.closest<HTMLElement>('[data-group-key]');
+    const key = lane?.dataset.groupKey;
+    if (key && useUiStore.getState().collapsedGroups.has(key)) {
+      useUiStore.getState().toggleRepoGroup(key);
+    }
+    card?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+}
+
+/** What a run does, in a few words: `Syncing 7 items`, `Moving 60107`. */
+export function runTitle(run: AgentRun): string {
+  const count = run.itemIds.length;
+  const items = `${count} ${count === 1 ? 'item' : 'items'}`;
+  if (run.kind === 'suggest') return 'Picking your next item';
+  switch (run.scope) {
+    case 'all':
+      return `Syncing all ${items}`;
+    case 'drift':
+      return `Fixing ${items} out of sync`;
+    case 'item':
+      return `Moving ${run.itemIds[0] ?? ''}`.trim();
+    default:
+      return `Syncing ${items}`;
+  }
+}
+
+/** The item ids in a run that is still going, with the slot it runs in. */
+export function useRunningItems(): ReadonlyMap<number, string> {
+  const runs = useDispatchStore((s) => s.runs);
+  const threads = useDispatchStore((s) => s.threads);
+  return useMemo(() => {
+    const running = new Map<number, string>();
+    for (const run of runs) {
+      const thread = threads.find((t) => t.id === run.threadId);
+      if (runStatus(run, thread).stopped) continue;
+      for (const id of run.itemIds) if (!running.has(id)) running.set(id, run.slot);
+    }
+    return running;
+  }, [runs, threads]);
+}
+
+/** RunProgressBar — one segment per item, filled once the item moved. */
+function RunProgressBar({ items }: { items: readonly { id: number; moved: boolean }[] }) {
   return (
-    <span className="bd-dp-run" data-tone={status.tone}>
-      {!status.stopped && <span className="bd-dp-run__spin" aria-hidden="true" />}
-      {status.label}
+    <span className="bd-dp-runcard__pips" aria-hidden="true">
+      {items.map((p) => (
+        <i key={p.id} data-moved={p.moved ? 'true' : undefined} />
+      ))}
     </span>
   );
 }
 
-/** RunResult — what a run said when it stopped, with the way into its thread. */
-export function RunResult({ run }: { run: AgentRun }) {
+/** A sync of several items that recorded where they started: its moves can be counted. */
+function tracksMoves(run: AgentRun): boolean {
+  return run.kind === 'sync' && run.fromStates !== undefined && run.itemIds.length > 1;
+}
+
+/** `2 of 7 moved · started 3 min ago`. */
+function runFacts(run: AgentRun, moved: number, total: number, now: number): string {
+  const age = shortAge(run.startedAt, now);
+  return [
+    tracksMoves(run) ? `${moved} of ${total} moved` : '',
+    age === 'just now' ? 'started just now' : age ? `started ${age} ago` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/**
+ * RunCard — one agent run: while it works, what it does and how many of its
+ * items moved; once it stopped, what it said, with the way into its thread.
+ */
+export function RunCard({ run }: { run: AgentRun }) {
   const thread = useRunThread(run);
+  const items = useDispatchStore((s) => s.overview?.items);
   const status = runStatus(run, thread);
+  const progress = runProgress(run, items ?? []);
+  const facts = runFacts(run, progress.moved, progress.total, Date.now());
   const dismiss = () => useDispatchStore.getState().dismissRun(run.threadId);
-  if (!status.stopped) return null;
   return (
-    <div className="bd-dp-runresult" data-tone={status.tone}>
-      <header className="bd-dp-runresult__head">
-        <span className="bd-dp-verdict" data-tone={status.tone}>
-          {status.label}
+    <div
+      className="bd-dp-runcard"
+      data-run-id={run.threadId}
+      data-tone={status.tone}
+      data-running={status.stopped ? undefined : 'true'}
+    >
+      <header className="bd-dp-runcard__head">
+        {status.stopped ? (
+          <span className="bd-dp-runcard__mark" aria-hidden="true" />
+        ) : (
+          <span className="bd-dp-run__spin" aria-hidden="true" />
+        )}
+        <span className="bd-dp-runcard__what">
+          <strong>{status.stopped ? status.label : `${runTitle(run)} in ${run.slot}`}</strong>
+          {facts && <span className="bd-dp-runcard__facts">{facts}</span>}
+          {tracksMoves(run) && <RunProgressBar items={progress.items} />}
         </span>
-        <span className="bd-dp-runresult__spacer" />
         {thread && (
           <Button variant="secondary" size="sm" onClick={() => dispatchActions.openInT3(thread)}>
             Open in T3
           </Button>
         )}
-        {thread?.open && (
+        {status.stopped && thread?.open && (
           <Button variant="ghost" size="sm" onClick={() => dispatchActions.settle(thread)}>
             Settle
           </Button>
         )}
-        <IconButton
-          icon={<X size={13} strokeWidth={2.25} />}
-          tooltip="Dismiss"
-          aria-label="Dismiss"
-          size={22}
-          onClick={dismiss}
-        />
+        {status.stopped && (
+          <IconButton
+            icon={<X size={13} strokeWidth={2.25} />}
+            tooltip="Dismiss"
+            aria-label="Dismiss"
+            size={22}
+            onClick={dismiss}
+          />
+        )}
       </header>
-      {thread?.lastAgentMessage ? (
-        <div className="bd-dp-runresult__body">
-          <Markdown allowRawHtml={false}>{thread.lastAgentMessage}</Markdown>
-        </div>
-      ) : (
-        <p className="bd-dp-runresult__none">
-          {thread?.status === 'question'
-            ? 'The agent asks something. Answer it in T3.'
-            : 'The last message is on its way from T3.'}
-        </p>
-      )}
+      {status.stopped &&
+        (thread?.lastAgentMessage ? (
+          <div className="bd-dp-runcard__body">
+            <Markdown allowRawHtml={false}>{thread.lastAgentMessage}</Markdown>
+          </div>
+        ) : (
+          <p className="bd-dp-runcard__none">
+            {thread?.status === 'question'
+              ? 'The agent asks something. Answer it in T3.'
+              : 'The last message is on its way from T3.'}
+          </p>
+        ))}
     </div>
   );
 }
 
-/** LaneRunControls — a sync lane's run, if one went, and the button that starts one. */
+/** LaneRunControls — the button that starts a sync of the lane, idle while one runs. */
 export function LaneRunControls({ state, count }: { state: string; count: number }) {
   const run = useDispatchStore((s) => laneRun(s.runs, state));
   const thread = useRunThread(run);
   const running = run !== undefined && !runStatus(run, thread).stopped;
   return (
-    <>
-      {run && <RunPill run={run} />}
-      <Button
-        variant="secondary"
-        size="sm"
-        disabled={count === 0 || running}
-        onClick={() => openSync({ kind: 'state', state })}
-      >
-        Sync with agent
-      </Button>
-    </>
+    <Button
+      variant="secondary"
+      size="sm"
+      disabled={count === 0 || running}
+      onClick={() => openSync({ kind: 'state', state })}
+    >
+      {running ? 'Syncing…' : 'Sync with agent'}
+    </Button>
   );
 }
 
-/** The result of the lane's own last sync, above its rows, once the agent stopped. */
+/** The lane's own last sync, above its rows: live while it runs, then what it said. */
 export function LaneRunResult({ state }: { state: string }) {
   const run = useDispatchStore((s) => laneRun(s.runs, state));
   const ownSync = run && (run.scope === 'state' || (!run.scope && run.states[0] === state));
-  return ownSync ? <RunResult run={run} /> : null;
+  return ownSync ? <RunCard run={run} /> : null;
 }
 
-/** BulkRunResult — what the last Sync all and the last fix said, above the walk. */
+/** BulkRunResult — the last Sync all and the last fix, above the walk. */
 export function BulkRunResult() {
   const all = useDispatchStore((s) => bulkRun(s.runs, 'all'));
   const drift = useDispatchStore((s) => bulkRun(s.runs, 'drift'));
+  if (!all && !drift) return null;
   return (
-    <>
-      {drift && <RunResult run={drift} />}
-      {all && <RunResult run={all} />}
-    </>
+    <div className="bd-dp-bulkruns">
+      {drift && <RunCard run={drift} />}
+      {all && <RunCard run={all} />}
+    </div>
   );
 }
 
@@ -159,7 +245,7 @@ function useBulkRunning(scope: 'all' | 'drift'): boolean {
 }
 
 /** FixOutOfSyncButton — one agent for every item whose state the evidence contradicts. */
-export function FixOutOfSyncButton({ count }: { count: number }) {
+export function FixOutOfSyncButton({ count, short = false }: { count: number; short?: boolean }) {
   const running = useBulkRunning('drift');
   if (count === 0 && !running) return null;
   return (
@@ -169,7 +255,7 @@ export function FixOutOfSyncButton({ count }: { count: number }) {
       disabled={running || count === 0}
       onClick={() => openSync({ kind: 'drift' })}
     >
-      {running ? 'Fixing…' : `Fix out of sync (${count})`}
+      {running ? 'Fixing…' : short ? `Fix all ${count}` : `Fix out of sync (${count})`}
     </Button>
   );
 }
@@ -206,7 +292,6 @@ export function PickupSection({ items }: { items: readonly DispatchItem[] }) {
           </span>
           <span className="bd-wb-group__rule" aria-hidden="true" />
         </div>
-        {run && <RunPill run={run} />}
         <Button
           variant="secondary"
           size="sm"
@@ -216,7 +301,7 @@ export function PickupSection({ items }: { items: readonly DispatchItem[] }) {
           Suggest my next item
         </Button>
       </div>
-      {run && <RunResult run={run} />}
+      {run && <RunCard run={run} />}
       {!run && (
         <p className="bd-dp-wlane__empty">
           An agent reads the sprint, your open items and their priorities, and recommends one.

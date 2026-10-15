@@ -11,7 +11,7 @@ export interface DispatchActions {
   /** Tell the agent to go ahead with the plan it proposed. */
   approvePlan: (thread: AgentThread) => void;
   settle: (thread: AgentThread) => void;
-  openInT3: (thread: AgentThread) => void;
+  openInT3: (thread: Pick<AgentThread, 'id' | 'hostId'>) => void;
   /** Have an agent move the item to `to`, filling in what the move needs. */
   move: (item: DispatchItem, to: string) => void;
   hideSuggestion: (overview: ItemOverview) => void;

@@ -12,6 +12,7 @@ import { useState } from 'react';
 import {
   LAUNCH_CATALOGUE,
   makeDispatchScene,
+  makeLaneSyncScene,
   makeRunScene,
 } from '@/components/dispatch/__fixtures__/dispatch-data';
 import {
@@ -322,11 +323,16 @@ function seedDispatch(
   selectedItemId: number | null,
   launching: boolean,
   viewMode: DispatchViewMode,
-  withRuns = false,
+  withRuns: boolean | 'syncing' = false,
   runSheet: RunIntent | null = null,
 ) {
   const scene = makeDispatchScene();
-  const runScene = withRuns ? makeRunScene() : { threads: [], runs: [] };
+  const runScene =
+    withRuns === 'syncing'
+      ? makeLaneSyncScene()
+      : withRuns
+        ? makeRunScene()
+        : { threads: [], runs: [] };
   getControl().invokeResponses.t3_catalogue = LAUNCH_CATALOGUE;
   useDispatchStore.setState({
     launch: launching && selectedItemId !== null ? { itemId: selectedItemId } : null,
@@ -382,7 +388,7 @@ function Harness({
   /** Dispatch in this layout; wins over `dispatchBoard`. */
   dispatchView?: DispatchViewMode;
   /** A finished Sync all and a suggestion still at work. */
-  dispatchRuns?: boolean;
+  dispatchRuns?: boolean | 'syncing';
   /** Open the run sheet for this. */
   dispatchRunSheet?: RunIntent | null;
   /** Seed Dispatch in another section too, so Focus shows the agents that wait. */
@@ -483,7 +489,7 @@ export const RailDispatchBoardDrawer: Story = {
   args: { section: 'dispatch', dispatchBoard: true, dispatchItem: 59877 },
 };
 
-/** Dispatch walking the states: an overview grid, then one section per ADO state. */
+/** Dispatch walking the states: the briefing, then one section per ADO state. */
 export const RailDispatchStates: Story = {
   args: { section: 'dispatch', dispatchView: 'walk', dispatchItem: null },
 };
@@ -491,6 +497,11 @@ export const RailDispatchStates: Story = {
 /** The walk after a Sync all finished, with a suggestion still at work. */
 export const RailDispatchStatesRuns: Story = {
   args: { section: 'dispatch', dispatchView: 'walk', dispatchItem: null, dispatchRuns: true },
+};
+
+/** A sync of Code Review at work: its card in the lane, its items marked. */
+export const RailDispatchStatesSyncing: Story = {
+  args: { section: 'dispatch', dispatchView: 'walk', dispatchItem: null, dispatchRuns: 'syncing' },
 };
 
 /** The run sheet for Sync all: the items, a slot, a model, the message and the schedule. */
