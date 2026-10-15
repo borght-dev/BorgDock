@@ -339,7 +339,10 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
             Cancel
           </Button>
           <span className="bd-dp-sheet__spacer" />
-          <span className="bd-dp-sheet__what">
+          <span
+            className="bd-dp-sheet__what"
+            title={[slot?.name, model?.label].filter(Boolean).join(' · ')}
+          >
             {sync && (
               <strong>
                 {chosen.length} {chosen.length === 1 ? 'item' : 'items'}
