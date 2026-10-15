@@ -1,14 +1,12 @@
 import { ChevronRight } from 'lucide-react';
 import { type ReactNode, useMemo } from 'react';
-import type { ItemOverview, Slot } from '@/services/dispatch/types';
-import { type Lane, laneSummary, walkLanes } from '@/services/dispatch/walk';
+import type { ItemOverview, Slot, Tone } from '@/services/dispatch/types';
+import { briefing, type Lane, laneSummary, laneTone, walkLanes } from '@/services/dispatch/walk';
 import { useUiStore } from '@/stores/ui-store';
 import { DispatchDrawer } from './DispatchDrawer';
-import { LanePips } from './LanePips';
 import type { DispatchActions } from './unit-actions';
 import { WalkRow } from './WalkRow';
-
-const GLANCE_KEY = 'dp-walk:glance';
+import { useRunningItems } from './WalkRuns';
 
 /** Group key of a lane, for the collapsed-groups store the other lists use. */
 export function laneKey(state: string): string {
@@ -29,67 +27,120 @@ function scrollToRow(id: number): void {
     ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
-/** WalkGlance — every lane as a row of squares, one per item, colored by verdict. */
-function WalkGlance({
+function scrollToLane(state: string): void {
+  const key = laneKey(state);
+  const ui = useUiStore.getState();
+  if (ui.collapsedGroups.has(key)) ui.toggleRepoGroup(key);
+  document
+    .querySelector(`.bd-dp-walk [data-group-key="${CSS.escape(key)}"]`)
+    ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
+function Stat({
+  tone,
+  count,
+  label,
+  children,
+}: {
+  tone: Tone;
+  count: number;
+  label: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="bd-dp-stat" data-tone={count > 0 ? tone : 'mute'}>
+      <span className="bd-dp-stat__count">{count}</span>
+      <span className="bd-dp-stat__label">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * WalkBriefing — the morning at a glance: how many items wait on you, are out
+ * of sync, are worth a look or are fine, how many agents work, and where every
+ * item sits, one square per item in the color of its verdict. A state's name
+ * scrolls to its lane; a square selects its item.
+ */
+function WalkBriefing({
+  items,
   lanes,
+  slots,
   selectedId,
+  fix,
+  slotStrip,
   onPick,
 }: {
+  items: readonly ItemOverview[];
   lanes: readonly Lane[];
+  slots: readonly Slot[];
   selectedId: number | null;
+  fix?: ReactNode;
+  slotStrip?: ReactNode;
   onPick: (id: number) => void;
 }) {
-  const collapsed = useUiStore((s) => s.collapsedGroups.has(GLANCE_KEY));
-  const toggle = useUiStore((s) => s.toggleRepoGroup);
+  const counts = briefing(items);
+  const working = slots.filter((slot) => slot.running).length;
   const shown = lanes.filter((lane) => lane.inWalk || lane.rows.length > 0);
   return (
-    <section className="bd-dp-glance" aria-label="Overview" data-collapsed={collapsed || undefined}>
-      <button
-        type="button"
-        className="bd-dp-glance__head"
-        aria-expanded={!collapsed}
-        onClick={() => toggle(GLANCE_KEY)}
-      >
-        <ChevronRight
-          size={12}
-          strokeWidth={2.25}
-          aria-hidden="true"
-          className="bd-dp-glance__chevron"
-        />
-        <span className="bd-dp-glance__title">Overview</span>
-        {collapsed && (
-          <span className="bd-dp-glance__line">
-            <LanePips lanes={lanes} />
-          </span>
-        )}
-      </button>
-      {!collapsed && (
-        <div className="bd-dp-glance__grid">
+    <section className="bd-dp-brief" aria-label="Overview">
+      <div className="bd-dp-brief__numbers">
+        <div className="bd-dp-brief__stats">
+          <Stat tone="bad" count={counts.needsYou} label="need you" />
+          <Stat tone="warn" count={counts.outOfSync} label="out of sync">
+            {fix}
+          </Stat>
+          {counts.worthALook > 0 && (
+            <Stat tone="warn" count={counts.worthALook} label="worth a look" />
+          )}
+          <Stat
+            tone="run"
+            count={working}
+            label={working === 1 ? 'agent working' : 'agents working'}
+          />
+          <Stat tone="ok" count={counts.fine} label="fine" />
+        </div>
+        {slotStrip}
+      </div>
+      <div className="bd-dp-brief__pipe">
+        <span className="bd-dp-brief__caption">
+          Where your {items.length} {items.length === 1 ? 'item is' : 'items are'}
+        </span>
+        <div className="bd-dp-brief__flow">
           {shown.map((lane) => (
-            <div key={lane.state} className="bd-dp-glance__lane">
-              <span className="bd-dp-glance__label">
-                {lane.state} <em>{lane.rows.length}</em>
-              </span>
-              <span className="bd-dp-glance__cells">
-                {lane.rows.length === 0 && <span className="bd-dp-glance__none">—</span>}
+            <div
+              key={lane.state}
+              className="bd-dp-stage"
+              data-tone={laneTone(lane.rows) ?? undefined}
+              style={{ flexGrow: Math.max(lane.rows.length, 1) }}
+            >
+              <button
+                type="button"
+                className="bd-dp-stage__name"
+                title={`Go to ${lane.state}`}
+                onClick={() => scrollToLane(lane.state)}
+              >
+                <span>{lane.state}</span>
+                <em>{lane.rows.length}</em>
+              </button>
+              <span className="bd-dp-stage__cells">
                 {lane.rows.map((o) => (
                   <button
                     key={o.item.id}
                     type="button"
-                    className="bd-dp-glance__cell"
+                    className="bd-dp-stage__cell"
                     data-tone={o.verdict.tone}
                     data-selected={o.item.id === selectedId ? 'true' : undefined}
-                    title={`${o.item.title} · ${o.verdict.label}`}
+                    aria-label={`${o.item.id} ${o.item.title} · ${o.verdict.label}`}
+                    title={`${o.item.id} · ${o.item.title} · ${o.verdict.label}`}
                     onClick={() => onPick(o.item.id)}
-                  >
-                    {o.item.id}
-                  </button>
+                  />
                 ))}
               </span>
             </div>
           ))}
         </div>
-      )}
+      </div>
     </section>
   );
 }
@@ -156,13 +207,17 @@ export interface DispatchWalkProps {
   laneNotice?: (lane: Lane) => ReactNode;
   /** Under the lanes: the next pickup. */
   footer?: ReactNode;
+  /** In the overview, under the out-of-sync count: the button that fixes them. */
+  fix?: ReactNode;
+  /** In the overview, under the counts: the slots agents run in. */
+  slotStrip?: ReactNode;
 }
 
 /**
  * DispatchWalk — the work in the order it is checked every morning: Code
  * Review, Development In Progress, Testing Failed, Needs Human, New, then any
- * other state. Above it the overview grid, every item as a square in the
- * color of its verdict. A row opens its detail in a drawer.
+ * other state. Above it the briefing: the counts that matter and every item
+ * as a square in the color of its verdict. A row opens its detail in a drawer.
  */
 export function DispatchWalk({
   items,
@@ -177,15 +232,22 @@ export function DispatchWalk({
   laneAside,
   laneNotice,
   footer,
+  fix,
+  slotStrip,
 }: DispatchWalkProps) {
   const lanes = useMemo(() => walkLanes(items), [items]);
+  const running = useRunningItems();
   const open = items.find((o) => o.item.id === openId) ?? null;
   return (
     <div className="bd-dp-walkwrap">
       <div className="bd-dp-walk">
-        <WalkGlance
+        <WalkBriefing
+          items={items}
           lanes={lanes}
+          slots={slots}
           selectedId={openId}
+          fix={fix}
+          slotStrip={slotStrip}
           onPick={(id) => {
             onSelect(id);
             scrollToRow(id);
@@ -203,6 +265,7 @@ export function DispatchWalk({
                 key={overview.item.id}
                 overview={overview}
                 selected={overview.item.id === openId}
+                inRun={running.get(overview.item.id)}
                 now={now}
                 busy={busy}
                 actions={actions}

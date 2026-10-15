@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/shared/primitives';
+import { dispatchActions } from '@/services/dispatch/actions';
 import {
   configuredPrompts,
   currentIteration,
@@ -21,6 +22,7 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { showToast, toastError } from '@/stores/toast-store';
 import type { DispatchSyncSchedule } from '@/types';
 import { LaunchChoiceFields, useLaunchChoice } from './LaunchChoice';
+import { revealRun } from './WalkRuns';
 
 const WEEKDAYS: readonly { day: number; label: string }[] = [
   { day: 1, label: 'Mon' },
@@ -108,6 +110,17 @@ function lede(scope: SyncScope): string {
   return 'One thread works through these items one by one, writes the notes and moves the ones the evidence supports.';
 }
 
+/** What the folded first message says it will ask. */
+function instructionsSummary(scope: SyncScope | null): string {
+  if (!scope) {
+    return 'The default pickup message: read the sprint and your open items, then recommend one.';
+  }
+  if (scope.kind === 'item') {
+    return 'The default move message: check the item against its pull requests and move it the way the repository’s ADO skills say.';
+  }
+  return 'The default sync message: read each item with its comments and Developer Notes, check its pull requests, move it through the repository’s ADO skills, and end with one line per item.';
+}
+
 /** What a candidate shows next to its title: the move it gets, its own agent, or its verdict. */
 function candidateNote(overview: ItemOverview, scope: SyncScope): { label: string; tone: string } {
   const target = syncTarget(overview, scope);
@@ -140,6 +153,7 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
   );
   const choice = useLaunchChoice(overview.slots, runChoice.slotId, runChoice.model);
   const [editedPrompt, setEditedPrompt] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const [starting, setStarting] = useState(false);
 
   useEffect(() => {
@@ -161,6 +175,11 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
   const { slot, model, effort } = choice;
   const ready = slot && model && (!sync || chosen.length > 0);
 
+  const pickAll = (all: boolean) => {
+    setEditedPrompt(null);
+    setPicked(new Set(all ? candidates.map((o) => o.item.id) : []));
+  };
+
   const toggle = (id: number) => {
     setEditedPrompt(null);
     setPicked((was) => {
@@ -174,7 +193,7 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
     if (!slot || !model) return;
     setStarting(true);
     try {
-      await startRun({
+      const threadId = await startRun({
         kind: intent.kind,
         label,
         scope: scope?.kind,
@@ -186,7 +205,27 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
         prompt,
         openInT3,
       });
-      showToast({ tone: 'success', message: `${label} started in ${slot.name}.` });
+      const what = [
+        sync ? `${chosen.length} ${chosen.length === 1 ? 'item' : 'items'}` : null,
+        slot.name,
+        model.label,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      showToast({
+        tone: 'success',
+        title: `${label} started`,
+        message: openInT3
+          ? `${what}. It is open in T3.`
+          : `${what}. Its progress shows in Dispatch.`,
+        actionLabel: openInT3 ? undefined : 'Open in T3',
+        onAction: openInT3
+          ? undefined
+          : () => dispatchActions.openInT3({ id: threadId, hostId: slot.hostId }),
+        secondaryLabel: 'Show me',
+        onSecondary: () => revealRun(threadId),
+        durationMs: 8000,
+      });
       close();
     } catch (error) {
       toastError(`${label} not started`, error);
@@ -195,10 +234,35 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
     }
   };
 
+  const instructions = (
+    <section aria-label="First message" className="bd-dp-sheet__instructions">
+      <h3 className="bd-dp-sheet__label">Instructions</h3>
+      {editing || editedPrompt !== null ? (
+        <textarea
+          className="bd-dp-sheet__prompt"
+          aria-label="First message"
+          value={prompt}
+          rows={sync ? 12 : 8}
+          onChange={(e) => setEditedPrompt(e.target.value)}
+        />
+      ) : (
+        <p className="bd-dp-sheet__summary">
+          {instructionsSummary(scope)}{' '}
+          <button type="button" className="bd-dp-sheet__edit" onClick={() => setEditing(true)}>
+            Edit instructions
+          </button>
+        </p>
+      )}
+    </section>
+  );
+
   return (
     <div className="bd-modal-backdrop" role="presentation" onClick={close}>
       <div
-        className="bd-modal bd-dp-sheet"
+        className={clsx(
+          'bd-modal bd-dp-sheet bd-dp-sheet--run',
+          sync && scope.kind !== 'item' && 'bd-dp-sheet--wide',
+        )}
         role="dialog"
         aria-modal="true"
         aria-labelledby="bd-dp-run-title"
@@ -215,23 +279,45 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
 
         <div className="bd-dp-sheet__body">
           {scope && (
-            <section aria-label="Items">
-              <h3 className="bd-dp-sheet__label">
-                Items, {chosen.length} of {candidates.length}
-              </h3>
+            <section aria-label="Items" className="bd-dp-sheet__pick">
+              <div className="bd-dp-sheet__pickhead">
+                <h3 className="bd-dp-sheet__label">
+                  {chosen.length} of {candidates.length}{' '}
+                  {candidates.length === 1 ? 'item' : 'items'}
+                </h3>
+                {candidates.length > 1 && (
+                  <button
+                    type="button"
+                    className="bd-dp-sheet__edit"
+                    onClick={() => pickAll(chosen.length < candidates.length)}
+                  >
+                    {chosen.length < candidates.length ? 'Select all' : 'Select none'}
+                  </button>
+                )}
+              </div>
               <div className="bd-dp-sheet__items">
                 {candidates.map((o) => {
                   const note = candidateNote(o, scope);
+                  const fact = o.evidence[0];
                   return (
-                    <label key={o.item.id} className="bd-dp-sheet__check bd-dp-sheet__item">
+                    <label
+                      key={o.item.id}
+                      className="bd-dp-sheet__item"
+                      data-off={picked.has(o.item.id) ? undefined : 'true'}
+                    >
                       <input
                         type="checkbox"
                         checked={picked.has(o.item.id)}
                         onChange={() => toggle(o.item.id)}
                       />
                       <em>{o.item.id}</em>
-                      <span className="bd-dp-sheet__item-title">{o.item.title}</span>
-                      <span className="bd-dp-verdict" data-tone={note.tone}>
+                      <span className="bd-dp-sheet__item-title" title={o.item.title}>
+                        {o.item.title}
+                      </span>
+                      <span className="bd-dp-sheet__item-fact" data-tone={fact?.tone ?? undefined}>
+                        {fact?.label}
+                      </span>
+                      <span className="bd-dp-sheet__item-note" data-tone={note.tone}>
                         {note.label}
                       </span>
                     </label>
@@ -241,20 +327,11 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
             </section>
           )}
 
-          <LaunchChoiceFields choice={choice} />
-
-          <section aria-label="First message">
-            <h3 className="bd-dp-sheet__label">First message</h3>
-            <textarea
-              className="bd-dp-sheet__prompt"
-              aria-label="First message"
-              value={prompt}
-              rows={8}
-              onChange={(e) => setEditedPrompt(e.target.value)}
-            />
-          </section>
-
-          {scope?.kind === 'all' && <ScheduleFields />}
+          <div className="bd-dp-sheet__side">
+            <LaunchChoiceFields choice={choice} />
+            {instructions}
+            {scope?.kind === 'all' && <ScheduleFields />}
+          </div>
         </div>
 
         <footer className="bd-dp-sheet__foot">
@@ -262,6 +339,16 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
             Cancel
           </Button>
           <span className="bd-dp-sheet__spacer" />
+          <span className="bd-dp-sheet__what">
+            {sync && (
+              <strong>
+                {chosen.length} {chosen.length === 1 ? 'item' : 'items'}
+              </strong>
+            )}
+            {[slot?.name, model?.label].filter(Boolean).map((part) => (
+              <span key={part}> · {part}</span>
+            ))}
+          </span>
           <Button
             variant="secondary"
             size="md"

@@ -414,6 +414,11 @@ export async function startRun(request: RunRequest): Promise<string> {
   });
   const threadId = scopedId(slot.hostId, rawThreadId);
   const store = useDispatchStore.getState();
+  const fromStates = Object.fromEntries(
+    (store.overview?.items ?? [])
+      .filter((o) => request.itemIds.includes(o.item.id))
+      .map((o) => [String(o.item.id), o.item.state]),
+  );
   store.linkThread(threadId, request.scope === 'item' ? (request.itemIds[0] ?? null) : null);
   store.addRun({
     threadId,
@@ -421,6 +426,7 @@ export async function startRun(request: RunRequest): Promise<string> {
     scope: request.scope,
     states: request.states,
     itemIds: request.itemIds,
+    fromStates,
     slot: slot.name,
     startedAt: new Date().toISOString(),
   });

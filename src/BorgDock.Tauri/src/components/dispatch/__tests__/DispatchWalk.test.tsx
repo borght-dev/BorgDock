@@ -85,11 +85,28 @@ describe('DispatchWalk', () => {
     expect(actions.openPullRequest).toHaveBeenCalledWith(expect.objectContaining({ number: 3731 }));
   });
 
-  it('selects an item from the overview grid', () => {
+  it('selects an item from the overview', () => {
     const { onSelect } = renderWalk();
-    const grid = screen.getByRole('region', { name: 'Overview' });
-    fireEvent.click(within(grid).getByRole('button', { name: '60233' }));
+    const overview = screen.getByRole('region', { name: 'Overview' });
+    fireEvent.click(within(overview).getByRole('button', { name: /^60233 / }));
     expect(onSelect).toHaveBeenCalledWith(60233);
+  });
+
+  it('leads the overview with what needs you and what is out of sync', () => {
+    renderWalk();
+    const overview = screen.getByRole('region', { name: 'Overview' });
+    expect(within(overview).getByText('need you')).toBeInTheDocument();
+    expect(within(overview).getByText('out of sync')).toBeInTheDocument();
+    expect(within(overview).getByText('fine')).toBeInTheDocument();
+  });
+
+  it('scrolls to a lane from its name in the overview', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderWalk();
+    const overview = screen.getByRole('region', { name: 'Overview' });
+    fireEvent.click(within(overview).getByRole('button', { name: /^Code Review/ }));
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' });
   });
 
   it('shows the open item in the drawer', () => {

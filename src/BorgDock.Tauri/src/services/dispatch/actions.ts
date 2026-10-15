@@ -20,7 +20,7 @@ import type { AgentThread, DispatchItem, UnitPullRequest } from './types';
 /** What "Approve plan" tells the agent. */
 export const GO_AHEAD_MESSAGE = 'Go ahead with the plan.';
 
-function hostOf(thread: AgentThread): T3HostRef {
+function hostOf(thread: Pick<AgentThread, 'hostId'>): T3HostRef {
   const host = configuredHosts(useSettingsStore.getState().settings).find(
     (h) => h.id === thread.hostId,
   );

@@ -148,9 +148,10 @@ function PairingNotice({ error }: { error: string }) {
  *
  * - Head row: title, States, List or Board, the health of the sources (ADO and every
  *   T3 host) and search.
- * - The slot strip: every T3 project an agent can run in, per host.
+ * - The slot strip: every T3 project an agent can run in, per host. States
+ *   shows it inside its briefing.
  * - States (`DispatchWalk`, the default): one section per ADO state in the
- *   order they are checked each morning, under an overview grid. Every row
+ *   order they are checked each morning, under a briefing of the counts. Every row
  *   says what the item needs, why, and what was said last; a row opens its
  *   detail in a drawer.
  * - List: the items grouped by bay (waiting on you first), beside the
@@ -195,6 +196,15 @@ export function DispatchSection() {
   const localHost = hosts.find((host) => host.id === LOCAL_T3_HOST_ID);
   const total = overview?.items.length ?? 0;
   const driftCount = outOfSync(overview?.items ?? []).length;
+  const walking = viewMode === 'walk' && overview !== null;
+  const slotStrip = (
+    <SlotStrip
+      slots={overview?.slots ?? []}
+      onShowItem={selectItem}
+      onStartIn={(slot) => startNextIn(overview?.items ?? [], slot.id)}
+      onDropItem={(slot, itemId) => openLaunch({ itemId, slotId: slot.id })}
+    />
+  );
 
   return (
     <div className="bd-wb-prs bd-dp">
@@ -208,7 +218,7 @@ export function DispatchSection() {
           onChange={setViewMode}
         />
         <Health ado={adoStatus} hosts={hosts} now={now} />
-        <FixOutOfSyncButton count={driftCount} />
+        {viewMode !== 'walk' && <FixOutOfSyncButton count={driftCount} />}
         <SyncAllButton count={total} />
         <label className="bd-wb-head__search">
           <Search
@@ -237,12 +247,7 @@ export function DispatchSection() {
 
       {needsPairing(localHost) && <PairingNotice error={localHost?.error ?? ''} />}
 
-      <SlotStrip
-        slots={overview?.slots ?? []}
-        onShowItem={selectItem}
-        onStartIn={(slot) => startNextIn(overview?.items ?? [], slot.id)}
-        onDropItem={(slot, itemId) => openLaunch({ itemId, slotId: slot.id })}
-      />
+      {!walking && slotStrip}
 
       {viewMode === 'walk' && overview !== null && (
         <DispatchWalk
@@ -260,6 +265,8 @@ export function DispatchSection() {
           }
           laneNotice={(lane) => <LaneRunResult state={lane.state} />}
           footer={<PickupSection items={overview.items.map((o) => o.item)} />}
+          fix={<FixOutOfSyncButton count={driftCount} short />}
+          slotStrip={slotStrip}
         />
       )}
       {viewMode === 'board' && overview !== null && (

@@ -111,6 +111,8 @@ function LatestLine({
 export interface WalkRowProps {
   overview: ItemOverview;
   selected: boolean;
+  /** The slot of a running sync that has this item, if one does. */
+  inRun?: string;
   /** Epoch ms the relative times are measured from. */
   now: number;
   busy: boolean;
@@ -128,6 +130,7 @@ export interface WalkRowProps {
 export const WalkRow = memo(function WalkRow({
   overview,
   selected,
+  inRun,
   now,
   busy,
   actions,
@@ -187,13 +190,18 @@ export const WalkRow = memo(function WalkRow({
         )}
         <StateMenu item={item} disabled={busy} onMove={(state) => actions.move(item, state)} />
       </span>
-      {evidence.length > 0 && (
+      {(evidence.length > 0 || inRun) && (
         <span className="bd-dp-wrow__chips">
           {evidence.map((fact) => (
             <span key={fact.label} className="bd-dp-fact" data-tone={fact.tone ?? undefined}>
               {fact.label}
             </span>
           ))}
+          {inRun && (
+            <span className="bd-dp-fact bd-dp-fact--run" data-tone="run">
+              in the {inRun} sync
+            </span>
+          )}
         </span>
       )}
       {latest && (

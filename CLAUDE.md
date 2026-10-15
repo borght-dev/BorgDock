@@ -202,6 +202,11 @@ Things that bite:
 - **Sync with agent / Fix out of sync / Sync all / Suggest my next item are runs**: one T3 thread for many items (or none), scoped by `SyncScope` (a state, the items out of sync, every item, one item). `startRun` links the thread to *no* item (`linkThread(id, null)`), or its `AB#` mentions would attach it to one; a run for one item (a move) is linked to that item. Runs persist in `dispatch-state.json`. BorgDock writes no Developer Notes itself; the sync prompt sends the agent to the repo's own skills (`ado-update-for-qa`, `ado-dev-in-progress`, `/ado-fix`).
 - **The schedule** (`agents.dispatchSyncSchedule`) runs only while BorgDock is open. `runScheduleIfDue` marks the day *before* it starts, so a failure never runs twice. It uses the slot and model of the last run (`runChoice`).
 - The rail's count and the Focus card both use `needingYou` (verdict tone `bad`), not the `waiting` bay.
+- The briefing at the top of States (`briefing()` in `walk.ts`) counts every item a fix would take as out of sync, even one that also needs you, so its number matches the Fix button. A sync's progress compares each item's state with `AgentRun.fromStates`, which `startRun` records; runs saved before that field show no progress rather than "0 moved".
+
+## Floating surfaces need an opaque token
+
+In the light theme `--color-surface-raised` is a 3% ink tint (`rgba(23,24,28,0.03)`), not a surface; only the dark theme makes it opaque. Anything that floats over content (toasts, menus, popovers) must use `--color-modal-bg` or `--color-toast-bg`, or it renders see-through in light mode and its text lands on whatever is underneath. The Dispatch "started" toast and the state menu both had this bug. The window background (`--color-background`) is white in light mode: grey read as disabled.
 
 Storybook ignores `src-tauri/**` in its watcher (`.storybook/main.ts`). Without that, a `cargo build` running at the same time crashes it with `EBUSY` on a locked file in `target/`.
 

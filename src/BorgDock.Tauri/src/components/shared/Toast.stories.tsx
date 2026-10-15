@@ -66,3 +66,24 @@ export const Single: Story = {
     </div>
   ),
 };
+
+/** A card: a run started, what it took, and the ways to it. */
+export const Card: Story = {
+  beforeEach: () => {
+    showToast({
+      tone: 'success',
+      title: 'Sync Code Review (7) started',
+      message: '7 items · W3 · Opus 5.5. Its progress shows in Dispatch.',
+      actionLabel: 'Open in T3',
+      onAction: () => {},
+      secondaryLabel: 'Show me',
+      onSecondary: () => {},
+      durationMs: 0,
+    });
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Sync Code Review (7) started')).toBeInTheDocument();
+    await expect(canvas.getByRole('button', { name: 'Show me' })).toBeInTheDocument();
+  },
+};

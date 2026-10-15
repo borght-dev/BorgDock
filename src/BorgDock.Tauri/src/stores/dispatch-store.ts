@@ -58,6 +58,8 @@ export interface AgentRun {
   /** The states of the items a sync was given; empty for a suggestion. */
   states: string[];
   itemIds: number[];
+  /** Each item's state when the run started, by id: what tells a move apart. */
+  fromStates?: Record<string, string>;
   /** The slot it runs in, by name. */
   slot: string;
   startedAt: string;

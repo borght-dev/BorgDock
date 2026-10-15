@@ -646,3 +646,38 @@ export function makeRunScene(now: number = Date.now()): {
   ];
   return { threads, runs };
 }
+
+/** A sync of Code Review at work: 59544 already moved on to Ready For QA. */
+export function makeLaneSyncScene(now: number = Date.now()): {
+  threads: AgentThread[];
+  runs: AgentRun[];
+} {
+  const itemIds = [59544, 59403, 60245, 60248];
+  return {
+    threads: [
+      toThread(
+        {
+          id: 't-lane',
+          slot: 'W2',
+          title: 'Dispatch: Sync Code Review (4)',
+          status: 'running',
+          idleMinutes: 0,
+          model: 'opus',
+        },
+        now,
+      ),
+    ],
+    runs: [
+      {
+        threadId: 't-lane',
+        kind: 'sync',
+        scope: 'state',
+        states: ['Code Review'],
+        itemIds,
+        fromStates: Object.fromEntries(itemIds.map((id) => [String(id), 'Code Review'])),
+        slot: 'W2',
+        startedAt: new Date(now - 3 * MINUTE).toISOString(),
+      },
+    ],
+  };
+}

@@ -37,8 +37,8 @@ describe('text-muted contrast against surface-raised', () => {
 });
 
 // CheckBar labels use the badge foregrounds; list rows sit on the surface
-// (#ffffff) or directly on the window background (#f5f5f7).
-const LIGHT_BACKGROUND = '#f5f5f7';
+// (#ffffff) or directly on the window background (#ffffff).
+const LIGHT_BACKGROUND = '#ffffff';
 const LIGHT_SURFACE = '#ffffff';
 const LIGHT_WARNING_BADGE_FG = '#8f620b';
 const LIGHT_ERROR_BADGE_FG = '#bf3552';

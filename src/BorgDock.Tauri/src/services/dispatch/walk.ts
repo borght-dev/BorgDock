@@ -147,3 +147,61 @@ export function syncLabel(scope: SyncScope, count: number): string {
       return scope.to ? `Move ${scope.itemId} to ${scope.to}` : `Sync ${scope.itemId}`;
   }
 }
+
+/**
+ * The numbers the overview leads with. Out of sync counts every item a fix
+ * would take, so an item can both need you and be out of sync; the rest count
+ * once.
+ */
+export interface Briefing {
+  needsYou: number;
+  outOfSync: number;
+  worthALook: number;
+  fine: number;
+}
+
+export function briefing(items: readonly ItemOverview[]): Briefing {
+  const counts: Briefing = { needsYou: 0, outOfSync: 0, worthALook: 0, fine: 0 };
+  for (const overview of items) {
+    if (overview.suggestion !== null) counts.outOfSync += 1;
+    if (overview.verdict.tone === 'bad') counts.needsYou += 1;
+    else if (overview.suggestion !== null) continue;
+    else if (overview.verdict.tone === 'warn') counts.worthALook += 1;
+    else counts.fine += 1;
+  }
+  return counts;
+}
+
+/** The most urgent tone in a lane, or null when it is empty. */
+export function laneTone(rows: readonly ItemOverview[]): Tone | null {
+  return rows.reduce<Tone | null>(
+    (worst, o) =>
+      worst === null || TONE_RANK[o.verdict.tone] < TONE_RANK[worst] ? o.verdict.tone : worst,
+    null,
+  );
+}
+
+/** How far a run got: per item, whether its state changed since the run started. */
+export interface RunProgress {
+  total: number;
+  moved: number;
+  items: { id: number; moved: boolean }[];
+}
+
+/** An item that left your list moved too; a run from before `fromStates` shows none moved. */
+export function runProgress(
+  run: { itemIds: readonly number[]; fromStates?: Readonly<Record<string, string>> },
+  items: readonly ItemOverview[],
+): RunProgress {
+  const stateOf = new Map(items.map((o) => [o.item.id, o.item.state]));
+  const progress = run.itemIds.map((id) => {
+    const from = run.fromStates?.[String(id)];
+    const now = stateOf.get(id);
+    return { id, moved: from !== undefined && now !== from };
+  });
+  return {
+    total: progress.length,
+    moved: progress.filter((p) => p.moved).length,
+    items: progress,
+  };
+}

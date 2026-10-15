@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemOverview, StateCategory, Tone } from '../types';
 import {
+  briefing,
   laneSummary,
+  laneTone,
   needingYou,
   preselected,
+  runProgress,
   syncCandidates,
   syncLabel,
   syncTarget,
@@ -126,5 +129,61 @@ describe('syncs', () => {
     expect(syncLabel({ kind: 'item', itemId: 60107, to: 'Ready For QA' }, 1)).toBe(
       'Move 60107 to Ready For QA',
     );
+  });
+});
+
+describe('briefing', () => {
+  it('counts what waits on you, every item a fix takes, what is worth a look and the rest', () => {
+    const drifted = {
+      ...overview(2, 'Code Review', ['Out of sync', 'warn']),
+      suggestion: { id: 'qa', to: 'Ready For QA', reason: 'merged' },
+    };
+    const waitingAndDrifted = {
+      ...overview(3, 'Code Review', ['Your turn', 'bad']),
+      suggestion: { id: 'qa', to: 'Ready For QA', reason: 'merged' },
+    };
+    const counts = briefing([
+      overview(1, 'Needs Human', ['Your turn', 'bad']),
+      drifted,
+      waitingAndDrifted,
+      overview(4, 'Development In Progress', ['Quiet · 9 d', 'warn']),
+      overview(5, 'Code Review', ['Ready to merge', 'ok']),
+      overview(6, 'New', ['Not started', 'mute']),
+      overview(7, 'Development In Progress', ['Agent on it', 'run']),
+    ]);
+    expect(counts).toEqual({ needsYou: 2, outOfSync: 2, worthALook: 1, fine: 3 });
+  });
+});
+
+describe('laneTone', () => {
+  it('is the most urgent verdict of the lane, null when it is empty', () => {
+    expect(laneTone([])).toBeNull();
+    expect(
+      laneTone([overview(1, 'New', ['Not started', 'mute']), overview(2, 'New', ['P1', 'warn'])]),
+    ).toBe('warn');
+  });
+});
+
+describe('runProgress', () => {
+  const items = [
+    overview(1, 'Ready For QA', ['With QA', 'mute']),
+    overview(2, 'Code Review', ['Out of sync', 'warn']),
+  ];
+
+  it('counts the items whose state changed since the run started', () => {
+    const progress = runProgress(
+      { itemIds: [1, 2, 3], fromStates: { 1: 'Code Review', 2: 'Code Review', 3: 'Code Review' } },
+      items,
+    );
+    expect(progress.moved).toBe(2);
+    expect(progress.items).toEqual([
+      { id: 1, moved: true },
+      { id: 2, moved: false },
+      { id: 3, moved: true },
+    ]);
+  });
+
+  it('shows nothing moved for a run that recorded no states', () => {
+    expect(runProgress({ itemIds: [1, 2] }, items).moved).toBe(0);
   });
 });
