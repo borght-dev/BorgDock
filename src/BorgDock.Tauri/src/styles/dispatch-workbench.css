@@ -665,6 +665,9 @@
   .bd-dp-sheet__spacer {
     flex: 1;
   }
+  .bd-dp-sheet__foot > button {
+    flex: none;
+  }
 
   /* ── Board ─────────────────────────────────────────────── */
   /* Columns and cards are the Focus board's (`.bd-fb-*`); only what differs
@@ -1559,9 +1562,12 @@
     white-space: pre-wrap;
   }
   .bd-dp-sheet__what {
+    min-width: 0;
+    overflow: hidden;
     font-size: 12.5px;
     color: var(--color-text-secondary);
     white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .bd-dp-sheet__what strong {
     font-weight: 600;
