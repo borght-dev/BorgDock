@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.1.4 — 2026-10-15
+
+### Bug Fixes
+
+- Grouping pull requests by Author now keeps every PR under its author, including those needing your attention. The separate Needs you group no longer interrupts Author grouping.
+
 ## 4.1.3 — 2026-10-14
 
 ### Bug Fixes

@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.1.4",
+    "date": "2026-10-15",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Grouping pull requests by Author now keeps every PR under its author, including those needing your attention. The separate Needs you group no longer interrupts Author grouping."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.1.3",
     "date": "2026-10-14",
     "summary": "",
