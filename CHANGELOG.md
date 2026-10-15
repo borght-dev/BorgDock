@@ -1,5 +1,26 @@
 # Changelog
 
+## 4.1.5 — 2026-10-15
+
+### New Features
+
+- **Walk your work the way you check it** — Dispatch now opens on States. Code Review, Development In Progress, Testing Failed, Needs Human and New each get a section, in the order you go through them every morning. Every item says what it needs and why, next to its pull request, its agent and the last thing anyone wrote about it. ![The States view in Dispatch](whats-new/4.1.5/dispatch-states.png)
+- **Spot a status that fell behind** — A pull request merged last week while the item still sits in Code Review? An open pull request on an item that says New? Dispatch marks it Out of sync and shows the move it needs. Pick Move to Ready For QA, or any state from the state menu, and an agent makes the move in T3. It fills in the notes and fields your repository's ADO skills ask for, so you don't have to. ![An agent moving an item to Ready For QA](whats-new/4.1.5/dispatch-move.png)
+- **Catch up on everything at once** — Fix out of sync hands every item that fell behind to one agent. Sync with agent does the same for one state, and Sync all walks every item you own, one at a time. Sync all can also run by itself at a time and on the days you pick, while BorgDock is open. ![One agent syncing all your items](whats-new/4.1.5/dispatch-sync-all.png)
+
+### Improvements
+
+- **See the shape of your work on Focus** — Focus shows a row of squares per state, one per item, and lists the items waiting on you with their latest message. You know where to start before you open Dispatch. ![The Dispatch card on Focus](whats-new/4.1.5/focus-shape.png)
+
+### Bug Fixes
+
+- Items an agent works on through subagents, or as part of an epic, now show that agent. They no longer look abandoned or out of sync.
+- An open pull request now suggests Code Review instead of Plan Review.
+- Dispatch reads every pull request linked in Azure DevOps, so an item still in Code Review after its merge shows up.
+- A plan pull request linked on every item of an epic no longer makes all of them look ready for QA.
+- Idle subagents no longer keep a slot busy or show up as waiting on you.
+- Items in review or with QA are grouped as In review or QA instead of Handed off.
+
 ## 4.1.4 — 2026-10-15
 
 ### Bug Fixes

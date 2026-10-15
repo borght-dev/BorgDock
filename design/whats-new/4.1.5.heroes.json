@@ -1,0 +1,6 @@
+[
+  {"slug":"dispatch-states","storyId":"main-window-mainwindow--rail-dispatch-states","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"dispatch-move","storyId":"main-window-mainwindow--rail-dispatch-move-sheet","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"dispatch-sync-all","storyId":"main-window-mainwindow--rail-dispatch-sync-sheet","viewport":{"width":1360,"height":960},"delay":3000},
+  {"slug":"focus-shape","storyId":"main-window-mainwindow--rail-focus-agents","viewport":{"width":1360,"height":860},"delay":3000}
+]
