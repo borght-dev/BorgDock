@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.2.1 — 2026-10-15
+
+### Bug Fixes
+
+- The Start in background button stays inside the sync and move sheet, even with a long model name. The summary next to it gets shortened instead, and you can hover it to read the full slot and model.
+
 ## 4.2.0 — 2026-10-15
 
 ### New Features

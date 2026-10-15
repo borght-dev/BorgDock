@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.2.1",
+    "date": "2026-10-15",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "The Start in background button stays inside the sync and move sheet, even with a long model name. The summary next to it gets shortened instead, and you can hover it to read the full slot and model."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.2.0",
     "date": "2026-10-15",
     "summary": "Your morning at a glance, Watch a sync while it works, A sync sheet with room to breathe, and more.",
