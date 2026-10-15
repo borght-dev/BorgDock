@@ -4,6 +4,58 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.2.0",
+    "date": "2026-10-15",
+    "summary": "Your morning at a glance, Watch a sync while it works, A sync sheet with room to breathe, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Your morning at a glance",
+        "description": "Dispatch now opens with a briefing. Big numbers tell you how many items need you, how many are out of sync, which are worth a look, how many agents are working and how many are fine. Below them, every state gets a strip with one square per item in the colour of its verdict. Click a state to jump to its section, or a square to open that item. Fix all brings every out-of-sync item in line with one click.",
+        "hero": {
+          "src": "/whats-new/4.2.0/dispatch-briefing.png",
+          "alt": "The Dispatch briefing"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Watch a sync while it works",
+        "description": "Once you start a sync, a card in its section shows the agent at work, how many items it has moved so far and a bar per item. The items it covers are marked, so you know not to touch them. When the agent finishes, the card shows what it did, with Open in T3 one click away.",
+        "hero": {
+          "src": "/whats-new/4.2.0/dispatch-sync-live.png",
+          "alt": "A sync at work in Code Review"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "A sync sheet with room to breathe",
+        "description": "The sync sheet is now wide enough for real titles. Each item shows its pull request and the move it will get, with slot and model beside them. The long first message stays folded until you choose Edit instructions. When you start, a notice tells you what started and where, with Open in T3 and Show me.",
+        "hero": {
+          "src": "/whats-new/4.2.0/dispatch-sync-sheet.png",
+          "alt": "The wider sync sheet"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "A brighter light theme",
+        "description": "The light theme now uses a clean white background instead of grey, so nothing looks disabled anymore.",
+        "hero": {
+          "src": "/whats-new/4.2.0/light-theme.png",
+          "alt": "BorgDock's light theme on white"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "The notice that a sync started is readable again in the light theme. It no longer shows the buttons behind it through its text.",
+      "The state menu on a Dispatch item now has a solid background in the light theme."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.1.5",
     "date": "2026-10-15",
     "summary": "Walk your work the way you check it, Spot a status that fell behind, Catch up on everything at once, and more.",

@@ -1,0 +1,6 @@
+[
+  {"slug":"dispatch-briefing","storyId":"main-window-mainwindow--rail-dispatch-states","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"dispatch-sync-live","storyId":"main-window-mainwindow--rail-dispatch-states-syncing","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"dispatch-sync-sheet","storyId":"main-window-mainwindow--rail-dispatch-sync-sheet","viewport":{"width":1360,"height":960},"delay":3000},
+  {"slug":"light-theme","storyId":"main-window-mainwindow--rail-prs","viewport":{"width":1360,"height":860},"theme":"light","delay":3000}
+]
