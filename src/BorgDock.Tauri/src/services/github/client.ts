@@ -289,7 +289,15 @@ export class GitHubClient {
     return (await response.json()) as T;
   }
 
-  async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+  /**
+   * Run a GraphQL query. With `partial`, an answer that carries errors next to
+   * its data still resolves (a missing pull request among many found ones).
+   */
+  async graphql<T>(
+    query: string,
+    variables?: Record<string, unknown>,
+    options: { partial?: boolean } = {},
+  ): Promise<T> {
     const start = performance.now();
     const queryName = query.match(/(?:query|mutation)\s+(\w+)/)?.[1] ?? 'anonymous';
     log.info('graphql start', { query: queryName });
@@ -327,7 +335,7 @@ export class GitHubClient {
     }
 
     const result = await response.json();
-    if (result.errors?.length > 0) {
+    if (result.errors?.length > 0 && !(options.partial && result.data)) {
       log.error('graphql errors', { query: queryName, errors: result.errors, durationMs });
       throw new GitHubApiError(`GraphQL error: ${result.errors[0].message}`, 422);
     }

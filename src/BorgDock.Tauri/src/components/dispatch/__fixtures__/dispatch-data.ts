@@ -8,18 +8,22 @@ import type {
   AgentQuestion,
   AgentThread,
   DispatchItem,
+  ItemComment,
+  ItemNote,
   KnownPullRequest,
   Overview,
   ThreadStatus,
   WorkflowState,
 } from '@/services/dispatch/types';
 import type { T3Catalogue } from '@/services/t3/api';
-import type { HostStatus, SourceStatus } from '@/stores/dispatch-store';
+import type { AgentRun, HostStatus, SourceStatus } from '@/stores/dispatch-store';
 
 const WORKFLOW: WorkflowState[] = [
   { name: 'New', category: 'Proposed' },
   { name: 'Approved', category: 'Proposed' },
   { name: 'Development In Progress', category: 'InProgress' },
+  { name: 'Testing Failed', category: 'InProgress' },
+  { name: 'Needs Human', category: 'InProgress' },
   { name: 'Code Review', category: 'Resolved' },
   { name: 'Ready For QA', category: 'Resolved' },
   { name: 'Done', category: 'Completed' },
@@ -37,6 +41,26 @@ interface ItemSpec {
   priority?: number;
   sprint?: string;
   dueInDays?: number;
+  /** The newest block of Developer Notes, written `daysAgo`. */
+  notes?: { text: string; daysAgo: number };
+  comment?: { author: string; text: string; hoursAgo: number; byMe?: boolean };
+  linkedPullRequests?: number[];
+}
+
+function isoDate(time: number): string {
+  return new Date(time).toISOString().slice(0, 10);
+}
+
+function toNote(spec: ItemSpec, now: number): ItemNote | null {
+  if (!spec.notes) return null;
+  const date = isoDate(now - spec.notes.daysAgo * DAY);
+  return { text: spec.notes.text, date };
+}
+
+function toComment(spec: ItemSpec, now: number): ItemComment | null {
+  if (!spec.comment) return null;
+  const { author, text, hoursAgo, byMe = false } = spec.comment;
+  return { author, text, at: new Date(now - hoursAgo * HOUR).toISOString(), byMe };
 }
 
 const ITEM_SPECS: ItemSpec[] = [
@@ -72,6 +96,10 @@ const ITEM_SPECS: ItemSpec[] = [
     title: 'Asset history on the detail page',
     state: 'Code Review',
     sprint: 'Sprint 41',
+    notes: {
+      text: 'Asset history merged into main: PR #3668 is in. QA should check an asset with more than 200 events.',
+      daysAgo: 0,
+    },
   },
   {
     id: 59958,
@@ -145,6 +173,49 @@ const ITEM_SPECS: ItemSpec[] = [
     state: 'Ready For QA',
     sprint: 'Sprint 41',
   },
+  {
+    id: 60240,
+    typeName: 'Quality Improvement',
+    title: 'Decide which of the legacy report services stay',
+    state: 'Needs Human',
+    comment: {
+      author: 'Vera · plan',
+      text: 'I need your decision on two classes: ReplanService, which every order move calls, and TravelTimeService. The other ten are decided and the plan is attached.',
+      hoursAgo: 3 * 24 + 2,
+    },
+  },
+  {
+    id: 60233,
+    typeName: 'Bug',
+    title: 'Route planner skips the first stop after a reorder',
+    state: 'Testing Failed',
+    comment: {
+      author: 'Mira Jansen',
+      text: 'Retested on staging: the first stop is still skipped when the route has a break in it.',
+      hoursAgo: 5,
+    },
+  },
+  {
+    id: 60245,
+    typeName: 'Product Backlog Item',
+    title: 'Customer portal: download invoices as PDF',
+    state: 'Code Review',
+    notes: {
+      text: 'PDF download built and reviewed: PR #3731 is approved and green. QA should try an invoice with more than one page.',
+      daysAgo: 0,
+    },
+  },
+  {
+    id: 60248,
+    typeName: 'Bug',
+    title: 'Duplicate push notifications on Android 15',
+    state: 'Code Review',
+    comment: {
+      author: 'Vera · proof',
+      text: 'One notification per event on a Pixel 9 with Android 15, recorded from the PR build.',
+      hoursAgo: 20,
+    },
+  },
 ];
 
 function toItem(spec: ItemSpec, now: number): DispatchItem {
@@ -156,6 +227,9 @@ function toItem(spec: ItemSpec, now: number): DispatchItem {
     stateCategory: WORKFLOW.find((s) => s.name === spec.state)?.category ?? 'Proposed',
     states: WORKFLOW,
     sprint: spec.sprint ?? 'Sprint 42',
+    iterationPath: ['Shop', 'Release 5', spec.sprint ?? 'Sprint 42'].join('\\'),
+    notes: toNote(spec, now),
+    lastComment: toComment(spec, now),
     dueDate:
       spec.dueInDays === undefined ? null : new Date(now + spec.dueInDays * DAY).toISOString(),
     priority: spec.priority ?? 2,
@@ -163,7 +237,11 @@ function toItem(spec: ItemSpec, now: number): DispatchItem {
     assignedTo: 'Ada Lovelace',
     assignedToMe: true,
     url: `https://dev.azure.com/acme/Shop/_workitems/edit/${spec.id}`,
-    linkedPullRequests: [],
+    linkedPullRequests: (spec.linkedPullRequests ?? []).map((number) => ({
+      repositoryId: 'fsp-horizon',
+      number,
+    })),
+    parentId: null,
     changedAt: new Date(now - DAY).toISOString(),
   };
 }
@@ -358,6 +436,8 @@ const PULL_REQUESTS: KnownPullRequest[] = [
     branch: 'fix/60102-csv-last-column',
     workItemIds: [60102],
     checks: { passed: 24, failed: 0, pending: 0, total: 24 },
+    approved: false,
+    mergedAt: null,
   },
   {
     number: 3668,
@@ -368,6 +448,8 @@ const PULL_REQUESTS: KnownPullRequest[] = [
     branch: 'feat/59403-asset-history',
     workItemIds: [59403],
     checks: { passed: 24, failed: 0, pending: 0, total: 24 },
+    approved: false,
+    mergedAt: null,
   },
   {
     number: 3720,
@@ -378,6 +460,8 @@ const PULL_REQUESTS: KnownPullRequest[] = [
     branch: 'feat/60031-bulk-assign-map',
     workItemIds: [60031],
     checks: { passed: 7, failed: 0, pending: 5, total: 12 },
+    approved: false,
+    mergedAt: null,
   },
   {
     number: 3655,
@@ -388,8 +472,37 @@ const PULL_REQUESTS: KnownPullRequest[] = [
     branch: 'fix/59544-duplicate-notifications',
     workItemIds: [59544],
     checks: { passed: 24, failed: 0, pending: 0, total: 24 },
+    approved: false,
+    mergedAt: null,
   },
 ];
+
+PULL_REQUESTS.push(
+  {
+    number: 3731,
+    url: 'https://github.com/acme/shop/pull/3731',
+    state: 'open',
+    title: 'feat: invoices as PDF in the customer portal (AB#60245)',
+    isDraft: false,
+    branch: 'feat/60245-invoice-pdf',
+    workItemIds: [60245],
+    checks: { passed: 24, failed: 0, pending: 0, total: 24 },
+    approved: true,
+    mergedAt: null,
+  },
+  {
+    number: 3733,
+    url: 'https://github.com/acme/shop/pull/3733',
+    state: 'open',
+    title: 'fix: one push per event on Android 15 (AB#60248)',
+    isDraft: false,
+    branch: 'fix/60248-android-push',
+    workItemIds: [60248],
+    checks: { passed: 21, failed: 3, pending: 0, total: 24 },
+    approved: false,
+    mergedAt: null,
+  },
+);
 
 const QUEUED = new Set([60188, 60090]);
 
@@ -476,4 +589,60 @@ export function makeDispatchScene(now: number = Date.now()): DispatchScene {
       { id: 'mac', label: 'Mac', ok: true, at: new Date(now).toISOString(), error: null },
     ],
   };
+}
+
+/** Two runs for stories: a Sync all that finished, and a suggestion still at work. */
+export function makeRunScene(now: number = Date.now()): {
+  threads: AgentThread[];
+  runs: AgentRun[];
+} {
+  const threads = [
+    toThread(
+      {
+        id: 't-sync',
+        slot: 'W0',
+        title: 'Dispatch: Sync all (8)',
+        status: 'your-turn',
+        idleMinutes: 3,
+        model: 'opus',
+        message: [
+          '- **AB#59403** notes updated with the merge of #3668 and the QA hint; moved Code Review → Ready For QA.',
+          '- **AB#60245** kept in Code Review: #3731 is approved but not merged.',
+          '- **AB#60248** kept in Code Review: #3733 fails 3 checks.',
+          '- **AB#59958** kept: no pull request and no work yet.',
+        ].join('\n'),
+      },
+      now,
+    ),
+    toThread(
+      {
+        id: 't-suggest',
+        slot: 'M0',
+        title: 'Dispatch: Suggest my next item',
+        status: 'running',
+        idleMinutes: 0,
+        model: 'opus',
+      },
+      now,
+    ),
+  ];
+  const runs: AgentRun[] = [
+    {
+      threadId: 't-suggest',
+      kind: 'suggest',
+      states: [],
+      itemIds: [],
+      slot: 'M0',
+      startedAt: new Date(now - 2 * MINUTE).toISOString(),
+    },
+    {
+      threadId: 't-sync',
+      kind: 'sync',
+      states: ['Code Review', 'Development In Progress'],
+      itemIds: [59403, 60245, 60248, 59958],
+      slot: 'W0',
+      startedAt: new Date(now - 20 * MINUTE).toISOString(),
+    },
+  ];
+  return { threads, runs };
 }

@@ -16,6 +16,7 @@ import {
   type ThreadPullRequest,
   type UnitPullRequest,
 } from './types';
+import { type Drift, driftOf, evidenceOf, latestMessage, verdictOf } from './verdict';
 
 export interface EngineInput {
   items: readonly DispatchItem[];
@@ -34,14 +35,7 @@ export interface EngineInput {
   now?: Date;
 }
 
-const STALE_AFTER_DAYS = 5;
-const MS_PER_DAY = 86_400_000;
 const MAX_THREADS_PER_ITEM = 10;
-
-const IN_PROGRESS_NAMES = ['Development In Progress', 'In Progress', 'Active', 'Committed'];
-const MERGED_NAMES = ['Ready For QA', 'Resolved'];
-const REVIEW_NAME = /\breview\b/i;
-const HOLD_STATES = new Set(['On Hold', 'Awaiting Answers', 'Blocked']);
 const HUMAN_NEEDED_STATES = new Set(['Needs Human']);
 
 const PULL_REQUEST_RANK: Record<PullRequestState, number> = {
@@ -55,23 +49,32 @@ function needsYou(thread: AgentThread): boolean {
   return thread.open && NEEDS_YOU.includes(thread.status);
 }
 
+function namesItem(item: DispatchItem, text: string): boolean {
+  return new RegExp(`(\\b|AB#?)${item.id}\\b`).test(text);
+}
+
 /** A thread touches many pull requests; only one that names the item, or that ADO links, is the item's. */
 function belongsTo(item: DispatchItem, pr: ThreadPullRequest): boolean {
-  if (item.linkedPullRequests.includes(pr.number)) return true;
-  return new RegExp(`(\\b|AB#?)${item.id}\\b`).test(`${pr.title} ${pr.headBranch ?? ''}`);
+  if (item.linkedPullRequests.some((link) => link.number === pr.number)) return true;
+  return namesItem(item, `${pr.title} ${pr.headBranch ?? ''}`);
+}
+
+function pullRequestKey(pr: { url: string; number: number }): string {
+  return pr.url.toLowerCase() || `#${pr.number}`;
 }
 
 function sameUrl(a: string, b: string): boolean {
   return a !== '' && a.toLowerCase() === b.toLowerCase();
 }
 
-function relevantPullRequest(
+/** Every pull request of the item, open first, then merged, newest first within each. */
+function itemPullRequests(
   item: DispatchItem,
   threads: readonly AgentThread[],
   known: readonly KnownPullRequest[],
-): UnitPullRequest | null {
+): UnitPullRequest[] {
   const candidates = new Map<string, UnitPullRequest>();
-  const add = (pr: UnitPullRequest) => candidates.set(pr.url.toLowerCase() || `#${pr.number}`, pr);
+  const add = (pr: UnitPullRequest) => candidates.set(pullRequestKey(pr), pr);
 
   for (const pr of threads.flatMap((t) => t.pullRequests)) {
     if (!belongsTo(item, pr)) continue;
@@ -84,6 +87,9 @@ function relevantPullRequest(
       isDraft: live?.isDraft ?? pr.isDraft,
       branch: live?.branch ?? pr.headBranch,
       checks: live?.checks ?? null,
+      approved: live?.approved ?? false,
+      mergedAt: live?.mergedAt ?? null,
+      shared: false,
     });
   }
   for (const pr of known) {
@@ -96,97 +102,58 @@ function relevantPullRequest(
       isDraft: pr.isDraft,
       branch: pr.branch,
       checks: pr.checks,
+      approved: pr.approved,
+      mergedAt: pr.mergedAt,
+      shared: false,
     });
   }
 
-  return (
-    [...candidates.values()].sort(
-      (a, b) => PULL_REQUEST_RANK[a.state] - PULL_REQUEST_RANK[b.state] || b.number - a.number,
-    )[0] ?? null
+  // A pull request can serve two items; the one whose title names the item is its own.
+  const own = (pr: UnitPullRequest) => (namesItem(item, pr.title) ? 0 : 1);
+  return [...candidates.values()].sort(
+    (a, b) =>
+      PULL_REQUEST_RANK[a.state] - PULL_REQUEST_RANK[b.state] ||
+      own(a) - own(b) ||
+      b.number - a.number,
   );
 }
 
-function suggest(
-  item: DispatchItem,
-  threads: readonly AgentThread[],
-  pr: UnitPullRequest | null,
-  now: Date,
-): Suggestion | null {
-  const names = item.states.map((s) => s.name);
-  const position = (name: string) => names.indexOf(name);
-  const isAhead = (name: string) => position(name) !== -1 && position(item.state) < position(name);
-  const inCategory = (category: string) => item.states.filter((s) => s.category === category);
-
-  if (pr?.state === 'merged') {
-    const resolved = inCategory('Resolved');
-    const to =
-      MERGED_NAMES.find((name) => names.includes(name)) ??
-      resolved[resolved.length - 1]?.name ??
-      inCategory('Completed')[0]?.name;
-    if (to && isAhead(to)) {
-      return {
-        id: `${item.id}:merged:${pr.number}`,
-        to,
-        reason: `PR ${pr.number} is merged. ADO still says ${item.state}.`,
-      };
-    }
-  }
-
-  if (pr?.state === 'open' && !pr.isDraft) {
-    const to = names.find((name) => REVIEW_NAME.test(name));
-    if (to && isAhead(to)) {
-      return {
-        id: `${item.id}:open:${pr.number}`,
-        to,
-        reason: `PR ${pr.number} is open. ADO still says ${item.state}.`,
-      };
-    }
-  }
-
-  if (item.stateCategory === 'Proposed' && threads.length > 0) {
-    const to =
-      IN_PROGRESS_NAMES.find((name) => names.includes(name)) ?? inCategory('InProgress')[0]?.name;
-    const started = threads[threads.length - 1]!.createdAt.slice(0, 10);
-    if (to) {
-      return {
-        id: `${item.id}:started`,
-        to,
-        reason: `An agent started on this ${started}. ADO still says ${item.state}.`,
-      };
-    }
-  }
-
-  const expectsWork =
-    item.stateCategory === 'InProgress' &&
-    !HOLD_STATES.has(item.state) &&
-    !HUMAN_NEEDED_STATES.has(item.state) &&
-    pr?.state !== 'open';
-  if (expectsWork) {
-    const lastTouch = threads[0]?.lastActivityAt;
-    if (!lastTouch) {
-      return {
-        id: `${item.id}:untouched:${item.state}`,
-        to: null,
-        reason: `${item.state}, but no agent has worked on it.`,
-      };
-    }
-    if ((now.getTime() - Date.parse(lastTouch)) / MS_PER_DAY > STALE_AFTER_DAYS) {
-      const since = lastTouch.slice(0, 10);
-      return {
-        id: `${item.id}:stale:${since}`,
-        to: null,
-        reason: `${item.state}, but no agent activity since ${since}.`,
-      };
-    }
-  }
-
-  return null;
+/** The drift as a suggestion: stable while its evidence holds, so "Keep" sticks. */
+function suggestionOf(item: DispatchItem, drift: Drift | null): Suggestion | null {
+  return drift
+    ? { id: `${item.id}:${drift.evidence}:${drift.to}`, to: drift.to, reason: drift.reason }
+    : null;
 }
 
 function waitingFor(item: DispatchItem, threads: readonly AgentThread[]): string | null {
   if (HUMAN_NEEDED_STATES.has(item.state)) return `ADO says ${item.state}`;
   const thread = threads.find(needsYou);
   return thread ? `${THREAD_STATUS_LABEL[thread.status]} in ${thread.slot}` : null;
+}
+
+/**
+ * Marks the pull requests that belong to several of my items and name none of
+ * them in title or branch, like the plan of an epic linked on every PBI: they
+ * say nothing about one item's own state.
+ */
+function markShared(perItem: Map<DispatchItem, UnitPullRequest[]>): void {
+  const holders = new Map<string, number>();
+  for (const pullRequests of perItem.values()) {
+    for (const pr of pullRequests) {
+      holders.set(pullRequestKey(pr), (holders.get(pullRequestKey(pr)) ?? 0) + 1);
+    }
+  }
+  for (const [item, pullRequests] of perItem) {
+    perItem.set(
+      item,
+      pullRequests.map((pr) => {
+        const shared =
+          (holders.get(pullRequestKey(pr)) ?? 0) > 1 &&
+          !namesItem(item, `${pr.title} ${pr.branch ?? ''}`);
+        return shared ? { ...pr, shared } : pr;
+      }),
+    );
+  }
 }
 
 function bayOf(
@@ -228,11 +195,22 @@ export function buildOverview(input: EngineInput): { overview: Overview; dequeue
   const links = linkThreads(input.items, threads, input.manualLinks);
   const dequeue: number[] = [];
 
+  const pullRequestsOf = new Map(
+    input.items.map((item) => [
+      item,
+      itemPullRequests(item, links.threadsByItem.get(item.id) ?? [], input.pullRequests),
+    ]),
+  );
+  markShared(pullRequestsOf);
+
   const items = input.items.map((item): ItemOverview => {
     const itemThreads = links.threadsByItem.get(item.id) ?? [];
-    const pullRequest = relevantPullRequest(item, itemThreads, input.pullRequests);
-    let suggestion = suggest(item, itemThreads, pullRequest, now);
+    const pullRequests = pullRequestsOf.get(item) ?? [];
+    const pullRequest = pullRequests.find((pr) => !pr.shared) ?? pullRequests[0] ?? null;
+    const found = driftOf({ item, threads: itemThreads, pullRequests, now });
+    let suggestion = suggestionOf(item, found);
     if (suggestion && input.hiddenSuggestions.has(suggestion.id)) suggestion = null;
+    const drift = suggestion ? found : null;
     const waiting = waitingFor(item, itemThreads);
 
     // Once an agent works on a queued item, the queue has done its job.
@@ -240,14 +218,19 @@ export function buildOverview(input: EngineInput): { overview: Overview; dequeue
     if (pickedUp) dequeue.push(item.id);
     const queued = input.queued.has(item.id) && !pickedUp;
 
+    const facts = { item, threads: itemThreads, pullRequests, now, drift };
     return {
       item,
       bay: bayOf(item, itemThreads, waiting, suggestion, queued),
       waitingFor: waiting,
       suggestion,
       pullRequest,
+      pullRequests,
       threads: itemThreads.slice(0, MAX_THREADS_PER_ITEM),
       queued,
+      verdict: verdictOf(facts),
+      evidence: evidenceOf(facts),
+      latest: latestMessage(item, itemThreads),
     };
   });
 

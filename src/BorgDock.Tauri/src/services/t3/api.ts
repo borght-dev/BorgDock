@@ -32,6 +32,8 @@ export interface T3Thread {
   modelInstance: string | null;
   effort: string | null;
   pullRequests: ThreadPullRequest[];
+  /** The top-level thread this subagent works for; null for every other thread. */
+  subagentOf?: string | null;
 }
 
 export interface T3Snapshot {

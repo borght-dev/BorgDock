@@ -157,6 +157,10 @@ const config: StorybookConfig = {
       // Bare '@' catch-all goes last so specific mocks above take priority.
       { find: '@', replacement: resolve(here, '../src') },
     ];
+    // Like vite.config.ts: a cargo build locks files under src-tauri/target, and
+    // a watcher that reaches them crashes Storybook with EBUSY.
+    config.server = config.server ?? {};
+    config.server.watch = { ...config.server.watch, ignored: ['**/src-tauri/**'] };
     return config;
   },
 };

@@ -11,8 +11,12 @@ function makeOverview(overrides: Partial<ItemOverview> = {}): ItemOverview {
     waitingFor: null,
     suggestion: null,
     pullRequest: null,
+    pullRequests: [],
     threads: [],
     queued: false,
+    verdict: { label: 'Not started', tone: 'mute' },
+    evidence: [],
+    latest: null,
     ...overrides,
   };
 }
@@ -116,14 +120,6 @@ describe('unitActions', () => {
       threads: [makeThread({ id: 't', status: 'failed' })],
     });
     expect(ids(overview)).toEqual(['open-t3', 'settle']);
-  });
-
-  it('offers to start again or hide a stale item', () => {
-    const overview = makeOverview({
-      bay: 'drift',
-      suggestion: { id: 's', to: null, reason: 'No agent activity.' },
-    });
-    expect(ids(overview)).toEqual(['start', 'hide']);
   });
 
   it('leaves only ADO for an item that was handed off', () => {

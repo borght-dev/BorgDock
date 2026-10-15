@@ -34,6 +34,7 @@ function seed(overrides: Partial<ReturnType<typeof useDispatchStore.getState>> =
     hosts: scene.hosts,
     selectedItemId: null,
     searchQuery: '',
+    viewMode: 'list',
     busy: false,
     ...overrides,
   });
@@ -59,13 +60,13 @@ describe('grouping and search', () => {
 
   it('orders the bays by urgency and leaves empty ones out', () => {
     expect(groupByBay(overview.items).map((g) => [g.bay, g.rows.length])).toEqual([
-      ['waiting', 4],
-      ['drift', 2],
+      ['waiting', 5],
+      ['drift', 1],
       ['working', 2],
       ['next', 2],
-      ['idle', 4],
-      ['paused', 1],
-      ['handed', 1],
+      ['idle', 5],
+      ['paused', 2],
+      ['handed', 3],
     ]);
   });
 
@@ -87,7 +88,7 @@ describe('DispatchSection', () => {
     render(<DispatchSection />);
 
     expect(screen.getByRole('button', { name: /Waiting on you/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Handed off/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /In review or QA/ })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Slots' })).toHaveTextContent('5 free, 4 need you');
 
     const detail = screen.getByRole('article');

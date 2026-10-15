@@ -12,6 +12,7 @@ export interface DispatchActions {
   approvePlan: (thread: AgentThread) => void;
   settle: (thread: AgentThread) => void;
   openInT3: (thread: AgentThread) => void;
+  /** Have an agent move the item to `to`, filling in what the move needs. */
   move: (item: DispatchItem, to: string) => void;
   hideSuggestion: (overview: ItemOverview) => void;
   /** Open the launch sheet for the item, on `slotId` when given. */
@@ -28,7 +29,6 @@ export interface UnitAction {
     | 'approve-plan'
     | 'move'
     | 'keep'
-    | 'hide'
     | 'settle'
     | 'open-t3'
     | 'start'
@@ -79,7 +79,7 @@ export function unitActions(overview: ItemOverview): UnitAction[] {
     found.push({ id: 'open-t3', label: 'Open in T3', run: (a) => a.openInT3(thread) });
   }
 
-  if (suggestion?.to) {
+  if (suggestion) {
     const to = suggestion.to;
     found.push({ id: 'move', label: `Move to ${to}`, run: (a) => a.move(item, to) });
     found.push({
@@ -111,9 +111,6 @@ export function unitActions(overview: ItemOverview): UnitAction[] {
     } else if (overview.bay === 'idle' || overview.bay === 'paused') {
       found.push({ id: 'queue', label: 'Up next', run: (a) => a.queue(item) });
     }
-  }
-  if (suggestion && !suggestion.to) {
-    found.push({ id: 'hide', label: 'Hide this', run: (a) => a.hideSuggestion(overview) });
   }
   if (found.length === 0) {
     found.push({ id: 'open-ado', label: 'Open in ADO', run: (a) => a.openInAdo(item) });

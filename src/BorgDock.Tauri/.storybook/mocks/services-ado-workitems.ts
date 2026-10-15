@@ -30,10 +30,7 @@ export async function getWorkItem(_client: unknown, id: number): Promise<WorkIte
   return s.workItem;
 }
 
-export async function getWorkItemTypeStates(
-  _client: unknown,
-  type: string,
-): Promise<string[]> {
+export async function getWorkItemTypeStates(_client: unknown, type: string): Promise<string[]> {
   const ctrl = getControl();
   ctrl.invocations.push({ command: 'workitems.getWorkItemTypeStates', args: { type } });
   if (ctrl.workItemScenario.statesBehavior === 'reject')
@@ -51,6 +48,14 @@ export async function getWorkItemComments(
   if (s.commentsBehavior === 'pending') return new Promise(() => {});
   if (s.commentsBehavior === 'reject') throw new Error('storybook: comments fetch failed');
   return s.comments ?? [];
+}
+
+export async function getNewestWorkItemComment(
+  client: unknown,
+  id: number,
+): Promise<WorkItemComment | null> {
+  const comments = await getWorkItemComments(client, id);
+  return comments[comments.length - 1] ?? null;
 }
 
 export async function updateWorkItem(
@@ -142,10 +147,7 @@ export async function searchWorkItemsByIdPrefix(
   return s.searchPool.filter((w) => String(w.id).startsWith(prefix));
 }
 
-export async function searchWorkItemsByText(
-  _client: unknown,
-  text: string,
-): Promise<WorkItem[]> {
+export async function searchWorkItemsByText(_client: unknown, text: string): Promise<WorkItem[]> {
   const ctrl = getControl();
   const s = ctrl.workItemPaletteScenario;
   ctrl.invocations.push({ command: 'workitems.searchWorkItemsByText', args: { text } });
@@ -159,7 +161,7 @@ export async function searchWorkItemsByText(
     const assigned =
       typeof assignedField === 'string'
         ? assignedField
-        : (assignedField as { displayName?: string } | undefined)?.displayName ?? '';
+        : ((assignedField as { displayName?: string } | undefined)?.displayName ?? '');
     return title.toLowerCase().includes(lower) || assigned.toLowerCase().includes(lower);
   });
 }

@@ -44,6 +44,16 @@ const PROMPT_FIELDS: { key: keyof LaunchPrompts; label: string; hint: string }[]
   },
   { key: 'qa', label: 'Update for QA', hint: 'Hands the item to QA on its own branch.' },
   { key: 'done', label: 'Close as done', hint: 'Closes the item without QA.' },
+  {
+    key: 'sync',
+    label: 'Sync with agent',
+    hint: 'One agent brings several items up to date. {items} lists them.',
+  },
+  {
+    key: 'suggest',
+    label: 'Suggest my next item',
+    hint: 'One agent recommends what to pick up. {iteration} is the sprint, {assigned} your items.',
+  },
 ];
 
 export function AgentSection({ agents, summaries, onAgentsChange, onSummariesChange }: Props) {

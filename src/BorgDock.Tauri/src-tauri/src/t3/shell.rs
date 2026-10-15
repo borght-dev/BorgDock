@@ -67,6 +67,14 @@ struct PendingRuntimeRequest {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
+struct Lineage {
+    parent_thread_id: Option<String>,
+    root_thread_id: Option<String>,
+    relationship_to_parent: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 struct ShellThread {
     id: String,
     project_id: String,
@@ -93,6 +101,22 @@ struct ShellThread {
     archived_at: Option<String>,
     settled_at: Option<String>,
     deleted_at: Option<String>,
+    lineage: Option<Lineage>,
+}
+
+impl ShellThread {
+    /// The top-level thread a subagent works for. Subagents never settle, and
+    /// their work is their root's.
+    fn subagent_of(&self) -> Option<String> {
+        let lineage = self.lineage.as_ref()?;
+        if lineage.relationship_to_parent.as_deref() != Some("subagent") {
+            return None;
+        }
+        lineage
+            .root_thread_id
+            .clone()
+            .or_else(|| lineage.parent_thread_id.clone())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -134,6 +158,8 @@ pub struct ThreadDto {
     pub model_instance: Option<String>,
     pub effort: Option<String>,
     pub pull_requests: Vec<PullRequestDto>,
+    /// The top-level thread this subagent works for; `None` for every other thread.
+    pub subagent_of: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -403,6 +429,7 @@ fn effort_of(selection: &ModelSelection) -> Option<String> {
 fn to_thread(thread: ShellThread) -> ThreadDto {
     let status = status_of(&thread).to_string();
     let pull_requests = pull_requests_of(&thread);
+    let subagent_of = thread.subagent_of();
     let last_activity_at = [
         Some(&thread.created_at),
         thread.latest_user_message_at.as_ref(),
@@ -436,6 +463,7 @@ fn to_thread(thread: ShellThread) -> ThreadDto {
             .runtime_mode
             .unwrap_or_else(|| "full-access".to_string()),
         pull_requests,
+        subagent_of,
     }
 }
 
@@ -443,7 +471,9 @@ fn is_relevant(thread: &ShellThread, cutoff: &str) -> bool {
     if thread.deleted_at.is_some() || thread.id.is_empty() {
         return false;
     }
-    let open = thread.archived_at.is_none() && thread.settled_at.is_none();
+    let open = thread.archived_at.is_none()
+        && thread.settled_at.is_none()
+        && thread.subagent_of().is_none();
     open || thread.updated_at.as_str() >= cutoff
 }
 
@@ -790,6 +820,43 @@ mod tests {
         );
         assert_eq!(thread.pull_requests[0].state, "open");
         assert!(thread.pull_requests[0].is_draft);
+    }
+
+    #[test]
+    fn a_subagent_names_its_root_and_ages_out_like_a_settled_thread() {
+        let mut shell = shell();
+        let subagent = |id: &str, updated_at: &str| {
+            json!({
+                "id": id, "projectId": "p1", "title": "Research custom quote lines", "status": "idle",
+                "createdAt": "2025-01-01T00:00:00Z", "updatedAt": updated_at,
+                "lineage": { "parentThreadId": "open", "rootThreadId": "open", "relationshipToParent": "subagent" }
+            })
+        };
+        let recent = Utc::now().to_rfc3339();
+        let threads = shell["threads"].as_array_mut().unwrap();
+        threads.push(subagent("recent-subagent", &recent));
+        threads.push(subagent("old-subagent", "2025-01-02T00:00:00Z"));
+        threads.push(json!({
+            "id": "fork", "projectId": "p1", "title": "A fork", "status": "completed",
+            "createdAt": "2025-01-01T00:00:00Z", "updatedAt": "2025-01-02T00:00:00Z",
+            "lineage": { "parentThreadId": "open", "rootThreadId": "open", "relationshipToParent": "fork" }
+        }));
+
+        let snapshot = read_snapshot(&shell);
+        let found: Vec<(&str, Option<&str>)> = snapshot
+            .threads
+            .iter()
+            .map(|t| (t.id.as_str(), t.subagent_of.as_deref()))
+            .collect();
+        assert_eq!(
+            found,
+            [
+                ("open", None),
+                ("recent-subagent", Some("open")),
+                ("fork", None)
+            ],
+            "a fork is a thread of its own; an old subagent is left out"
+        );
     }
 
     #[test]

@@ -73,3 +73,25 @@ export function whyLine(overview: ItemOverview, now: number): string {
 export function toCheckBarCounts(checks: CheckSummary): CheckBarCounts {
   return { ok: checks.passed, fail: checks.failed, run: checks.pending, total: checks.total };
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY_MS = 86_400_000;
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * When something was said: "4 min ago", "3 h ago", "yesterday", "7 Oct". A
+ * date without a time (Developer Notes) reads as a day.
+ */
+export function whenLabel(at: string | null, now: number): string {
+  if (!at) return '';
+  const time = Date.parse(at);
+  if (Number.isNaN(time)) return '';
+  const days = Math.floor(now / DAY_MS) - Math.floor(time / DAY_MS);
+  if (DATE_ONLY.test(at) || days >= 1) {
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    const date = new Date(time);
+    return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+  }
+  return ago(at, now);
+}

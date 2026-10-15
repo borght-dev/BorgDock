@@ -24,7 +24,7 @@ export const BAY_LABEL: Record<Bay, string> = {
   next: 'Up next',
   idle: 'Not started',
   paused: 'Paused',
-  handed: 'Handed off',
+  handed: 'In review or QA',
 };
 
 export type ThreadStatus =
@@ -109,6 +109,11 @@ export interface AgentThread {
   pullRequests: ThreadPullRequest[];
   firstUserMessage: string;
   conversationReferences?: { explicitIds: number[]; mentionedIds: number[] };
+  /**
+   * The thread this subagent works for (scoped id). A subagent is never open on
+   * its own: the items it names belong to its root thread.
+   */
+  subagentOf?: string | null;
   updatedAt?: string;
   /** Present while the agent waits for answers. */
   questionRequestId: string | null;
@@ -126,6 +131,32 @@ export interface AgentProject {
   workspaceRoot: string | null;
 }
 
+/** The newest block of an item's Developer Notes. */
+export interface ItemNote {
+  text: string;
+  /** The date the block names (`YYYY-MM-DD`), when it names one. */
+  date: string | null;
+}
+
+/** The newest comment in an item's discussion, as plain text. */
+export interface ItemComment {
+  /** Who wrote it: `Vera · plan` for a comment Vera signed, else the account that posted it. */
+  author: string;
+  at: string;
+  text: string;
+  /** Posted from my account and not signed by an agent. */
+  byMe: boolean;
+}
+
+/**
+ * A GitHub pull request linked on a work item. ADO names the repository by its
+ * own id for it, not by owner and name.
+ */
+export interface LinkedPullRequest {
+  repositoryId: string;
+  number: number;
+}
+
 /** An Azure DevOps work item as the engine needs it. */
 export interface DispatchItem {
   id: number;
@@ -137,14 +168,20 @@ export interface DispatchItem {
   states: WorkflowState[];
   /** Last segment of the iteration path, or "Backlog". */
   sprint: string;
+  /** The whole iteration path, e.g. `Shop\Release 5\Sprint 12`. */
+  iterationPath: string;
+  notes: ItemNote | null;
+  lastComment: ItemComment | null;
   dueDate: string | null;
   priority: number | null;
   tags: string[];
   assignedTo: string | null;
   assignedToMe: boolean;
   url: string;
-  /** Numbers of the GitHub pull requests linked on the item. */
-  linkedPullRequests: number[];
+  /** The GitHub pull requests linked on the item. */
+  linkedPullRequests: LinkedPullRequest[];
+  /** The item's parent (a PBI for a task, an epic for a PBI). */
+  parentId: number | null;
   changedAt: string;
 }
 
@@ -166,6 +203,8 @@ export interface KnownPullRequest {
   /** Work item ids named in its title, body, branch or labels. */
   workItemIds: number[];
   checks: CheckSummary | null;
+  approved: boolean;
+  mergedAt: string | null;
 }
 
 /** The pull request that says something about an item's state. */
@@ -178,13 +217,44 @@ export interface UnitPullRequest {
   branch: string | null;
   /** Live checks, when BorgDock polls this pull request from GitHub. */
   checks: CheckSummary | null;
+  /** Known only for pull requests BorgDock polls. */
+  approved: boolean;
+  mergedAt: string | null;
+  /**
+   * Linked to several of my items without naming this one, like the plan of an
+   * epic: it says nothing about this item's own state.
+   */
+  shared: boolean;
 }
 
+/** How much a verdict asks of you: `bad` now, `warn` a look, `ok` a move, `run` and `mute` nothing. */
+export type Tone = 'bad' | 'warn' | 'ok' | 'run' | 'mute';
+
+export interface Verdict {
+  label: string;
+  tone: Tone;
+}
+
+/** One fact behind a verdict, drawn as a chip. */
+export interface Evidence {
+  label: string;
+  tone: Tone | null;
+}
+
+/** What was said last about an item, wherever it was said. */
+export interface LatestMessage {
+  source: 'comment' | 'notes' | 'agent';
+  author: string;
+  /** ISO time, or a `YYYY-MM-DD` date for notes. */
+  at: string | null;
+  text: string;
+}
+
+/** The state an item's evidence says it belongs in, when that is not the state ADO has. */
 export interface Suggestion {
   /** Stable while the evidence is unchanged, so a hidden suggestion stays hidden. */
   id: string;
-  /** State to move the item to, or null when there is nothing to move, only something to look at. */
-  to: string | null;
+  to: string;
   reason: string;
 }
 
@@ -194,9 +264,14 @@ export interface ItemOverview {
   waitingFor: string | null;
   suggestion: Suggestion | null;
   pullRequest: UnitPullRequest | null;
+  /** Every pull request of the item, open first. */
+  pullRequests: UnitPullRequest[];
   /** Newest first. The first one is the item's current thread. */
   threads: AgentThread[];
   queued: boolean;
+  verdict: Verdict;
+  evidence: Evidence[];
+  latest: LatestMessage | null;
 }
 
 export type SlotState = 'free' | 'mine' | 'busy';
@@ -226,3 +301,13 @@ export interface Overview {
   unlinkedThreads: UnlinkedThread[];
   slots: Slot[];
 }
+
+/**
+ * What a sync covers: the items in one state, every item, the items out of
+ * sync, or one item, moved to `to` when that is given.
+ */
+export type SyncScope =
+  | { kind: 'state'; state: string }
+  | { kind: 'all' }
+  | { kind: 'drift' }
+  | { kind: 'item'; itemId: number; to: string | null };

@@ -1,8 +1,20 @@
 import type { AdoClient } from '@/services/ado/client';
-import { getWorkItems, updateWorkItem } from '@/services/ado/workitems';
+import {
+  getCurrentUserDisplayName,
+  getNewestWorkItemComment,
+  getWorkItems,
+  updateWorkItem,
+} from '@/services/ado/workitems';
 import type { WorkItem } from '@/types';
 import { getField } from '@/utils/work-item-helpers';
-import type { DispatchItem, StateCategory, WorkflowState } from './types';
+import { newestNote, toItemComment } from './item-text';
+import type {
+  DispatchItem,
+  ItemComment,
+  LinkedPullRequest,
+  StateCategory,
+  WorkflowState,
+} from './types';
 
 const MY_OPEN_ITEMS_WIQL =
   'SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project ' +
@@ -10,7 +22,12 @@ const MY_OPEN_ITEMS_WIQL =
   "AND [System.State] NOT IN ('Done', 'Closed', 'Removed') " +
   'ORDER BY [System.ChangedDate] DESC';
 
-const GITHUB_PULL_REQUEST_LINK = /^vstfs:\/\/\/GitHub\/PullRequest\/[^%]+%2F(\d+)$/i;
+/** The field the repo's ADO skills write their dated updates to. */
+const DEVELOPER_NOTES_FIELD = 'Custom.DeveloperNotes';
+
+const GITHUB_PULL_REQUEST_LINK = /^vstfs:\/\/\/GitHub\/PullRequest\/([^%]+)%2F(\d+)$/i;
+const PARENT_LINK = 'System.LinkTypes.Hierarchy-Reverse';
+const WORK_ITEM_ID_AT_END = /\/(\d+)$/;
 
 // ADO lists a type's states in no useful order. Well-known names follow the
 // usual process; any other state sits at the end of its category.
@@ -82,12 +99,18 @@ export function sprintLabel(iterationPath: string): string {
   return parts.length > 1 ? parts[parts.length - 1]! : 'Backlog';
 }
 
-function linkedPullRequestNumbers(item: WorkItem): number[] {
+function linkedPullRequests(item: WorkItem): LinkedPullRequest[] {
   return (item.relations ?? []).flatMap((relation) => {
     const match =
       relation.rel === 'ArtifactLink' ? GITHUB_PULL_REQUEST_LINK.exec(relation.url) : null;
-    return match ? [Number(match[1])] : [];
+    return match ? [{ repositoryId: match[1]!.toLowerCase(), number: Number(match[2]) }] : [];
   });
+}
+
+function parentOf(item: WorkItem): number | null {
+  const link = item.relations?.find((relation) => relation.rel === PARENT_LINK);
+  const match = link ? WORK_ITEM_ID_AT_END.exec(link.url) : null;
+  return match ? Number(match[1]) : null;
 }
 
 export function toDispatchItem(
@@ -100,6 +123,7 @@ export function toDispatchItem(
   const tags = getField(item, 'System.Tags');
   const dueDate = item.fields['Microsoft.VSTS.Scheduling.DueDate'];
   const priority = Number(item.fields['Microsoft.VSTS.Common.Priority']);
+  const iterationPath = getField(item, 'System.IterationPath');
   return {
     id: item.id,
     typeName: getField(item, 'System.WorkItemType') || 'Task',
@@ -107,7 +131,10 @@ export function toDispatchItem(
     state,
     stateCategory: states.find((s) => s.name === state)?.category ?? 'Proposed',
     states: states.filter((s) => s.category !== 'Removed'),
-    sprint: sprintLabel(getField(item, 'System.IterationPath')),
+    sprint: sprintLabel(iterationPath),
+    iterationPath,
+    notes: newestNote(item.fields[DEVELOPER_NOTES_FIELD]),
+    lastComment: null,
     dueDate: typeof dueDate === 'string' ? dueDate : null,
     priority: Number.isFinite(priority) && priority > 0 ? priority : null,
     tags: tags
@@ -119,7 +146,8 @@ export function toDispatchItem(
     assignedTo: getField(item, 'System.AssignedTo') || null,
     assignedToMe,
     url,
-    linkedPullRequests: linkedPullRequestNumbers(item),
+    linkedPullRequests: linkedPullRequests(item),
+    parentId: parentOf(item),
     changedAt: getField(item, 'System.ChangedDate'),
   };
 }
@@ -152,9 +180,47 @@ async function toDispatchItems(
   );
 }
 
+let myName: Promise<string | null> | null = null;
+
+/** Comments are read again only for items that changed: a new comment changes the item. */
+const commentCache = new Map<number, { changedAt: string; comment: ItemComment | null }>();
+const COMMENT_BATCH = 4;
+
+/** Forget the comments read so far (tests). */
+export function clearCommentCache(): void {
+  commentCache.clear();
+  myName = null;
+}
+
+async function withLastComments(client: AdoClient, items: DispatchItem[]): Promise<DispatchItem[]> {
+  myName ??= getCurrentUserDisplayName(client);
+  const me = await myName;
+  const stale = items.filter((item) => commentCache.get(item.id)?.changedAt !== item.changedAt);
+  for (let start = 0; start < stale.length; start += COMMENT_BATCH) {
+    await Promise.all(
+      stale.slice(start, start + COMMENT_BATCH).map(async (item) => {
+        try {
+          const comment = await getNewestWorkItemComment(client, item.id);
+          commentCache.set(item.id, {
+            changedAt: item.changedAt,
+            comment: comment ? toItemComment(comment, me) : null,
+          });
+        } catch {
+          // Shown without its comment; the next poll tries again.
+        }
+      }),
+    );
+  }
+  return items.map((item) => ({
+    ...item,
+    lastComment: commentCache.get(item.id)?.comment ?? null,
+  }));
+}
+
 /**
  * Every open item assigned to me in the project, plus the `extraIds` (items
- * marked Up next that belong to someone else), each with its workflow.
+ * marked Up next that belong to someone else), each with its workflow and
+ * its newest comment.
  */
 export async function loadDispatchItems(
   client: AdoClient,
@@ -167,7 +233,8 @@ export async function loadDispatchItems(
   const mineIds = (response.workItems ?? []).map((w) => w.id);
   const mine = new Set(mineIds);
   const ids = [...mineIds, ...extraIds.filter((id) => !mine.has(id))];
-  return toDispatchItems(client, scope, await getWorkItems(client, ids), mine);
+  const items = await toDispatchItems(client, scope, await getWorkItems(client, ids), mine);
+  return withLastComments(client, items);
 }
 
 /** Moves the item to `state` and answers with the state ADO reports back. */

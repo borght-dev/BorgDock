@@ -1,9 +1,8 @@
 import clsx from 'clsx';
-import { X } from 'lucide-react';
-import { Button, CheckBar, Dot, type DotTone, IconButton } from '@/components/shared/primitives';
+import { Button, CheckBar, Dot, type DotTone } from '@/components/shared/primitives';
 import { WorkItemTypePill } from '@/components/work-items/WorkItemTypePill';
-import type { Bay, ItemOverview, Slot } from '@/services/dispatch/types';
-import { DispatchDetail } from './DispatchDetail';
+import { BAY_LABEL, type Bay, type ItemOverview, type Slot } from '@/services/dispatch/types';
+import { DispatchDrawer } from './DispatchDrawer';
 import { canStart, UnitAside } from './DispatchRow';
 import { DISPATCH_ITEM_MIME } from './SlotStrip';
 import { currentThread, type DispatchActions, unitActions } from './unit-actions';
@@ -51,7 +50,7 @@ export const BOARD_COLUMNS: readonly BoardColumn[] = [
 
 const LANE_BAYS: readonly { bay: Bay; label: string }[] = [
   { bay: 'paused', label: 'Paused' },
-  { bay: 'handed', label: 'Handed off' },
+  { bay: 'handed', label: BAY_LABEL.handed },
 ];
 
 /** At most this many buttons on a card: the one it needs, and one way out. */
@@ -230,19 +229,14 @@ export function DispatchBoard({
       </div>
 
       {open && (
-        <aside className="bd-dp-drawer" aria-label="Work item">
-          <header className="bd-dp-drawer__head">
-            <span>Work item</span>
-            <IconButton
-              icon={<X size={13} strokeWidth={2.25} />}
-              tooltip="Close (Esc)"
-              aria-label="Close"
-              size={22}
-              onClick={() => onSelect(null)}
-            />
-          </header>
-          <DispatchDetail overview={open} slots={slots} actions={actions} now={now} busy={busy} />
-        </aside>
+        <DispatchDrawer
+          overview={open}
+          slots={slots}
+          actions={actions}
+          now={now}
+          busy={busy}
+          onClose={() => onSelect(null)}
+        />
       )}
     </div>
   );

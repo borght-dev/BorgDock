@@ -103,18 +103,26 @@ describe('toDispatchItem', () => {
     expect(converted.states.map((s) => s.name)).toEqual(['New', 'Active', 'Closed']);
   });
 
-  it('reads the numbers of linked GitHub pull requests', () => {
+  it('reads the linked GitHub pull requests with their repository, and the parent', () => {
     const item = makeWorkItem({
       id: 2,
       relations: [
         {
           rel: 'ArtifactLink',
-          url: 'vstfs:///GitHub/PullRequest/0f3c1e5a-1111-2222-3333-444455556666%2F3712',
+          url: 'vstfs:///GitHub/PullRequest/0F3C1E5A-1111-2222-3333-444455556666%2f3712',
           attributes: {},
         },
-        { rel: 'System.LinkTypes.Hierarchy-Reverse', url: 'https://ado/parent', attributes: {} },
+        {
+          rel: 'System.LinkTypes.Hierarchy-Reverse',
+          url: 'https://dev.azure.com/acme/_apis/wit/workItems/58917',
+          attributes: {},
+        },
       ],
     });
-    expect(toDispatchItem(item, FLOW, true, '').linkedPullRequests).toEqual([3712]);
+    const dispatchItem = toDispatchItem(item, FLOW, true, '');
+    expect(dispatchItem.linkedPullRequests).toEqual([
+      { repositoryId: '0f3c1e5a-1111-2222-3333-444455556666', number: 3712 },
+    ]);
+    expect(dispatchItem.parentId).toBe(58917);
   });
 });

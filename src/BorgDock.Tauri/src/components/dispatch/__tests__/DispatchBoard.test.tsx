@@ -50,9 +50,9 @@ describe('DispatchBoard', () => {
     expect(within(column('Needs you')).getAllByRole('article')).toHaveLength(6);
     expect(within(column('Agents working')).getAllByRole('article')).toHaveLength(2);
     expect(within(column('Up next')).getAllByRole('article')).toHaveLength(2);
-    expect(within(column('Not started')).getAllByRole('article')).toHaveLength(4);
-    expect(screen.getByText('Paused 1')).toBeInTheDocument();
-    expect(screen.getByText('Handed off 1')).toBeInTheDocument();
+    expect(within(column('Not started')).getAllByRole('article')).toHaveLength(5);
+    expect(screen.getByText('Paused 2')).toBeInTheDocument();
+    expect(screen.getByText('In review or QA 3')).toBeInTheDocument();
   });
 
   it('shows the question on the card and answers it with the recommended option', () => {

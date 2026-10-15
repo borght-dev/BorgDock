@@ -7,6 +7,7 @@ import { AdoNotConfigured } from '@/components/work-items/AdoNotConfigured';
 import { dispatchActions } from '@/services/dispatch/actions';
 import { syncAll } from '@/services/dispatch/sync';
 import { BAY_LABEL, BAYS, type Bay, type ItemOverview } from '@/services/dispatch/types';
+import { outOfSync } from '@/services/dispatch/walk';
 import { showWorkItem } from '@/services/navigation';
 import { LOCAL_T3_HOST_ID } from '@/services/t3/api';
 import {
@@ -22,11 +23,22 @@ import { DispatchBoard } from './DispatchBoard';
 import { DispatchDetail } from './DispatchDetail';
 import { DispatchListSplit } from './DispatchListSplit';
 import { canStart, DispatchRow } from './DispatchRow';
+import { DispatchWalk } from './DispatchWalk';
 import { LaunchSheet } from './LaunchSheet';
+import { RunSheet } from './RunSheet';
 import { SlotStrip } from './SlotStrip';
 import { shortAge } from './unit-copy';
+import {
+  BulkRunResult,
+  FixOutOfSyncButton,
+  LaneRunControls,
+  LaneRunResult,
+  PickupSection,
+  SyncAllButton,
+} from './WalkRuns';
 
 const VIEW_MODES: readonly { value: DispatchViewMode; label: string }[] = [
+  { value: 'walk', label: 'States' },
   { value: 'list', label: 'List' },
   { value: 'board', label: 'Board' },
 ];
@@ -134,9 +146,13 @@ function PairingNotice({ error }: { error: string }) {
 /**
  * DispatchSection — the work assigned to you, sorted by what it needs.
  *
- * - Head row: title, List or Board, the health of the sources (ADO and every
+ * - Head row: title, States, List or Board, the health of the sources (ADO and every
  *   T3 host) and search.
  * - The slot strip: every T3 project an agent can run in, per host.
+ * - States (`DispatchWalk`, the default): one section per ADO state in the
+ *   order they are checked each morning, under an overview grid. Every row
+ *   says what the item needs, why, and what was said last; a row opens its
+ *   detail in a drawer.
  * - List: the items grouped by bay (waiting on you first), beside the
  *   selected item's detail: the agent's question or last message, the next
  *   action and the item's place in its workflow.
@@ -160,6 +176,7 @@ export function DispatchSection() {
   const hosts = useDispatchStore((s) => s.hosts);
   const busy = useDispatchStore((s) => s.busy);
   const launch = useDispatchStore((s) => s.launch);
+  const runSheet = useDispatchStore((s) => s.runSheet);
   const viewMode = useDispatchStore((s) => s.viewMode);
   const setViewMode = useDispatchStore((s) => s.setViewMode);
   const openLaunch = useDispatchStore((s) => s.openLaunch);
@@ -177,6 +194,7 @@ export function DispatchSection() {
 
   const localHost = hosts.find((host) => host.id === LOCAL_T3_HOST_ID);
   const total = overview?.items.length ?? 0;
+  const driftCount = outOfSync(overview?.items ?? []).length;
 
   return (
     <div className="bd-wb-prs bd-dp">
@@ -190,6 +208,8 @@ export function DispatchSection() {
           onChange={setViewMode}
         />
         <Health ado={adoStatus} hosts={hosts} now={now} />
+        <FixOutOfSyncButton count={driftCount} />
+        <SyncAllButton count={total} />
         <label className="bd-wb-head__search">
           <Search
             size={13}
@@ -224,6 +244,24 @@ export function DispatchSection() {
         onDropItem={(slot, itemId) => openLaunch({ itemId, slotId: slot.id })}
       />
 
+      {viewMode === 'walk' && overview !== null && (
+        <DispatchWalk
+          items={items}
+          slots={overview.slots}
+          openId={selectedId}
+          now={now}
+          busy={busy}
+          actions={dispatchActions}
+          onSelect={selectItem}
+          onOpen={(id) => void showWorkItem(id)}
+          notice={<BulkRunResult />}
+          laneAside={(lane) =>
+            lane.rows.length > 0 && <LaneRunControls state={lane.state} count={lane.rows.length} />
+          }
+          laneNotice={(lane) => <LaneRunResult state={lane.state} />}
+          footer={<PickupSection items={overview.items.map((o) => o.item)} />}
+        />
+      )}
       {viewMode === 'board' && overview !== null && (
         <DispatchBoard
           items={items}
@@ -236,7 +274,7 @@ export function DispatchSection() {
         />
       )}
       <DispatchListSplit
-        hidden={viewMode === 'board' && overview !== null}
+        hidden={viewMode !== 'list' && overview !== null}
         list={
           <div className="bd-wb-list" data-density={density}>
             {overview === null && <div className="bd-wb-empty">Loading your work…</div>}
@@ -288,6 +326,7 @@ export function DispatchSection() {
         }
       />
       {launch && overview && <LaunchSheet intent={launch} overview={overview} />}
+      {runSheet && overview && <RunSheet intent={runSheet} overview={overview} />}
     </div>
   );
 }
