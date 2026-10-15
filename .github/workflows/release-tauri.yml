@@ -24,11 +24,6 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: "src/BorgDock.Tauri/src-tauri -> target"
-
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
