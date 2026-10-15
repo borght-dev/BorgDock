@@ -9,7 +9,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import type { PrGroupBy } from '@/services/pr-grouping';
-import { type PrFilter, usePrStore } from '@/stores/pr-store';
+import { type PrFilter, type SortBy, usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity } from '@/types';
@@ -25,6 +25,7 @@ import { PrList } from './PrList';
 interface HarnessProps {
   density?: PrDensity;
   groupBy?: PrGroupBy;
+  sortBy?: SortBy;
   filter?: PrFilter;
   /** Selected row as `owner/repo#number`. */
   selected?: string | null;
@@ -37,6 +38,7 @@ interface HarnessProps {
 function Harness({
   density = 'comfortable',
   groupBy = 'repo',
+  sortBy = 'updated',
   filter = 'all',
   selected = null,
   closedCount = 3,
@@ -52,7 +54,7 @@ function Harness({
       teams: [],
       filter,
       searchQuery: '',
-      sortBy: 'updated',
+      sortBy,
       isPolling: false,
       lastPollTime: new Date(now),
     });
@@ -105,6 +107,8 @@ export const NeedsYou: Story = { args: { filter: 'needsYou' } };
 
 /** Grouped by author, the current user first. */
 export const ByAuthor: Story = { args: { groupBy: 'author' } };
+
+export const ByAuthorCreated: Story = { args: { groupBy: 'author', sortBy: 'created' } };
 
 /** Grouped by status. */
 export const ByStatus: Story = { args: { groupBy: 'status' } };

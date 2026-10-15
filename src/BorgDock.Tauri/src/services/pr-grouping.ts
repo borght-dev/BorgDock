@@ -245,7 +245,7 @@ export function groupPrs(
 
 /**
  * The Workbench list's groups: a pinned "Needs you" group first (only when
- * `pinNeedsYou`, i.e. the filter is All, and only when it has rows), then
+ * `pinNeedsYou`, i.e. the filter is All, grouping is not Author, and it has rows), then
  * the rest grouped by `groupBy`. A PR shows up once: rows in "Needs you" are
  * left out of the groups below it. Row order inside each group follows `prs`.
  */
@@ -256,7 +256,7 @@ export function groupWorkbenchPrs(
   teams: readonly string[] = [],
   pinNeedsYou = true,
 ): PrGroup[] {
-  if (!pinNeedsYou) return groupPrs(prs, groupBy, username, teams);
+  if (!pinNeedsYou || groupBy === 'author') return groupPrs(prs, groupBy, username, teams);
   const needsYou: PullRequestWithChecks[] = [];
   const rest: PullRequestWithChecks[] = [];
   for (const pr of prs) {

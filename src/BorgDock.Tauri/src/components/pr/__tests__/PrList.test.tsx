@@ -189,13 +189,19 @@ describe('PrList', () => {
     expect(flipMock).toHaveBeenCalledTimes(1);
     expect(flipMock.mock.calls[0]![3]).toEqual({ leaving: [] });
     expect(screen.queryByRole('menu')).toBeNull();
-    expect(groupHeadings()[1]).toContain('koen (you)');
+    expect(groupHeadings()).not.toContain('Needs you');
+    expect(groupHeadings()[0]).toContain('koen (you)');
+    expect(list().querySelectorAll('.bd-wb-row')).toHaveLength(18);
 
     fireEvent.click(screen.getByRole('button', { name: 'Group and sort' }));
     await act(async () => {
-      fireEvent.click(screen.getByRole('menuitemradio', { name: 'Title' }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'Created' }));
     });
-    expect(usePrStore.getState().sortBy).toBe('title');
+    expect(usePrStore.getState().sortBy).toBe('created');
+    expect(groupHeadings()).not.toContain('Needs you');
+    expect(groupHeadings()[0]).toContain('koen (you)');
+    const mine = document.querySelector('[data-group-key="author:koen"]')!;
+    expect(mine.querySelectorAll('.bd-wb-row')).toHaveLength(6);
     expect(flipMock).toHaveBeenCalledTimes(2);
   });
 

@@ -97,6 +97,18 @@ describe('groupWorkbenchPrs', () => {
     ]);
   });
 
+  it('keeps every PR in its author group, including PRs that need me', () => {
+    const groups = groupWorkbenchPrs(prs, 'author', ME);
+    expect(groups.some((g) => g.key === NEEDS_YOU_GROUP_KEY)).toBe(false);
+    expect(groups[0]!.author?.isMe).toBe(true);
+    expect(groups.flatMap((g) => g.prs)).toHaveLength(prs.length);
+    for (const group of groups) {
+      expect(group.prs).toEqual(
+        prs.filter((pr) => pr.pullRequest.authorLogin === group.author!.login),
+      );
+    }
+  });
+
   it('does not pin when asked not to (any filter but All)', () => {
     const groups = groupWorkbenchPrs(prs, 'repo', ME, [], false);
     expect(groups.some((g) => g.key === NEEDS_YOU_GROUP_KEY)).toBe(false);
