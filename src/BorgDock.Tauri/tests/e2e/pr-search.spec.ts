@@ -32,6 +32,8 @@ test('search also filters the Needs you group and Recently closed', async ({ pag
     usePrStore.getState().setClosedPullRequests([closed]);
   }, MERGED_PR);
   await railButton(page, /^Pull requests/).click();
+  await page.getByRole('button', { name: 'Group and sort' }).click();
+  await page.getByRole('menuitemradio', { name: 'Repo', exact: true }).click();
   await expect(page.locator('.bd-wb-group__label').first()).toHaveText('Needs you');
   await expect(page.getByText('Just merged')).toBeVisible();
 

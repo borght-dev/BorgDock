@@ -102,8 +102,11 @@ test('rows render with the Workbench grammar', async ({ page }) => {
   await bootPrList(page);
 
   await expect(page.getByRole('heading', { name: 'Pull requests' })).toBeVisible();
-  // "Needs you" is pinned first under All.
-  await expect(page.locator('.bd-wb-group__label').first()).toHaveText('Needs you');
+  await page.getByRole('button', { name: 'Group and sort' }).click();
+  await page.getByRole('menuitemradio', { name: 'Created', exact: true }).click();
+  await expect(page.locator('.bd-wb-group__label').first()).toContainText(`${ME} (you)`);
+  await expect(page.locator('[data-group-key="needs-you"]')).toHaveCount(0);
+  await expect(page.locator('[data-group-key="author:test-user"] .bd-wb-row')).toHaveCount(20);
 
   const failing = page.locator('.bd-wb-row[data-pr-number="1"]');
   await expect(failing.locator('.bd-wb-row__title')).toHaveText('Workbench change 1');
