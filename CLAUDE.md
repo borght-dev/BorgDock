@@ -186,7 +186,24 @@ Things that bite:
 - **The shell has no messages.** `latestVisibleMessage` is always null. The last agent message and the questions come from the bounded thread snapshot, read only for threads that wait on me (`readDetails`).
 - **Notifications wait for a full read.** `notifyNew` records but does not send until ADO and every host have been read once (`everySourceRead`). A new source that is never marked read silences every notification.
 - **Up next is the work items track star.** There is no second queue; `dequeue` from the engine untracks an item once an agent picks it up.
+- **Subagents are threads in T3's shell** (`lineage.relationshipToParent: "subagent"`, `rootThreadId`). They never settle and report the *checkout's* branch and pull requests, not their own. `toAgentThread` holds them as settled without branch/PRs; `linkThreads` gives the items their conversation names to the root thread. Without that, idle subagents show as "Your turn" and occupy slots.
+- **BorgDock never changes an ADO state on a button.** Every move (row "Move to X", the state menu, Fix out of sync, Sync) opens the run sheet and starts a T3 thread; a move needs notes and required fields only the repo's skills know. The one direct write left is `stateOnStart` when a thread launches.
+- **"Plan Review" sits before "Code Review"** in the Bug, PBI and QI workflows. Never pick a target state by `/review/`; `verdict.ts` `reviewState` asks for Code Review by name.
+- **ADO's PR links carry ADO's repository id**, not GitHub's: `vstfs:///GitHub/PullRequest/<id>%2f<number>` (lower-case `%2f` too), and numbers collide across repos. No ADO API maps the id (`githubconnections/{id}/repos` returns only URLs); `linked-prs.ts` learns it from which configured repo's PRs name the linking items, and keeps it in `dispatch-state.json`.
+- **A PR linked on several of my items that names none of them is `shared`** (an epic's plan PR on every PBI). It never drives a drift or verdict; without that every PBI of the epic looks ready for QA.
 - **Formatting CSS.** `bunx biome check --write` on `work-items-workbench.css` rewraps a rule nobody touched. The pre-commit hook does not check CSS, so revert that hunk instead of committing it.
+
+**States view (the default layout).** One section per ADO state in the order of the morning walk (`walk.ts` `WALK_ORDER`), each row with a verdict, evidence chips and the latest message. Spec: `docs/superpowers/specs/2026-10-13-dispatch-state-walk.md`.
+
+- `verdict.ts` is pure and holds every rule: `verdictOf` (first match wins, in spec order), `evidenceOf`, `latestMessage`. Change a rule there and in the spec table together.
+- The latest message is the newest of the item's newest ADO comment, the top block of `Custom.DeveloperNotes` and the agent's last message. A comment that starts `Vera · <kind> —` counts as Vera's, whoever's account posted it. Notes carry only a date, so a comment on the same day wins.
+- Comments cost one request per item; `items.ts` reads them again only when `System.ChangedDate` moved (a new comment moves it).
+- One pull request can belong to two items (an ADO link, or an `AB#` in its body). The one whose title names the item is that item's own, so it ranks first in `pullRequests`.
+- **Sync with agent / Fix out of sync / Sync all / Suggest my next item are runs**: one T3 thread for many items (or none), scoped by `SyncScope` (a state, the items out of sync, every item, one item). `startRun` links the thread to *no* item (`linkThread(id, null)`), or its `AB#` mentions would attach it to one; a run for one item (a move) is linked to that item. Runs persist in `dispatch-state.json`. BorgDock writes no Developer Notes itself; the sync prompt sends the agent to the repo's own skills (`ado-update-for-qa`, `ado-dev-in-progress`, `/ado-fix`).
+- **The schedule** (`agents.dispatchSyncSchedule`) runs only while BorgDock is open. `runScheduleIfDue` marks the day *before* it starts, so a failure never runs twice. It uses the slot and model of the last run (`runChoice`).
+- The rail's count and the Focus card both use `needingYou` (verdict tone `bad`), not the `waiting` bay.
+
+Storybook ignores `src-tauri/**` in its watcher (`.storybook/main.ts`). Without that, a `cargo build` running at the same time crashes it with `EBUSY` on a locked file in `target/`.
 
 ## Diagnosing a hung / frozen BorgDock (AppHang)
 

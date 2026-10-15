@@ -9,37 +9,48 @@ vi.mock('@/services/navigation', () => navigation);
 
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { makeDispatchScene } from '../__fixtures__/dispatch-data';
-import { DispatchFocusStrip } from '../DispatchFocusStrip';
+import { DispatchFocusCard } from '../DispatchFocusCard';
 
-describe('DispatchFocusStrip', () => {
+describe('DispatchFocusCard', () => {
   beforeEach(() => {
     actions.showDispatchItem.mockReset();
     navigation.showSection.mockReset();
   });
 
-  it('renders nothing while no agent waits', () => {
+  it('renders nothing until Dispatch has items', () => {
     useDispatchStore.setState({ overview: null });
-    const { container } = render(<DispatchFocusStrip />);
+    const { container } = render(<DispatchFocusCard />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('names the first agents that wait and counts the rest', () => {
+  it('sums up the work and names the first items that wait on you', () => {
     useDispatchStore.setState({ overview: makeDispatchScene().overview });
-    render(<DispatchFocusStrip />);
+    render(<DispatchFocusCard />);
 
-    expect(screen.getByText('4 agents need you')).toBeInTheDocument();
+    expect(
+      screen.getByText(/^\d+ need you · \d+ can move · \d+ agents working$/),
+    ).toBeInTheDocument();
+    expect(screen.getByTitle('Needs Human')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /Order list loses its scroll position/ }),
     ).toBeInTheDocument();
-    expect(screen.getByText('and 1 more')).toBeInTheDocument();
+    expect(screen.getByText(/^and \d+ more$/)).toBeInTheDocument();
+  });
+
+  it('shows what was said last about an item that waits', () => {
+    useDispatchStore.setState({ overview: makeDispatchScene().overview });
+    render(<DispatchFocusCard />);
+    expect(
+      screen.getByText(/^Vera · plan: I need your decision on two classes/),
+    ).toBeInTheDocument();
   });
 
   it('opens the picked item in Dispatch', () => {
     useDispatchStore.setState({ overview: makeDispatchScene().overview });
-    render(<DispatchFocusStrip />);
+    render(<DispatchFocusCard />);
 
-    fireEvent.click(screen.getByRole('button', { name: /CSV export drops the last column/ }));
-    expect(actions.showDispatchItem).toHaveBeenCalledWith(60102);
+    fireEvent.click(screen.getByRole('button', { name: /Order list loses its scroll position/ }));
+    expect(actions.showDispatchItem).toHaveBeenCalledWith(60214);
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Dispatch' }));
     expect(navigation.showSection).toHaveBeenCalledWith('dispatch');

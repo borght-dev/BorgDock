@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { DispatchFocusStrip } from '@/components/dispatch/DispatchFocusStrip';
+import { DispatchFocusCard } from '@/components/dispatch/DispatchFocusCard';
 import { PrRow } from '@/components/pr/PrRow';
 import { prRowKey } from '@/components/pr/pr-card-data';
 import { Button, SlidingHighlight } from '@/components/shared/primitives';
@@ -462,7 +462,7 @@ export function FocusList() {
           </Button>
         )}
       </div>
-      <DispatchFocusStrip />
+      <DispatchFocusCard />
       <div className="bd-focus-body">
         {outgoing !== null && (
           <div

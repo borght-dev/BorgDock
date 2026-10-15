@@ -96,6 +96,59 @@ describe('linkThreads', () => {
     expect(linkThreads(items, [loose], new Map([['u', null]])).unlinked).toHaveLength(0);
   });
 
+  it('links an epic-wide thread to what it names itself when its conversation names too much', () => {
+    const items = [58918, 58919, 60236].map((id) => makeItem({ id, parentId: 58917 }));
+    const epic = makeThread({
+      id: 'epic',
+      title: 'Plan Epic 58917 PBI Breakdown',
+      branch: 'feat/60236-dated-cost-prices',
+      conversationReferences: {
+        explicitIds: [55965, 58335, 58917, 58918, 58919, 59530, 60236, 60237],
+        mentionedIds: [],
+      },
+    });
+    const links = linkThreads(items, [epic], new Map());
+    expect(
+      [...links.threadsByItem.entries()].map(([id, list]) => [id, list.map((t) => t.id)]),
+    ).toEqual([
+      [58918, ['epic']],
+      [58919, ['epic']],
+      [60236, ['epic']],
+    ]);
+  });
+
+  it('counts an epic and its PBIs as one topic, however many of them a thread names', () => {
+    const pbis = [58918, 58919, 58920, 60236, 60237];
+    const items = [...pbis.map((id) => makeItem({ id, parentId: 58917 })), makeItem({ id: 50001 })];
+    const epic = makeThread({
+      id: 'epic',
+      pullRequests: pbis.map((id, n) =>
+        makeThreadPr({ number: 5020 + n, headBranch: `feat/${id}-cost-prices` }),
+      ),
+    });
+    const links = linkThreads(items, [epic], new Map());
+    expect(pbis.map((id) => links.threadsByItem.get(id)?.length)).toEqual([1, 1, 1, 1, 1]);
+    expect(links.threadsByItem.get(50001)).toEqual([]);
+  });
+
+  it('gives the items a subagent works on to the thread it works for', () => {
+    const items = [makeItem({ id: 58918 }), makeItem({ id: 50002 })];
+    const root = makeThread({ id: 'root', title: 'Quote improvements', status: 'running' });
+    const subagent = makeThread({
+      id: 'sub',
+      title: 'Research custom quote lines',
+      subagentOf: 'root',
+      open: false,
+      status: 'settled',
+      conversationReferences: { explicitIds: [59970], mentionedIds: [58918] },
+    });
+    const links = linkThreads(items, [root, subagent], new Map());
+    expect(links.threadsByItem.get(58918)?.map((t) => t.id)).toEqual(['root']);
+    expect(links.threadsByItem.get(50002)).toEqual([]);
+    expect(links.unlinked).toEqual([]);
+    expect(links.itemOfThread.get('root')).toBe(58918);
+  });
+
   it('offers an open thread without any reference as unlinked', () => {
     const links = linkThreads([makeItem({ id: 50001 })], [makeThread({ id: 'u' })], new Map());
     expect(links.unlinked.map((t) => t.id)).toEqual(['u']);
@@ -136,7 +189,7 @@ describe('buildOverview suggestions', () => {
     });
     expect(overview.items[0]?.bay).toBe('drift');
     expect(overview.items[0]?.suggestion).toEqual({
-      id: '59567:merged:4466',
+      id: '59567:merged:4466:Ready For QA',
       to: 'Ready For QA',
       reason: 'PR 4466 is merged. ADO still says Code Review.',
     });
@@ -161,8 +214,6 @@ describe('buildOverview suggestions', () => {
       threads: [
         makeThread({
           id: 't',
-          status: 'settled',
-          open: false,
           firstUserMessage: 'see 59463',
           pullRequests: [
             makeThreadPr({
@@ -184,13 +235,72 @@ describe('buildOverview suggestions', () => {
       threads: [
         makeThread({
           id: 't',
-          status: 'running',
           title: 'AB#50001',
+          status: 'settled',
+          open: false,
           pullRequests: [makeThreadPr({ number: 7, title: 'AB#50001' })],
         }),
       ],
     });
     expect(overview.items[0]?.suggestion?.to).toBe('Code Review');
+    expect(overview.items[0]?.verdict.label).toBe('Out of sync');
+  });
+
+  it('suggests Code Review, not Plan Review, for a bug with an open pull request', () => {
+    const states = [
+      { name: 'New', category: 'Proposed' as const },
+      { name: 'Plan Review', category: 'Proposed' as const },
+      { name: 'Development In Progress', category: 'InProgress' as const },
+      { name: 'Code Review', category: 'Resolved' as const },
+      { name: 'Ready For QA', category: 'Resolved' as const },
+    ];
+    const overview = overviewOf({
+      items: [makeItem({ id: 60275, typeName: 'Bug', state: 'New', states })],
+      pullRequests: [makeKnownPr({ number: 5004, workItemIds: [60275] })],
+    });
+    expect(overview.items[0]?.suggestion).toMatchObject({
+      to: 'Code Review',
+      reason: 'PR 5004 is open. ADO still says New.',
+    });
+  });
+
+  it('suggests the move while the agent runs, which stays the verdict', () => {
+    const overview = overviewOf({
+      items: [makeItem({ id: 58138, state: 'Development In Progress' })],
+      threads: [makeThread({ id: 't', status: 'running', branch: 'feat/58138-ai-summary' })],
+      pullRequests: [makeKnownPr({ number: 5002, workItemIds: [58138] })],
+    });
+    expect(overview.items[0]?.suggestion?.to).toBe('Code Review');
+    expect(overview.items[0]?.verdict.label).toBe('Agent on it');
+  });
+
+  it('ignores a pull request shared by several items that names none of them', () => {
+    const overview = overviewOf({
+      items: [50001, 50002].map((id) => makeItem({ id, state: 'Development In Progress' })),
+      pullRequests: [
+        makeKnownPr({
+          number: 4991,
+          state: 'merged',
+          title: 'docs(plans): plan the quote improvements',
+          branch: 'plan/58917-quote-improvements',
+          workItemIds: [50001, 50002],
+        }),
+        makeKnownPr({
+          number: 5030,
+          state: 'merged',
+          title: 'feat(quotes): cost and margin (AB#50002)',
+          workItemIds: [50001, 50002],
+        }),
+      ],
+    });
+    const [first, second] = overview.items;
+    expect(first?.pullRequests.every((pr) => pr.shared)).toBe(true);
+    expect(first?.suggestion).toBeNull();
+    expect(second?.pullRequests.map((pr) => [pr.number, pr.shared])).toEqual([
+      [5030, false],
+      [4991, true],
+    ]);
+    expect(second?.suggestion?.to).toBe('Ready For QA');
   });
 
   it('does not suggest Code Review for a draft', () => {
@@ -202,7 +312,7 @@ describe('buildOverview suggestions', () => {
     expect(overview.items[0]?.suggestion).toBeNull();
   });
 
-  it('flags in-progress items that are stale or untouched, without a target state', () => {
+  it('calls a quiet or untouched item in progress by its verdict, not out of sync', () => {
     const stale = overviewOf({
       items: [makeItem({ id: 50002, state: 'Development In Progress' })],
       threads: [
@@ -215,27 +325,27 @@ describe('buildOverview suggestions', () => {
         }),
       ],
     });
-    expect(stale.items[0]?.suggestion?.to).toBeNull();
-    expect(stale.items[0]?.suggestion?.reason).toMatch(/no agent activity since 2026-09-20/);
+    expect(stale.items[0]?.suggestion).toBeNull();
+    expect(stale.items[0]?.bay).toBe('paused');
 
     const untouched = overviewOf({
       items: [makeItem({ id: 50003, state: 'Development In Progress' })],
     });
-    expect(untouched.items[0]?.suggestion?.id).toBe('50003:untouched:Development In Progress');
-
-    const onHold = overviewOf({ items: [makeItem({ id: 50004, state: 'On Hold' })] });
-    expect(onHold.items[0]?.suggestion).toBeNull();
+    expect(untouched.items[0]?.suggestion).toBeNull();
+    expect(untouched.items[0]?.verdict.label).toBe('Nobody on it');
   });
 
   it('keeps a hidden suggestion hidden until the evidence changes', () => {
     const base = {
       items: [makeItem({ id: 50001, state: 'New' })],
-      threads: [makeThread({ id: 't', title: 'AB#50001', status: 'running' as const })],
+      threads: [makeThread({ id: 't', title: 'AB#50001' })],
     };
-    const hidden = overviewOf({ ...base, hiddenSuggestions: new Set(['50001:started']) });
+    const kept = '50001:started:Development In Progress';
+    const hidden = overviewOf({ ...base, hiddenSuggestions: new Set([kept]) });
     expect(hidden.items[0]?.suggestion).toBeNull();
-    const other = overviewOf({ ...base, hiddenSuggestions: new Set(['50001:merged:9']) });
-    expect(other.items[0]?.suggestion?.id).toBe('50001:started');
+    expect(hidden.items[0]?.verdict.label).not.toBe('Out of sync');
+    const other = overviewOf({ ...base, hiddenSuggestions: new Set(['50001:merged:9:Done']) });
+    expect(other.items[0]?.suggestion?.id).toBe(kept);
   });
 });
 
@@ -274,6 +384,29 @@ describe('buildOverview pull requests', () => {
     });
     expect(overview.items[0]?.pullRequest?.number).toBe(9);
     expect(overview.items[0]?.suggestion?.to).toBe('Code Review');
+  });
+
+  it('takes the open pull request whose title names the item over one it shares', () => {
+    const overview = overviewOf({
+      items: [makeItem({ id: 60097, state: 'Code Review' })],
+      pullRequests: [
+        makeKnownPr({
+          number: 4898,
+          title: 'fix: reject unsupported rule links (AB#60097)',
+          workItemIds: [60097],
+          approved: true,
+          checks: { passed: 12, failed: 0, pending: 0, total: 12 },
+        }),
+        makeKnownPr({
+          number: 4909,
+          title: 'feat: edit advanced rules in legacy form (AB#60108)',
+          workItemIds: [60108, 60097],
+          checks: { passed: 10, failed: 2, pending: 0, total: 12 },
+        }),
+      ],
+    });
+    expect(overview.items[0]?.pullRequests.map((pr) => pr.number)).toEqual([4898, 4909]);
+    expect(overview.items[0]?.verdict.label).toBe('Ready to merge');
   });
 });
 

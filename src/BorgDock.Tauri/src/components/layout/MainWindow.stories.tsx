@@ -12,6 +12,7 @@ import { useState } from 'react';
 import {
   LAUNCH_CATALOGUE,
   makeDispatchScene,
+  makeRunScene,
 } from '@/components/dispatch/__fixtures__/dispatch-data';
 import {
   bugWithReproSteps,
@@ -23,7 +24,7 @@ import {
   userStoryWithRichBody,
 } from '@/components/work-items/__fixtures__/work-item-data';
 import { reviewRequestKey } from '@/services/priority-scoring';
-import { useDispatchStore } from '@/stores/dispatch-store';
+import { type DispatchViewMode, type RunIntent, useDispatchStore } from '@/stores/dispatch-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -317,14 +318,23 @@ function seedWorkItems() {
   useUiStore.setState({ workItemsSelectedId: bugWithReproSteps.id });
 }
 
-function seedDispatch(selectedItemId: number | null, launching: boolean, board: boolean) {
+function seedDispatch(
+  selectedItemId: number | null,
+  launching: boolean,
+  viewMode: DispatchViewMode,
+  withRuns = false,
+  runSheet: RunIntent | null = null,
+) {
   const scene = makeDispatchScene();
+  const runScene = withRuns ? makeRunScene() : { threads: [], runs: [] };
   getControl().invokeResponses.t3_catalogue = LAUNCH_CATALOGUE;
   useDispatchStore.setState({
     launch: launching && selectedItemId !== null ? { itemId: selectedItemId } : null,
-    viewMode: board ? 'board' : 'list',
+    viewMode,
+    runs: runScene.runs,
+    runSheet,
     items: scene.items,
-    threads: scene.threads,
+    threads: [...scene.threads, ...runScene.threads],
     projects: scene.projects,
     overview: scene.overview,
     ado: scene.ado,
@@ -351,6 +361,9 @@ function Harness({
   dispatchItem = 60214,
   launching = false,
   dispatchBoard = false,
+  dispatchView,
+  dispatchRuns = false,
+  dispatchRunSheet = null,
   agentsWaiting = false,
 }: {
   section: ActiveSection;
@@ -366,6 +379,12 @@ function Harness({
   launching?: boolean;
   /** Dispatch as the board instead of the list. */
   dispatchBoard?: boolean;
+  /** Dispatch in this layout; wins over `dispatchBoard`. */
+  dispatchView?: DispatchViewMode;
+  /** A finished Sync all and a suggestion still at work. */
+  dispatchRuns?: boolean;
+  /** Open the run sheet for this. */
+  dispatchRunSheet?: RunIntent | null;
   /** Seed Dispatch in another section too, so Focus shows the agents that wait. */
   agentsWaiting?: boolean;
 }) {
@@ -375,7 +394,13 @@ function Harness({
     seedPrStore();
     if (section === 'workitems') seedWorkItems();
     if (section === 'dispatch' || agentsWaiting) {
-      seedDispatch(dispatchItem, launching, dispatchBoard);
+      seedDispatch(
+        dispatchItem,
+        launching,
+        dispatchView ?? (dispatchBoard ? 'board' : 'list'),
+        dispatchRuns,
+        dispatchRunSheet,
+      );
     }
     useUiStore.setState({
       activeSection: section,
@@ -456,6 +481,41 @@ export const RailDispatchBoard: Story = {
 /** The board with a card's detail open in the drawer. */
 export const RailDispatchBoardDrawer: Story = {
   args: { section: 'dispatch', dispatchBoard: true, dispatchItem: 59877 },
+};
+
+/** Dispatch walking the states: an overview grid, then one section per ADO state. */
+export const RailDispatchStates: Story = {
+  args: { section: 'dispatch', dispatchView: 'walk', dispatchItem: null },
+};
+
+/** The walk after a Sync all finished, with a suggestion still at work. */
+export const RailDispatchStatesRuns: Story = {
+  args: { section: 'dispatch', dispatchView: 'walk', dispatchItem: null, dispatchRuns: true },
+};
+
+/** The run sheet for Sync all: the items, a slot, a model, the message and the schedule. */
+export const RailDispatchSyncSheet: Story = {
+  args: {
+    section: 'dispatch',
+    dispatchView: 'walk',
+    dispatchItem: null,
+    dispatchRunSheet: { kind: 'sync', scope: { kind: 'all' } },
+  },
+};
+
+/** An item out of sync, moved by an agent: the run sheet for that one item. */
+export const RailDispatchMoveSheet: Story = {
+  args: {
+    section: 'dispatch',
+    dispatchView: 'walk',
+    dispatchItem: null,
+    dispatchRunSheet: { kind: 'sync', scope: { kind: 'item', itemId: 59403, to: 'Ready For QA' } },
+  },
+};
+
+/** The walk with an item's detail open in the drawer. */
+export const RailDispatchStatesDrawer: Story = {
+  args: { section: 'dispatch', dispatchView: 'walk', dispatchItem: 60240 },
 };
 
 /** Focus with agents waiting: they show above the pull requests. */

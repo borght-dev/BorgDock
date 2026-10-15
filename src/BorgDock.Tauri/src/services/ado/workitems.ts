@@ -108,6 +108,18 @@ export async function getWorkItemComments(
   return response.comments ?? [];
 }
 
+/** The newest comment in the item's discussion, or `null` when it has none. */
+export async function getNewestWorkItemComment(
+  client: AdoClient,
+  workItemId: number,
+): Promise<WorkItemComment | null> {
+  const response = await client.get<AdoCommentsResponse>(
+    `wit/workitems/${workItemId}/comments?$top=1&order=desc`,
+    COMMENTS_API_VERSION,
+  );
+  return response.comments?.[0] ?? null;
+}
+
 export async function addWorkItemComment(
   client: AdoClient,
   workItemId: number,

@@ -17,6 +17,7 @@ import { buildOverview } from './engine';
 import { forgetHostsExcept, rememberHost } from './host-memory';
 import { configuredHosts, type DispatchHost, hostRef, isRemote, rawId, scopedId } from './hosts';
 import { loadDispatchItems } from './items';
+import { candidateRepositories, fetchFromGitHub, lookUpLinkedPullRequests } from './linked-prs';
 import { notifyNew } from './notifier';
 import {
   type AgentProject,
@@ -29,7 +30,11 @@ import {
 /**
  * A T3 thread as Dispatch holds it. Detail that only a thread snapshot
  * carries (the questions, the last message, the first user message) is kept
- * from `previous` as long as it still applies to the thread's status.
+ * from `previous` as long as it still applies to the thread's status. A
+ * subagent never settles in T3; Dispatch holds it as settled, since its root
+ * thread is the one that works and waits. Its branch and pull requests are
+ * those of the checkout it was started in, not its own, so only its
+ * conversation tells what it worked on.
  */
 export function toAgentThread(
   host: DispatchHost,
@@ -37,8 +42,10 @@ export function toAgentThread(
   slot: string,
   previous: AgentThread | undefined,
 ): AgentThread {
-  const asking = thread.status === 'question';
-  const stopped = NEEDS_YOU.includes(thread.status);
+  const subagentOf = thread.subagentOf ? scopedId(host.id, thread.subagentOf) : null;
+  const status = subagentOf ? 'settled' : thread.status;
+  const asking = status === 'question';
+  const stopped = NEEDS_YOU.includes(status);
   return {
     id: scopedId(host.id, thread.id),
     hostId: host.id,
@@ -47,19 +54,20 @@ export function toAgentThread(
     projectId: scopedId(host.id, thread.projectId),
     slot,
     title: thread.title,
-    branch: thread.branch,
+    branch: subagentOf ? null : thread.branch,
     createdAt: thread.createdAt,
     lastActivityAt: thread.lastActivityAt,
     updatedAt: thread.updatedAt,
-    open: thread.status !== 'settled',
-    status: thread.status,
+    open: status !== 'settled',
+    status,
     interactionMode: thread.interactionMode,
     model: thread.model,
     modelInstance: thread.modelInstance,
     effort: thread.effort,
-    pullRequests: thread.pullRequests,
+    pullRequests: subagentOf ? [] : thread.pullRequests,
     firstUserMessage: previous?.firstUserMessage ?? '',
     conversationReferences: previous?.conversationReferences,
+    subagentOf,
     questionRequestId: asking ? (previous?.questionRequestId ?? null) : null,
     questions: asking ? (previous?.questions ?? []) : [],
     lastAgentMessage: stopped ? (previous?.lastAgentMessage ?? null) : null,
@@ -86,9 +94,33 @@ export function toKnownPullRequest(pr: PullRequestWithChecks): KnownPullRequest 
       pending: pr.pendingCheckNames.length,
       total: pr.totalCheckCount,
     },
+    approved: p.reviewStatus === 'approved',
+    mergedAt: p.mergedAt ?? null,
   };
   knownPullRequests.set(pr, known);
   return known;
+}
+
+/**
+ * The pull requests BorgDock polls, joined with those ADO links on the items.
+ * A polled one keeps its live checks and learns which items link it.
+ */
+export function mergePullRequests(
+  polled: readonly KnownPullRequest[],
+  linked: readonly KnownPullRequest[],
+): KnownPullRequest[] {
+  const byUrl = new Map(polled.map((pr) => [pr.url.toLowerCase(), pr]));
+  for (const pr of linked) {
+    const key = pr.url.toLowerCase();
+    const seen = byUrl.get(key);
+    if (!seen) {
+      byUrl.set(key, pr);
+      continue;
+    }
+    const extra = pr.workItemIds.filter((id) => !seen.workItemIds.includes(id));
+    if (extra.length > 0) byUrl.set(key, { ...seen, workItemIds: [...seen.workItemIds, ...extra] });
+  }
+  return [...byUrl.values()];
 }
 
 /** The slot pattern as a regular expression; `null` for none, or one that does not compile. */
@@ -122,7 +154,10 @@ export function recomputeOverview(): void {
     items: dispatch.items,
     threads: dispatch.threads,
     projects: dispatch.projects,
-    pullRequests: [...prs.pullRequests, ...prs.closedPullRequests].map(toKnownPullRequest),
+    pullRequests: mergePullRequests(
+      [...prs.pullRequests, ...prs.closedPullRequests].map(toKnownPullRequest),
+      dispatch.linkedPullRequests,
+    ),
     queued: tracked,
     hiddenSuggestions: dispatch.hiddenSuggestions,
     manualLinks: dispatch.manualLinks,
@@ -400,6 +435,30 @@ export function dispatchAdoClient(): AdoClient | null {
 }
 
 let itemsInFlight: Promise<void> | null = null;
+let linkedInFlight: Promise<void> | null = null;
+
+/** Read the GitHub state of the pull requests ADO links on the items. */
+function refreshLinkedPullRequests(): Promise<void> {
+  linkedInFlight ??= (async () => {
+    const store = useDispatchStore.getState;
+    const candidates = candidateRepositories(useSettingsStore.getState().settings.repos);
+    try {
+      const { pullRequests, repositories } = await lookUpLinkedPullRequests(
+        store().items,
+        candidates,
+        store().linkedRepositories,
+        fetchFromGitHub,
+      );
+      store().setLinkedPullRequests(pullRequests, repositories);
+      recomputeOverview();
+    } catch {
+      // The items show without it; the next poll tries again.
+    }
+  })().finally(() => {
+    linkedInFlight = null;
+  });
+  return linkedInFlight;
+}
 
 async function loadItems(): Promise<void> {
   const store = useDispatchStore.getState;
@@ -418,6 +477,7 @@ async function loadItems(): Promise<void> {
       tracked,
     );
     store().setItems(items, { ok: true, at: new Date().toISOString(), error: null });
+    void refreshLinkedPullRequests();
   } catch (error) {
     store().setAdoStatus({ ok: false, at: store().ado.at, error: errorText(error) });
   }

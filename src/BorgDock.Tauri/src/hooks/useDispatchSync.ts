@@ -3,6 +3,7 @@ import { bringMainWindowForward } from '@/hooks/useFlyoutSync';
 import { runItemAction, showDispatchItem } from '@/services/dispatch/actions';
 import { recallHosts } from '@/services/dispatch/host-memory';
 import { configuredHosts, isRemote, LOCAL_HOST } from '@/services/dispatch/hosts';
+import { runScheduleIfDue } from '@/services/dispatch/schedule';
 import {
   followHostList,
   recomputeOverview,
@@ -20,6 +21,8 @@ const T3_POLL_MS = 10_000;
 /** A remote host sends its whole shell over the network on every poll. */
 const REMOTE_T3_POLL_MS = 30_000;
 const ADO_POLL_MS = 60_000;
+/** How often the scheduled sync looks at the clock. */
+const SCHEDULE_CHECK_MS = 60_000;
 
 /** Another window (a notification, the tray flyout) asks to show an item in Dispatch. */
 export const SHOW_ITEM_EVENT = 'dispatch-show-item';
@@ -73,6 +76,7 @@ export function useDispatchSync(enabled = true): void {
     const t3Timer = window.setInterval(() => void syncHost(LOCAL_HOST), T3_POLL_MS);
     const remoteTimer = window.setInterval(syncRemoteHosts, REMOTE_T3_POLL_MS);
     const adoTimer = window.setInterval(() => void syncItems(), ADO_POLL_MS);
+    const scheduleTimer = window.setInterval(() => void runScheduleIfDue(), SCHEDULE_CHECK_MS);
     const onRefresh = () => syncAll(true);
     document.addEventListener('borgdock-refresh', onRefresh);
     window.addEventListener('focus', syncHosts);
@@ -123,6 +127,7 @@ export function useDispatchSync(enabled = true): void {
       window.clearInterval(t3Timer);
       window.clearInterval(remoteTimer);
       window.clearInterval(adoTimer);
+      window.clearInterval(scheduleTimer);
       document.removeEventListener('borgdock-refresh', onRefresh);
       window.removeEventListener('focus', syncHosts);
       for (const unsubscribe of unsubscribers) unsubscribe();

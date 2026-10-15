@@ -123,13 +123,30 @@ export interface AgentSettings {
   t3SlotPattern?: string;
   /**
    * First messages Dispatch starts an agent with, per way of beginning.
-   * Placeholders: `{id}`, `{title}`, `{branch}`. An empty one uses the default.
+   * Placeholders: `{id}`, `{title}`, `{branch}`; `{items}` for sync;
+   * `{iteration}`, `{assigned}` for suggest. An empty one uses the default.
    */
-  dispatchPrompts?: { pickup?: string; qa?: string; done?: string };
+  dispatchPrompts?: {
+    pickup?: string;
+    qa?: string;
+    done?: string;
+    sync?: string;
+    suggest?: string;
+  };
+  /** When "Sync all" runs by itself. Runs while BorgDock is open. */
+  dispatchSyncSchedule?: DispatchSyncSchedule;
   /** Notify when an agent asks, proposes a plan, finishes or fails. Default on. */
   dispatchNotifications?: boolean;
   /** T3 servers on other machines. The one on this machine is always followed. */
   t3Hosts?: T3HostSettings[];
+}
+
+export interface DispatchSyncSchedule {
+  enabled: boolean;
+  /** Local time of day, `HH:MM`. */
+  time: string;
+  /** Days it runs on, 0 = Sunday. */
+  weekdays: number[];
 }
 
 export interface SummarySettings {

@@ -14,8 +14,7 @@ import { useSettingsStore } from '@/stores/settings-store';
 import { showToast, toastError } from '@/stores/toast-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import { configuredHosts, rawId } from './hosts';
-import { moveItemState } from './items';
-import { dispatchAdoClient, syncAll } from './sync';
+import { syncAll } from './sync';
 import type { AgentThread, DispatchItem, UnitPullRequest } from './types';
 
 /** What "Approve plan" tells the agent. */
@@ -50,15 +49,6 @@ function openUrl(url: string): void {
   import('@tauri-apps/plugin-opener')
     .then(({ openUrl: open }) => open(url))
     .catch((error) => toastError('Could not open the link', error));
-}
-
-/** ADO refuses a move while fields the workflow requires are empty (TF401320). */
-function explainMoveFailure(error: unknown): Error {
-  const message = error instanceof Error ? error.message : String(error);
-  if (!/TF401320/.test(message)) return error instanceof Error ? error : new Error(message);
-  return new Error(
-    `ADO won't move it yet. ${message.replace(/^.*TF401320:\s*/, '')} Fill the field in ADO, or let an agent do it with "Update for QA".`,
-  );
 }
 
 const GITHUB_PULL_REQUEST_URL = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/i;
@@ -154,15 +144,12 @@ export const dispatchActions: DispatchActions = {
     );
   },
 
+  // A move needs notes and required fields filled the way the repository's
+  // ADO skills say, so an agent makes it, never a bare state change.
   move: (item, to) => {
-    void act(`${item.id} not moved`, async () => {
-      const client = dispatchAdoClient();
-      if (!client) throw new Error('Azure DevOps is not set up.');
-      const state = await moveItemState(client, item.id, to).catch((error) => {
-        throw explainMoveFailure(error);
-      });
-      return `${item.id} moved to ${state} in ADO`;
-    });
+    useDispatchStore
+      .getState()
+      .openRunSheet({ kind: 'sync', scope: { kind: 'item', itemId: item.id, to } });
   },
 
   hideSuggestion: (overview) => {

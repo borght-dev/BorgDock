@@ -344,6 +344,9 @@ pub struct AgentSettings {
     /// First messages Dispatch starts an agent with; an absent one uses the default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dispatch_prompts: Option<DispatchPrompts>,
+    /// When Dispatch's "Sync all" runs by itself. Absent: never.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dispatch_sync_schedule: Option<DispatchSyncSchedule>,
     /// Notify when an agent asks, proposes a plan, finishes or fails. Absent: on.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dispatch_notifications: Option<bool>,
@@ -369,6 +372,23 @@ pub struct DispatchPrompts {
     pub qa: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub done: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sync: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub suggest: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DispatchSyncSchedule {
+    #[serde(default)]
+    pub enabled: bool,
+    /// Local time of day, `HH:MM`.
+    #[serde(default)]
+    pub time: String,
+    /// Days it runs on, 0 = Sunday.
+    #[serde(default)]
+    pub weekdays: Vec<u8>,
 }
 
 fn default_agent_provider() -> String {
@@ -398,6 +418,7 @@ impl Default for AgentSettings {
             t3_model_instance: default_t3_model_instance(),
             t3_slot_pattern: None,
             dispatch_prompts: None,
+            dispatch_sync_schedule: None,
             dispatch_notifications: None,
             t3_hosts: Vec::new(),
         }

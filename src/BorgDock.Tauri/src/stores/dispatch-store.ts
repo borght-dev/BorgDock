@@ -4,8 +4,11 @@ import type {
   AgentThread,
   DispatchItem,
   ItemOverview,
+  KnownPullRequest,
   Overview,
+  SyncScope,
 } from '@/services/dispatch/types';
+import { needingYou } from '@/services/dispatch/walk';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
 /** Whether a source (Azure DevOps, a T3 host) answered its last poll. */
@@ -21,7 +24,10 @@ export interface HostStatus extends SourceStatus {
   label: string;
 }
 
-export type DispatchViewMode = 'list' | 'board';
+/** `walk`: one section per ADO state, in the order they are checked. */
+export type DispatchViewMode = 'walk' | 'list' | 'board';
+
+const VIEW_MODES: readonly DispatchViewMode[] = ['walk', 'list', 'board'];
 
 /** What the launch sheet opens on. */
 export interface LaunchIntent {
@@ -40,11 +46,49 @@ export interface LaunchPreferences {
 
 const DEFAULT_LAUNCH_PREFERENCES: LaunchPreferences = { model: null, efforts: {}, mode: 'plan' };
 
+/** `sync`: one agent brings items up to date. `suggest`: one agent recommends the next item. */
+export type RunKind = 'sync' | 'suggest';
+
+/** An agent Dispatch started on many items, or on none. */
+export interface AgentRun {
+  threadId: string;
+  kind: RunKind;
+  /** What a sync was started for; absent on runs from before scopes. */
+  scope?: SyncScope['kind'];
+  /** The states of the items a sync was given; empty for a suggestion. */
+  states: string[];
+  itemIds: number[];
+  /** The slot it runs in, by name. */
+  slot: string;
+  startedAt: string;
+  /** Started by the schedule, not by hand. */
+  scheduled?: boolean;
+}
+
+/** What the run sheet opens for. */
+export type RunIntent = { kind: 'sync'; scope: SyncScope } | { kind: 'suggest' };
+
+/** The slot, model and effort of the last run: what a scheduled run starts with. */
+export interface RunChoice {
+  slotId: string | null;
+  model: string | null;
+  effort: string | null;
+}
+
+const NO_RUN_CHOICE: RunChoice = { slotId: null, model: null, effort: null };
+/** Runs older than this are forgotten. */
+const RUN_MEMORY_MS = 7 * 86_400_000;
+
 const STORE_FILE = 'dispatch-state.json';
 const HIDDEN_SUGGESTIONS_KEY = 'hiddenSuggestions';
 const MANUAL_LINKS_KEY = 'manualLinks';
-const VIEW_MODE_KEY = 'viewMode';
+// The walk became the default; layouts picked before it are not carried over.
+const VIEW_MODE_KEY = 'layout';
 const LAUNCH_PREFERENCES_KEY = 'launchPreferences';
+const RUNS_KEY = 'runs';
+const RUN_CHOICE_KEY = 'runChoice';
+const SCHEDULE_LAST_RUN_KEY = 'scheduleLastRun';
+const REPOSITORIES_KEY = 'linkedRepositories';
 
 const NOT_SYNCED: SourceStatus = { ok: false, at: null, error: null };
 
@@ -52,6 +96,10 @@ interface DispatchState {
   items: DispatchItem[];
   threads: AgentThread[];
   projects: AgentProject[];
+  /** The pull requests ADO links on the items, read from GitHub (`linked-prs.ts`). */
+  linkedPullRequests: KnownPullRequest[];
+  /** ADO's id of a linked pull request's repository to its GitHub `owner/name`. Persisted. */
+  linkedRepositories: Record<string, string>;
   ado: SourceStatus;
   hosts: HostStatus[];
   /** Ids of the suggestions hidden with "Keep" or "Hide this". Persisted. */
@@ -68,8 +116,19 @@ interface DispatchState {
   /** The item the launch sheet is open for, or null while it is closed. */
   launch: LaunchIntent | null;
   launchPreferences: LaunchPreferences;
+  /** Newest first. Persisted. */
+  runs: AgentRun[];
+  /** What the run sheet is open for, or null while it is closed. */
+  runSheet: RunIntent | null;
+  runChoice: RunChoice;
+  /** The day (`YYYY-MM-DD`, local) the scheduled sync last ran. Persisted. */
+  scheduleLastRun: string | null;
 
   setItems: (items: DispatchItem[], status: SourceStatus) => void;
+  setLinkedPullRequests: (
+    pullRequests: KnownPullRequest[],
+    repositories: Record<string, string>,
+  ) => void;
   setAdoStatus: (status: SourceStatus) => void;
   /** Replace one host's threads and projects, keeping those of the other hosts. */
   setHostSnapshot: (hostId: string, threads: AgentThread[], projects: AgentProject[]) => void;
@@ -88,6 +147,12 @@ interface DispatchState {
   /** Remember the model, effort and way of beginning for the next launch. */
   rememberLaunch: (model: string, effort: string | null, mode: string) => void;
   hideSuggestion: (suggestionId: string) => void;
+  addRun: (run: AgentRun) => void;
+  dismissRun: (threadId: string) => void;
+  openRunSheet: (intent: RunIntent) => void;
+  closeRunSheet: () => void;
+  rememberRunChoice: (choice: RunChoice) => void;
+  markScheduleRun: (day: string) => void;
   linkThread: (threadId: string, itemId: number | null) => void;
   restorePersisted: () => Promise<void>;
 }
@@ -96,19 +161,33 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   items: [],
   threads: [],
   projects: [],
+  linkedPullRequests: [],
+  linkedRepositories: {},
   ado: NOT_SYNCED,
   hosts: [],
   hiddenSuggestions: new Set(),
   manualLinks: new Map(),
   overview: null,
   selectedItemId: null,
-  viewMode: 'list',
+  viewMode: 'walk',
   searchQuery: '',
   busy: false,
   launch: null,
   launchPreferences: DEFAULT_LAUNCH_PREFERENCES,
+  runs: [],
+  runSheet: null,
+  runChoice: NO_RUN_CHOICE,
+  scheduleLastRun: null,
 
   setItems: (items, status) => set({ items, ado: status }),
+
+  setLinkedPullRequests: (linkedPullRequests, linkedRepositories) => {
+    const learned = JSON.stringify(linkedRepositories) !== JSON.stringify(get().linkedRepositories);
+    set({ linkedPullRequests, linkedRepositories });
+    if (learned) {
+      persistToTauriStore(STORE_FILE, REPOSITORIES_KEY, linkedRepositories).catch(() => {});
+    }
+  },
 
   setAdoStatus: (ado) => set({ ado }),
 
@@ -182,6 +261,32 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
     persistToTauriStore(STORE_FILE, HIDDEN_SUGGESTIONS_KEY, [...hiddenSuggestions]).catch(() => {});
   },
 
+  addRun: (run) => {
+    const runs = [run, ...get().runs.filter((r) => r.threadId !== run.threadId)];
+    set({ runs });
+    persistToTauriStore(STORE_FILE, RUNS_KEY, runs).catch(() => {});
+  },
+
+  dismissRun: (threadId) => {
+    const runs = get().runs.filter((r) => r.threadId !== threadId);
+    set({ runs });
+    persistToTauriStore(STORE_FILE, RUNS_KEY, runs).catch(() => {});
+  },
+
+  openRunSheet: (runSheet) => set({ runSheet }),
+
+  closeRunSheet: () => set({ runSheet: null }),
+
+  rememberRunChoice: (runChoice) => {
+    set({ runChoice });
+    persistToTauriStore(STORE_FILE, RUN_CHOICE_KEY, runChoice).catch(() => {});
+  },
+
+  markScheduleRun: (scheduleLastRun) => {
+    set({ scheduleLastRun });
+    persistToTauriStore(STORE_FILE, SCHEDULE_LAST_RUN_KEY, scheduleLastRun).catch(() => {});
+  },
+
   linkThread: (threadId, itemId) => {
     const manualLinks = new Map(get().manualLinks).set(threadId, itemId);
     set({ manualLinks });
@@ -189,18 +294,33 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   },
 
   restorePersisted: async () => {
-    const [hidden, links, viewMode, preferences] = await Promise.all([
-      readFromTauriStore<string[]>(STORE_FILE, HIDDEN_SUGGESTIONS_KEY),
-      readFromTauriStore<[string, number | null][]>(STORE_FILE, MANUAL_LINKS_KEY),
-      readFromTauriStore<DispatchViewMode>(STORE_FILE, VIEW_MODE_KEY),
-      readFromTauriStore<Partial<LaunchPreferences>>(STORE_FILE, LAUNCH_PREFERENCES_KEY),
-    ]).catch(() => [undefined, undefined, undefined, undefined] as const);
+    const [hidden, links, viewMode, preferences, runs, runChoice, lastRun, repositories] =
+      await Promise.all([
+        readFromTauriStore<string[]>(STORE_FILE, HIDDEN_SUGGESTIONS_KEY),
+        readFromTauriStore<[string, number | null][]>(STORE_FILE, MANUAL_LINKS_KEY),
+        readFromTauriStore<DispatchViewMode>(STORE_FILE, VIEW_MODE_KEY),
+        readFromTauriStore<Partial<LaunchPreferences>>(STORE_FILE, LAUNCH_PREFERENCES_KEY),
+        readFromTauriStore<AgentRun[]>(STORE_FILE, RUNS_KEY),
+        readFromTauriStore<RunChoice>(STORE_FILE, RUN_CHOICE_KEY),
+        readFromTauriStore<string>(STORE_FILE, SCHEDULE_LAST_RUN_KEY),
+        readFromTauriStore<Record<string, string>>(STORE_FILE, REPOSITORIES_KEY),
+      ]).catch(() => Array.from({ length: 8 }, () => undefined) as never[]);
+    const recent = (runs ?? []).filter(
+      (run) => Date.now() - Date.parse(run.startedAt) < RUN_MEMORY_MS,
+    );
     // What changed this session wins over what was stored.
     set((state) => ({
       hiddenSuggestions: new Set([...(hidden ?? []), ...state.hiddenSuggestions]),
       manualLinks: new Map([...(links ?? []), ...state.manualLinks]),
-      viewMode: viewMode === 'board' || viewMode === 'list' ? viewMode : state.viewMode,
+      viewMode: viewMode && VIEW_MODES.includes(viewMode) ? viewMode : state.viewMode,
       launchPreferences: { ...DEFAULT_LAUNCH_PREFERENCES, ...preferences, ...launchPicks(state) },
+      runs: [
+        ...state.runs,
+        ...recent.filter((run) => !state.runs.some((r) => r.threadId === run.threadId)),
+      ],
+      runChoice: state.runChoice === NO_RUN_CHOICE ? (runChoice ?? NO_RUN_CHOICE) : state.runChoice,
+      scheduleLastRun: state.scheduleLastRun ?? lastRun ?? null,
+      linkedRepositories: { ...repositories, ...state.linkedRepositories },
     }));
   },
 }));
@@ -210,9 +330,9 @@ function launchPicks(state: Pick<DispatchState, 'launchPreferences'>): Partial<L
   return state.launchPreferences === DEFAULT_LAUNCH_PREFERENCES ? {} : state.launchPreferences;
 }
 
-/** The items waiting on you: the rail's count. */
+/** The items that need you now, as Focus counts them: the rail's count. */
 export function selectWaitingCount(state: Pick<DispatchState, 'overview'>): number {
-  return state.overview?.items.filter((o) => o.bay === 'waiting').length ?? 0;
+  return needingYou(state.overview?.items ?? []).length;
 }
 
 export function selectItemOverview(

@@ -113,34 +113,14 @@ describe('dispatchActions', () => {
     expect(t3.t3Settle).toHaveBeenCalledTimes(1);
   });
 
-  it('moves an item and says which state ADO reports', async () => {
-    sync.dispatchAdoClient.mockReturnValue({});
-    items.moveItemState.mockResolvedValue('Ready For QA');
-
+  it('has an agent make a move instead of changing ADO itself', () => {
     dispatchActions.move(makeItem({ id: 59403, state: 'Code Review' }), 'Ready For QA');
-    await settled();
 
-    expect(items.moveItemState).toHaveBeenCalledWith({}, 59403, 'Ready For QA');
-    expect(toasts.showToast).toHaveBeenCalledWith({
-      tone: 'success',
-      message: '59403 moved to Ready For QA in ADO',
+    expect(useDispatchStore.getState().runSheet).toEqual({
+      kind: 'sync',
+      scope: { kind: 'item', itemId: 59403, to: 'Ready For QA' },
     });
-  });
-
-  it('explains a move ADO refuses because a field is empty', async () => {
-    sync.dispatchAdoClient.mockReturnValue({});
-    items.moveItemState.mockRejectedValue(
-      new Error('TF401320: Rule Error for field Integration Build. Error code: Required.'),
-    );
-
-    dispatchActions.move(makeItem({ id: 1 }), 'Ready For QA');
-    await settled();
-
-    const error = toasts.toastError.mock.calls[0]?.[1] as Error;
-    expect(error.message).toMatch(
-      /^ADO won't move it yet\. Rule Error for field Integration Build/,
-    );
-    expect(error.message).toMatch(/Update for QA/);
+    expect(items.moveItemState).not.toHaveBeenCalled();
   });
 
   it('hides a suggestion by its id', () => {
@@ -148,12 +128,22 @@ describe('dispatchActions', () => {
       item: makeItem({ id: 1 }),
       bay: 'drift',
       waitingFor: null,
-      suggestion: { id: '1:stale:2026-10-01', to: null, reason: 'Stale.' },
+      suggestion: {
+        id: '1:merged:4908:Ready For QA',
+        to: 'Ready For QA',
+        reason: 'PR 4908 is merged.',
+      },
       pullRequest: null,
+      pullRequests: [],
       threads: [],
       queued: false,
+      verdict: { label: 'Out of sync', tone: 'warn' },
+      evidence: [],
+      latest: null,
     });
-    expect(useDispatchStore.getState().hiddenSuggestions.has('1:stale:2026-10-01')).toBe(true);
+    expect(useDispatchStore.getState().hiddenSuggestions.has('1:merged:4908:Ready For QA')).toBe(
+      true,
+    );
   });
 
   it('stars an item to queue it and leaves a starred one alone', () => {

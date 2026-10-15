@@ -90,7 +90,7 @@ describe('noticesFor', () => {
 
   it('suggests the move for an item that is out of sync', () => {
     expect(byItem(59403)).toMatchObject([
-      { key: 'drift:59403:merged:3668', title: '59403: move to Ready For QA?' },
+      { key: 'drift:59403:merged:3668:Ready For QA', title: '59403: move to Ready For QA?' },
     ]);
   });
 

@@ -89,6 +89,37 @@ function followInSettings(t3Hosts: T3HostSettings[]) {
 }
 
 describe('toAgentThread', () => {
+  it('holds a subagent as settled, without the branch and pull requests of its checkout', () => {
+    const thread = toAgentThread(
+      LOCAL_HOST,
+      t3Thread({
+        id: 'sub',
+        status: 'your-turn',
+        branch: 'fix/acc-internalapi-front-door',
+        pullRequests: [
+          {
+            number: 4972,
+            url: 'https://github.com/acme/shop/pull/4972',
+            state: 'unknown',
+            title: '',
+            headBranch: null,
+            isDraft: false,
+          },
+        ],
+        subagentOf: 'root',
+      }),
+      'W1',
+      undefined,
+    );
+    expect(thread).toMatchObject({
+      open: false,
+      status: 'settled',
+      branch: null,
+      pullRequests: [],
+      subagentOf: 'root',
+    });
+  });
+
   it('keeps the questions of a thread that still asks', () => {
     const previous = makeThread({
       id: 't1',

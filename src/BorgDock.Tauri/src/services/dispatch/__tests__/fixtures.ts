@@ -26,6 +26,9 @@ export function makeItem(overrides: Partial<DispatchItem> & { id: number }): Dis
     stateCategory: states.find((s) => s.name === state)?.category ?? 'Proposed',
     states,
     sprint: 'Sprint 12',
+    iterationPath: 'Shop\\Release 5\\Sprint 12',
+    notes: null,
+    lastComment: null,
     dueDate: null,
     priority: 2,
     tags: [],
@@ -33,6 +36,7 @@ export function makeItem(overrides: Partial<DispatchItem> & { id: number }): Dis
     assignedToMe: true,
     url: `https://dev.azure.com/acme/Shop/_workitems/edit/${overrides.id}`,
     linkedPullRequests: [],
+    parentId: null,
     changedAt: '2026-10-01T00:00:00Z',
     ...overrides,
   };
@@ -88,6 +92,8 @@ export function makeKnownPr(
     branch: null,
     workItemIds: [],
     checks: null,
+    approved: false,
+    mergedAt: null,
     ...overrides,
   };
 }
