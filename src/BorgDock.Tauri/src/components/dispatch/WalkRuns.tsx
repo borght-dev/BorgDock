@@ -6,7 +6,7 @@ import { dispatchActions } from '@/services/dispatch/actions';
 import { currentIteration } from '@/services/dispatch/launch';
 import type { AgentThread, DispatchItem, SyncScope, Tone } from '@/services/dispatch/types';
 import { runProgress } from '@/services/dispatch/walk';
-import { type AgentRun, useDispatchStore } from '@/stores/dispatch-store';
+import { type AgentRun, type SourceStatus, useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { DispatchSyncSchedule } from '@/types';
@@ -120,14 +120,28 @@ function tracksMoves(run: AgentRun): boolean {
 }
 
 /** `2 of 7 moved · started 3 min ago`. */
-function runFacts(run: AgentRun, moved: number, total: number, now: number): string {
+function runFacts(run: AgentRun, progress: string, now: number): string {
   const age = shortAge(run.startedAt, now);
   return [
-    tracksMoves(run) ? `${moved} of ${total} moved` : '',
+    tracksMoves(run) ? progress : '',
     age === 'just now' ? 'started just now' : age ? `started ${age} ago` : '',
   ]
     .filter(Boolean)
     .join(' · ');
+}
+
+function unverifiedMoves(
+  run: AgentRun,
+  thread: AgentThread | undefined,
+  ado: SourceStatus,
+): string | null {
+  if (!ado.ok) return 'Moves unverified · ADO unavailable';
+  const checkedAfter =
+    thread && runStatus(run, thread).stopped && thread.lastActivityAt > run.startedAt
+      ? thread.lastActivityAt
+      : run.startedAt;
+  if (ado.at === null || ado.at < checkedAfter) return 'Checking moves in ADO';
+  return null;
 }
 
 /**
@@ -137,9 +151,15 @@ function runFacts(run: AgentRun, moved: number, total: number, now: number): str
 export function RunCard({ run }: { run: AgentRun }) {
   const thread = useRunThread(run);
   const items = useDispatchStore((s) => s.overview?.items);
+  const ado = useDispatchStore((s) => s.ado);
   const status = runStatus(run, thread);
   const progress = runProgress(run, items ?? []);
-  const facts = runFacts(run, progress.moved, progress.total, Date.now());
+  const unverified = unverifiedMoves(run, thread, ado);
+  const facts = runFacts(
+    run,
+    unverified ?? `${progress.moved} of ${progress.total} moved`,
+    Date.now(),
+  );
   const dismiss = () => useDispatchStore.getState().dismissRun(run.threadId);
   return (
     <div
@@ -157,7 +177,7 @@ export function RunCard({ run }: { run: AgentRun }) {
         <span className="bd-dp-runcard__what">
           <strong>{status.stopped ? status.label : `${runTitle(run)} in ${run.slot}`}</strong>
           {facts && <span className="bd-dp-runcard__facts">{facts}</span>}
-          {tracksMoves(run) && <RunProgressBar items={progress.items} />}
+          {tracksMoves(run) && !unverified && <RunProgressBar items={progress.items} />}
         </span>
         {thread && (
           <Button variant="secondary" size="sm" onClick={() => dispatchActions.openInT3(thread)}>
