@@ -9,6 +9,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import {
   LAUNCH_CATALOGUE,
   makeDispatchScene,
@@ -529,6 +530,16 @@ export const RailDispatchFixSheet: Story = {
     dispatchView: 'walk',
     dispatchItem: null,
     dispatchRunSheet: { kind: 'sync', scope: { kind: 'drift' } },
+  },
+};
+
+/** Fix out of sync with the model picker open: recent models, then one section per account. */
+export const RailDispatchFixSheetModels: Story = {
+  args: RailDispatchFixSheet.args,
+  play: async ({ canvasElement }) => {
+    const model = await within(canvasElement).findByRole('button', { name: 'Model' });
+    await waitFor(() => expect(model).toBeEnabled());
+    await userEvent.click(model);
   },
 };
 

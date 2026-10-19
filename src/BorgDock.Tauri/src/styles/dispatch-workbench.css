@@ -1762,7 +1762,8 @@
   }
   .bd-dp-sheet__item {
     display: grid;
-    grid-template-columns: 14px 38px 46px minmax(0, 1fr) 190px minmax(0, 220px);
+    /* The title keeps 240 px; state and chips share what is left, up to their own width. */
+    grid-template-columns: 14px 38px 46px minmax(240px, 1fr) minmax(0, 180px) minmax(0, 220px);
     align-items: start;
     gap: 12px;
     padding: 9px 2px;
