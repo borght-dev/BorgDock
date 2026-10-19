@@ -18,6 +18,7 @@ vi.mock('@/services/dispatch/actions', () => ({ dispatchActions: actions }));
 vi.mock('@/services/dispatch/sync', () => ({ syncAll: vi.fn() }));
 vi.mock('@/services/navigation', () => ({ showWorkItem: vi.fn() }));
 
+import { syncAll } from '@/services/dispatch/sync';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { makeDispatchScene } from '../__fixtures__/dispatch-data';
@@ -157,6 +158,19 @@ describe('DispatchSection', () => {
     render(<DispatchSection />);
 
     expect(screen.getByRole('button', { name: 'Pair with T3' })).toBeInTheDocument();
+  });
+
+  it('shows why ADO data is stale and offers a retry', () => {
+    seed({
+      ado: { ok: false, at: '2026-10-19T10:00:00Z', error: 'Azure DevOps sign-in expired.' },
+    });
+    render(<DispatchSection />);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Work item data is out of date. Azure DevOps sign-in expired.',
+    );
+    vi.mocked(syncAll).mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry ADO' }));
+    expect(syncAll).toHaveBeenCalledWith(true);
   });
 
   it('asks to set up Azure DevOps first', () => {

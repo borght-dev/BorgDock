@@ -435,6 +435,7 @@ export function dispatchAdoClient(): AdoClient | null {
 }
 
 let itemsInFlight: Promise<void> | null = null;
+let itemsRefreshRequested = false;
 let linkedInFlight: Promise<void> | null = null;
 
 /** Read the GitHub state of the pull requests ADO links on the items. */
@@ -484,9 +485,18 @@ async function loadItems(): Promise<void> {
   recomputeOverview();
 }
 
-/** Read my open items from Azure DevOps. Concurrent calls share one read. */
-export function syncItems(): Promise<void> {
-  itemsInFlight ??= loadItems().finally(() => {
+/** Share polls; a forced refresh during a read queues one fresh read after it. */
+export function syncItems(force = false): Promise<void> {
+  if (itemsInFlight) {
+    if (force) itemsRefreshRequested = true;
+    return itemsInFlight;
+  }
+  itemsInFlight = (async () => {
+    do {
+      itemsRefreshRequested = false;
+      await loadItems();
+    } while (itemsRefreshRequested);
+  })().finally(() => {
     itemsInFlight = null;
     sourcesRead.add(ADO_SOURCE);
   });
@@ -495,7 +505,7 @@ export function syncItems(): Promise<void> {
 
 /** Read everything again: after an action changed T3 or ADO, or on Refresh. */
 export function syncAll(force = true): void {
-  void syncItems();
+  void syncItems(force);
   for (const host of configuredHosts(useSettingsStore.getState().settings)) {
     void syncHost(host, force);
   }

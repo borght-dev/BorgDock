@@ -38,14 +38,19 @@ export class AdoClient {
   }
 
   /**
-   * Route ADO HTTP requests through the Rust backend. On a 401, refresh
+   * Route ADO HTTP requests through the Rust backend. On a 401 or sign-in page, refresh
    * the cached Authorization header once and retry the original request.
    * The retry is enforced here rather than in `fetchWithRetry` so it
    * applies to every call path (get, post, patch, delete, getStream).
    */
-  private async fetchViaTauri(url: string, init: RequestInit): Promise<Response> {
+  private async fetchViaTauri(
+    url: string,
+    init: RequestInit,
+    expectJson: boolean,
+  ): Promise<Response> {
     let response = await this.fetchViaTauriOnce(url, init, await this.getAuthHeader());
-    if (response.status === 401) {
+    if (response.status === 401 || (await isSignInResponse(response, expectJson))) {
+      this.cachedHeader = null;
       try {
         const fresh = await this.getAuthHeader(true);
         response = await this.fetchViaTauriOnce(url, init, fresh);
@@ -85,9 +90,13 @@ export class AdoClient {
     });
   }
 
-  private async fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  private async fetchWithRetry(
+    url: string,
+    init: RequestInit,
+    expectJson = true,
+  ): Promise<Response> {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      const response = await this.fetchViaTauri(url, init);
+      const response = await this.fetchViaTauri(url, init, expectJson);
       if (!TRANSIENT_STATUS_CODES.has(response.status) || attempt === MAX_RETRIES) {
         return response;
       }
@@ -181,7 +190,7 @@ export class AdoClient {
 
   async getStream(relativePath: string): Promise<Blob> {
     const url = this.buildUrl(relativePath);
-    const response = await this.fetchWithRetry(url, { headers: this.commonHeaders });
+    const response = await this.fetchWithRetry(url, { headers: this.commonHeaders }, false);
 
     if (response.status === 401 || response.status === 403) {
       throw new AdoAuthError(`Azure DevOps authentication failed (${response.status}).`);
@@ -279,6 +288,15 @@ export class AdoClient {
 }
 
 const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
+
+async function isSignInResponse(response: Response, expectJson: boolean): Promise<boolean> {
+  if (REDIRECT_STATUS_CODES.has(response.status)) return true;
+  if (!expectJson || !response.ok) return false;
+  const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
+  if (contentType.includes('text/html')) return true;
+  if (contentType.includes('application/json')) return false;
+  return (await response.clone().text()).trimStart().startsWith('<');
+}
 
 /**
  * The ADO session behind the auth header is gone (typically an expired

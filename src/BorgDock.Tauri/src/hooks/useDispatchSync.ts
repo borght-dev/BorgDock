@@ -11,6 +11,7 @@ import {
   syncHost,
   syncItems,
 } from '@/services/dispatch/sync';
+import { NEEDS_YOU } from '@/services/dispatch/types';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -114,6 +115,23 @@ export function useDispatchSync(enabled = true): void {
         if (state.settings.agents?.t3Hosts !== previous.settings.agents?.t3Hosts) followHostList();
       }),
       useDispatchStore.subscribe((state, previous) => {
+        if (state.threads !== previous.threads) {
+          const before = new Map(previous.threads.map((thread) => [thread.id, thread]));
+          const runIds = new Set(
+            state.runs.filter((run) => run.kind === 'sync').map((run) => run.threadId),
+          );
+          if (
+            state.threads.some((thread) => {
+              const seen = before.get(thread.id);
+              return (
+                runIds.has(thread.id) &&
+                (NEEDS_YOU.includes(thread.status) || thread.status === 'settled') &&
+                (seen?.status !== thread.status || seen?.lastActivityAt !== thread.lastActivityAt)
+              );
+            })
+          )
+            void syncItems(true);
+        }
         if (
           state.hiddenSuggestions !== previous.hiddenSuggestions ||
           state.manualLinks !== previous.manualLinks

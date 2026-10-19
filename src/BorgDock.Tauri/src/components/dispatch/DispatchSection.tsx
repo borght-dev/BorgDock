@@ -246,6 +246,14 @@ export function DispatchSection() {
       </header>
 
       {needsPairing(localHost) && <PairingNotice error={localHost?.error ?? ''} />}
+      {!adoStatus.ok && adoStatus.error && (
+        <div className="bd-dp-notice" role="status">
+          <span>Work item data is out of date. {adoStatus.error}</span>
+          <Button variant="secondary" size="sm" onClick={() => syncAll(true)}>
+            Retry ADO
+          </Button>
+        </div>
+      )}
 
       {!walking && slotStrip}
 
