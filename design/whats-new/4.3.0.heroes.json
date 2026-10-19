@@ -1,0 +1,5 @@
+[
+  {"slug":"dispatch-count-filters","storyId":"main-window-mainwindow--rail-dispatch-states-filtered","viewport":{"width":1360,"height":860},"delay":3000},
+  {"slug":"dispatch-fix-sheet","storyId":"main-window-mainwindow--rail-dispatch-fix-sheet-models","viewport":{"width":1360,"height":900},"delay":3500},
+  {"slug":"pr-description-screenshots","storyId":"pr-detail-overviewtab--description-with-screenshots","viewport":{"width":1360,"height":860},"delay":3000}
+]
