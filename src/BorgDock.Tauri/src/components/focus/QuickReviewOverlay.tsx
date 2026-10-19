@@ -7,9 +7,8 @@ import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore }
 import { prRowKey } from '@/components/pr/pr-card-data';
 import { DiffFileSection } from '@/components/pr-detail/diff/DiffFileSection';
 import { ImageDiff } from '@/components/pr-detail/diff/ImageDiff';
-import { ProofGallery } from '@/components/pr-detail/ProofGallery';
 import { DetailDialog } from '@/components/shared/DetailDialog';
-import { Markdown } from '@/components/shared/Markdown';
+import { PrDescription } from '@/components/shared/PrDescription';
 import { Button, IconButton } from '@/components/shared/primitives';
 import { usePrConversation } from '@/hooks/usePrConversation';
 import { useQuickReviewDocument } from '@/hooks/useQuickReviewDocument';
@@ -754,13 +753,6 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
             <QuickReviewCard
               pr={pr}
               detail={detail}
-              proof={
-                <ProofGallery
-                  conversation={conversation}
-                  headSha={detail.headSha}
-                  onOpenComments={() => setCommentsPopup(true)}
-                />
-              }
               onFileSelect={(path) => {
                 go(path);
                 setMode('walk');
@@ -789,9 +781,14 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                 ) : null
               }
               headerExtra={
-                <Button variant="ghost" size="sm" onClick={() => void openGitHub()}>
-                  Open in GitHub
-                </Button>
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => setCommentsPopup(true)}>
+                    All comments · {conversation.items.length}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => void openGitHub()}>
+                    Open in GitHub
+                  </Button>
+                </>
               }
             />
             {leaving && <GhostCard key={leaving.id} pr={leaving.pr} gone={leaving.dir} />}
@@ -913,9 +910,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                   <div key={file.filename} className="qr-diff">
                     <details className="qr-context">
                       <summary>PR description</summary>
-                      <div className="markdown-body">
-                        <Markdown>{detail.body || 'No description provided.'}</Markdown>
-                      </div>
+                      <PrDescription body={detail.body || 'No description provided.'} />
                     </details>
                     <DiffFileSection
                       key={`${file.filename}:${doc.headSha}:${doc.baseSha}`}

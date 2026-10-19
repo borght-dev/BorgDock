@@ -1,8 +1,8 @@
 // src/components/pr-detail/OverviewTab.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { OverviewTab } from './OverviewTab';
-import { PrDetailPanel } from './PRDetailPanel';
+import { expect, waitFor, within } from 'storybook/test';
+import { getControl } from '../../../.storybook/mocks/control';
 import {
   approvedPr,
   changesRequestedPr,
@@ -13,15 +13,21 @@ import {
   staleChecksPr,
   withPrDetail,
 } from './__fixtures__/pr-detail-data';
-import { expect, waitFor, within } from 'storybook/test';
-import { getControl } from '../../../.storybook/mocks/control';
+import { OverviewTab } from './OverviewTab';
+import { PrDetailPanel } from './PRDetailPanel';
 
 // ── Meta ───────────────────────────────────────────────────────
 
 const meta: Meta<typeof OverviewTab> = {
   title: 'PR Detail/OverviewTab',
   component: OverviewTab,
-  decorators: [(Story) => <PanelFrame><Story /></PanelFrame>],
+  decorators: [
+    (Story) => (
+      <PanelFrame>
+        <Story />
+      </PanelFrame>
+    ),
+  ],
 };
 export default meta;
 type Story = StoryObj<typeof OverviewTab>;
@@ -52,9 +58,9 @@ export const OpenWithChecksRunningInteractive: Story = {
     // the confirmClose=true state update, then find the dialog button.
     await new Promise((r) => setTimeout(r, 100));
     const allCloseBtns = within(document.body).queryAllByRole('button', { name: /^close pr$/i });
-    const dialogBtn =
-      (allCloseBtns.find((b) => b.closest('[role="dialog"], [aria-modal="true"]')) ??
-        allCloseBtns[allCloseBtns.length - 1])!;
+    const dialogBtn = (allCloseBtns.find((b) =>
+      b.closest('[role="dialog"], [aria-modal="true"]'),
+    ) ?? allCloseBtns[allCloseBtns.length - 1])!;
     dialogBtn.click();
     await waitFor(() =>
       expect(getControl().invocations.find((i) => i.command === 'prAction.closePr')).toBeDefined(),
@@ -65,6 +71,19 @@ export const OpenWithChecksRunningInteractive: Story = {
 export const OpenAllGreenMergeable: Story = {
   decorators: [withPrDetail(approvedPr)],
   args: { pr: approvedPr },
+};
+
+const descriptionPr = {
+  ...approvedPr,
+  pullRequest: {
+    ...approvedPr.pullRequest,
+    body: `## Summary\n\nShow verification screenshots directly in the PR description.\n\n## Verification\n\n### Before\n\n![Before: order actions](${window.location.origin}/whats-new/1.0.11/close-pr.png)\n\n### After\n\n<img src="${window.location.origin}/whats-new/3.0.0/quick-review.png" alt="After: browser verification">`,
+  },
+};
+
+export const DescriptionWithScreenshots: Story = {
+  decorators: [withPrDetail(descriptionPr)],
+  args: { pr: descriptionPr },
 };
 
 export const OpenAllGreenMergeableInteractive: Story = {

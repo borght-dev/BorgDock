@@ -956,8 +956,8 @@
 }
 .qr-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
-  gap: 32px;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 24px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -969,7 +969,6 @@
   padding-right: 12px;
   scrollbar-gutter: stable;
   min-width: 0;
-  max-width: 82ch;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -999,7 +998,16 @@
 }
 .qr-linked-items {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
+}
+.qr-linked-items [data-linked-work-item] > div {
+  flex-wrap: wrap;
+}
+.qr-linked-items [data-linked-work-item] .truncate {
+  flex-basis: 100%;
+  order: 1;
+  white-space: normal;
 }
 .qr-progress-number {
   display: block;
@@ -1146,7 +1154,7 @@
 }
 @media (max-width: 900px) {
   .qr-overview-grid {
-    grid-template-columns: minmax(0, 1fr) 280px;
+    grid-template-columns: minmax(0, 1fr) 230px;
     gap: 20px;
   }
   .qr-overview-sidebar {

@@ -5,7 +5,6 @@ import { T3SessionStrip } from '@/components/pr/T3SessionStrip';
 import { Markdown } from '@/components/shared/Markdown';
 import { PrDescription } from '@/components/shared/PrDescription';
 import { Button, Card } from '@/components/shared/primitives';
-import { usePrConversation } from '@/hooks/usePrConversation';
 import { useT3Sessions } from '@/hooks/useT3Sessions';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
 import { loadTabData, saveTabData } from '@/services/cache';
@@ -17,14 +16,9 @@ import { parseError } from '@/utils/parse-error';
 import { LinkedWorkItemBadge } from './LinkedWorkItemBadge';
 import { MergedCard } from './MergedCard';
 import { MergeReadinessChecklist } from './MergeReadinessChecklist';
-import { ProofGallery } from './ProofGallery';
 
 interface OverviewTabProps {
   pr: PullRequestWithChecks;
-}
-
-export function ClampedDescription({ body }: { body: string }) {
-  return <PrDescription body={body} />;
 }
 
 const DEFAULT_SUMMARY_SETTINGS = {
@@ -45,7 +39,6 @@ const DEFAULT_AGENT_SETTINGS = {
 export function OverviewTab({ pr }: OverviewTabProps) {
   useT3Sessions();
   const p = pr.pullRequest;
-  const conversation = usePrConversation(p, true);
   const isOpen = p.state === 'open';
   const { workItemIds, workItems, isLoading: workItemsLoading } = useWorkItemLinks(p);
   const summarySettings = useSettingsStore((s) => s.settings.summaries ?? DEFAULT_SUMMARY_SETTINGS);
@@ -113,9 +106,9 @@ export function OverviewTab({ pr }: OverviewTabProps) {
 
       {/* Description, then what it links to: work items and agent sessions */}
       {p.body && (
-        <section className="bd-overview__section" aria-label="Description">
-          <h3 className="bd-overview__heading">Description</h3>
-          <ClampedDescription body={p.body} />
+        <section className="bd-overview__section" aria-label="PR description">
+          <h3 className="bd-overview__heading">PR description</h3>
+          <PrDescription body={p.body} />
         </section>
       )}
 
@@ -134,7 +127,6 @@ export function OverviewTab({ pr }: OverviewTabProps) {
           )}
         </section>
       )}
-      <ProofGallery conversation={conversation} headSha={p.headSha} />
       <T3SessionStrip pr={p} />
 
       {/* Merge Readiness Checklist */}
