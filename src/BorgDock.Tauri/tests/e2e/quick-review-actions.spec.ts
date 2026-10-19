@@ -421,7 +421,7 @@ test('approving the top card of a queue flings it right and the next card rises'
   await expect(dialog.getByRole('button', { name: 'Review next PR' })).toHaveCount(0);
 });
 
-test('overview exposes developer proof, required-check gaps and a read-only ADO popup', async ({ page }) => {
+test('overview shows description screenshots, required-check gaps and a read-only ADO popup', async ({ page }) => {
   await bootList(page);
   const head = 'a1b2c3d4e5f67890123456789012345678901234';
   const proofPr = structuredClone(PRS[0]) as PullRequestWithChecks;
@@ -440,13 +440,14 @@ test('overview exposes developer proof, required-check gaps and a read-only ADO 
       return { status: 200, status_text: 'OK', body: JSON.stringify(body), body_base64: null, headers: { 'content-type': 'application/json' } };
     });
   });
+  const image = new URL('/whats-new/3.0.0/quick-review.png', page.url()).href;
+  const secondImage = new URL('/whats-new/1.0.11/close-pr.png', page.url()).href;
+  proofPr.pullRequest.body += `\n\n## Verification\n\n![First](${image})\n\n<img alt="Second" src="${secondImage}">`;
   await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/pulls\/3(?:\?|$)/, (route) => route.fulfill({ json: {
     number: 3, title: proofPr.pullRequest.title, head: { sha: head, ref: 'fix/questionnaire' }, base: { sha: 'base', ref: 'fix/parent' },
     user: { login: 'mira' }, state: 'open', html_url: proofPr.pullRequest.htmlUrl, body: proofPr.pullRequest.body, changed_files: PATHS.length,
     additions: 40, deletions: 4, commits: 2, labels: [], mergeable: false,
   } }));
-  const image = new URL('/whats-new/3.0.0/quick-review.png', page.url()).href;
-  const secondImage = new URL('/whats-new/1.0.11/close-pr.png', page.url()).href;
   await page.route(image, (route) => route.fulfill({ contentType: 'image/png', body: readFileSync('../../docs/whats-new/3.0.0/quick-review.png') }));
   await page.route(secondImage, (route) => route.fulfill({ contentType: 'image/png', body: readFileSync('../../docs/whats-new/1.0.11/close-pr.png') }));
   await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/issues\/3\/comments/, (route) => route.fulfill({ json: [{
@@ -461,24 +462,14 @@ test('overview exposes developer proof, required-check gaps and a read-only ADO 
   const review = page.getByRole('dialog', { name: 'Quick Review' });
   await expect(review.getByText('1 required check needs attention')).toBeVisible();
   await expect(review.getByText('Targets fix/parent')).toBeVisible();
-  await expect(review.getByText('Head a1b2c3d')).toBeVisible();
-  await expect(review.getByRole('button', { name: 'Preview image: First' })).toBeVisible();
-  await expect(review.locator('.bd-proof__images img')).toHaveCount(2);
-  await expect.poll(() => review.locator('.bd-proof__images img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
-  await page.screenshot({ path: test.info().outputPath('overview-proof-light.png') });
-  await review.getByRole('button', { name: 'Preview image: First' }).hover();
-  await expect(page.locator('.bd-image-hover img')).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath('proof-hover.png') });
-  await review.getByRole('button', { name: 'Preview image: First' }).click();
-  const viewer = page.getByRole('dialog', { name: 'Proof image 1 of 2 · First' });
-  await expect(viewer).toBeVisible();
-  await viewer.getByRole('button', { name: 'Zoom in' }).click();
-  await expect(viewer.getByText('125%')).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath('proof-image-viewer.png') });
-  await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('dialog', { name: 'Proof image 2 of 2 · Second' })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.locator('[data-detail-dialog]')).toHaveCount(0);
+  await expect(review.getByRole('region', { name: 'Developer proof' })).toHaveCount(0);
+  const description = review.getByRole('region', { name: 'PR description' });
+  await expect(description.getByRole('heading', { name: 'Verification' })).toBeVisible();
+  await expect(description.locator('img')).toHaveCount(2);
+  await description.getByAltText('Second').scrollIntoViewIfNeeded();
+  await expect.poll(() => description.locator('img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  await description.getByAltText('First').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: test.info().outputPath('overview-description-light.png') });
   await review.getByRole('button', { name: /Read AB#59671/ }).hover();
   await expect(page.getByRole('tooltip')).toContainText('The questionnaire must remain on the live activity.');
   await review.getByRole('button', { name: /Read AB#59671/ }).click();
@@ -491,21 +482,21 @@ test('overview exposes developer proof, required-check gaps and a read-only ADO 
   await expect(workItem).toHaveCount(0);
   await expect(review).toBeVisible();
   await expect(review.getByText('0/3 reviewed', { exact: true })).toBeVisible();
-  await review.getByRole('button', { name: 'Read full comment' }).click();
-  const comment = page.getByRole('dialog', { name: 'Proof by vera_gomocha' });
+  await review.getByRole('button', { name: /All comments/ }).click();
+  const comment = page.getByRole('dialog', { name: 'PR comments', exact: true });
   await expect(comment).toContainText('Vera CLI: browser verification passed.');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
-  await page.screenshot({ path: test.info().outputPath('full-proof-comment.png') });
+  await page.screenshot({ path: test.info().outputPath('pr-comments.png') });
   await page.keyboard.press('Escape');
   await page.mouse.move(1400, 20);
   await seedMainWindow(page, { settings: { ui: { theme: 'dark' } } });
   await expect(page.locator('html')).toHaveClass(/\bdark\b/);
-  await page.screenshot({ path: test.info().outputPath('overview-proof-dark.png') });
+  await page.screenshot({ path: test.info().outputPath('overview-description-dark.png') });
   await page.setViewportSize({ width: 560, height: 900 });
   await expect(review.getByRole('button', { name: 'Review files' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: test.info().outputPath('overview-proof-narrow.png') });
+  await page.screenshot({ path: test.info().outputPath('overview-description-narrow.png') });
   await review.getByRole('heading', { name: 'Checks', exact: true }).scrollIntoViewIfNeeded();
   await expect(review.getByText('Backend build / test')).toBeInViewport();
-  await page.screenshot({ path: test.info().outputPath('overview-proof-narrow-checks.png') });
+  await page.screenshot({ path: test.info().outputPath('overview-description-narrow-checks.png') });
 });

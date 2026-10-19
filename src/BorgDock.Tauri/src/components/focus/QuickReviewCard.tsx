@@ -52,7 +52,6 @@ export interface QuickReviewCardProps {
   body?: ReactNode;
   /** The action row. */
   actions: ReactNode;
-  proof?: ReactNode;
   onFileSelect?: (path: string) => void;
   /** One line under the actions, e.g. why Approve is not possible yet. */
   actionsNote?: ReactNode;
@@ -72,7 +71,6 @@ export function QuickReviewCard({
   actionsNote,
   headerExtra,
   now,
-  proof,
   onFileSelect,
 }: QuickReviewCardProps) {
   const p = detail ?? pr.pullRequest;
@@ -90,7 +88,6 @@ export function QuickReviewCard({
           detail={p}
           files={files}
           reviewed={reviewed}
-          proof={proof}
           onFileSelect={onFileSelect}
         />
       )}

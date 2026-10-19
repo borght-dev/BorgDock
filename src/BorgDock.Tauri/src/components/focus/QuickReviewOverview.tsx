@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { ROW_CHIP_LABEL, rowChipFor, toPrCardData } from '@/components/pr/pr-card-data';
 import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { PrDescription } from '@/components/shared/PrDescription';
@@ -20,14 +19,12 @@ export function QuickReviewOverview({
   detail: p,
   files,
   reviewed,
-  proof,
   onFileSelect,
 }: {
   pr: PullRequestWithChecks;
   detail: PullRequest;
   files: readonly string[] | null;
   reviewed: readonly string[];
-  proof?: ReactNode;
   onFileSelect?: (path: string) => void;
 }) {
   const links = useWorkItemLinks(p);
@@ -39,6 +36,16 @@ export function QuickReviewOverview({
       <QuickReviewStatus pr={pr} detail={p} progress={progress} readiness={readiness} />
       <div className="qr-overview-grid">
         <div className="qr-overview-reading">
+          <section className="qr-overview-section" aria-label="PR description">
+            <h3>PR description</h3>
+            {p.body ? (
+              <PrDescription body={p.body} />
+            ) : (
+              <p className="qr-muted">No description provided.</p>
+            )}
+          </section>
+        </div>
+        <aside className="qr-overview-sidebar" aria-label="Review overview">
           {!!links.workItemIds.length && (
             <section className="qr-overview-section" aria-label="Linked work items">
               <h3>
@@ -51,17 +58,6 @@ export function QuickReviewOverview({
               </div>
             </section>
           )}
-          <section className="qr-overview-section" aria-label="Description">
-            <h3>Description</h3>
-            {p.body ? (
-              <PrDescription body={p.body} />
-            ) : (
-              <p className="qr-muted">No description provided.</p>
-            )}
-          </section>
-          {proof}
-        </div>
-        <aside className="qr-overview-sidebar" aria-label="Review overview">
           <QuickReviewProgress detail={p} progress={progress} />
           <QuickReviewChecks pr={pr} readiness={readiness} />
           <QuickReviewFolders files={files} reviewed={reviewed} onFileSelect={onFileSelect} />

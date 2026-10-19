@@ -113,6 +113,7 @@ describe('OverviewTab', () => {
   it('renders PR description', () => {
     render(<OverviewTab pr={makePr()} />);
     expect(screen.getByText('PR description here')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Developer proof' })).toBeNull();
   });
 
   it('does not render description block when body is empty', () => {

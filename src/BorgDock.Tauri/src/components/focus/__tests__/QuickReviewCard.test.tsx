@@ -132,18 +132,14 @@ describe('QuickReviewCard', () => {
     expect(ciNote(pr)).toBe(note);
   });
 
-  it('expands the full description without clipped content', () => {
+  it('shows the full description without clipped content', () => {
     card({
       body: `## Changes\n\n${'A long line of description. '.repeat(20)}\n\nMore details for reviewers.\n\nAdditional validation.`,
     });
     expect(screen.getByTestId('markdown').textContent).toContain('## Changes');
-    const more = screen.getByRole('button', { name: 'Read full description' });
-    expect(more).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.click(more);
-    expect(screen.getByRole('button', { name: 'Show less' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
+    expect(screen.getByTestId('markdown')).toHaveTextContent('Additional validation.');
+    expect(screen.queryByRole('button', { name: 'Read full description' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Developer proof' })).toBeNull();
   });
 
   it('says so when there is no description', () => {

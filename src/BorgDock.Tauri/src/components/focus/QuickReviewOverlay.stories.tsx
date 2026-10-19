@@ -146,6 +146,7 @@ export default meta;
 type Story = StoryObj<typeof QuickReviewOverlay>;
 export const Default: Story = {};
 export const OverviewWithProof: Story = {
+  name: 'Overview with description screenshots',
   decorators: [
     (Story) => {
       const control = getControl();
@@ -234,7 +235,7 @@ const overviewPr = {
     commitCount: 2,
     updatedAt: new Date(Date.now() - 60_000).toISOString(),
     mergeable: false,
-    body: '## Summary\n\nAdding a questionnaire after replacing an order could leave it on the cancelled activity. The add is now refused before it commits, with a translated reason.\n\n**Stacked on #4525.** The backend build/test job does not run on this base branch. Retarget after the parent PR merges.\n\n## Changes\n\nThe handler checks the result before committing the transaction. Regression tests cover replacement with a missing or disabled setting.',
+    body: `## Summary\n\nAdding a questionnaire after replacing an order could leave it on the cancelled activity. The add is now refused before it commits, with a translated reason.\n\n**Stacked on #4525.** The backend build/test job does not run on this base branch. Retarget after the parent PR merges.\n\n## Changes\n\nThe handler checks the result before committing the transaction. Regression tests cover replacement with a missing or disabled setting.\n\n## Verification\n\nThe browser flow and API regression tests passed.\n\n### Before\n\n![Before: order actions](${window.location.origin}/whats-new/1.0.11/close-pr.png)\n\n### After\n\n<img alt="After: browser verification" src="${window.location.origin}/whats-new/3.0.0/quick-review.png">`,
   },
 };
 export const LargeDiff: Story = {
