@@ -14,6 +14,7 @@ import {
   makeDispatchScene,
   makeLaneSyncScene,
   makeRunScene,
+  WIDE_CATALOGUE,
 } from '@/components/dispatch/__fixtures__/dispatch-data';
 import {
   bugWithReproSteps,
@@ -24,6 +25,7 @@ import {
   taskMinimalFields,
   userStoryWithRichBody,
 } from '@/components/work-items/__fixtures__/work-item-data';
+import type { BriefFilter } from '@/services/dispatch/walk';
 import { reviewRequestKey } from '@/services/priority-scoring';
 import { type DispatchViewMode, type RunIntent, useDispatchStore } from '@/stores/dispatch-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
@@ -325,6 +327,7 @@ function seedDispatch(
   viewMode: DispatchViewMode,
   withRuns: boolean | 'syncing' = false,
   runSheet: RunIntent | null = null,
+  briefFilter: BriefFilter | null = null,
 ) {
   const scene = makeDispatchScene();
   const runScene =
@@ -333,8 +336,9 @@ function seedDispatch(
       : withRuns
         ? makeRunScene()
         : { threads: [], runs: [] };
-  getControl().invokeResponses.t3_catalogue = LAUNCH_CATALOGUE;
+  getControl().invokeResponses.t3_catalogue = runSheet ? WIDE_CATALOGUE : LAUNCH_CATALOGUE;
   useDispatchStore.setState({
+    briefFilter,
     launch: launching && selectedItemId !== null ? { itemId: selectedItemId } : null,
     viewMode,
     runs: runScene.runs,
@@ -370,6 +374,7 @@ function Harness({
   dispatchView,
   dispatchRuns = false,
   dispatchRunSheet = null,
+  dispatchFilter = null,
   agentsWaiting = false,
 }: {
   section: ActiveSection;
@@ -391,6 +396,8 @@ function Harness({
   dispatchRuns?: boolean | 'syncing';
   /** Open the run sheet for this. */
   dispatchRunSheet?: RunIntent | null;
+  /** Narrow Dispatch to one count of the briefing. */
+  dispatchFilter?: BriefFilter | null;
   /** Seed Dispatch in another section too, so Focus shows the agents that wait. */
   agentsWaiting?: boolean;
 }) {
@@ -406,6 +413,7 @@ function Harness({
         dispatchView ?? (dispatchBoard ? 'board' : 'list'),
         dispatchRuns,
         dispatchRunSheet,
+        dispatchFilter,
       );
     }
     useUiStore.setState({
@@ -512,6 +520,31 @@ export const RailDispatchSyncSheet: Story = {
     dispatchItem: null,
     dispatchRunSheet: { kind: 'sync', scope: { kind: 'all' } },
   },
+};
+
+/** Fix out of sync: the items grouped by where they move, a slot, a model and its reasoning. */
+export const RailDispatchFixSheet: Story = {
+  args: {
+    section: 'dispatch',
+    dispatchView: 'walk',
+    dispatchItem: null,
+    dispatchRunSheet: { kind: 'sync', scope: { kind: 'drift' } },
+  },
+};
+
+/** The walk narrowed to the items out of sync, from its count in the briefing. */
+export const RailDispatchStatesFiltered: Story = {
+  args: {
+    section: 'dispatch',
+    dispatchView: 'walk',
+    dispatchItem: null,
+    dispatchFilter: 'outOfSync',
+  },
+};
+
+/** The list narrowed to what needs you, from the counts above it. */
+export const RailDispatchListFiltered: Story = {
+  args: { section: 'dispatch', dispatchView: 'list', dispatchFilter: 'needsYou' },
 };
 
 /** An item out of sync, moved by an agent: the run sheet for that one item. */

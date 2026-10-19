@@ -34,13 +34,30 @@ interface SlotHandlers {
 interface SlotTileProps extends SlotHandlers {
   slot: Slot;
   selected?: boolean;
+  /** Say under the name what holds the slot: its item, other work, free or offline. */
+  detailed?: boolean;
+}
+
+/** The line under a detailed tile's name. */
+function slotDetail(slot: Slot): string {
+  if (!slot.available) return 'offline';
+  if (slot.state === 'free') return 'free';
+  if (slot.state === 'busy' || slot.itemId === null) return 'other';
+  return String(slot.itemId);
 }
 
 /** MIME type a dragged work item travels under. */
 export const DISPATCH_ITEM_MIME = 'application/x-borgdock-work-item';
 
 /** One slot as a small tile: dashed green when free, amber when its agent needs you. */
-export function SlotTile({ slot, selected, onShowItem, onStartIn, onDropItem }: SlotTileProps) {
+export function SlotTile({
+  slot,
+  selected,
+  detailed = false,
+  onShowItem,
+  onStartIn,
+  onDropItem,
+}: SlotTileProps) {
   const free = slot.available && slot.state === 'free';
   const itemId = slot.state === 'mine' ? slot.itemId : null;
   const pick =
@@ -53,7 +70,11 @@ export function SlotTile({ slot, selected, onShowItem, onStartIn, onDropItem }: 
   return (
     <button
       type="button"
-      className={clsx('bd-dp-slot', selected && 'bd-dp-slot--selected')}
+      className={clsx(
+        'bd-dp-slot',
+        selected && 'bd-dp-slot--selected',
+        detailed && 'bd-dp-slot--detailed',
+      )}
       data-slot-id={slot.id}
       data-state={slot.state}
       data-needs-you={slot.needsYou ? 'true' : undefined}
@@ -92,7 +113,14 @@ export function SlotTile({ slot, selected, onShowItem, onStartIn, onDropItem }: 
           : undefined
       }
     >
-      {slot.name}
+      {detailed ? (
+        <>
+          <span className="bd-dp-slot__name">{slot.name}</span>
+          <small className="bd-dp-slot__detail">{slotDetail(slot)}</small>
+        </>
+      ) : (
+        slot.name
+      )}
     </button>
   );
 }

@@ -32,7 +32,7 @@ function renderSheet(itemId = 60201, slotId?: string) {
 
 /** The models arrive from T3 after the sheet opens. */
 async function modelsLoaded() {
-  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Model' })).not.toHaveValue(''));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Model' })).toBeEnabled());
 }
 
 describe('LaunchSheet', () => {
@@ -94,9 +94,8 @@ describe('LaunchSheet', () => {
     const scene = renderSheet();
     await modelsLoaded();
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Model' }), {
-      target: { value: 'codex/default' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Model' }));
+    fireEvent.click(screen.getByRole('option', { name: /^Default/ }));
     fireEvent.click(
       within(screen.getByRole('group', { name: 'Reasoning effort' })).getByRole('button', {
         name: 'High',

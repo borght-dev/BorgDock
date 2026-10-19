@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WALK_ORDER } from '@/services/dispatch/walk';
+import { useDispatchStore } from '@/stores/dispatch-store';
 import { makeDispatchScene } from '../__fixtures__/dispatch-data';
 import { DispatchWalk } from '../DispatchWalk';
 import type { DispatchActions } from '../unit-actions';
@@ -47,6 +48,10 @@ function lane(state: string): HTMLElement {
 }
 
 describe('DispatchWalk', () => {
+  beforeEach(() => {
+    useDispatchStore.setState({ briefFilter: null, runs: [] });
+  });
+
   it('walks the states in order, the empty ones too, then the rest', () => {
     renderWalk();
     const lanes = screen
@@ -112,5 +117,38 @@ describe('DispatchWalk', () => {
   it('shows the open item in the drawer', () => {
     renderWalk(60240);
     expect(screen.getByRole('complementary', { name: 'Work item' })).toBeInTheDocument();
+  });
+
+  it('narrows the lanes to what a count counts, folds the empty ones, and clears', () => {
+    renderWalk();
+    const overview = screen.getByRole('region', { name: 'Overview' });
+    const shownIds = () =>
+      [...document.querySelectorAll('.bd-dp-wlane [data-dp-id]')].map((row) =>
+        Number(row.getAttribute('data-dp-id')),
+      );
+
+    fireEvent.click(within(overview).getByRole('button', { name: /out of sync/ }));
+
+    expect(shownIds().sort()).toEqual([59403, 60102]);
+    expect(within(lane('Code Review')).getByText('1 of 3')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Needs Human' })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/^Nothing out of sync in Testing Failed · Needs Human · New/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/Showing\s*2 out of sync\s*of 20 items/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(shownIds()).toHaveLength(20);
+  });
+
+  it('toggles a count off with a second click', () => {
+    renderWalk();
+    const overview = screen.getByRole('region', { name: 'Overview' });
+    const fine = within(overview).getByRole('button', { name: /fine/ });
+    fireEvent.click(fine);
+    expect(fine).toHaveAttribute('aria-pressed', 'true');
+    expect(useDispatchStore.getState().briefFilter).toBe('fine');
+    fireEvent.click(fine);
+    expect(useDispatchStore.getState().briefFilter).toBeNull();
   });
 });
