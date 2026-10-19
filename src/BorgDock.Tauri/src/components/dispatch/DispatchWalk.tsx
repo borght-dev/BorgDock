@@ -1,8 +1,16 @@
 import { ChevronRight } from 'lucide-react';
 import { type ReactNode, useMemo } from 'react';
-import type { ItemOverview, Slot, Tone } from '@/services/dispatch/types';
-import { briefing, type Lane, laneSummary, laneTone, walkLanes } from '@/services/dispatch/walk';
+import type { ItemOverview, Slot } from '@/services/dispatch/types';
+import {
+  type BriefFilter,
+  type Lane,
+  laneSummary,
+  laneTone,
+  walkLanes,
+} from '@/services/dispatch/walk';
+import { useDispatchStore } from '@/stores/dispatch-store';
 import { useUiStore } from '@/stores/ui-store';
+import { BriefStat, briefCounts, FilterBar, useBriefMatch } from './BriefFilters';
 import { DispatchDrawer } from './DispatchDrawer';
 import type { DispatchActions } from './unit-actions';
 import { WalkRow } from './WalkRow';
@@ -36,37 +44,28 @@ function scrollToLane(state: string): void {
     ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 
-function Stat({
-  tone,
-  count,
-  label,
-  children,
-}: {
-  tone: Tone;
-  count: number;
-  label: string;
-  children?: ReactNode;
-}) {
-  return (
-    <div className="bd-dp-stat" data-tone={count > 0 ? tone : 'mute'}>
-      <span className="bd-dp-stat__count">{count}</span>
-      <span className="bd-dp-stat__label">{label}</span>
-      {children}
-    </div>
-  );
-}
+/** How the line naming the lanes a filter left empty begins. */
+const FOLDED_LEAD: Record<BriefFilter, string> = {
+  needsYou: 'Nothing needs you in',
+  outOfSync: 'Nothing out of sync in',
+  worthALook: 'Nothing worth a look in',
+  working: 'No agent works in',
+  fine: 'Nothing fine in',
+};
 
 /**
  * WalkBriefing — the morning at a glance: how many items wait on you, are out
  * of sync, are worth a look or are fine, how many agents work, and where every
- * item sits, one square per item in the color of its verdict. A state's name
- * scrolls to its lane; a square selects its item.
+ * item sits, one square per item in the color of its verdict. A count narrows
+ * the lanes to its items; a state's name scrolls to its lane; a square selects
+ * its item.
  */
 function WalkBriefing({
   items,
   lanes,
   slots,
   selectedId,
+  match,
   fix,
   slotStrip,
   onPick,
@@ -75,30 +74,21 @@ function WalkBriefing({
   lanes: readonly Lane[];
   slots: readonly Slot[];
   selectedId: number | null;
+  match: ((overview: ItemOverview) => boolean) | null;
   fix?: ReactNode;
   slotStrip?: ReactNode;
   onPick: (id: number) => void;
 }) {
-  const counts = briefing(items);
-  const working = slots.filter((slot) => slot.running).length;
   const shown = lanes.filter((lane) => lane.inWalk || lane.rows.length > 0);
   return (
     <section className="bd-dp-brief" aria-label="Overview">
       <div className="bd-dp-brief__numbers">
         <div className="bd-dp-brief__stats">
-          <Stat tone="bad" count={counts.needsYou} label="need you" />
-          <Stat tone="warn" count={counts.outOfSync} label="out of sync">
-            {fix}
-          </Stat>
-          {counts.worthALook > 0 && (
-            <Stat tone="warn" count={counts.worthALook} label="worth a look" />
-          )}
-          <Stat
-            tone="run"
-            count={working}
-            label={working === 1 ? 'agent working' : 'agents working'}
-          />
-          <Stat tone="ok" count={counts.fine} label="fine" />
+          {briefCounts(items, slots).map((count) => (
+            <BriefStat key={count.filter} count={count}>
+              {count.filter === 'outOfSync' && fix}
+            </BriefStat>
+          ))}
         </div>
         {slotStrip}
       </div>
@@ -131,6 +121,7 @@ function WalkBriefing({
                     className="bd-dp-stage__cell"
                     data-tone={o.verdict.tone}
                     data-selected={o.item.id === selectedId ? 'true' : undefined}
+                    data-dim={match && !match(o) ? 'true' : undefined}
                     aria-label={`${o.item.id} ${o.item.title} · ${o.verdict.label}`}
                     title={`${o.item.id} · ${o.item.title} · ${o.verdict.label}`}
                     onClick={() => onPick(o.item.id)}
@@ -147,17 +138,21 @@ function WalkBriefing({
 
 function WalkLane({
   lane,
+  rows,
   aside,
   children,
 }: {
   lane: Lane;
+  /** The lane's rows the filter shows; all of them without one. */
+  rows: readonly ItemOverview[];
   aside: ReactNode;
   children: ReactNode;
 }) {
   const key = laneKey(lane.state);
   const collapsed = useUiStore((s) => s.collapsedGroups.has(key));
   const toggle = useUiStore((s) => s.toggleRepoGroup);
-  const summary = laneSummary(lane.rows);
+  const summary = laneSummary(rows);
+  const filtered = rows.length !== lane.rows.length;
   return (
     <section className="bd-wb-group bd-dp-wlane" data-group-key={key} aria-label={lane.state}>
       <div className="bd-dp-wlane__head">
@@ -174,7 +169,9 @@ function WalkLane({
             className="bd-wb-group__chevron"
           />
           <span className="bd-wb-group__label">{lane.state}</span>
-          <span className="bd-wb-group__count">{lane.rows.length}</span>
+          <span className="bd-wb-group__count">
+            {filtered ? `${rows.length} of ${lane.rows.length}` : lane.rows.length}
+          </span>
           {summary && <span className="bd-dp-wlane__summary">{summary}</span>}
           <span className="bd-wb-group__rule" aria-hidden="true" />
         </button>
@@ -217,7 +214,9 @@ export interface DispatchWalkProps {
  * DispatchWalk — the work in the order it is checked every morning: Code
  * Review, Development In Progress, Testing Failed, Needs Human, New, then any
  * other state. Above it the briefing: the counts that matter and every item
- * as a square in the color of its verdict. A row opens its detail in a drawer.
+ * as a square in the color of its verdict. A count narrows the lanes to its
+ * items (`briefFilter`); lanes left empty fold into one line. A row opens its
+ * detail in a drawer.
  */
 export function DispatchWalk({
   items,
@@ -237,7 +236,15 @@ export function DispatchWalk({
 }: DispatchWalkProps) {
   const lanes = useMemo(() => walkLanes(items), [items]);
   const running = useRunningItems();
+  const filter = useDispatchStore((s) => s.briefFilter);
+  const match = useBriefMatch();
   const open = items.find((o) => o.item.id === openId) ?? null;
+  const shown = lanes.map((lane) => ({ lane, rows: match ? lane.rows.filter(match) : lane.rows }));
+  const visible = match ? shown.filter(({ rows }) => rows.length > 0) : shown;
+  const folded = match
+    ? shown.filter(({ lane, rows }) => rows.length === 0 && (lane.inWalk || lane.rows.length > 0))
+    : [];
+  const matched = shown.reduce((sum, { rows }) => sum + rows.length, 0);
   return (
     <div className="bd-dp-walkwrap">
       <div className="bd-dp-walk">
@@ -246,6 +253,7 @@ export function DispatchWalk({
           lanes={lanes}
           slots={slots}
           selectedId={openId}
+          match={match}
           fix={fix}
           slotStrip={slotStrip}
           onPick={(id) => {
@@ -253,14 +261,15 @@ export function DispatchWalk({
             scrollToRow(id);
           }}
         />
+        {match && <FilterBar shown={matched} total={items.length} />}
         {notice}
-        {lanes.map((lane) => (
-          <WalkLane key={lane.state} lane={lane} aside={laneAside?.(lane)}>
+        {visible.map(({ lane, rows }) => (
+          <WalkLane key={lane.state} lane={lane} rows={rows} aside={laneAside?.(lane)}>
             {laneNotice?.(lane)}
             {lane.rows.length === 0 && (
               <p className="bd-dp-wlane__empty">{EMPTY_LANE[lane.state] ?? 'Nothing here.'}</p>
             )}
-            {lane.rows.map((overview) => (
+            {rows.map((overview) => (
               <WalkRow
                 key={overview.item.id}
                 overview={overview}
@@ -275,6 +284,11 @@ export function DispatchWalk({
             ))}
           </WalkLane>
         ))}
+        {filter && folded.length > 0 && (
+          <p className="bd-dp-walk__folded">
+            {FOLDED_LEAD[filter]} {folded.map(({ lane }) => lane.state).join(' · ')}
+          </p>
+        )}
         {footer}
       </div>
       {open && (

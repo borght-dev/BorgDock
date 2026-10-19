@@ -19,6 +19,7 @@ import {
 import { useSettingsStore } from '@/stores/settings-store';
 import { showToast, toastError } from '@/stores/toast-store';
 import { shortcutLabel } from '@/utils/shortcut-label';
+import { BriefChips, useBriefMatch } from './BriefFilters';
 import { DispatchBoard } from './DispatchBoard';
 import { DispatchDetail } from './DispatchDetail';
 import { DispatchListSplit } from './DispatchListSplit';
@@ -182,11 +183,13 @@ export function DispatchSection() {
   const setViewMode = useDispatchStore((s) => s.setViewMode);
   const openLaunch = useDispatchStore((s) => s.openLaunch);
   const now = useClock();
+  const match = useBriefMatch();
 
-  const items = useMemo(
+  const searched = useMemo(
     () => searchItems(overview?.items ?? [], searchQuery),
     [overview, searchQuery],
   );
+  const items = useMemo(() => (match ? searched.filter(match) : searched), [searched, match]);
   const groups = useMemo(() => groupByBay(items), [items]);
   const selected = items.find((o) => o.item.id === selectedId) ?? groups[0]?.rows[0] ?? null;
 
@@ -255,11 +258,14 @@ export function DispatchSection() {
         </div>
       )}
 
+      {!walking && overview !== null && (
+        <BriefChips items={searched} slots={overview.slots} shown={items.length} />
+      )}
       {!walking && slotStrip}
 
       {viewMode === 'walk' && overview !== null && (
         <DispatchWalk
-          items={items}
+          items={searched}
           slots={overview.slots}
           openId={selectedId}
           now={now}
@@ -286,6 +292,7 @@ export function DispatchSection() {
           busy={busy}
           actions={dispatchActions}
           onSelect={selectItem}
+          filtered={match !== null}
         />
       )}
       <DispatchListSplit
@@ -296,9 +303,11 @@ export function DispatchSection() {
             {overview !== null && items.length === 0 && (
               <div className="bd-wb-empty">
                 <p>
-                  {total > 0
-                    ? 'No work matches this search'
-                    : (adoStatus.error ?? 'Nothing is assigned to you')}
+                  {total === 0
+                    ? (adoStatus.error ?? 'Nothing is assigned to you')
+                    : match && searched.length > 0
+                      ? 'Nothing matches this filter'
+                      : 'No work matches this search'}
                 </p>
               </div>
             )}

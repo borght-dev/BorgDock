@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemOverview, StateCategory, Tone } from '../types';
 import {
+  type BriefFilter,
   briefing,
+  groupByTarget,
   laneSummary,
   laneTone,
+  matchesBrief,
   needingYou,
   preselected,
   runProgress,
@@ -152,6 +155,61 @@ describe('briefing', () => {
       overview(7, 'Development In Progress', ['Agent on it', 'run']),
     ]);
     expect(counts).toEqual({ needsYou: 2, outOfSync: 2, worthALook: 1, fine: 3 });
+  });
+});
+
+describe('matchesBrief', () => {
+  const waiting = overview(1, 'Needs Human', ['Your turn', 'bad']);
+  const waitingAndDrifted = {
+    ...overview(2, 'Code Review', ['Your turn', 'bad']),
+    suggestion: { id: 'qa', to: 'Ready For QA', reason: 'merged' },
+  };
+  const quiet = overview(3, 'Development In Progress', ['Quiet · 9 d', 'warn']);
+  const working = {
+    ...overview(4, 'Development In Progress', ['Agent on it', 'run']),
+    threads: [makeThread({ id: 'w', status: 'running' })],
+  };
+  const inRun = overview(5, 'Code Review', ['Ready to merge', 'ok']);
+  const items = [waiting, waitingAndDrifted, quiet, working, inRun];
+  const running = new Map([[5, 'W7']]);
+  const shown = (filter: BriefFilter) =>
+    items.filter((o) => matchesBrief(o, filter, running)).map((o) => o.item.id);
+
+  it('shows the items each count of the briefing counts', () => {
+    expect(shown('needsYou')).toEqual([1, 2]);
+    expect(shown('outOfSync')).toEqual([2]);
+    expect(shown('worthALook')).toEqual([3]);
+    expect(shown('fine')).toEqual([4, 5]);
+    expect(briefing(items)).toEqual({
+      needsYou: shown('needsYou').length,
+      outOfSync: shown('outOfSync').length,
+      worthALook: shown('worthALook').length,
+      fine: shown('fine').length,
+    });
+  });
+
+  it('shows the items an agent of their own or a running sync works on', () => {
+    expect(shown('working')).toEqual([4, 5]);
+  });
+});
+
+describe('groupByTarget', () => {
+  const move = (id: number, to: string) => ({
+    ...overview(id, 'Development In Progress', ['Out of sync', 'warn']),
+    suggestion: { id: `${id}`, to, reason: 'merged' },
+  });
+  const groups = (list: ItemOverview[]) =>
+    groupByTarget(list, { kind: 'all' }).map((g) => [g.to, g.rows.map((o) => o.item.id)]);
+
+  it('groups by the state each item moves to, the biggest first and the checks last', () => {
+    const checked = overview(9, 'New', ['Not started', 'mute']);
+    expect(
+      groups([checked, move(1, 'Code Review'), move(2, 'Ready For QA'), move(3, 'Ready For QA')]),
+    ).toEqual([
+      ['Ready For QA', [2, 3]],
+      ['Code Review', [1]],
+      [null, [9]],
+    ]);
   });
 });
 

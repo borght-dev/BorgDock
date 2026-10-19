@@ -134,7 +134,33 @@ export function syncTarget(overview: ItemOverview, scope: SyncScope): string | n
   return overview.suggestion?.to ?? null;
 }
 
-/** What the run is called: `Sync Code Review (4)`, `Sync all (8)`, `Move 60107 to Ready For QA`. */
+/** The candidates of a sync that move to one state; `to` is null for the ones only checked. */
+export interface TargetGroup {
+  to: string | null;
+  rows: ItemOverview[];
+}
+
+/** The candidates grouped by the state each moves to, the biggest group first, the checks last. */
+export function groupByTarget(
+  candidates: readonly ItemOverview[],
+  scope: SyncScope,
+): TargetGroup[] {
+  const groups = new Map<string | null, ItemOverview[]>();
+  for (const overview of candidates) {
+    const to = syncTarget(overview, scope);
+    groups.set(to, [...(groups.get(to) ?? []), overview]);
+  }
+  return [...groups.entries()]
+    .map(([to, rows]) => ({ to, rows }))
+    .sort(
+      (a, b) =>
+        Number(a.to === null) - Number(b.to === null) ||
+        b.rows.length - a.rows.length ||
+        (a.to ?? '').localeCompare(b.to ?? ''),
+    );
+}
+
+/** What the run is called:`Sync Code Review (4)`, `Sync all (8)`, `Move 60107 to Ready For QA`. */
 export function syncLabel(scope: SyncScope, count: number): string {
   switch (scope.kind) {
     case 'state':
@@ -170,6 +196,47 @@ export function briefing(items: readonly ItemOverview[]): Briefing {
     else counts.fine += 1;
   }
   return counts;
+}
+
+/** A count in the briefing the walk, list and board can be narrowed to. */
+export type BriefFilter = 'needsYou' | 'outOfSync' | 'worthALook' | 'working' | 'fine';
+
+export const BRIEF_FILTER_LABEL: Record<BriefFilter, string> = {
+  needsYou: 'need you',
+  outOfSync: 'out of sync',
+  worthALook: 'worth a look',
+  working: 'agent working',
+  fine: 'fine',
+};
+
+/** An agent of its own runs on it, or a run that is still going includes it. */
+export function agentWorking(overview: ItemOverview, inRunningRun: boolean): boolean {
+  return inRunningRun || overview.threads.some((t) => t.open && t.status === 'running');
+}
+
+/**
+ * Whether the briefing counts `overview` under `filter`, by the same rules as
+ * `briefing`. Agent working is the one count of agents, not items: its filter
+ * shows the items they work on.
+ */
+export function matchesBrief(
+  overview: ItemOverview,
+  filter: BriefFilter,
+  running: ReadonlyMap<number, unknown>,
+): boolean {
+  const { verdict, suggestion } = overview;
+  switch (filter) {
+    case 'needsYou':
+      return verdict.tone === 'bad';
+    case 'outOfSync':
+      return suggestion !== null;
+    case 'worthALook':
+      return verdict.tone === 'warn' && suggestion === null;
+    case 'working':
+      return agentWorking(overview, running.has(overview.item.id));
+    case 'fine':
+      return verdict.tone !== 'bad' && verdict.tone !== 'warn' && suggestion === null;
+  }
 }
 
 /** The most urgent tone in a lane, or null when it is empty. */

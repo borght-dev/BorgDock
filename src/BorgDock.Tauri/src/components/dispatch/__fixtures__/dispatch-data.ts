@@ -546,6 +546,59 @@ export const LAUNCH_CATALOGUE: T3Catalogue = {
   ],
 };
 
+const REASONING_LEVELS: readonly [string, string][] = [
+  ['low', 'Low'],
+  ['medium', 'Medium'],
+  ['high', 'High'],
+  ['xhigh', 'Extra High'],
+  ['max', 'Max'],
+  ['ultra', 'Ultra'],
+];
+
+function catalogueModel(slug: string, name: string, isDefault = false) {
+  return {
+    slug,
+    name,
+    isDefault,
+    options: [
+      {
+        id: 'reasoningEffort',
+        label: 'Reasoning',
+        kind: 'select' as const,
+        choices: REASONING_LEVELS.map(([id, label]) => ({ id, label, isDefault: id === 'xhigh' })),
+      },
+    ],
+  };
+}
+
+/** A catalogue like a real one in stories: two accounts, many models, six reasoning levels. */
+export const WIDE_CATALOGUE: T3Catalogue = {
+  environmentId: 'env-local',
+  providers: [
+    {
+      instanceId: 'codexOutlook',
+      driver: 'codex',
+      displayName: 'Outlook',
+      models: [
+        catalogueModel('sol', 'Sol', true),
+        catalogueModel('astra', 'Astra'),
+        catalogueModel('luna', 'Luna'),
+        catalogueModel('terra', 'Terra'),
+      ],
+    },
+    {
+      instanceId: 'claudeGomocha',
+      driver: 'claudeAgent',
+      displayName: 'Gomocha',
+      models: [
+        catalogueModel('opus', 'Opus', true),
+        catalogueModel('sonnet', 'Sonnet'),
+        catalogueModel('haiku', 'Haiku'),
+      ],
+    },
+  ],
+};
+
 export interface DispatchScene {
   items: DispatchItem[];
   threads: AgentThread[];

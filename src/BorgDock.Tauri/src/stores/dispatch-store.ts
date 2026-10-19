@@ -8,7 +8,7 @@ import type {
   Overview,
   SyncScope,
 } from '@/services/dispatch/types';
-import { needingYou } from '@/services/dispatch/walk';
+import { type BriefFilter, needingYou } from '@/services/dispatch/walk';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
 /** Whether a source (Azure DevOps, a T3 host) answered its last poll. */
@@ -113,6 +113,8 @@ interface DispatchState {
   selectedItemId: number | null;
   viewMode: DispatchViewMode;
   searchQuery: string;
+  /** The briefing count the walk, list and board are narrowed to; null shows every item. */
+  briefFilter: BriefFilter | null;
   /** An action is on its way to T3 or ADO; the buttons wait for it. */
   busy: boolean;
   /** The item the launch sheet is open for, or null while it is closed. */
@@ -143,6 +145,7 @@ interface DispatchState {
   selectItem: (id: number | null) => void;
   setViewMode: (mode: DispatchViewMode) => void;
   setSearchQuery: (query: string) => void;
+  setBriefFilter: (filter: BriefFilter | null) => void;
   setBusy: (busy: boolean) => void;
   openLaunch: (intent: LaunchIntent) => void;
   closeLaunch: () => void;
@@ -173,6 +176,7 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   selectedItemId: null,
   viewMode: 'walk',
   searchQuery: '',
+  briefFilter: null,
   busy: false,
   launch: null,
   launchPreferences: DEFAULT_LAUNCH_PREFERENCES,
@@ -238,6 +242,8 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   },
 
   setSearchQuery: (searchQuery) => set({ searchQuery }),
+
+  setBriefFilter: (briefFilter) => set({ briefFilter }),
 
   setBusy: (busy) => set({ busy }),
 

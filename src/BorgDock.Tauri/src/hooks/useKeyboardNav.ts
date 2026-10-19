@@ -138,11 +138,17 @@ export function useKeyboardNav(): void {
 
     switch (e.key) {
       case 'Escape': {
-        // Dispatch: Esc lets go of the selected item (on the board, its drawer).
+        // Dispatch: Esc lets go of the selected item (on the board, its drawer), then of the filter.
         const dispatch = useDispatchStore.getState();
-        if (useUiStore.getState().activeSection === 'dispatch' && dispatch.selectedItemId) {
+        const inDispatch = useUiStore.getState().activeSection === 'dispatch';
+        if (inDispatch && dispatch.selectedItemId) {
           e.preventDefault();
           dispatch.selectItem(null);
+          break;
+        }
+        if (inDispatch && dispatch.briefFilter) {
+          e.preventDefault();
+          dispatch.setBriefFilter(null);
           break;
         }
         const ui = useUiStore.getState();

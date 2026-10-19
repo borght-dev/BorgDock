@@ -191,7 +191,12 @@ const MS_PER_DAY = 86_400_000;
 export interface LaunchModel {
   /** `<provider instance>/<model>`. */
   id: string;
+  /** `<model> · <account>`. */
   label: string;
+  /** The model's own name, without the account. */
+  name: string;
+  /** The provider instance it runs under, as T3 names it. */
+  account: string;
   /** Used in T3 in the last two weeks; these come first. */
   recent: boolean;
   /** Reasoning levels the model supports, lowest first. Empty when it has none. */
@@ -236,6 +241,8 @@ export function launchModels(
       return {
         id,
         label: `${model.name} · ${provider.displayName}`,
+        name: model.name,
+        account: provider.displayName,
         recent: false,
         efforts,
         defaultEffort:

@@ -142,6 +142,8 @@ interface DispatchBoardProps {
   busy: boolean;
   actions: DispatchActions;
   onSelect: (id: number | null) => void;
+  /** A briefing count narrows the items: an empty column says so instead of its usual line. */
+  filtered?: boolean;
 }
 
 /**
@@ -159,6 +161,7 @@ export function DispatchBoard({
   busy,
   actions,
   onSelect,
+  filtered = false,
 }: DispatchBoardProps) {
   const open = items.find((o) => o.item.id === openId) ?? null;
   return (
@@ -179,7 +182,11 @@ export function DispatchBoard({
                 <span className="bd-fb-col__count">{cards.length}</span>
               </header>
               <div className="bd-fb-col__stack">
-                {cards.length === 0 && <p className="bd-fb-col__empty">{column.empty}</p>}
+                {cards.length === 0 && (
+                  <p className="bd-fb-col__empty">
+                    {filtered ? 'Nothing here matches the filter.' : column.empty}
+                  </p>
+                )}
                 {cards.map((overview) => (
                   <BoardCard
                     key={overview.item.id}

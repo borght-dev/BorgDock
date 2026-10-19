@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Seg2, Select } from '@/components/shared/primitives';
+import { SearchSelect, type SearchSelectSection, Seg2 } from '@/components/shared/primitives';
 import { configuredHosts } from '@/services/dispatch/hosts';
 import { type LaunchModel, launchModels, preferredModel } from '@/services/dispatch/launch';
 import type { Slot } from '@/services/dispatch/types';
@@ -140,6 +140,32 @@ export function useLaunchChoice(
   };
 }
 
+/** The most reasoning levels a segmented control holds; more become a grid of buttons. */
+const MAX_SEGMENTED_EFFORTS = 4;
+
+/** The models in the picker: the recent ones with their account, then one section per account. */
+export function modelSections(models: readonly LaunchModel[]): SearchSelectSection[] {
+  const recent = models.filter((model) => model.recent);
+  const byAccount = new Map<string, LaunchModel[]>();
+  for (const model of models) {
+    if (model.recent) continue;
+    byAccount.set(model.account, [...(byAccount.get(model.account) ?? []), model]);
+  }
+  const option = (model: LaunchModel) => ({
+    value: model.id,
+    label: model.name,
+    badge: model.account,
+  });
+  return [
+    ...(recent.length > 0 ? [{ label: 'Recent', options: recent.map(option) }] : []),
+    ...[...byAccount].map(([account, list]) => ({
+      label: account,
+      options: list.map(option),
+      showBadges: false,
+    })),
+  ];
+}
+
 /** LaunchChoiceFields — the slot tiles, the model and the reasoning effort. */
 export function LaunchChoiceFields({ choice }: { choice: LaunchChoice }) {
   const { slots, slot, models, modelId, model, effort, catalogueError } = choice;
@@ -148,8 +174,11 @@ export function LaunchChoiceFields({ choice }: { choice: LaunchChoice }) {
     <>
       <section aria-label="Slot">
         <h3 className="bd-dp-sheet__label">
-          Slot, {free.length} free
-          {slot ? '' : ' · pick one'}
+          <span>Slot</span>
+          <span>
+            {free.length} free
+            {slot ? '' : ' · pick one'}
+          </span>
         </h3>
         {groupSlotsByHost(slots).map((group) => (
           <div key={group.hostLabel} className="bd-dp-sheet__slots">
@@ -158,6 +187,7 @@ export function LaunchChoiceFields({ choice }: { choice: LaunchChoice }) {
               <SlotTile
                 key={s.id}
                 slot={s}
+                detailed
                 selected={s.id === slot?.id}
                 onStartIn={(picked) => choice.setSlotId(picked.id)}
               />
@@ -172,11 +202,13 @@ export function LaunchChoiceFields({ choice }: { choice: LaunchChoice }) {
       <div className="bd-dp-sheet__row">
         <section aria-label="Model" className="bd-dp-sheet__model">
           <h3 className="bd-dp-sheet__label">Model</h3>
-          <Select
+          <SearchSelect
             ariaLabel="Model"
             value={modelId}
-            options={models.map((m) => ({ value: m.id, label: m.label }))}
+            sections={modelSections(models)}
             onChange={choice.setModel}
+            filterPlaceholder="Filter models"
+            disabled={models.length === 0}
             placeholder={
               catalogueError
                 ? 'T3 did not list its models'
@@ -189,7 +221,7 @@ export function LaunchChoiceFields({ choice }: { choice: LaunchChoice }) {
         {model && model.efforts.length > 0 && (
           <section aria-label="Reasoning">
             <h3 className="bd-dp-sheet__label">Reasoning</h3>
-            {model.efforts.length <= 4 ? (
+            {model.efforts.length <= MAX_SEGMENTED_EFFORTS ? (
               <Seg2
                 ariaLabel="Reasoning effort"
                 size="sm"
@@ -198,12 +230,19 @@ export function LaunchChoiceFields({ choice }: { choice: LaunchChoice }) {
                 onChange={choice.setEffort}
               />
             ) : (
-              <Select
-                ariaLabel="Reasoning effort"
-                value={effort ?? ''}
-                options={model.efforts.map((e) => ({ value: e.id, label: e.label }))}
-                onChange={choice.setEffort}
-              />
+              <div className="bd-dp-sheet__efforts" role="group" aria-label="Reasoning effort">
+                {model.efforts.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    aria-pressed={e.id === effort}
+                    className="bd-dp-sheet__effort"
+                    onClick={() => choice.setEffort(e.id)}
+                  >
+                    {e.label}
+                  </button>
+                ))}
+              </div>
             )}
           </section>
         )}

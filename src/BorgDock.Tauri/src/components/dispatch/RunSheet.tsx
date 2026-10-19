@@ -1,6 +1,7 @@
 import clsx from 'clsx';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/shared/primitives';
+import { WorkItemTypePill } from '@/components/work-items/WorkItemTypePill';
 import { dispatchActions } from '@/services/dispatch/actions';
 import {
   configuredPrompts,
@@ -11,11 +12,13 @@ import {
 } from '@/services/dispatch/launch';
 import type { ItemOverview, Overview, SyncScope } from '@/services/dispatch/types';
 import {
+  groupByTarget,
   ownAgent,
   preselected,
   syncCandidates,
   syncLabel,
   syncTarget,
+  type TargetGroup,
 } from '@/services/dispatch/walk';
 import { type RunIntent, useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -121,13 +124,119 @@ function instructionsSummary(scope: SyncScope | null): string {
   return 'The default sync message: read each item with its comments and Developer Notes, check its pull requests, move it through the repository’s ADO skills, and end with one line per item.';
 }
 
-/** What a candidate shows next to its title: the move it gets, its own agent, or its verdict. */
-function candidateNote(overview: ItemOverview, scope: SyncScope): { label: string; tone: string } {
-  const target = syncTarget(overview, scope);
-  if (target) return { label: `→ ${target}`, tone: 'warn' };
+/** Why a candidate is in the run: the evidence for its move, its own agent, or its verdict. */
+function candidateWhy(overview: ItemOverview, scope: SyncScope): { label: string; tone?: string } {
+  const { suggestion } = overview;
+  if (suggestion && syncTarget(overview, scope) === suggestion.to)
+    return { label: suggestion.reason };
   const agent = ownAgent(overview);
-  if (agent) return { label: `its agent in ${agent.slot}`, tone: 'run' };
+  if (agent) return { label: `Its own agent works on it in ${agent.slot}.`, tone: 'run' };
   return { label: overview.verdict.label, tone: overview.verdict.tone };
+}
+
+/** How many evidence chips a candidate shows beside its title. */
+const CANDIDATE_FACTS = 2;
+
+function CandidateRow({
+  overview,
+  scope,
+  picked,
+  onToggle,
+}: {
+  overview: ItemOverview;
+  scope: SyncScope;
+  picked: boolean;
+  onToggle: () => void;
+}) {
+  const { item } = overview;
+  const why = candidateWhy(overview, scope);
+  return (
+    <label className="bd-dp-sheet__item" data-off={picked ? undefined : 'true'}>
+      <input type="checkbox" checked={picked} onChange={onToggle} />
+      <WorkItemTypePill type={item.typeName} />
+      <em>{item.id}</em>
+      <span className="bd-dp-sheet__item-main">
+        <span className="bd-dp-sheet__item-title" title={item.title}>
+          {item.title}
+        </span>
+        <span className="bd-dp-sheet__item-why" data-tone={why.tone}>
+          {why.label}
+        </span>
+      </span>
+      <span className="bd-dp-sheet__item-now">
+        <i>now</i> {item.state}
+      </span>
+      <span className="bd-dp-sheet__item-facts">
+        {overview.evidence.slice(0, CANDIDATE_FACTS).map((fact) => (
+          <span key={fact.label} className="bd-dp-sheet__fact" data-tone={fact.tone ?? undefined}>
+            {fact.label}
+          </span>
+        ))}
+      </span>
+    </label>
+  );
+}
+
+/** A checkbox that also shows "some", for a group partly picked. */
+function GroupCheck({
+  checked,
+  mixed,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  mixed: boolean;
+  label: string;
+  onChange: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = mixed;
+  }, [mixed]);
+  return (
+    <input ref={ref} type="checkbox" aria-label={label} checked={checked} onChange={onChange} />
+  );
+}
+
+function TargetGroupBlock({
+  group,
+  scope,
+  picked,
+  onToggle,
+  onToggleAll,
+}: {
+  group: TargetGroup;
+  scope: SyncScope;
+  picked: ReadonlySet<number>;
+  onToggle: (id: number) => void;
+  onToggleAll: (ids: readonly number[], on: boolean) => void;
+}) {
+  const ids = group.rows.map((o) => o.item.id);
+  const count = ids.filter((id) => picked.has(id)).length;
+  const title = group.to ? `→ ${group.to}` : 'No move suggested';
+  return (
+    <section className="bd-dp-sheet__group" aria-label={title}>
+      <div className="bd-dp-sheet__grouphead" data-move={group.to ? 'true' : undefined}>
+        <GroupCheck
+          checked={count === ids.length}
+          mixed={count > 0 && count < ids.length}
+          label={`Pick every item in ${title}`}
+          onChange={() => onToggleAll(ids, count < ids.length)}
+        />
+        <span className="bd-dp-sheet__groupname">{title}</span>
+        <em>{count === ids.length ? ids.length : `${count} of ${ids.length}`}</em>
+      </div>
+      {group.rows.map((o) => (
+        <CandidateRow
+          key={o.item.id}
+          overview={o}
+          scope={scope}
+          picked={picked.has(o.item.id)}
+          onToggle={() => onToggle(o.item.id)}
+        />
+      ))}
+    </section>
+  );
 }
 
 interface RunSheetProps {
@@ -154,6 +263,7 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
   const choice = useLaunchChoice(overview.slots, runChoice.slotId, runChoice.model);
   const [editedPrompt, setEditedPrompt] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [showingAll, setShowingAll] = useState(false);
   const [starting, setStarting] = useState(false);
 
   useEffect(() => {
@@ -174,6 +284,8 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
   const label = scope ? syncLabel(scope, chosen.length) : 'Suggest my next item';
   const { slot, model, effort } = choice;
   const ready = slot && model && (!sync || chosen.length > 0);
+  const effortLabel = model?.efforts.find((e) => e.id === effort)?.label;
+  const groups = scope && scope.kind !== 'item' ? groupByTarget(candidates, scope) : null;
 
   const pickAll = (all: boolean) => {
     setEditedPrompt(null);
@@ -185,6 +297,18 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
     setPicked((was) => {
       const next = new Set(was);
       if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = (ids: readonly number[], on: boolean) => {
+    setEditedPrompt(null);
+    setPicked((was) => {
+      const next = new Set(was);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
       return next;
     });
   };
@@ -234,24 +358,40 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
     }
   };
 
+  const edited = editedPrompt !== null;
   const instructions = (
     <section aria-label="First message" className="bd-dp-sheet__instructions">
-      <h3 className="bd-dp-sheet__label">Instructions</h3>
-      {editing || editedPrompt !== null ? (
+      <h3 className="bd-dp-sheet__label">
+        <span>Instructions</span>
+        <span>{edited ? 'edited' : 'default'}</span>
+      </h3>
+      {editing || edited ? (
         <textarea
           className="bd-dp-sheet__prompt"
           aria-label="First message"
           value={prompt}
-          rows={sync ? 12 : 8}
+          rows={sync ? 14 : 8}
           onChange={(e) => setEditedPrompt(e.target.value)}
         />
       ) : (
-        <p className="bd-dp-sheet__summary">
-          {instructionsSummary(scope)}{' '}
-          <button type="button" className="bd-dp-sheet__edit" onClick={() => setEditing(true)}>
-            Edit instructions
-          </button>
-        </p>
+        <div className="bd-dp-sheet__message">
+          <p className="bd-dp-sheet__summary">{instructionsSummary(scope)}</p>
+          <pre className="bd-dp-sheet__preview" data-all={showingAll ? 'true' : undefined}>
+            {prompt}
+          </pre>
+          <div className="bd-dp-sheet__message-acts">
+            <button type="button" className="bd-dp-sheet__edit" onClick={() => setEditing(true)}>
+              Edit
+            </button>
+            <button
+              type="button"
+              className="bd-dp-sheet__edit bd-dp-sheet__edit--quiet"
+              onClick={() => setShowingAll((was) => !was)}
+            >
+              {showingAll ? 'Show less' : 'Show full message'}
+            </button>
+          </div>
+        </div>
       )}
     </section>
   );
@@ -282,8 +422,9 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
             <section aria-label="Items" className="bd-dp-sheet__pick">
               <div className="bd-dp-sheet__pickhead">
                 <h3 className="bd-dp-sheet__label">
-                  {chosen.length} of {candidates.length}{' '}
-                  {candidates.length === 1 ? 'item' : 'items'}
+                  {candidates.length === 1
+                    ? '1 item'
+                    : `${chosen.length} of ${candidates.length} selected`}
                 </h3>
                 {candidates.length > 1 && (
                   <button
@@ -296,33 +437,26 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
                 )}
               </div>
               <div className="bd-dp-sheet__items">
-                {candidates.map((o) => {
-                  const note = candidateNote(o, scope);
-                  const fact = o.evidence[0];
-                  return (
-                    <label
-                      key={o.item.id}
-                      className="bd-dp-sheet__item"
-                      data-off={picked.has(o.item.id) ? undefined : 'true'}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={picked.has(o.item.id)}
-                        onChange={() => toggle(o.item.id)}
+                {groups
+                  ? groups.map((group) => (
+                      <TargetGroupBlock
+                        key={group.to ?? ''}
+                        group={group}
+                        scope={scope}
+                        picked={picked}
+                        onToggle={toggle}
+                        onToggleAll={toggleAll}
                       />
-                      <em>{o.item.id}</em>
-                      <span className="bd-dp-sheet__item-title" title={o.item.title}>
-                        {o.item.title}
-                      </span>
-                      <span className="bd-dp-sheet__item-fact" data-tone={fact?.tone ?? undefined}>
-                        {fact?.label}
-                      </span>
-                      <span className="bd-dp-sheet__item-note" data-tone={note.tone}>
-                        {note.label}
-                      </span>
-                    </label>
-                  );
-                })}
+                    ))
+                  : candidates.map((o) => (
+                      <CandidateRow
+                        key={o.item.id}
+                        overview={o}
+                        scope={scope}
+                        picked={picked.has(o.item.id)}
+                        onToggle={() => toggle(o.item.id)}
+                      />
+                    ))}
               </div>
             </section>
           )}
@@ -341,15 +475,18 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
           <span className="bd-dp-sheet__spacer" />
           <span
             className="bd-dp-sheet__what"
-            title={[slot?.name, model?.label].filter(Boolean).join(' · ')}
+            title={[slot?.name, model?.label, effortLabel].filter(Boolean).join(' · ')}
           >
             {sync && (
               <strong>
                 {chosen.length} {chosen.length === 1 ? 'item' : 'items'}
               </strong>
             )}
-            {[slot?.name, model?.label].filter(Boolean).map((part) => (
-              <span key={part}> · {part}</span>
+            {[slot?.name, model?.label, effortLabel].filter(Boolean).map((part, i) => (
+              <span key={part}>
+                {sync || i > 0 ? ' · ' : ''}
+                {part}
+              </span>
             ))}
           </span>
           <Button

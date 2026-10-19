@@ -33,6 +33,8 @@ export type { ProgressButtonProps } from './ProgressButton';
 export { ProgressButton } from './ProgressButton';
 export type { RingProps } from './Ring';
 export { Ring } from './Ring';
+export type { SearchSelectOption, SearchSelectProps, SearchSelectSection } from './SearchSelect';
+export { SearchSelect } from './SearchSelect';
 export type { SectionHeaderProps } from './SectionHeader';
 export { SectionHeader } from './SectionHeader';
 export type { Seg2Option, Seg2Props } from './Seg2';

@@ -35,6 +35,7 @@ function seed(overrides: Partial<ReturnType<typeof useDispatchStore.getState>> =
     hosts: scene.hosts,
     selectedItemId: null,
     searchQuery: '',
+    briefFilter: null,
     viewMode: 'list',
     busy: false,
     ...overrides,
@@ -127,6 +128,29 @@ describe('DispatchSection', () => {
 
     const item = scene.items.find((i) => i.id === 59403);
     expect(actions.move).toHaveBeenCalledWith(item, 'Ready For QA');
+  });
+
+  it('narrows the list to a count from its chip, and clears it', () => {
+    seed();
+    const { container } = render(<DispatchSection />);
+    const shown = () =>
+      [...container.querySelectorAll('[data-dp-id]')].map((row) => row.getAttribute('data-dp-id'));
+    const chips = screen.getByRole('group', { name: 'Filter by count' });
+
+    fireEvent.click(within(chips).getByRole('button', { name: /out of sync/ }));
+    expect(shown().sort()).toEqual(['59403', '60102']);
+    expect(chips).toHaveTextContent('Showing 2 of 20');
+
+    fireEvent.click(within(chips).getByRole('button', { name: 'Clear' }));
+    expect(shown()).toHaveLength(20);
+  });
+
+  it('narrows the list to the items agents work on', () => {
+    seed({ briefFilter: 'working' });
+    const { container } = render(<DispatchSection />);
+    const working = () =>
+      [...container.querySelectorAll('[data-dp-id]')].map((row) => row.getAttribute('data-dp-id'));
+    expect(working().sort()).toEqual(['60031', '60150']);
   });
 
   it('filters the list while you type', () => {
