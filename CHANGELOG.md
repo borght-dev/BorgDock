@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.4.0 — 2026-10-20
+
+### New Features
+
+- **See which host needs room** — Worktrees now shows free disk space beside each host name, with warnings when a disk is nearly full. You also get a popup wherever you are in BorgDock. Choose Clean up in T3 to start a cleanup thread on that host without picking a project. ![Free disk space beside each host in Worktrees](whats-new/4.4.0/host-disk-space.png)
+
+### Improvements
+
+- **Approve and let the merge follow** — Quick Review now offers Approve & auto merge. Press A or Right to approve and enable auto merge while it is off; when it is already enabled, the same shortcut approves your review. Plain Approve remains available. If auto merge fails, your approval stays saved and BorgDock tells you what still needs attention. ![Quick Review with Approve and Approve & auto merge](whats-new/4.4.0/approve-auto-merge.png)
+
+### Bug Fixes
+
+- Approving the current changes now updates the pull request immediately. Review gives way to Merge when the checks and other merge requirements pass. New commits bring Review back.
+
 ## 4.3.0 — 2026-10-19
 
 ### New Features

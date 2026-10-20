@@ -4,6 +4,37 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.4.0",
+    "date": "2026-10-20",
+    "summary": "See which host needs room and Approve and let the merge follow.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "See which host needs room",
+        "description": "Worktrees now shows free disk space beside each host name, with warnings when a disk is nearly full. You also get a popup wherever you are in BorgDock. Choose Clean up in T3 to start a cleanup thread on that host without picking a project.",
+        "hero": {
+          "src": "/whats-new/4.4.0/host-disk-space.png",
+          "alt": "Free disk space beside each host in Worktrees"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Approve and let the merge follow",
+        "description": "Quick Review now offers Approve & auto merge. Press A or Right to approve and enable auto merge while it is off; when it is already enabled, the same shortcut approves your review. Plain Approve remains available. If auto merge fails, your approval stays saved and BorgDock tells you what still needs attention.",
+        "hero": {
+          "src": "/whats-new/4.4.0/approve-auto-merge.png",
+          "alt": "Quick Review with Approve and Approve & auto merge"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Approving the current changes now updates the pull request immediately. Review gives way to Merge when the checks and other merge requirements pass. New commits bring Review back."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.3.0",
     "date": "2026-10-19",
     "summary": "Click a number to see just those items, A sync sheet that fills your window, and Screenshots right in the pull request description.",
