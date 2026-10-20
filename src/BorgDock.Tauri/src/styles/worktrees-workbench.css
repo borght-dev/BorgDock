@@ -1,44 +1,176 @@
 /*
- * Worktrees section and tool window: head row, repo groups, worktree rows on
- * the `PrRowCore` grammar (42 px, hover wash, accent selection bar) and the
- * changes pane beside the list (plans/ui-overhaul-workbench.md, phases 5 and
- * 6). Tokens only. The section's head row and its search box are
+ * Worktrees section and tool window: head row, hosts with their disk space,
+ * repo groups, worktree rows on the `PrRowCore` grammar (42 px, hover wash,
+ * accent selection bar) and the changes pane beside the list
+ * (plans/ui-overhaul-workbench.md, phases 5 and 6). Tokens only. The section's head row and its search box are
  * `.bd-wb-head*` from index.css; the tool window's toolbar and status bar
  * are its `.bd-wt-*` chrome there. Both hosts share the group headings and
  * the rows (`.bd-wtr`, `.bd-wtr--window` for the tool window's columns).
  */
 
 @layer components {
-  .bd-host-disks {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--color-subtle-border);
-    font-size: 12px;
-    color: var(--color-text-secondary);
+  /* ── Host: name, disk meters, Clean up in T3 ─────────
+     Each host heads its own repository groups. Disks stay grey while
+     healthy; only a low (amber) or critical (red) disk takes colour. */
+  .bd-wth-section + .bd-wth-section {
+    margin-top: 12px;
   }
-  .bd-host-disks__row {
+  .bd-wth {
+    container: bd-wth / inline-size;
+    border-block: 1px solid var(--color-subtle-border);
+    background: var(--color-surface-raised);
+  }
+  .bd-wth-section:first-child > .bd-wth {
+    border-top: 0;
+  }
+  .bd-wth__bar {
+    display: flex;
+    align-items: center;
+    gap: 6px 9px;
+    min-height: 44px;
+    padding: 6px 12px 6px 16px;
+  }
+  .bd-wth__icon {
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+  }
+  .bd-wth__name {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .bd-wth__where {
+    min-width: 0;
+    overflow: hidden;
+    margin-right: auto;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-wth__where[data-remote="true"] {
+    font-family: var(--font-code);
+    font-size: 11px;
+  }
+  .bd-wth__disks {
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px 16px;
+    min-width: 0;
+  }
+  .bd-wth__disk {
+    display: inline-flex;
     align-items: center;
-    gap: 6px 10px;
-  }
-  .bd-host-disks__name {
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-  .bd-host-disks__disk {
+    gap: 6px;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
     white-space: nowrap;
   }
-  .bd-host-disks__error { color: var(--color-error-badge-fg); }
-  .bd-host-disks__unavailable { color: var(--color-text-tertiary); }
-  .bd-host-disks__clean {
-    margin-left: auto;
+  .bd-wth__drive {
+    font-family: var(--font-code);
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-wth__meter {
+    display: block;
+    width: 56px;
+    height: 5px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--color-subtle-border);
+  }
+  .bd-wth__meter > span {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: var(--color-text-tertiary);
+    opacity: 0.55;
+  }
+  .bd-wth__disk[data-severity="1"],
+  .bd-wth__disk[data-severity="1"] .bd-wth__drive {
+    color: var(--color-warning-badge-fg);
+  }
+  .bd-wth__disk[data-severity="2"],
+  .bd-wth__disk[data-severity="2"] .bd-wth__drive {
+    color: var(--color-error-badge-fg);
+  }
+  .bd-wth__disk[data-severity="1"] .bd-wth__meter > span {
+    background: var(--color-status-yellow);
+    opacity: 1;
+  }
+  .bd-wth__disk[data-severity="2"] .bd-wth__meter > span {
+    background: var(--color-status-red);
+    opacity: 1;
+  }
+  .bd-wth__unavailable {
+    display: flex;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
     white-space: nowrap;
   }
-  .bd-host-disks__error { margin: 6px 0 0; overflow-wrap: anywhere; }
+  .bd-wth__reason {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bd-wth__reason::before {
+    content: " · ";
+    white-space: pre;
+  }
+  .bd-wth__clean {
+    flex-shrink: 0;
+  }
+  .bd-wth__clean[data-severity="1"] {
+    color: var(--color-warning-badge-fg);
+  }
+  .bd-wth__clean[data-severity="2"] {
+    border-color: color-mix(in srgb, var(--color-status-red) 40%, transparent);
+    background: var(--color-error-badge-bg);
+    color: var(--color-error-badge-fg);
+  }
+  .bd-wth__alert,
+  .bd-wth__error {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    padding: 6px 16px;
+    border-top: 1px solid color-mix(in srgb, var(--color-status-red) 20%, transparent);
+    background: var(--color-error-badge-bg);
+    font-size: 12px;
+    color: var(--color-error-badge-fg);
+  }
+  .bd-wth__error {
+    overflow-wrap: anywhere;
+  }
+
+  /* Narrower: the disks drop below the host's name, Clean up loses "in T3". */
+  @container bd-wth (max-width: 760px) {
+    .bd-wth__bar {
+      flex-wrap: wrap;
+      padding: 8px 10px 8px 12px;
+    }
+    .bd-wth__disks {
+      order: 1;
+      flex-basis: 100%;
+      justify-content: flex-start;
+      gap: 4px 12px;
+      padding-left: 23px;
+    }
+    .bd-wth__meter {
+      width: 32px;
+      height: 4px;
+    }
+    .bd-wth__long,
+    .bd-wth__reason {
+      display: none;
+    }
+  }
+
   /* ── Section frame ─────────────────────────────────── */
   .bd-wts-section {
     display: flex;
@@ -88,7 +220,7 @@
     font-weight: 500;
   }
 
-  /* ── Repo group heading: label, count, hairline ────── */
+  /* ── Repo group heading: label, count, drive, hairline ── */
   .bd-wts__group-head {
     display: flex;
     align-items: center;
@@ -109,6 +241,16 @@
     font-variant-numeric: tabular-nums;
     color: var(--color-text-tertiary);
   }
+  .bd-wts__group-drive {
+    flex-shrink: 0;
+    font-family: var(--font-code);
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-wts__group-note {
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+  }
   .bd-wts__group-rule {
     flex: 1;
     min-width: 12px;
@@ -120,13 +262,22 @@
     font-family: var(--font-code);
   }
 
-  /* ── The row: star, branch and meta, actions, linked PR ──
-     Height, padding, hover wash and the accent selection bar come from
-     `.bd-wb-row` (index.css); only the columns differ. Two classes so the
-     list-width container queries of `.bd-wb-row` never re-grid it. */
+  /* ── The row: star; branch over folder; state over upstream; linked PR;
+     last used, which the open actions replace. Height, padding, hover wash
+     and the accent selection bar come from `.bd-wb-row` (index.css); only
+     the columns differ. Two classes so the list-width container queries of
+     `.bd-wb-row` never re-grid it. */
   .bd-wb-row.bd-wtr {
-    grid-template-columns: 22px minmax(0, 1fr) auto 150px;
-    column-gap: 12px;
+    --bd-wtr-wash: transparent;
+    position: relative;
+    grid-template-columns: 22px minmax(0, 1fr) 112px minmax(0, 250px) 104px;
+    column-gap: 14px;
+  }
+  .bd-wb-row.bd-wtr:hover {
+    --bd-wtr-wash: var(--color-surface-hover);
+  }
+  .bd-wb-row.bd-wtr[data-selected="true"] {
+    --bd-wtr-wash: var(--color-selected-row-bg);
   }
   .bd-wtr__lead {
     display: flex;
@@ -154,10 +305,17 @@
     color: var(--color-status-yellow);
   }
 
+  /* The body spans the branch and state columns, so a click on either
+     opens the changes. */
   .bd-wtr__body {
     display: grid;
+    grid-column: 2 / 4;
+    grid-template-columns: subgrid;
+    grid-template-areas:
+      "title state"
+      "meta upstream";
     align-content: center;
-    gap: 1px;
+    row-gap: 1px;
     min-width: 0;
     height: 100%;
     padding: 0;
@@ -179,8 +337,28 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .bd-wtr__body > .bd-wtr__title {
+    grid-area: title;
+  }
+  .bd-wtr__body > .bd-wtr__meta {
+    grid-area: meta;
+  }
   .bd-wtr__title--detached {
     color: var(--color-text-tertiary);
+  }
+  .bd-wtr__folder {
+    font-family: var(--font-code);
+    font-size: 11px;
+  }
+  .bd-wtr__state {
+    display: inline-flex;
+    grid-area: state;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
   }
   .bd-wtr__state[data-state="dirty"] {
     color: var(--color-status-yellow);
@@ -188,9 +366,25 @@
   .bd-wtr__state[data-state="conflict"] {
     color: var(--color-status-red);
   }
+  .bd-wtr__state[data-state="dirty"]::before,
+  .bd-wtr__state[data-state="conflict"]::before {
+    content: "";
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .bd-wtr__upstream {
+    grid-area: upstream;
+    font-family: var(--font-code);
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
 
-  /* Open actions: their column is always reserved so the row never shifts;
-     they show on hover, keyboard focus and selection. */
+  /* Open actions: hidden until hover, keyboard focus or selection. In the
+     section they share the last column with "used …" and replace it. */
   .bd-wtr__actions {
     display: flex;
     align-items: center;
@@ -204,6 +398,26 @@
   .bd-wtr[data-selected="true"] .bd-wtr__actions {
     opacity: 1;
     pointer-events: auto;
+  }
+  .bd-wtr__end {
+    display: grid;
+    align-items: center;
+    justify-items: end;
+    min-width: 0;
+  }
+  .bd-wtr__end > * {
+    grid-area: 1 / 1;
+  }
+  .bd-wtr__used {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+    transition: opacity var(--motion-fast) var(--ease-std);
+  }
+  .bd-wtr:hover .bd-wtr__end:has(.bd-wtr__actions) .bd-wtr__used,
+  .bd-wtr:focus-within .bd-wtr__end:has(.bd-wtr__actions) .bd-wtr__used,
+  .bd-wtr[data-selected="true"] .bd-wtr__end:has(.bd-wtr__actions) .bd-wtr__used {
+    opacity: 0;
   }
 
   /* The tool window's row: star, branch and meta, one chip, actions. The
@@ -229,25 +443,31 @@
     min-width: 0;
   }
 
-  /* The linked pull request: its check bar and number, a click opens it. */
+  /* The linked pull request: number and title over its check bar; a click
+     opens it. */
   .bd-wtr__pr-cell {
     display: flex;
-    justify-content: flex-end;
     min-width: 0;
   }
   .bd-wtr__pr {
-    display: inline-flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "num title"
+      "checks checks";
     align-items: center;
-    gap: 10px;
+    gap: 3px 5px;
+    min-width: 0;
     max-width: 100%;
-    height: 26px;
-    padding: 0 6px;
+    margin-left: -7px;
+    padding: 3px 6px;
     border: 1px solid transparent;
     border-radius: 6px;
     background: transparent;
     font: inherit;
     font-size: 12px;
     color: var(--color-text-secondary);
+    text-align: left;
     cursor: pointer;
     transition:
       border-color var(--motion-fast) var(--ease-std),
@@ -261,22 +481,90 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 1px;
   }
-  .bd-wtr__checks {
-    min-width: 0;
-    overflow: hidden;
-  }
   .bd-wtr__pr-num {
+    grid-area: num;
+    font-family: var(--font-code);
+    font-size: 11px;
     font-variant-numeric: tabular-nums;
     color: var(--color-text-tertiary);
   }
+  .bd-wtr__pr-title {
+    grid-area: title;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-wtr__checks {
+    grid-area: checks;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 11.5px;
+  }
 
+  /* Medium: the pull request shows as its check bar and number. Every row
+     is a grid of its own, so no column may size to its content. */
+  @container bd-wts-list (max-width: 760px) {
+    .bd-wb-row.bd-wtr {
+      grid-template-columns: 22px minmax(0, 1fr) 104px 200px 96px;
+      column-gap: 12px;
+    }
+    .bd-wtr__pr {
+      grid-template-columns: auto auto;
+      grid-template-areas: "checks num";
+      gap: 8px;
+    }
+    .bd-wtr__pr-title {
+      display: none;
+    }
+  }
+
+  /* Narrow: the state folds into the folder line, the pull request keeps
+     its bar and number, and the open actions lie over the row's end. */
   @container bd-wts-list (max-width: 520px) {
     .bd-wb-row.bd-wtr {
-      grid-template-columns: 22px minmax(0, 1fr) auto auto;
+      grid-template-columns: 22px minmax(0, 1fr) 96px;
       column-gap: 8px;
     }
+    .bd-wtr__pr-cell {
+      justify-content: flex-end;
+    }
+    .bd-wtr__pr {
+      margin-left: 0;
+    }
+    .bd-wtr__body {
+      grid-column: 2;
+      grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+      grid-template-areas:
+        "title title"
+        "meta state";
+      column-gap: 8px;
+    }
+    .bd-wtr__state {
+      font-size: 11.5px;
+    }
+    .bd-wtr__state[data-state="clean"],
+    .bd-wtr__upstream,
+    .bd-wtr__used,
     .bd-wtr .bd-checkbar__label {
       display: none;
+    }
+    .bd-wtr__end {
+      position: absolute;
+      inset-block: 0;
+      right: 8px;
+      padding-left: 8px;
+      background:
+        linear-gradient(var(--bd-wtr-wash), var(--bd-wtr-wash)),
+        var(--color-background);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .bd-wtr:hover .bd-wtr__end,
+    .bd-wtr:focus-within .bd-wtr__end,
+    .bd-wtr[data-selected="true"] .bd-wtr__end {
+      opacity: 1;
+      pointer-events: auto;
     }
   }
 

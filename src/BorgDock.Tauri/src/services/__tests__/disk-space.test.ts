@@ -4,10 +4,12 @@ import {
   DISK_REMINDER_MS,
   DISK_TTL_MS,
   DiskAlertGate,
+  diskForPath,
   diskSeverity,
   freeSpaceLabel,
   freshDisks,
   type HostDisks,
+  hostSeverity,
 } from '../disk-space';
 
 const GIB = 1024 ** 3;
@@ -86,4 +88,28 @@ it('gives the cleanup agent host and disk context plus preservation constraints'
   expect(prompt).toContain('without a repository project');
   expect(prompt).toContain('dirty or untracked work');
   expect(prompt).toContain('before and after');
+});
+
+describe('diskForPath', () => {
+  const disks = (...drives: string[]) =>
+    drives.map((drive) => ({ drive, totalBytes: 100 * GIB, freeBytes: 50 * GIB }));
+
+  it('matches a Windows drive letter whatever the case and slash style', () => {
+    expect(diskForPath('e:\\dev\\borgdock', disks('C:', 'E:'))?.drive).toBe('E:');
+    expect(diskForPath('C:/Users/koen', disks('C:', 'E:'))?.drive).toBe('C:');
+    expect(diskForPath('D:/x', disks('C:', 'E:'))).toBeUndefined();
+  });
+
+  it('picks the longest mount point that holds the path, on a path boundary', () => {
+    const mounts = disks('/', '/Volumes/Data', '/Volumes/DataX');
+    expect(diskForPath('/Volumes/Data/dev/repo', mounts)?.drive).toBe('/Volumes/Data');
+    expect(diskForPath('/Volumes/DataXY/repo', mounts)?.drive).toBe('/');
+    expect(diskForPath('/Volumes/Data', mounts)?.drive).toBe('/Volumes/Data');
+  });
+});
+
+it('hostSeverity is the worst disk of the host', () => {
+  expect(hostSeverity([])).toBe(0);
+  expect(hostSeverity([...host(30).disks, ...host(4).disks])).toBe(2);
+  expect(hostSeverity([...host(30).disks, ...host(19).disks])).toBe(1);
 });

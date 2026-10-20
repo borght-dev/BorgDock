@@ -44,6 +44,30 @@ export function freshDisks(host: HostDisks, now = Date.now()): boolean {
   return !host.error && host.disks.length > 0 && now - host.checkedAt <= DISK_TTL_MS;
 }
 
+/** The worst severity of a host's disks: 0 healthy, 1 low, 2 critical. */
+export function hostSeverity(disks: readonly DiskSpace[]): 0 | 1 | 2 {
+  return disks.reduce<0 | 1 | 2>(
+    (worst, disk) => Math.max(worst, diskSeverity(disk)) as 0 | 1 | 2,
+    0,
+  );
+}
+
+function holds(drive: string, path: string): boolean {
+  if (/^[a-z]:$/i.test(drive)) return path.slice(0, 2).toLowerCase() === drive.toLowerCase();
+  return path === drive || path.startsWith(drive.endsWith('/') ? drive : `${drive}/`);
+}
+
+/** The measured disk holding `path`: its drive letter, or the longest mount point it sits under. */
+export function diskForPath(path: string, disks: readonly DiskSpace[]): DiskSpace | undefined {
+  const normalized = path.replace(/\\/g, '/');
+  let best: DiskSpace | undefined;
+  for (const disk of disks) {
+    const drive = disk.drive.replace(/\\/g, '/');
+    if (holds(drive, normalized) && drive.length > (best?.drive.length ?? -1)) best = disk;
+  }
+  return best;
+}
+
 export class DiskAlertGate {
   private sent = new Map<string, { hostId: string; severity: number; at: number }>();
 
