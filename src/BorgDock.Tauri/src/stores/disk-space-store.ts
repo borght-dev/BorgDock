@@ -6,7 +6,7 @@ import { t3Catalogue, t3LaunchThread, t3ShowThread } from '@/services/t3/api';
 import { useDispatchStore } from './dispatch-store';
 import { useSettingsStore } from './settings-store';
 
-interface CleanupState {
+export interface CleanupState {
   starting?: boolean;
   threadId?: string;
   error?: string;

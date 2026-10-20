@@ -1,8 +1,10 @@
 // src/components/worktree/WorktreesSection.stories.tsx
 //
-// The main window's Worktrees section: repo groups, rows on
-// the Workbench grammar with favourites, a dirty worktree, a conflicted one
-// and one linked to an open pull request (its check bar and number), and
+// The main window's Worktrees section: hosts with their disk space (this
+// machine, a remote host with a critical disk, one that cannot be reached),
+// repo groups, rows on the Workbench grammar with favourites, a dirty
+// worktree, a conflicted one and one linked to an open pull request (its
+// number, title and check bar), and
 // the changes pane beside the list. Worktree data comes from the Storybook
 // Tauri mock (`worktree_cache_get_all`, `list_worktrees`,
 // `list_worktree_changes`); pull requests from the PR list fixture.
@@ -23,7 +25,8 @@ import { WorktreesSection } from './WorktreesSection';
 
 const HOUR = 60 * 60 * 1000;
 const BORGDOCK = 'E:/dev/borgdock';
-const SITE = 'E:/dev/borgdock-site';
+const SITE = 'D:/dev/borgdock-site';
+const MINI = '/Users/koen/dev/BorgDock';
 
 const SNAPSHOT: WorktreeSnapshot = [
   {
@@ -62,6 +65,34 @@ const SNAPSHOT: WorktreeSnapshot = [
     ],
     fetchedAt: 0,
   },
+  {
+    repo: {
+      owner: 'borght-dev',
+      name: 'BorgDock',
+      basePath: MINI,
+      remote: { id: 'mini-borgdock', label: 'Mac mini', sshTarget: 'mini' },
+    },
+    entries: [
+      { path: MINI, branchName: 'master', isMainWorktree: true },
+      {
+        path: `${MINI}/.worktrees/worktree2`,
+        branchName: 'feat/ios-build',
+        isMainWorktree: false,
+      },
+    ],
+    fetchedAt: 0,
+  },
+  {
+    repo: {
+      owner: 'borght-dev',
+      name: 'fsp-tools',
+      basePath: '/home/vera/fsp-tools',
+      remote: { id: 'vera-tools', label: 'Vera VM', sshTarget: 'vera' },
+    },
+    entries: [],
+    fetchedAt: 0,
+    error: 'ssh: connect to host vera port 22: Connection timed out',
+  },
 ];
 
 function info(path: string, status: WorktreeInfo['status'], uncommittedCount = 0): WorktreeInfo {
@@ -80,9 +111,9 @@ function info(path: string, status: WorktreeInfo['status'], uncommittedCount = 0
 const STATUSES: Record<string, WorktreeInfo[]> = {
   [BORGDOCK]: [
     info(BORGDOCK, 'clean'),
-    info(`${BORGDOCK}/.worktrees/worktree1`, 'dirty', 7),
-    info(`${BORGDOCK}/.worktrees/worktree2`, 'clean'),
-    info(`${BORGDOCK}/.worktrees/worktree3`, 'conflict', 2),
+    { ...info(`${BORGDOCK}/.worktrees/worktree1`, 'dirty', 7), ahead: 2 },
+    { ...info(`${BORGDOCK}/.worktrees/worktree2`, 'clean'), behind: 3 },
+    { ...info(`${BORGDOCK}/.worktrees/worktree3`, 'conflict', 2), ahead: 1, behind: 9 },
     info(`${BORGDOCK}/.worktrees/worktree4`, 'clean'),
     info(`${BORGDOCK}/.worktrees/worktree10`, 'dirty', 1),
   ],
@@ -299,9 +330,11 @@ export default meta;
 type Story = StoryObj<typeof Harness>;
 
 /**
- * Two repositories: favourites starred (worktree1, worktree10), a dirty
- * worktree (7 changed), a conflicted one, a detached HEAD, and two linked to
- * open pull requests (#471 failing, #482 running).
+ * This machine with two repositories on different drives (D: low), the Mac
+ * mini (critical) with a read-only repository, and Vera VM, unreachable.
+ * Favourites starred (worktree1, worktree10), a dirty worktree (7 changed,
+ * 2 ahead), a conflicted one, a detached HEAD, and two linked to open pull
+ * requests (#471 failing, #482 running).
  */
 export const Default: Story = {};
 

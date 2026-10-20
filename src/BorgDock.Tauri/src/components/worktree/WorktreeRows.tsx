@@ -112,10 +112,10 @@ function RowActions({
 /**
  * The tool window's row, on the same `.bd-wb-row` grammar as the section's
  * row: star (or the main worktree's branch icon), the branch as the title
- * with one meta line (folder, then the parent path in the code font), one
- * chip (main or remote) and the open actions on hover, focus and selection.
- * Hover selects; a click or Enter opens a terminal. Remote worktrees are
- * read-only.
+ * with one meta line (folder, then the parent path in the code font), a
+ * main chip and the open actions on hover, focus and selection. Hover
+ * selects; a click or Enter opens a terminal. Remote worktrees are
+ * read-only; their host heading says so.
  *
  * No Open in T3 here: a T3 thread belongs to a pull request, and the tool
  * window has no pull request data (its PR store is never polled), so it
@@ -138,7 +138,6 @@ export function PaletteWorktreeRow({
   const folder = folderName(wt.path);
   const parent = parentFolder(wt.path);
   const isMain = wt.isMainWorktree;
-  const chip = isRemote ? 'remote' : isMain ? 'main' : null;
 
   return (
     <div
@@ -185,7 +184,6 @@ export function PaletteWorktreeRow({
         </span>
         <span className="bd-wb-row__meta bd-wtr__meta">
           {folder}
-          {isMain && isRemote && ', main worktree'}
           {parent && (
             <>
               {', '}
@@ -197,7 +195,7 @@ export function PaletteWorktreeRow({
         </span>
       </span>
       <span className="bd-wtr__chip-cell">
-        {chip && <span className="bd-wb-chip">{chip}</span>}
+        {isMain && <span className="bd-wb-chip">main</span>}
       </span>
       {!isRemote && (
         <RowActions
@@ -222,6 +220,14 @@ function statusText(info: WorktreeInfo | undefined): { text: string; tone: strin
   return { text: 'clean', tone: 'clean' };
 }
 
+function upstreamText(info: WorktreeInfo | undefined): { text: string; title: string } | null {
+  if (!info || (info.ahead === 0 && info.behind === 0)) return null;
+  const text = [info.ahead > 0 && `↑${info.ahead}`, info.behind > 0 && `↓${info.behind}`]
+    .filter(Boolean)
+    .join(' ');
+  return { text, title: `${info.ahead} ahead, ${info.behind} behind upstream` };
+}
+
 export interface SectionWorktreeRowProps extends WorktreeRowProps {
   /** This worktree's changes are showing beside the list. */
   isOpen: boolean;
@@ -241,12 +247,13 @@ export interface SectionWorktreeRowProps extends WorktreeRowProps {
 
 /**
  * The main window's row, on the `PrRowCore` grammar: 42 px, hover wash,
- * accent selection bar. Star, then the branch with a meta line (folder,
- * working-tree state, last used; the repository is the group heading),
- * then the linked pull request as its check bar and number (a click opens
- * it), and the open actions laid over the right end on hover, focus and
- * selection. The row is a group of
- * sibling buttons, never a button holding buttons.
+ * accent selection bar. Columns: star; the branch over its folder (host and
+ * repository are the headings above); the working-tree state over ahead and
+ * behind upstream; the linked pull request, its number and title over its
+ * check bar (a click opens it); when BorgDock last opened it, which the open
+ * actions replace on hover, focus and selection. Narrow lists fold the state
+ * into the folder line and the pull request into its bar and number. The
+ * row is a group of sibling buttons, never a button holding buttons.
  */
 export function SectionWorktreeRow({
   entry,
@@ -273,6 +280,7 @@ export function SectionWorktreeRow({
   const isMain = wt.isMainWorktree;
   const branch = hasBranch ? shortBranch(wt.branchName) : '(detached)';
   const state = isRemote ? null : statusText(status);
+  const upstream = isRemote ? null : upstreamText(status);
   const used = lastUsedAt ? formatAgo(new Date(lastUsedAt).toISOString(), now) : '';
   const pr = linkedPr?.pullRequest;
   const checks = linkedPr ? checkCountsFor(linkedPr) : null;
@@ -318,19 +326,19 @@ export function SectionWorktreeRow({
           {branch}
         </span>
         <span className="bd-wb-row__meta bd-wtr__meta">
-          {folderName(wt.path)}
-          {isMain && ', main worktree'}
-          {isRemote && ', remote'}
-          {state && (
-            <>
-              {', '}
-              <span className="bd-wtr__state" data-state={state.tone}>
-                {state.text}
-              </span>
-            </>
-          )}
-          {used && `, used ${used}`}
+          <span className="bd-wtr__folder">{folderName(wt.path)}</span>
+          {isMain && ' · main worktree'}
         </span>
+        {state && (
+          <span className="bd-wtr__state" data-state={state.tone}>
+            {state.text}
+          </span>
+        )}
+        {upstream && (
+          <span className="bd-wtr__upstream" title={upstream.title}>
+            {upstream.text}
+          </span>
+        )}
       </button>
       <span className="bd-wtr__pr-cell">
         {pr && checks && (
@@ -345,6 +353,8 @@ export function SectionWorktreeRow({
               onOpenPr(linkedPr);
             }}
           >
+            <span className="bd-wtr__pr-num">#{pr.number}</span>
+            <span className="bd-wtr__pr-title">{pr.title}</span>
             <CheckBar
               className="bd-wtr__checks"
               ok={checks.ok}
@@ -352,21 +362,23 @@ export function SectionWorktreeRow({
               run={checks.run}
               total={checks.total}
             />
-            <span className="bd-wtr__pr-num">#{pr.number}</span>
           </button>
         )}
       </span>
-      {!isRemote && (
-        <RowActions
-          className="bd-wtr__actions"
-          size={22}
-          linkedPr={linkedPr}
-          onOpenT3={onOpenT3}
-          onOpenTerminal={onOpenTerminal}
-          onOpenFolder={onOpenFolder}
-          onOpenEditor={onOpenEditor}
-        />
-      )}
+      <span className="bd-wtr__end">
+        {used && <span className="bd-wtr__used">used {used}</span>}
+        {!isRemote && (
+          <RowActions
+            className="bd-wtr__actions"
+            size={22}
+            linkedPr={linkedPr}
+            onOpenT3={onOpenT3}
+            onOpenTerminal={onOpenTerminal}
+            onOpenFolder={onOpenFolder}
+            onOpenEditor={onOpenEditor}
+          />
+        )}
+      </span>
     </div>
   );
 }

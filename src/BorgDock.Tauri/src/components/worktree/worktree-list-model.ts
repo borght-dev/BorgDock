@@ -32,6 +32,19 @@ export function parentFolder(fullPath: string): string {
   return idx >= 0 ? normalized.slice(0, idx) : '';
 }
 
+/** Host id of this machine, the same id `host_disk_space` measures it under. */
+export const LOCAL_HOST_ID = 'local';
+
+/** The machine a repository's worktrees live on: this one, or its SSH target. */
+export function hostIdOf(repo: WorktreeRepoRef): string {
+  return repo.remote ? repo.remote.sshTarget.trim() : LOCAL_HOST_ID;
+}
+
+/** A remote host's name; empty for this machine, which the disk probe names. */
+export function hostLabelOf(repo: WorktreeRepoRef): string {
+  return repo.remote ? repo.remote.label.trim() || repo.remote.sshTarget.trim() : '';
+}
+
 export function repoDisplayName(repo: WorktreeRepoRef): string {
   return repo.remote
     ? `${repo.remote.label || repo.remote.sshTarget} · ${repo.owner}/${repo.name}`
@@ -66,12 +79,23 @@ export function compareFolderNames(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 }
 
+function compareHosts(a: WorktreeRepoRef, b: WorktreeRepoRef): number {
+  return (
+    Number(Boolean(a.remote)) - Number(Boolean(b.remote)) ||
+    hostLabelOf(a).localeCompare(hostLabelOf(b)) ||
+    hostIdOf(a).localeCompare(hostIdOf(b))
+  );
+}
+
 /**
- * List order: repo → main worktree pinned first → folder name (numeric).
- * Favorites are marked with a star but deliberately NOT hoisted — a stable
- * folder order is what makes "worktree7" findable at a glance.
+ * List order: host (this machine first) → repo → main worktree pinned first
+ * → folder name (numeric). Favorites are marked with a star but deliberately
+ * NOT hoisted — a stable folder order is what makes "worktree7" findable at
+ * a glance.
  */
 export function compareFlatEntries(a: WorktreeListEntry, b: WorktreeListEntry): number {
+  const hostCmp = compareHosts(a.repo, b.repo);
+  if (hostCmp !== 0) return hostCmp;
   const repoCmp = repoDisplayName(a.repo).localeCompare(repoDisplayName(b.repo));
   if (repoCmp !== 0) return repoCmp;
   const mainCmp = Number(b.wt.isMainWorktree) - Number(a.wt.isMainWorktree);
@@ -79,29 +103,94 @@ export function compareFlatEntries(a: WorktreeListEntry, b: WorktreeListEntry): 
   return compareFolderNames(folderName(a.wt.path), folderName(b.wt.path));
 }
 
+/** A repository whose last scan failed, keyed in `flattenSnapshot` by its display name. */
+export interface WorktreeRepoError {
+  repo: WorktreeRepoRef;
+  message: string;
+}
+
 /** Flatten a cache snapshot into rows + per-repo error map. */
 export function flattenSnapshot(snapshot: WorktreeSnapshot): {
   entries: WorktreeListEntry[];
-  errors: Map<string, string>;
+  errors: Map<string, WorktreeRepoError>;
 } {
   const entries: WorktreeListEntry[] = [];
-  const errors = new Map<string, string>();
+  const errors = new Map<string, WorktreeRepoError>();
   for (const repo of snapshot) {
     for (const wt of repo.entries) entries.push({ wt, repo: repo.repo });
-    if (repo.error) errors.set(repoDisplayName(repo.repo), repo.error);
+    if (repo.error)
+      errors.set(repoDisplayName(repo.repo), { repo: repo.repo, message: repo.error });
   }
   return { entries, errors };
 }
 
-export function groupByRepo(entries: WorktreeListEntry[]): Map<string, WorktreeListEntry[]> {
-  const groups = new Map<string, WorktreeListEntry[]>();
-  for (const e of entries) {
-    const key = repoDisplayName(e.repo);
-    const arr = groups.get(key);
-    if (arr) arr.push(e);
-    else groups.set(key, [e]);
+export interface WorktreeRepoGroup {
+  /** `repoDisplayName`: unique across hosts. */
+  key: string;
+  repo: WorktreeRepoRef;
+  entries: WorktreeListEntry[];
+  error?: string;
+}
+
+export interface WorktreeHostGroup {
+  /** `hostIdOf`: `local` or the SSH target, as `host_disk_space` names it. */
+  id: string;
+  label: string;
+  remote: boolean;
+  repos: WorktreeRepoGroup[];
+}
+
+/** A measured host the list shows even when none of its worktrees are listed. */
+export interface MeasuredHost {
+  id: string;
+  label: string;
+}
+
+/**
+ * Rows by host, then repository: this machine first, then remote hosts by
+ * name. Repositories whose scan failed keep their group (empty, with the
+ * error); `measured` hosts without a listed repository get a host of their
+ * own, so their disk space still shows.
+ */
+export function groupByHost(
+  entries: WorktreeListEntry[],
+  errors: ReadonlyMap<string, WorktreeRepoError>,
+  measured: readonly MeasuredHost[] = [],
+): WorktreeHostGroup[] {
+  const hosts = new Map<string, WorktreeHostGroup>();
+  const groupFor = (repo: WorktreeRepoRef): WorktreeRepoGroup => {
+    const id = hostIdOf(repo);
+    let host = hosts.get(id);
+    if (!host) {
+      host = { id, label: hostLabelOf(repo), remote: Boolean(repo.remote), repos: [] };
+      hosts.set(id, host);
+    }
+    const key = repoDisplayName(repo);
+    let group = host.repos.find((g) => g.key === key);
+    if (!group) {
+      group = { key, repo, entries: [] };
+      host.repos.push(group);
+    }
+    return group;
+  };
+  for (const entry of entries) groupFor(entry.repo).entries.push(entry);
+  for (const { repo, message } of errors.values()) groupFor(repo).error = message;
+
+  for (const host of measured) {
+    if (!hosts.has(host.id))
+      hosts.set(host.id, { ...host, remote: host.id !== LOCAL_HOST_ID, repos: [] });
   }
-  return groups;
+  return [...hosts.values()].sort(
+    (a, b) =>
+      Number(a.remote) - Number(b.remote) ||
+      a.label.localeCompare(b.label) ||
+      a.id.localeCompare(b.id),
+  );
+}
+
+/** The rows of `groupByHost` in the order they render: what J/K and ↑/↓ walk. */
+export function rowsInOrder(hosts: readonly WorktreeHostGroup[]): WorktreeListEntry[] {
+  return hosts.flatMap((host) => host.repos.flatMap((group) => group.entries));
 }
 
 /**

@@ -386,8 +386,10 @@ describe('WorktreePaletteApp', () => {
     });
     await renderPalette();
 
-    expect(screen.getByText('Mac mini · Gomocha-FSP/fsp-horizon')).toBeTruthy();
-    expect(screen.getAllByText('remote')).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: 'Mac mini' })).toBeTruthy();
+    expect(screen.getByText('koenvdb@100.88.82.41')).toBeTruthy();
+    expect(screen.getByText('Gomocha-FSP/fsp-horizon')).toBeTruthy();
+    expect(screen.getByText('read-only')).toBeTruthy();
     expect(screen.getByText('feature/remote')).toBeTruthy();
     expect(document.querySelectorAll('[data-action="open-terminal"]')).toHaveLength(0);
     expect(document.querySelectorAll('[data-worktree-row] [aria-pressed]')).toHaveLength(2);

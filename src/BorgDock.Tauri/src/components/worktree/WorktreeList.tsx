@@ -14,6 +14,7 @@ import {
 import { flushSync } from 'react-dom';
 import { Button, IconButton, Kbd, Pill } from '@/components/shared/primitives';
 import { publishWorktreeCount } from '@/hooks/useWorktreeMap';
+import { diskForPath, freshDisks } from '@/services/disk-space';
 import { createLogger } from '@/services/logger';
 import { isOverlayOpen, showPr } from '@/services/navigation';
 import { openT3Thread } from '@/services/t3-thread';
@@ -25,16 +26,18 @@ import { WORKTREES_UPDATED_EVENT, type WorktreeSnapshot } from '@/types/worktree
 import { flip } from '@/utils/motion';
 import { minuteNow } from '@/utils/relative-time';
 import { shortcutLabel } from '@/utils/shortcut-label';
-import { HostDiskSpace } from './HostDiskSpace';
 import { useLinkedPrs, useWorktreeStatuses } from './useWorktreeDetails';
 import { useWorktreeFavorites } from './useWorktreeFavorites';
+import { hostDisplayName, useHostDisks, WorktreeHostHeader } from './WorktreeHostHeader';
 import { WorktreePruneDialog } from './WorktreePruneDialog';
 import { PaletteWorktreeRow, SectionWorktreeRow } from './WorktreeRows';
 import {
   flattenSnapshot,
-  groupByRepo,
+  groupByHost,
+  rowsInOrder,
   visibleEntries,
   type WorktreeListEntry,
+  type WorktreeRepoError,
   worktreeKey,
 } from './worktree-list-model';
 
@@ -108,7 +111,8 @@ function isControl(target: EventTarget | null): boolean {
 
 /**
  * WorktreeList — every worktree of the configured repositories, grouped by
- * repository: search, favourites (a star per row and a favourites-only
+ * host (this machine, then each SSH host, headed by its disk space) and then
+ * by repository: search, favourites (a star per row and a favourites-only
  * filter), prune, refresh, and open in terminal, folder or editor (and, in
  * the section, in T3).
  *
@@ -145,7 +149,7 @@ export function WorktreeList({
 }: WorktreeListProps) {
   const isSection = host === 'section';
   const [allEntries, setAllEntries] = useState<WorktreeListEntry[]>([]);
-  const [errors, setErrors] = useState<Map<string, string>>(new Map());
+  const [errors, setErrors] = useState<Map<string, WorktreeRepoError>>(new Map());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -298,7 +302,15 @@ export function WorktreeList({
     () => visibleEntries(allEntries, query, favoritesOnly, favoriteKeys),
     [allEntries, query, favoritesOnly, favoriteKeys],
   );
-  const grouped = useMemo(() => groupByRepo(filtered), [filtered]);
+  // Hosts measured for disk space head their worktrees; with a search on,
+  // only hosts with a matching row (or a failed scan) stay.
+  const disk = useHostDisks();
+  const measured = useMemo(() => disk.hosts.map(({ id, label }) => ({ id, label })), [disk.hosts]);
+  const hosts = useMemo(
+    () => groupByHost(filtered, errors, query || allEntries.length === 0 ? [] : measured),
+    [filtered, errors, query, allEntries.length, measured],
+  );
+  const ordered = useMemo(() => rowsInOrder(hosts), [hosts]);
 
   // A new search starts at the top: the tool window selects the first row,
   // the section selects it only while there is a search.
@@ -385,8 +397,8 @@ export function WorktreeList({
   }, [refreshWorktrees]);
 
   const moveSelection = (delta: 1 | -1) => {
-    if (filtered.length === 0) return;
-    setSelectedIndex((i) => (i < 0 ? 0 : Math.max(0, Math.min(i + delta, filtered.length - 1))));
+    if (ordered.length === 0) return;
+    setSelectedIndex((i) => (i < 0 ? 0 : Math.max(0, Math.min(i + delta, ordered.length - 1))));
   };
 
   // ── Keyboard: search box and tool window (React, on the root) ──
@@ -406,7 +418,7 @@ export function WorktreeList({
       case 'Enter': {
         e.preventDefault();
         const index = isSection && selectedIndex < 0 ? 0 : selectedIndex;
-        const entry = filtered[index];
+        const entry = ordered[index];
         if (!entry || entry.repo.remote) break;
         if (isSection) openChanges(entry, index);
         else openTerminal(entry);
@@ -430,7 +442,7 @@ export function WorktreeList({
   // the worktree list used; everything else passes through untouched.
   const sectionKeyRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
   sectionKeyRef.current = (e: KeyboardEvent): boolean => {
-    const selected = selectedIndex >= 0 ? filtered[selectedIndex] : undefined;
+    const selected = selectedIndex >= 0 ? ordered[selectedIndex] : undefined;
     const followFocus = (index: number) => {
       const list = listRef.current;
       if (!list?.contains(document.activeElement)) return;
@@ -440,9 +452,9 @@ export function WorktreeList({
         ?.focus({ preventScroll: true });
     };
     const move = (delta: 1 | -1) => {
-      if (filtered.length === 0) return;
+      if (ordered.length === 0) return;
       const next =
-        selectedIndex < 0 ? 0 : Math.max(0, Math.min(selectedIndex + delta, filtered.length - 1));
+        selectedIndex < 0 ? 0 : Math.max(0, Math.min(selectedIndex + delta, ordered.length - 1));
       setSelectedIndex(next);
       followFocus(next);
     };
@@ -598,65 +610,87 @@ export function WorktreeList({
   );
 
   let flatIndex = 0;
+  const renderRow = (entry: WorktreeListEntry) => {
+    const idx = flatIndex++;
+    const key = worktreeKey(entry.repo, entry.wt.path);
+    const common = {
+      entry,
+      isSelected: idx === selectedIndex,
+      isFavorite: favoriteKeys.has(key),
+      onSelect: () => setSelectedIndex(idx),
+      onOpenTerminal: () => openTerminal(entry),
+      onOpenFolder: () => openFolder(entry),
+      onOpenEditor: () => openEditor(entry),
+      onToggleFavorite: () => void favorites.toggleFavorite(entry),
+      rowRef: (el: HTMLDivElement | null) => {
+        rowRefs.current.set(idx, el);
+      },
+    };
+    const rowKey = `${entry.repo.remote?.id ?? 'local'}:${entry.wt.path}`;
+    if (!isSection) return <PaletteWorktreeRow key={rowKey} {...common} />;
+    // Linked pull requests (and so T3) exist only in the main window:
+    // the tool window's PR store is never polled.
+    const linkedPr = linkedPrFor(entry.repo, entry.wt.branchName);
+    return (
+      <SectionWorktreeRow
+        key={rowKey}
+        {...common}
+        linkedPr={linkedPr}
+        onOpenT3={() => openT3(entry, linkedPr)}
+        isOpen={openPath === entry.wt.path}
+        status={statuses.get(entry.wt.path)}
+        lastUsedAt={usage[key]}
+        now={now}
+        onOpen={() => openChanges(entry, idx)}
+        onOpenPr={openPr}
+      />
+    );
+  };
+
   const groups = loading
     ? null
-    : [...new Set([...grouped.keys(), ...errors.keys()])].map((repoKey) => {
-        const entries = grouped.get(repoKey) ?? [];
-        const error = errors.get(repoKey);
-        const rows = entries.map((entry) => {
-          const idx = flatIndex++;
-          const key = worktreeKey(entry.repo, entry.wt.path);
-          const common = {
-            entry,
-            isSelected: idx === selectedIndex,
-            isFavorite: favoriteKeys.has(key),
-            onSelect: () => setSelectedIndex(idx),
-            onOpenTerminal: () => openTerminal(entry),
-            onOpenFolder: () => openFolder(entry),
-            onOpenEditor: () => openEditor(entry),
-            onToggleFavorite: () => void favorites.toggleFavorite(entry),
-            rowRef: (el: HTMLDivElement | null) => {
-              rowRefs.current.set(idx, el);
-            },
-          };
-          if (!isSection) {
-            return (
-              <PaletteWorktreeRow
-                key={`${entry.repo.remote?.id ?? 'local'}:${entry.wt.path}`}
-                {...common}
-              />
-            );
-          }
-          // Linked pull requests (and so T3) exist only in the main window:
-          // the tool window's PR store is never polled.
-          const linkedPr = linkedPrFor(entry.repo, entry.wt.branchName);
-          return (
-            <SectionWorktreeRow
-              key={`${entry.repo.remote?.id ?? 'local'}:${entry.wt.path}`}
-              {...common}
-              linkedPr={linkedPr}
-              onOpenT3={() => openT3(entry, linkedPr)}
-              isOpen={openPath === entry.wt.path}
-              status={statuses.get(entry.wt.path)}
-              lastUsedAt={usage[key]}
-              now={now}
-              onOpen={() => openChanges(entry, idx)}
-              onOpenPr={openPr}
-            />
-          );
-        });
-
+    : hosts.map((host) => {
+        const measurement = disk.hosts.find((h) => h.id === host.id);
+        const hostDisks = measurement && freshDisks(measurement, disk.now) ? measurement.disks : [];
         return (
-          <div key={repoKey} className="bd-wts__group" role="group" aria-label={repoKey}>
-            <div className="bd-wts__group-head" data-key={`group:${repoKey}`}>
-              <span className="bd-wts__group-label">{repoKey}</span>
-              <span className="bd-wts__group-count">{entries.length}</span>
-              {error && <Pill tone="error">error</Pill>}
-              <span className="bd-wts__group-rule" aria-hidden="true" />
-            </div>
-            {error && <div className="bd-wt-error-detail bd-wts__error">{error}</div>}
-            <div className="bd-wts__rows">{rows}</div>
-          </div>
+          <section
+            key={host.id}
+            className="bd-wth-section"
+            aria-label={hostDisplayName(host, measurement)}
+          >
+            <WorktreeHostHeader
+              host={host}
+              disks={measurement}
+              probeError={disk.error}
+              cleanup={disk.cleanup[host.id]}
+              now={disk.now}
+            />
+            {host.repos.map(({ key: repoKey, repo, entries, error }) => {
+              // One disk needs no naming; with several, each repository says which.
+              const drive =
+                hostDisks.length > 1 ? diskForPath(repo.basePath, hostDisks)?.drive : undefined;
+              return (
+                <div key={repoKey} className="bd-wts__group" role="group" aria-label={repoKey}>
+                  <div className="bd-wts__group-head" data-key={`group:${repoKey}`}>
+                    <span className="bd-wts__group-label">
+                      {repo.owner}/{repo.name}
+                    </span>
+                    <span className="bd-wts__group-count">{entries.length}</span>
+                    {drive && (
+                      <span className="bd-wts__group-drive" title={`On ${drive}`}>
+                        {drive}
+                      </span>
+                    )}
+                    {repo.remote && <span className="bd-wts__group-note">read-only</span>}
+                    {error && <Pill tone="error">error</Pill>}
+                    <span className="bd-wts__group-rule" aria-hidden="true" />
+                  </div>
+                  {error && <div className="bd-wt-error-detail bd-wts__error">{error}</div>}
+                  <div className="bd-wts__rows">{entries.map(renderRow)}</div>
+                </div>
+              );
+            })}
+          </section>
         );
       });
 
@@ -721,7 +755,6 @@ export function WorktreeList({
         </header>
         <div className="bd-wts__body" data-open={aside ? 'true' : undefined}>
           <div ref={listRef} className="bd-wts__list" aria-label="Worktrees">
-            <HostDiskSpace />
             {emptyStates}
             {groups}
           </div>
@@ -782,7 +815,6 @@ export function WorktreeList({
       </div>
 
       <div ref={listRef} className="bd-wt-content">
-        <HostDiskSpace />
         {emptyStates}
         {groups}
       </div>
