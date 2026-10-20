@@ -237,6 +237,9 @@ export function FlyoutApp() {
       try {
         const { emitTo } = await import('@tauri-apps/api/event');
         switch (action) {
+          case 'clean-host-disk':
+            if (url) await emitTo('main', 'disk-cleanup', { hostId: url });
+            break;
           case 'open-pr':
             if (toast.prOwner && toast.prRepo && toast.prNumber) {
               const { showPr } = await import('@/services/navigation');

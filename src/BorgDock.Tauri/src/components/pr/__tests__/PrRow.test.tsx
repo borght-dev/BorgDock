@@ -40,6 +40,7 @@ import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
+import type { PullRequestWithChecks } from '@/types';
 import { FIXTURE_ME, listPr } from '../__fixtures__/pr-list-data';
 import { PrRow, rowActionFor } from '../PrRow';
 
@@ -171,6 +172,34 @@ describe('PrRow action slot', () => {
 
   const slot = (key: string) =>
     document.querySelector(`.bd-wb-row[data-pr-key="${key}"] .bd-row-action`);
+
+  it('replaces Review with Merge after my completed approval, even with a remaining request', () => {
+    const approved: PullRequestWithChecks = {
+      ...REVIEW,
+      pullRequest: {
+        ...REVIEW.pullRequest,
+        reviewStatus: 'approved',
+        latestReviews: [{ authorLogin: FIXTURE_ME, state: 'approved' }],
+      },
+    };
+    expect(rowActionFor(approved, FIXTURE_ME)).toBe('merge');
+    render(<PrRow prWithChecks={approved} />);
+    expect(screen.queryByRole('button', { name: 'Review #7' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Merge' })).toBeInTheDocument();
+  });
+
+  it('offers Review again when new commits arrived after my approval', () => {
+    const updated: PullRequestWithChecks = {
+      ...REVIEW,
+      pullRequest: {
+        ...REVIEW.pullRequest,
+        headSha: 'new-head',
+        reviewStatus: 'approved',
+        latestReviews: [{ authorLogin: FIXTURE_ME, state: 'approved', commitSha: 'reviewed-head' }],
+      },
+    };
+    expect(rowActionFor(updated, FIXTURE_ME)).toBe('review');
+  });
 
   it.each([
     ['a review requested from me', REVIEW, 'review'],

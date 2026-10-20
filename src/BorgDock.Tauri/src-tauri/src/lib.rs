@@ -275,6 +275,7 @@ pub fn run() {
             git::worktree::list_worktrees,
             git::worktree::list_worktrees_bare,
             git::worktree_cache::worktree_cache_get_all,
+            git::disk_space::host_disk_space,
             git::worktree_cache::worktree_cache_refresh,
             git::worktree::create_worktree,
             git::worktree::remove_worktree,

@@ -87,6 +87,17 @@ export function isWaitingOnMe(
   if (!username) return false;
   if (isMyPr(pr, username)) return false;
   const me = username.toLowerCase();
+  if (
+    pr.pullRequest.latestReviews?.some(
+      (review) =>
+        review.authorLogin.toLowerCase() === me &&
+        review.state === 'approved' &&
+        (!review.commitSha ||
+          !pr.pullRequest.headSha ||
+          review.commitSha === pr.pullRequest.headSha),
+    )
+  )
+    return false;
   if (pr.pullRequest.requestedReviewers.some((r) => r.toLowerCase() === me)) return true;
   return isTeamRequested(pr.pullRequest.requestedTeams, teams);
 }

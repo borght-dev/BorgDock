@@ -104,6 +104,8 @@ export interface ApproveButtonProps {
   issue: string | null;
   busy: boolean;
   onApprove: () => void;
+  label?: string;
+  shortcut?: boolean;
   /** Id of the visible line that says why, for `aria-describedby`. */
   reasonId?: string;
 }
@@ -115,9 +117,20 @@ export interface ApproveButtonProps {
  * hears the reason (`reasonId`, the line under the actions); a click does
  * nothing. Hovering shows the same reason as a tooltip.
  */
-export function ApproveButton({ issue, busy, onApprove, reasonId }: ApproveButtonProps) {
+export function ApproveButton({
+  issue,
+  busy,
+  onApprove,
+  reasonId,
+  label = 'Approve',
+  shortcut = true,
+}: ApproveButtonProps) {
   return (
-    <span className="qr-approve-wrap" data-blocked={issue ? 'true' : undefined}>
+    <span
+      className="qr-approve-wrap"
+      data-blocked={issue ? 'true' : undefined}
+      data-default={shortcut}
+    >
       <Button
         variant="secondary"
         size="lg"
@@ -125,12 +138,12 @@ export function ApproveButton({ issue, busy, onApprove, reasonId }: ApproveButto
         aria-disabled={issue ? true : undefined}
         loading={busy}
         aria-describedby={issue ? reasonId : undefined}
-        aria-keyshortcuts="A ArrowRight"
+        aria-keyshortcuts={shortcut ? 'A ArrowRight' : undefined}
         onClick={() => {
           if (!issue) onApprove();
         }}
       >
-        Approve
+        {label}
       </Button>
       {issue && (
         <span className="qr-tip" aria-hidden="true">

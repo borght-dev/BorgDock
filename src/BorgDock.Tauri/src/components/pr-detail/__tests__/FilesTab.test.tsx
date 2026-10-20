@@ -441,6 +441,7 @@ describe('FilesTab', () => {
         42,
         'APPROVE',
         'looks good',
+        undefined,
       );
     });
   });

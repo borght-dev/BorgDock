@@ -72,7 +72,7 @@ const PRS = [
 ];
 
 /** Answers GitHub for PRs 3 and 4 and records the reviews posted. */
-async function routeGitHub(page: Page, patch?: string) {
+async function routeGitHub(page: Page, patch?: string, autoMerge = false) {
   const reviews: { number: number; body: unknown }[] = [];
   await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/commits\/[^/]+\/check-runs/, (route) => route.fulfill({ json: { check_runs: [], total_count: 0 } }));
   await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/pulls\/(3|4)(\/|\?|$)/, (route) => {
@@ -109,15 +109,16 @@ async function routeGitHub(page: Page, patch?: string) {
         deletions: 4,
         commits: 2,
         labels: [],
+        auto_merge: autoMerge ? { enabled_by: { login: ME } } : null,
       },
     });
   });
   return reviews;
 }
 
-async function bootList(page: Page, patch?: string) {
+async function bootList(page: Page, patch?: string, autoMerge = false) {
   await bootApp(page, '', 'happy-path');
-  const reviews = await routeGitHub(page, patch);
+  const reviews = await routeGitHub(page, patch, autoMerge);
   await seedMainWindow(page, { prs: PRS });
   await page
     .getByRole('navigation', { name: 'Sections' })
@@ -167,7 +168,7 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   await expect(page.locator('.bd-viewstack')).toHaveAttribute('data-depth', '1');
   await expect(dialog.getByRole('article', { name: 'Pull request #3' })).toBeVisible();
   await expect(dialog.getByText('3 of 3 to review, 2 generated')).toBeVisible();
-  const approve = dialog.getByRole('button', { name: 'Approve' });
+  const approve = dialog.getByRole('button', { name: 'Approve', exact: true });
   await expect(approve).toBeDisabled();
   // Blocked, not disabled: Approve stays reachable and says why.
   await expect(approve).toHaveAttribute('aria-disabled', 'true');
@@ -216,6 +217,49 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
     { number: 3, body: { event: 'APPROVE', body: '', commit_id: 'sha3', comments: [] } },
   ]);
 });
+
+for (const alreadyEnabled of [false, true]) {
+  test(`A approves and ${alreadyEnabled ? 'preserves existing' : 'enables'} auto merge`, async ({ page }) => {
+    const reviews = await bootList(page, undefined, alreadyEnabled);
+    const mutations: unknown[] = [];
+    await page.route('https://api.github.com/graphql', (route) => {
+      const { query, variables } = route.request().postDataJSON();
+      if (query.includes('AutoMergeTarget')) {
+        expect(reviews).toHaveLength(1);
+        return route.fulfill({ json: { data: { repository: { pullRequest: {
+          id: 'PR_3', headRefOid: 'sha3', mergeStateStatus: 'BLOCKED',
+          state: 'OPEN', merged: false, autoMergeRequest: null,
+        } } } } });
+      }
+      if (query.includes('ApproveAutoMerge')) {
+        mutations.push(variables.input);
+        return route.fulfill({ json: { data: { enablePullRequestAutoMerge: {
+          pullRequest: { merged: false, autoMergeRequest: { enabledAt: new Date(NOW).toISOString() } },
+        } } } });
+      }
+      return route.fallback();
+    });
+    const row = page.locator('.bd-wb-rowwrap[data-key="test-org/borgdock#3"]');
+    await row.hover();
+    await row.getByRole('button', { name: 'Review #3' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Quick Review' });
+    const primary = dialog.getByRole('button', {
+      name: alreadyEnabled ? 'Approve' : 'Approve & auto merge', exact: true,
+    });
+    await expect(primary).toBeDisabled();
+    await expect(primary).toHaveAttribute('aria-keyshortcuts', 'A ArrowRight');
+    await reviewAllFiles(page);
+    await expect(primary).toBeEnabled();
+    await page.keyboard.press('a');
+    await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
+    expect(reviews).toEqual([
+      { number: 3, body: { event: 'APPROVE', body: '', commit_id: 'sha3', comments: [] } },
+    ]);
+    expect(mutations).toEqual(alreadyEnabled ? [] : [
+      { pullRequestId: 'PR_3', expectedHeadOid: 'sha3', mergeMethod: 'SQUASH' },
+    ]);
+  });
+}
 
 test('full screen preserves the file walk and remembers the size across reloads', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -411,7 +455,7 @@ test('approving the top card of a queue flings it right and the next card rises'
   await expect(dialog.locator('.qr-card--gone-right')).toContainText(`#${first}`);
   await expect(dialog.getByText('PR 2 / 2')).toBeVisible();
   await expect(dialog.getByRole('article', { name: `Pull request #${second}` })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Approve' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Approve', exact: true })).toBeDisabled();
   await expect(dialog.locator('.qr-card--gone-right')).toHaveCount(0);
   expect(reviews.map((r) => r.number)).toEqual([first]);
 

@@ -64,6 +64,7 @@ const PR_FIELDS = /* GraphQL */ `
           state
           isDraft
           mergeable
+          autoMergeRequest { enabledAt }
           createdAt
           updatedAt
           closedAt
@@ -112,6 +113,7 @@ const PR_FIELDS = /* GraphQL */ `
           latestReviews(first: 25) {
             nodes {
               state
+              commit { oid }
               submittedAt
               author {
                 login
@@ -162,6 +164,7 @@ interface GqlRequestedReviewer {
 
 interface GqlReview {
   state: string;
+  commit?: { oid: string } | null;
   submittedAt?: string | null;
   author: { login: string } | null;
 }
@@ -205,6 +208,7 @@ interface GqlPrNode {
   state: string;
   isDraft: boolean;
   mergeable: GqlMergeable;
+  autoMergeRequest?: { enabledAt: string } | null;
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;
@@ -419,6 +423,7 @@ function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithC
       authorLogin: r.author.login,
       state,
       submittedAt: r.submittedAt ?? undefined,
+      ...(r.commit ? { commitSha: r.commit.oid } : {}),
     });
   }
 
@@ -435,6 +440,7 @@ function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithC
     updatedAt: node.updatedAt,
     isDraft: node.isDraft,
     mergeable: mapMergeable(node.mergeable),
+    autoMergeEnabled: !!node.autoMergeRequest,
     htmlUrl: node.url,
     body: node.body ?? '',
     repoOwner: owner,

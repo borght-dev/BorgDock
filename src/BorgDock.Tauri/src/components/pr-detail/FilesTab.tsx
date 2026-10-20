@@ -4,11 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Pill } from '@/components/shared/primitives';
 import { useCachedTabData } from '@/hooks/useCachedTabData';
 import { getCommitFiles, getPRCommits, getPRFiles, getReviewThreads } from '@/services/github';
-import { submitReview } from '@/services/github/mutations';
 import { getClientForRepo } from '@/services/github/singleton';
+import { submitPrReview } from '@/services/pr-review';
 import { groupReviewFiles } from '@/services/quick-review';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
-import { usePrStore } from '@/stores/pr-store';
 import type {
   DiffFile,
   DiffViewMode,
@@ -440,7 +439,7 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
               const client = getClientForRepo(repoOwner, repoName);
               if (!client || !event) return;
               try {
-                await submitReview(
+                await submitPrReview(
                   client,
                   repoOwner,
                   repoName,
@@ -449,7 +448,6 @@ export function FilesTab({ prNumber, repoOwner, repoName, htmlUrl, prUpdatedAt }
                   payload.body || undefined,
                 );
                 setComposerOpen(false);
-                void usePrStore.getState().refreshPr(repoOwner, repoName, prNumber);
               } catch (err) {
                 console.error('submitReview failed', err);
               }

@@ -5,6 +5,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { WorktreeCacheRepo, WorktreeSnapshot } from '@/types/worktree';
 
 import { getControl } from '../../../.storybook/mocks/control';
+import { diskSpaceFixture } from '../worktree/__fixtures__/disk-space';
 import {
   fiveRepos,
   makeRepo,
@@ -103,6 +104,7 @@ async function snapshotFromParams(params: WorktreeStoryParams): Promise<Worktree
 
 function WorktreeHarness({ params }: { params: WorktreeStoryParams }) {
   const ctrl = getControl();
+  ctrl.invokeResponses.host_disk_space = diskSpaceFixture;
 
   // Seed all control-surface state synchronously before render.
   if (params.loadSettingsPending) {

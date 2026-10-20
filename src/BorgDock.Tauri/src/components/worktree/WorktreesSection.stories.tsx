@@ -18,6 +18,7 @@ import type { AppSettings } from '@/types/settings';
 import type { WorktreeInfo, WorktreeSnapshot } from '@/types/worktree';
 import type { UnifiedWorktreeDiff, WorktreeChangeSet } from '@/types/worktree-changes';
 import { getControl } from '../../../.storybook/mocks/control';
+import { diskSpaceFixture } from './__fixtures__/disk-space';
 import { WorktreesSection } from './WorktreesSection';
 
 const HOUR = 60 * 60 * 1000;
@@ -197,6 +198,7 @@ function Harness({ favoritesOnly = false, empty = false }: HarnessProps) {
   useState(() => {
     const now = Date.now();
     const ctrl = getControl();
+    ctrl.invokeResponses.host_disk_space = diskSpaceFixture;
     ctrl.invokeResponses.worktree_cache_get_all = empty ? [] : SNAPSHOT;
     ctrl.invokeResponses.worktree_cache_refresh = empty ? [] : SNAPSHOT;
     ctrl.invokeResponses.list_worktrees = (args: unknown) =>

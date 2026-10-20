@@ -1,3 +1,4 @@
+import type { PrReview } from '@/types';
 import type { GitHubClient } from './client';
 import { getRepoMergeConfig, type MergeMethod, pickMergeMethod } from './repo';
 
@@ -114,12 +115,88 @@ export async function submitReview(
     commit_id: string;
     comments: { path: string; line: number; side: 'LEFT' | 'RIGHT'; body: string }[];
   },
-): Promise<void> {
-  await client.post(`repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
+): Promise<PrReview | undefined> {
+  const posted = await client.post<{
+    user?: { login: string };
+    submitted_at?: string;
+    commit_id?: string;
+  }>(`repos/${owner}/${repo}/pulls/${prNumber}/reviews`, {
     event,
     body,
     ...review,
   });
+  if (!posted?.user?.login) return;
+  return {
+    authorLogin: posted.user.login,
+    state:
+      event === 'APPROVE'
+        ? 'approved'
+        : event === 'REQUEST_CHANGES'
+          ? 'changesRequested'
+          : 'commented',
+    submittedAt: posted.submitted_at,
+    commitSha: posted.commit_id,
+  };
+}
+
+export async function enableAutoMerge(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  number: number,
+  headSha: string,
+): Promise<'enabled' | 'merged'> {
+  const data = await client.graphql<{
+    repository: {
+      pullRequest: {
+        id: string;
+        headRefOid: string;
+        mergeStateStatus: string;
+        state: string;
+        merged: boolean;
+        autoMergeRequest: { enabledAt: string } | null;
+      } | null;
+    } | null;
+  }>(
+    `query AutoMergeTarget($owner: String!, $repo: String!, $number: Int!) {
+    repository(owner: $owner, name: $repo) { pullRequest(number: $number) {
+      id headRefOid mergeStateStatus state merged autoMergeRequest { enabledAt }
+    } }
+  }`,
+    { owner, repo, number },
+  );
+  const pr = data.repository?.pullRequest;
+  if (!pr) throw new Error('Pull request not found.');
+  if (pr.merged) return 'merged';
+  if (pr.state !== 'OPEN') throw new Error('Pull request is no longer open.');
+  if (pr.headRefOid !== headSha)
+    throw new Error(
+      'The PR changed after your review. Review the new changes before enabling auto merge.',
+    );
+  if (pr.autoMergeRequest) return 'enabled';
+  const config = await getRepoMergeConfig(client, owner, repo);
+  const operation =
+    pr.mergeStateStatus === 'CLEAN' ? 'mergePullRequest' : 'enablePullRequestAutoMerge';
+  const inputType =
+    operation === 'mergePullRequest' ? 'MergePullRequestInput' : 'EnablePullRequestAutoMergeInput';
+  const result = await client.graphql<
+    Record<string, { pullRequest: { merged: boolean; autoMergeRequest: object | null } }>
+  >(
+    `mutation ApproveAutoMerge($input: ${inputType}!) {
+    ${operation}(input: $input) { pullRequest { merged autoMergeRequest { enabledAt } } }
+  }`,
+    {
+      input: {
+        pullRequestId: pr.id,
+        expectedHeadOid: headSha,
+        mergeMethod: pickMergeMethod(config).toUpperCase(),
+      },
+    },
+  );
+  const updated = result[operation]?.pullRequest;
+  if (updated?.merged) return 'merged';
+  if (updated?.autoMergeRequest) return 'enabled';
+  throw new Error('GitHub did not confirm auto merge.');
 }
 
 // --- Bypass merge (admin) using gh CLI via Tauri shell ---

@@ -456,6 +456,23 @@
   position: relative;
   margin-left: auto;
 }
+.qr-approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  order: 3;
+}
+.qr-approval-actions .qr-approve-wrap { margin-left: 0; }
+.qr-act .qr-approve-wrap[data-default="false"] .qr-approve {
+  border-color: var(--color-strong-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+.qr-act .qr-approve-wrap[data-default="false"] .qr-approve:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
 .qr-act .qr-approve {
   border-color: transparent;
   background: var(--color-success-badge-fg);

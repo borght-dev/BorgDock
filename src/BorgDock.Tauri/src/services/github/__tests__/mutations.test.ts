@@ -3,6 +3,7 @@ import type { GitHubClient } from '../client';
 import {
   bypassMergePullRequest,
   closePullRequest,
+  enableAutoMerge,
   mergePullRequest,
   postComment,
   submitReview,
@@ -26,6 +27,89 @@ function createMockClient() {
     isRateLimitLow: false,
   } as unknown as GitHubClient;
 }
+
+describe('enableAutoMerge', () => {
+  beforeEach(() => {
+    __resetRepoMergeConfigCacheForTests();
+  });
+
+  function target(client: GitHubClient, overrides: Record<string, unknown> = {}) {
+    vi.mocked(client.graphql).mockResolvedValueOnce({
+      repository: {
+        pullRequest: {
+          id: 'PR_42',
+          headRefOid: 'reviewed-sha',
+          mergeStateStatus: 'BLOCKED',
+          state: 'OPEN',
+          merged: false,
+          autoMergeRequest: null,
+          ...overrides,
+        },
+      },
+    });
+    vi.mocked(client.get).mockResolvedValue({ allow_squash_merge: true });
+  }
+
+  it('enables auto merge with the repository merge method and the reviewed head', async () => {
+    const client = createMockClient();
+    target(client);
+    vi.mocked(client.graphql).mockResolvedValueOnce({
+      enablePullRequestAutoMerge: {
+        pullRequest: { merged: false, autoMergeRequest: { enabledAt: 'now' } },
+      },
+    });
+    expect(await enableAutoMerge(client, 'owner', 'repo', 42, 'reviewed-sha')).toBe('enabled');
+    expect(vi.mocked(client.graphql).mock.calls[1]).toEqual([
+      expect.stringContaining('enablePullRequestAutoMerge'),
+      { input: { pullRequestId: 'PR_42', expectedHeadOid: 'reviewed-sha', mergeMethod: 'SQUASH' } },
+    ]);
+  });
+
+  it('merges immediately when GitHub reports all merge requirements met', async () => {
+    const client = createMockClient();
+    target(client, { mergeStateStatus: 'CLEAN' });
+    vi.mocked(client.get).mockResolvedValue({
+      allow_squash_merge: false,
+      allow_merge_commit: false,
+      allow_rebase_merge: true,
+    });
+    vi.mocked(client.graphql).mockResolvedValueOnce({
+      mergePullRequest: { pullRequest: { merged: true, autoMergeRequest: null } },
+    });
+    expect(await enableAutoMerge(client, 'owner', 'repo', 42, 'reviewed-sha')).toBe('merged');
+    expect(vi.mocked(client.graphql).mock.calls[1]).toEqual([
+      expect.stringContaining('mergePullRequest'),
+      { input: { pullRequestId: 'PR_42', expectedHeadOid: 'reviewed-sha', mergeMethod: 'REBASE' } },
+    ]);
+  });
+
+  it('does not enable it twice when it was already enabled elsewhere', async () => {
+    const client = createMockClient();
+    target(client, { autoMergeRequest: { enabledAt: 'earlier' } });
+    expect(await enableAutoMerge(client, 'owner', 'repo', 42, 'reviewed-sha')).toBe('enabled');
+    expect(client.graphql).toHaveBeenCalledTimes(1);
+    expect(client.get).not.toHaveBeenCalled();
+  });
+
+  it('refuses to enable auto merge on changes made after the review', async () => {
+    const client = createMockClient();
+    target(client, { headRefOid: 'new-sha' });
+    await expect(enableAutoMerge(client, 'owner', 'repo', 42, 'reviewed-sha')).rejects.toThrow(
+      'changed after your review',
+    );
+    expect(client.graphql).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces repository or permission errors without attempting a bypass', async () => {
+    const client = createMockClient();
+    target(client);
+    vi.mocked(client.graphql).mockRejectedValueOnce(new Error('Auto merge is not allowed'));
+    await expect(enableAutoMerge(client, 'owner', 'repo', 42, 'reviewed-sha')).rejects.toThrow(
+      'not allowed',
+    );
+    expect(client.put).not.toHaveBeenCalled();
+  });
+});
 
 describe('mergePullRequest', () => {
   beforeEach(() => {

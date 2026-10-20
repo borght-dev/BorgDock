@@ -2,6 +2,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect } from 'react';
+import { expect, waitFor } from 'storybook/test';
 import { getControl } from '../../../.storybook/mocks/control';
 import {
   draftPrs,
@@ -362,6 +363,30 @@ export const ToastSeveritySuccess = story(
 export const ToastSeverityWarning = story(
   toastFromIdle([makeToast({ id: 'sev-warn', severity: 'warning', title: 'Heads up' })]),
 );
+
+export const DiskSpaceWarning: Story = {
+  ...story({ seed: { mode: 'idle' } }),
+  render: () => <FlyoutApp />,
+  parameters: { layout: 'fullscreen' },
+  play: async () => {
+    const ctrl = getControl();
+    await waitFor(() => expect(ctrl.channels.get('flyout-toast')?.size).toBeGreaterThan(0));
+    window.__borgdock_test_flyout_seed?.({ mode: 'idle' });
+    ctrl.emit(
+      'flyout-toast',
+      makeToast({
+        id: 'disk-space:mini',
+        severity: 'error',
+        title: 'Disk nearly full on Mac mini',
+        body: '/ 3 GiB free',
+        prOwner: undefined,
+        prRepo: undefined,
+        prNumber: undefined,
+        actions: [{ label: 'Clean up in T3', action: 'clean-host-disk', url: 'mini' }],
+      }),
+    );
+  },
+};
 
 export const ToastSeverityError = story(
   toastFromIdle([makeToast({ id: 'sev-err', severity: 'error', title: 'Build failed' })]),

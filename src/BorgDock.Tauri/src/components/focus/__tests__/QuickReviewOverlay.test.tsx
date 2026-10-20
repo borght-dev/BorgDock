@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prRowKey } from '@/components/pr/pr-card-data';
-import { submitReview } from '@/services/github/mutations';
+import { enableAutoMerge, submitReview } from '@/services/github/mutations';
 import { getPRFiles, getPRReviewDetails } from '@/services/github/pulls';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useToastStore } from '@/stores/toast-store';
@@ -10,7 +10,10 @@ import { QuickReviewOverlay } from '../QuickReviewOverlay';
 import { makePr, resetSeq } from './helpers';
 
 vi.mock('@/services/github/pulls', () => ({ getPRFiles: vi.fn(), getPRReviewDetails: vi.fn() }));
-vi.mock('@/services/github/mutations', () => ({ submitReview: vi.fn() }));
+vi.mock('@/services/github/mutations', () => ({
+  submitReview: vi.fn(),
+  enableAutoMerge: vi.fn().mockResolvedValue('enabled'),
+}));
 vi.mock('@/services/github/reviews', () => ({
   getAllComments: vi.fn().mockResolvedValue([]),
   getReviews: vi.fn().mockResolvedValue([]),
@@ -25,7 +28,7 @@ vi.mock('@/stores/pr-store', () => ({
   usePrStore: Object.assign(
     (selector: (state: { needsMyReview: () => PullRequestWithChecks[] }) => unknown) =>
       selector({ needsMyReview: () => reviewCandidates.prs }),
-    { getState: () => ({ refreshPr: vi.fn().mockResolvedValue(null) }) },
+    { getState: () => ({ refreshPr: vi.fn().mockResolvedValue(null), recordApproval: vi.fn() }) },
   ),
 }));
 vi.mock('@/hooks/useSyntaxHighlight', () => ({ useSyntaxHighlight: () => null }));
@@ -145,6 +148,36 @@ function reviewEverything() {
 }
 
 describe('Quick review card', () => {
+  it('A defaults to approval and auto merge when auto merge is off', async () => {
+    await start();
+    reviewEverything();
+    expect(screen.getByRole('button', { name: 'Approve & auto merge' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'A ArrowRight',
+    );
+    press('a');
+    await waitFor(() => expect(enableAutoMerge).toHaveBeenCalledTimes(1));
+    expect(submitReview).toHaveBeenCalledTimes(1);
+  });
+
+  it('A only approves when auto merge is already enabled', async () => {
+    pr.pullRequest.autoMergeEnabled = true;
+    await start();
+    reviewEverything();
+    expect(screen.queryByRole('button', { name: 'Approve & auto merge' })).not.toBeInTheDocument();
+    expect(approveButton()).toHaveAttribute('aria-keyshortcuts', 'A ArrowRight');
+    press('a');
+    await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
+    expect(enableAutoMerge).not.toHaveBeenCalled();
+  });
+
+  it('keeps plain Approve available when auto merge is off', async () => {
+    await start();
+    reviewEverything();
+    fireEvent.click(approveButton());
+    await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
+    expect(enableAutoMerge).not.toHaveBeenCalled();
+  });
   it('renders nothing while idle', () =>
     expect(render(<QuickReviewOverlay />).container.innerHTML).toBe(''));
 

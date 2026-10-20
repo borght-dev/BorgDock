@@ -25,6 +25,7 @@ import { WORKTREES_UPDATED_EVENT, type WorktreeSnapshot } from '@/types/worktree
 import { flip } from '@/utils/motion';
 import { minuteNow } from '@/utils/relative-time';
 import { shortcutLabel } from '@/utils/shortcut-label';
+import { HostDiskSpace } from './HostDiskSpace';
 import { useLinkedPrs, useWorktreeStatuses } from './useWorktreeDetails';
 import { useWorktreeFavorites } from './useWorktreeFavorites';
 import { WorktreePruneDialog } from './WorktreePruneDialog';
@@ -182,6 +183,9 @@ export function WorktreeList({
     async (userRequested = false) => {
       setRefreshing(true);
       try {
+        void import('@/stores/disk-space-store').then(({ useDiskSpaceStore }) =>
+          useDiskSpaceStore.getState().refresh(),
+        );
         const snapshot = await invoke<WorktreeSnapshot>('worktree_cache_refresh');
         applySnapshot(snapshot);
       } catch {
@@ -717,6 +721,7 @@ export function WorktreeList({
         </header>
         <div className="bd-wts__body" data-open={aside ? 'true' : undefined}>
           <div ref={listRef} className="bd-wts__list" aria-label="Worktrees">
+            <HostDiskSpace />
             {emptyStates}
             {groups}
           </div>
@@ -777,6 +782,7 @@ export function WorktreeList({
       </div>
 
       <div ref={listRef} className="bd-wt-content">
+        <HostDiskSpace />
         {emptyStates}
         {groups}
       </div>

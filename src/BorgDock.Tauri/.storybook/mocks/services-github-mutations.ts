@@ -6,6 +6,20 @@
 
 import { getControl } from './control';
 
+export async function enableAutoMerge(
+  _client: unknown,
+  owner: string,
+  repo: string,
+  number: number,
+  headSha: string,
+): Promise<'enabled'> {
+  getControl().invocations.push({
+    command: 'github.enableAutoMerge',
+    args: { owner, repo, number, headSha },
+  });
+  return 'enabled';
+}
+
 export async function submitReview(
   _client: unknown,
   _owner: string,

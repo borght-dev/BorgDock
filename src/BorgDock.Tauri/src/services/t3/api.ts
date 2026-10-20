@@ -148,7 +148,8 @@ export interface T3ModelSelection {
 }
 
 export interface T3LaunchRequest {
-  projectId: string;
+  /** Null uses T3's No project workspace, with a fresh folder for the thread. */
+  projectId: string | null;
   title: string;
   modelSelection: T3ModelSelection;
   /** The first message; the agent starts on it at once. */

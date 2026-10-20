@@ -3,7 +3,15 @@ export const TOAST_AUTOHIDE_MS = 7000;
 
 export interface ToastAction {
   label: string;
-  action: 'open-pr' | 'fix-pr' | 'monitor-pr' | 'open-url' | 'merge-pr' | 'start-review' | 'focus-pane';
+  action:
+    | 'open-pr'
+    | 'fix-pr'
+    | 'monitor-pr'
+    | 'open-url'
+    | 'merge-pr'
+    | 'start-review'
+    | 'focus-pane'
+    | 'clean-host-disk';
   url?: string;
 }
 
