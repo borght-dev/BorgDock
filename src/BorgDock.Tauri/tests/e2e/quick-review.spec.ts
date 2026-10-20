@@ -86,7 +86,7 @@ async function setup(page: Page, state = detail.state, open = true) {
 
 test('reviews every file in the walk, then approves from the card', async ({ page }) => {
   const reviews = await setup(page, 'OPEN');
-  const approve = page.getByRole('button', { name: 'Approve' });
+  const approve = page.getByRole('button', { name: 'Approve', exact: true });
   await expect(approve).toBeDisabled();
   await expect(page.getByText('5 of 5 to review, 0 generated')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('card-unreviewed.png') });
