@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.4.1 — 2026-10-20
+
+### Improvements
+
+- **Each machine heads its own worktrees** — Worktrees now groups your worktrees by the machine they live on, with that machine's disks right above them. Healthy disks stay grey, so the one running low stands out, and Clean up in T3 only appears where a disk needs it. Each repository shows which drive it is on, and the rows line up in columns: the branch, its changes and how far it is ahead or behind, the pull request with its title and checks, and when you last opened it. Hover a row and its actions take the place of that time. ![Worktrees grouped by machine, each with its disk space](whats-new/4.4.1/worktrees-by-host.png)
+
 ## 4.4.0 — 2026-10-20
 
 ### New Features
