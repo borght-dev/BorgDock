@@ -549,9 +549,9 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
     if (!ready || busy) return;
     update((d) => markGeneratedReviewed(d, paths));
   }
-  function approve() {
+  function approve(autoMerge = !detail.autoMergeEnabled) {
     if (busy || approveIssue) return;
-    void submit('APPROVE');
+    void submit('APPROVE', autoMerge);
   }
   function later() {
     if (busy) return;
@@ -580,10 +580,10 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
       : mode === 'compose'
         ? { Escape: toCard }
         : {
-            ArrowRight: approve,
+            ArrowRight: () => approve(),
             ArrowLeft: later,
             Enter: openWalk,
-            a: approve,
+            a: () => approve(),
             w: () => setMode('compose'),
             Escape: onClose,
           };
@@ -719,12 +719,24 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
         >
           Review later
         </Button>
-        <ApproveButton
-          issue={approveIssue}
-          busy={busy}
-          onApprove={approve}
-          reasonId={approveReasonId}
-        />
+        <div className="qr-approval-actions" role="group" aria-label="Approval actions">
+          <ApproveButton
+            issue={approveIssue}
+            busy={busy}
+            onApprove={() => approve(false)}
+            shortcut={!!detail.autoMergeEnabled}
+            reasonId={approveReasonId}
+          />
+          {!detail.autoMergeEnabled && (
+            <ApproveButton
+              issue={approveIssue}
+              busy={busy}
+              onApprove={() => approve(true)}
+              label="Approve & auto merge"
+              reasonId={approveReasonId}
+            />
+          )}
+        </div>
       </>
     );
 
@@ -1013,7 +1025,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
               : 'H/L scroll horizontally · J/K scroll vertically · W wrap lines · V mark reviewed · N/P change file · F finish · Esc back'
             : mode === 'compose'
               ? 'Esc back to the card'
-              : 'A/→ approve when enabled · W write review · ← review later · Enter review files · Esc close'}
+              : `A/→ ${detail.autoMergeEnabled ? 'approve' : 'approve & auto merge'} when enabled · W write review · ← review later · Enter review files · Esc close`}
         </span>
       </footer>
     </fieldset>

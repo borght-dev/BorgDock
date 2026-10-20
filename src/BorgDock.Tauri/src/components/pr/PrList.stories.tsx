@@ -8,6 +8,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, waitFor, within } from 'storybook/test';
 import type { PrGroupBy } from '@/services/pr-grouping';
 import { type PrFilter, type SortBy, usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -15,6 +16,7 @@ import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity } from '@/types';
 import {
   FIXTURE_ME,
+  listPr,
   manyClosedPrs,
   manyOpenPrs,
   recentlyClosedPrs,
@@ -95,6 +97,30 @@ type Story = StoryObj<typeof Harness>;
 
 /** 18 PRs across three repositories, "Needs you" pinned first, dark theme. */
 export const Workbench: Story = {};
+export const AfterMyApproval: Story = {
+  play: async ({ canvasElement }) => {
+    const pending = listPr({
+      number: 42,
+      title: 'Approval immediately updates the merge action',
+      repo: 'acme/app',
+      author: 'mira',
+      requestedReviewers: [FIXTURE_ME],
+      reviewStatus: 'pending',
+    });
+    pending.pullRequest.requestedTeams = ['platform'];
+    usePrStore.setState({
+      pullRequests: [pending],
+      closedPullRequests: [],
+      username: FIXTURE_ME,
+      teams: ['platform'],
+    });
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Review #42' })).toBeTruthy());
+    usePrStore.getState().recordApproval('acme', 'app', 42, FIXTURE_ME);
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Merge' })).toBeTruthy());
+    expect(canvas.queryByRole('button', { name: 'Review #42' })).toBeNull();
+  },
+};
 
 /** The same list in the light theme. */
 export const WorkbenchLight: Story = { globals: { theme: 'light' } };

@@ -20,7 +20,7 @@ fn validate_ssh_target(target: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn shell_quote(value: &str) -> String {
+pub(crate) fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\"'\"'"))
 }
 
@@ -37,22 +37,8 @@ pub fn list_remote_worktrees(
         return Err("Remote repository path must be an absolute Unix path".to_string());
     }
 
-    let mut command = hidden_command("ssh");
-    command.args([
-        "-o",
-        "BatchMode=yes",
-        "-o",
-        "ConnectTimeout=5",
-        "-o",
-        "ConnectionAttempts=1",
-        "-o",
-        "StrictHostKeyChecking=yes",
-    ]);
-    if !repo.identity_file.trim().is_empty() {
-        command.args(["-o", "IdentitiesOnly=yes", "-i"]);
-        command.arg(repo.identity_file.trim());
-    }
-    command.arg("--").arg(target).arg(format!(
+    let mut command = ssh_command(repo)?;
+    command.arg(format!(
         "git -C {} worktree list --porcelain",
         shell_quote(base_path)
     ));
@@ -77,6 +63,30 @@ pub fn list_remote_worktrees(
             is_main_worktree: is_main,
         })
         .collect())
+}
+
+pub(crate) fn ssh_command(
+    repo: &RemoteWorktreeRepoSettings,
+) -> Result<std::process::Command, String> {
+    let target = repo.ssh_target.trim();
+    validate_ssh_target(target)?;
+    let mut command = hidden_command("ssh");
+    command.args([
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=5",
+        "-o",
+        "ConnectionAttempts=1",
+        "-o",
+        "StrictHostKeyChecking=yes",
+    ]);
+    if !repo.identity_file.trim().is_empty() {
+        command.args(["-o", "IdentitiesOnly=yes", "-i"]);
+        command.arg(repo.identity_file.trim());
+    }
+    command.arg("--").arg(target);
+    Ok(command)
 }
 
 #[cfg(test)]

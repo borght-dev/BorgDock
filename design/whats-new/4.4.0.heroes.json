@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "host-disk-space",
+    "storyId": "worktree-worktreessection--default",
+    "viewport": { "width": 1360, "height": 860 },
+    "delay": 2500
+  },
+  {
+    "slug": "approve-auto-merge",
+    "storyId": "focus-quick-review--ready-to-approve",
+    "viewport": { "width": 1100, "height": 900 },
+    "delay": 3000
+  }
+]

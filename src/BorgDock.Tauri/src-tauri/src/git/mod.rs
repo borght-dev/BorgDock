@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod diff;
+pub mod disk_space;
 pub mod process;
 pub mod remote_worktree;
 pub mod worktree;

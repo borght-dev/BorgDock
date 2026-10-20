@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { submitReview } from '@/services/github/mutations';
 import { getPRReviewDetails } from '@/services/github/pulls';
 import { getClientForRepo } from '@/services/github/singleton';
+import { submitPrReview } from '@/services/pr-review';
 import {
   loadReviewSnapshot,
   normalizeReviewDocument,
@@ -12,7 +12,6 @@ import {
   reviewDocumentKey,
   reviewProgress,
 } from '@/services/quick-review';
-import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { toastError } from '@/stores/toast-store';
 import type { PullRequest } from '@/types';
@@ -65,7 +64,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
    * submission only (the card's Approve); it is never persisted. Approving
    * waits until every non-generated file is reviewed.
    */
-  async function submit(event?: ReviewEvent) {
+  async function submit(event?: ReviewEvent, autoMerge = false) {
     if (submitting.current || !client || !snapshot || loading || stale || loadError) return;
     const stored = useQuickReviewStore.getState().documents[key];
     // The override is not saved: a failed approval leaves the draft's own
@@ -98,18 +97,28 @@ export function useQuickReviewDocument(pr: PullRequest) {
         );
       }
       if (current.pr.state.toLowerCase() !== 'open') throw new Error('This PR is no longer open.');
-      await submitReview(client, pr.repoOwner, pr.repoName, pr.number, doc.event, doc.body.trim(), {
-        commit_id: doc.headSha,
-        comments: doc.comments.map((c) => ({
-          path: c.path,
-          line: c.line,
-          side: c.side,
-          body: c.body.trim(),
-        })),
-      });
+      const result = await submitPrReview(
+        client,
+        pr.repoOwner,
+        pr.repoName,
+        pr.number,
+        doc.event,
+        doc.body.trim(),
+        {
+          commit_id: doc.headSha,
+          comments: doc.comments.map((c) => ({
+            path: c.path,
+            line: c.line,
+            side: c.side,
+            body: c.body.trim(),
+          })),
+        },
+        autoMerge && !current.pr.autoMergeEnabled,
+      );
       store.discardDocument(key);
       store.advance(doc.event === 'APPROVE' ? 'approved' : 'commented');
-      void usePrStore.getState().refreshPr(pr.repoOwner, pr.repoName, pr.number);
+      if (result.autoMergeError)
+        toastError('Approved; auto merge not enabled', result.autoMergeError);
     } catch (error) {
       store.setError(`Review not submitted: ${parseError(error).message}`);
       toastError('Review not submitted', error);

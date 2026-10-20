@@ -145,6 +145,34 @@ const meta: Meta<typeof QuickReviewOverlay> = {
 export default meta;
 type Story = StoryObj<typeof QuickReviewOverlay>;
 export const Default: Story = {};
+export const ReadyToApprove: Story = {
+  play: async () => {
+    await waitFor(() =>
+      expect(
+        Object.values(useQuickReviewStore.getState().documents).some(
+          (doc) => doc.headSha === 'review-head',
+        ),
+      ).toBe(true),
+    );
+    for (const key of Object.keys(useQuickReviewStore.getState().documents)) {
+      useQuickReviewStore
+        .getState()
+        .updateDocument(key, (doc) => ({ ...doc, reviewed: files.map((file) => file.filename) }));
+    }
+  },
+};
+export const AutoMergeAlreadyEnabled: Story = {
+  decorators: [
+    (Story) => {
+      getControl().githubResponses.getPRReviewDetails = {
+        pr: { ...pr.pullRequest, autoMergeEnabled: true },
+        baseSha: 'review-base',
+      };
+      return <Story />;
+    },
+  ],
+  play: ReadyToApprove.play,
+};
 export const OverviewWithProof: Story = {
   name: 'Overview with description screenshots',
   decorators: [

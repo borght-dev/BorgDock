@@ -10,6 +10,7 @@ import { SetupWizard } from '@/components/wizard/SetupWizard';
 import { useAdoPolling } from '@/hooks/useAdoPolling';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useCacheInit } from '@/hooks/useCacheInit';
+import { useDiskSpace } from '@/hooks/useDiskSpace';
 import { useDispatchSync } from '@/hooks/useDispatchSync';
 import { useExternalMergeCelebration } from '@/hooks/useExternalMergeCelebration';
 import { useFlyoutSync } from '@/hooks/useFlyoutSync';
@@ -205,6 +206,7 @@ export default function App() {
 
   // Worktree branch mapping (for PR card badges)
   useWorktreeMap(settings);
+  useDiskSpace(hasLoaded, true);
   useT3Sessions(pollingEnabled);
   useDispatchSync(pollingEnabled);
 

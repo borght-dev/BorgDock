@@ -10,8 +10,9 @@ import {
   resolveReviewThread,
   unresolveReviewThread,
 } from '@/services/github';
-import { postComment, submitReview } from '@/services/github/mutations';
+import { postComment } from '@/services/github/mutations';
 import { getClientForRepo } from '@/services/github/singleton';
+import { submitPrReview } from '@/services/pr-review';
 import { usePrStore } from '@/stores/pr-store';
 import type { ClaudeReviewComment, ReviewThread } from '@/types';
 import { CodeThreadCard, type CodeThreadJumpTarget } from './CodeThreadCard';
@@ -151,7 +152,7 @@ export function DiscussionTab({
             comment: 'COMMENT',
             request: 'REQUEST_CHANGES',
           } as const;
-          await submitReview(
+          await submitPrReview(
             client,
             repoOwner,
             repoName,
@@ -161,7 +162,8 @@ export function DiscussionTab({
           );
         }
         setComposing(null);
-        void usePrStore.getState().refreshPr(repoOwner, repoName, prNumber);
+        if (payload.kind === 'comment')
+          void usePrStore.getState().refreshPr(repoOwner, repoName, prNumber);
       } catch (err) {
         console.error('compose submit failed', err);
       }

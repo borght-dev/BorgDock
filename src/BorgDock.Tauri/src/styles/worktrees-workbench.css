@@ -9,6 +9,36 @@
  */
 
 @layer components {
+  .bd-host-disks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .bd-host-disks__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+  }
+  .bd-host-disks__name {
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .bd-host-disks__disk {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .bd-host-disks__error { color: var(--color-error-badge-fg); }
+  .bd-host-disks__unavailable { color: var(--color-text-tertiary); }
+  .bd-host-disks__clean {
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .bd-host-disks__error { margin: 6px 0 0; overflow-wrap: anywhere; }
   /* ── Section frame ─────────────────────────────────── */
   .bd-wts-section {
     display: flex;

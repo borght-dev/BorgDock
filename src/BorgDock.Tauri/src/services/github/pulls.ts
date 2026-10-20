@@ -43,6 +43,7 @@ interface GitHubPullRequestDto {
   merged_at: string | null;
   draft: boolean;
   mergeable: boolean | null;
+  auto_merge?: object | null;
   mergeable_state?: string; // "clean" | "dirty" | "unstable" | "blocked" | "unknown"
   comments: number;
   review_comments: number;
@@ -60,6 +61,7 @@ interface GitHubPullRequestDto {
 
 interface GitHubReviewDto {
   state: string;
+  commit_id?: string;
   user: GitHubUserDto | null;
   submitted_at?: string;
 }
@@ -146,6 +148,8 @@ export async function getOpenPRs(
       pr.changedFiles = detail.changed_files ?? 0;
       pr.commitCount = detail.commits ?? 0;
       pr.reviewStatus = aggregateReviewStatus(reviews);
+      pr.latestReviews = latestReviewsFromRest(reviews);
+      pr.autoMergeEnabled = !!detail.auto_merge;
       pr.requestedReviewers =
         detail.requested_reviewers?.map((u) => u.login) ?? pr.requestedReviewers;
     }),
@@ -359,7 +363,12 @@ export function latestReviewsFromRest(reviews: GitHubReviewDto[]): PrReview[] {
     const state = mapReviewState(r.state);
     if (!login || !state) continue;
     // Reviews arrive oldest-first; a later entry overwrites the earlier one.
-    byLogin.set(login.toLowerCase(), { authorLogin: login, state, submittedAt: r.submitted_at });
+    byLogin.set(login.toLowerCase(), {
+      authorLogin: login,
+      state,
+      submittedAt: r.submitted_at,
+      ...(r.commit_id ? { commitSha: r.commit_id } : {}),
+    });
   }
   return [...byLogin.values()];
 }
@@ -378,6 +387,7 @@ function mapToPullRequest(dto: GitHubPullRequestDto, owner: string, repo: string
     updatedAt: dto.updated_at,
     isDraft: dto.draft,
     mergeable: dto.mergeable ?? undefined,
+    autoMergeEnabled: !!dto.auto_merge,
     htmlUrl: dto.html_url ?? '',
     body: dto.body ?? '',
     repoOwner: owner,

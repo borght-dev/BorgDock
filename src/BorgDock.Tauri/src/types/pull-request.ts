@@ -15,6 +15,7 @@ export interface PullRequest {
   updatedAt: string;
   isDraft: boolean;
   mergeable?: boolean;
+  autoMergeEnabled?: boolean;
   htmlUrl: string;
   body: string;
   repoOwner: string;
@@ -40,6 +41,7 @@ export type PrReviewState = 'approved' | 'changesRequested' | 'commented' | 'dis
 
 export interface PrReview {
   authorLogin: string;
+  commitSha?: string;
   state: PrReviewState;
   submittedAt?: string;
 }

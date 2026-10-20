@@ -485,7 +485,7 @@ pub async fn t3_catalogue(host: HostRef) -> Result<shell::Catalogue, String> {
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LaunchRequest {
-    pub project_id: String,
+    pub project_id: Option<String>,
     pub title: String,
     /// `{ instanceId, model, options }`, as T3 takes it.
     pub model_selection: Value,
@@ -515,12 +515,29 @@ fn launch_command(request: &LaunchRequest, thread_id: &str, runtime_mode: &str) 
 /// T3 itself would. Returns the new thread's id.
 #[tauri::command]
 pub async fn t3_launch_thread(host: HostRef, request: LaunchRequest) -> Result<String, String> {
+    let client = Client::connect(&host).await?;
+    launch_with_client(&client, request).await
+}
+
+async fn launch_with_client(client: &Client, mut request: LaunchRequest) -> Result<String, String> {
     if request.prompt.trim().is_empty() {
         return Err("The first message is empty".to_string());
     }
-    let client = Client::connect(&host).await?;
+    let project_id = match &request.project_id {
+        Some(id) if !id.trim().is_empty() => id.clone(),
+        Some(_) => return Err("The project id is empty".to_string()),
+        None => {
+            let scratch = client.rpc("projects.ensureScratch", json!({})).await?;
+            scratch["projectId"]
+                .as_str()
+                .filter(|id| !id.is_empty())
+                .ok_or_else(|| "T3 did not return its No project workspace".to_string())?
+                .to_string()
+        }
+    };
+    request.project_id = Some(project_id.clone());
     let shell = client.get(SHELL_PATH).await?;
-    let (_, runtime_mode) = shell::thread_defaults(&shell, &request.project_id);
+    let (_, runtime_mode) = shell::thread_defaults(&shell, &project_id);
     let thread_id = Uuid::new_v4().to_string();
     client
         .rpc(
@@ -680,7 +697,7 @@ mod tests {
     #[test]
     fn a_launch_runs_in_the_project_root_and_starts_on_the_first_message() {
         let request = LaunchRequest {
-            project_id: "p1".to_string(),
+            project_id: Some("p1".to_string()),
             title: "AB#60201 Search ignores accents".to_string(),
             model_selection: json!({ "instanceId": "codex", "model": "default", "options": [] }),
             prompt: "Pick up AB#60201".to_string(),
@@ -691,6 +708,91 @@ mod tests {
         assert_eq!(command["interactionMode"], "default");
         assert_eq!(command["initialMessage"]["text"], "Pick up AB#60201");
         assert_eq!(command["initialMessage"]["attachments"], json!([]));
+    }
+
+    #[tokio::test]
+    async fn a_projectless_launch_uses_the_selected_servers_scratch_workspace() {
+        use futures_util::{SinkExt, StreamExt};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+        use tokio_tungstenite::tungstenite::Message;
+
+        async fn http(listener: &TcpListener, path: &str, body: Value) {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = Vec::new();
+            loop {
+                let mut byte = [0];
+                socket.read_exact(&mut byte).await.unwrap();
+                request.push(byte[0]);
+                if request.ends_with(b"\r\n\r\n") {
+                    break;
+                }
+            }
+            let request = String::from_utf8(request).unwrap();
+            assert!(request.lines().next().unwrap().contains(path));
+            assert!(request
+                .to_lowercase()
+                .contains("authorization: bearer test-token"));
+            let body = body.to_string();
+            socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body).as_bytes()).await.unwrap();
+        }
+
+        async fn rpc(listener: &TcpListener, expected_tag: &str, response: Value) -> Value {
+            http(
+                listener,
+                "/api/auth/websocket-ticket",
+                json!({"ticket": "test-ticket"}),
+            )
+            .await;
+            let (socket, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(socket).await.unwrap();
+            let request = socket.next().await.unwrap().unwrap().into_text().unwrap();
+            let request: Value = serde_json::from_str(&request).unwrap();
+            assert_eq!(request["tag"], expected_tag);
+            socket.send(Message::Text(json!({"_tag":"Exit", "requestId":"1", "exit":{"_tag":"Success", "value": response}}).to_string().into())).await.unwrap();
+            let _ = socket.next().await;
+            request["payload"].clone()
+        }
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move {
+            rpc(
+                &listener,
+                "projects.ensureScratch",
+                json!({"projectId":"remote-scratch"}),
+            )
+            .await;
+            http(&listener, SHELL_PATH, json!({"threads":[]})).await;
+            let launch = rpc(&listener, "orchestration.launchThread", json!({})).await;
+            assert_eq!(launch["projectId"], "remote-scratch");
+            assert_eq!(launch["workspaceStrategy"]["type"], "root");
+            assert_eq!(launch["initialMessage"]["text"], "Clean up this host");
+            assert_eq!(launch["modelSelection"]["instanceId"], "remote-provider");
+        });
+        let client = Client::new(
+            hosts::Host {
+                id: "mini".into(),
+                origin,
+                is_local: false,
+            },
+            "test-token".into(),
+        );
+        let request = LaunchRequest {
+            project_id: None,
+            title: "Disk cleanup".into(),
+            model_selection: json!({"instanceId":"remote-provider", "model":"default", "options":[]}),
+            prompt: "Clean up this host".into(),
+        };
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            launch_with_client(&client, request),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(!result.is_empty());
+        server.await.unwrap();
     }
 
     #[test]

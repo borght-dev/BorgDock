@@ -159,6 +159,14 @@ interface PrState extends DerivedCache {
    *  after a successful merge / bypass-merge call. The eventual server
    *  refresh (scheduled by pr-actions) reconciles the optimistic state. */
   optimisticallyMarkMerged: (owner: string, repo: string, number: number) => void;
+  recordApproval: (
+    owner: string,
+    repo: string,
+    number: number,
+    reviewer: string,
+    headSha?: string,
+    autoMergeEnabled?: boolean,
+  ) => void;
 }
 
 /**
@@ -555,6 +563,56 @@ export const usePrStore = create<PrState>()((set, get) => ({
       document.dispatchEvent(new CustomEvent<PrRefreshedDetail>(PR_REFRESHED_EVENT, { detail }));
     }
     return fresh;
+  },
+  recordApproval: (owner, repo, number, reviewer, headSha, autoMergeEnabled) => {
+    if (!reviewer) return;
+    const matches = (p: PullRequestWithChecks) =>
+      p.pullRequest.repoOwner === owner &&
+      p.pullRequest.repoName === repo &&
+      p.pullRequest.number === number;
+    const current = get().pullRequests.find(matches);
+    if (
+      !current ||
+      current.pullRequest.state !== 'open' ||
+      (headSha && current.pullRequest.headSha && current.pullRequest.headSha !== headSha)
+    )
+      return;
+    const p = current.pullRequest;
+    const previous = p.latestReviews ?? [];
+    const mine = previous.find((r) => r.authorLogin.toLowerCase() === reviewer.toLowerCase());
+    const others = previous.filter((r) => r.authorLogin.toLowerCase() !== reviewer.toLowerCase());
+    const blocked =
+      others.some((r) => r.state === 'changesRequested') ||
+      (p.reviewStatus === 'changesRequested' && !mine && previous.length === 0);
+    const updated: PullRequestWithChecks = {
+      ...current,
+      pullRequest: {
+        ...p,
+        reviewStatus: blocked ? 'changesRequested' : 'approved',
+        requestedReviewers: p.requestedReviewers.filter(
+          (r) => r.toLowerCase() !== reviewer.toLowerCase(),
+        ),
+        latestReviews: [
+          ...others,
+          { authorLogin: reviewer, state: 'approved', commitSha: headSha ?? p.headSha },
+        ],
+        ...(autoMergeEnabled === undefined ? {} : { autoMergeEnabled }),
+      },
+    };
+    const pullRequests = get().pullRequests.map((pr) => (matches(pr) ? updated : pr));
+    set({
+      pullRequests,
+      reviewRequestTimestamps: nextReviewRequestTimestamps(
+        get().reviewRequestTimestamps,
+        pullRequests,
+      ),
+    });
+    if (typeof document !== 'undefined')
+      document.dispatchEvent(
+        new CustomEvent<PrRefreshedDetail>(PR_REFRESHED_EVENT, {
+          detail: { owner, repo, number, pr: updated },
+        }),
+      );
   },
   optimisticallyMarkMerged: (owner, repo, number) => {
     const matches = (p: PullRequestWithChecks) =>
