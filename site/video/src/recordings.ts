@@ -72,6 +72,44 @@ export const launchScenes: SceneSpec[] = [
   },
 ];
 
+// The Dispatch page's hero: the same reel as LaunchHero, only Dispatch.
+export const dispatchScenes: SceneSpec[] = [
+  {
+    slug: 'dispatch-layouts',
+    headline: 'Your work items and the agents on them.',
+    detail: 'States, List or Board: each item with its T3 threads and pull requests.',
+  },
+  {
+    slug: 'dispatch-briefing',
+    headline: 'Start the morning with the briefing.',
+    detail: 'Click a number to see just those items.',
+    trimStart: 0.8,
+    trimEnd: 8.0,
+  },
+  {
+    slug: 'dispatch-move',
+    headline: 'Fix a status that fell behind.',
+    detail: 'Pick the state. An agent makes the move, with the notes it needs.',
+  },
+  {
+    slug: 'dispatch-fix',
+    headline: 'Catch up on everything at once.',
+    detail: 'Fix out of sync hands every item that fell behind to one agent.',
+  },
+  {
+    slug: 'dispatch-start',
+    headline: 'Start an agent on the next item.',
+    detail: 'Pick a free slot, a model and how it begins.',
+    trimStart: 1.0,
+    trimEnd: 9.5,
+  },
+  {
+    slug: 'dispatch-board',
+    headline: 'Open any item without losing the board.',
+    detail: 'A card opens its detail in a drawer beside the columns.',
+  },
+];
+
 // Short: three scenes, trimmed to the action and cropped to a portrait-friendly
 // part of each recording. Times and rectangles are for the dark recordings
 // as recorded on 2026-10-21; re-check them when the recordings are redone.

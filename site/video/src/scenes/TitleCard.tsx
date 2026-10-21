@@ -5,7 +5,7 @@ import { fonts, type Palette } from '../theme';
 
 export const HEADLINE = 'Every pull request, one window.';
 export const SUBHEAD =
-  'BorgDock watches your checks, tells you what needs you, hands failures to Claude, and lets you review and merge without opening a browser tab.';
+  'BorgDock watches your checks, tells you what needs you, keeps your work items next to the agents on them, and lets you review and merge without opening a browser tab.';
 
 /** The site's hero in one frame: headline in Inter, subhead in Instrument Sans. */
 export const TitleCard: React.FC<{ palette: Palette }> = ({ palette }) => {

@@ -1,45 +1,52 @@
 ---
-// The home page hero: the job in one line, one recording, one button.
-// Its entrance is the only orchestrated motion on the site (see `.reveal` in
+// A page's hero: the job in one line, one video, one button. The home page
+// uses the defaults; the Dispatch page passes its own copy and video. Its
+// entrance is the only orchestrated motion on the site (see `.reveal` in
 // global.css); reduced motion skips it.
 //
-// The media is the hero cut of the launch video (site/video, `bun run
-// site:video`) when it has been rendered, in the page's theme and played like
-// any recording: in view only, poster under reduced motion. It is unframed,
-// because the video draws its own window frames on the page's background.
-// Without it, the pr-detail-push recording stands in.
+// The media is a hero cut from site/video (`bun run site:video`) when it has
+// been rendered, in the page's theme and played like any recording: in view
+// only, poster under reduced motion. It is unframed, because the video draws
+// its own window frames on the page's background. Without it, the `fallback`
+// recording stands in.
 import DownloadButton from '~/components/DownloadButton.astro';
 import Recording from '~/components/ui/Recording.astro';
-import { whatsNewPosts } from '~/data/changelog';
-import { launchVideo } from '~/data/media';
-import { latestRelease } from '~/data/site';
+import { type Recording as RecordingEntry, launchVideo } from '~/data/media';
 
-const whatChanged = whatsNewPosts[latestRelease.version] ?? `/changelog#v${latestRelease.version}`;
+interface Props {
+  badge?: { href: string; text: string };
+  title?: string;
+  lede?: string;
+  secondary?: { href: string; label: string };
+  video?: RecordingEntry | null;
+  /** The recording shown while `video` has not been rendered. */
+  fallback?: string;
+}
+
+const {
+  badge = { href: '/dispatch', text: 'New: Dispatch, your work items and the agents on them' },
+  title = 'Every pull request, one window.',
+  lede = 'BorgDock watches your checks, tells you what needs you, keeps your work items next to the agents on them, and lets you review and merge without opening a browser tab.',
+  secondary = { href: '/features', label: 'See how it works' },
+  video = launchVideo,
+  fallback = 'pr-detail-push',
+} = Astro.props;
 ---
 
 <section class="hero" aria-labelledby="hero-title">
   <div class="hero__copy">
-    <a class="hero__badge reveal" style="--i: 0" href={whatChanged}>
+    <a class="hero__badge reveal" style="--i: 0" href={badge.href}>
       <span class="hero__badge-dot" aria-hidden="true"></span>
-      New in {latestRelease.version}: see what changed
+      {badge.text}
     </a>
-    <h1 id="hero-title" class="hero__title reveal" style="--i: 1">Every pull request, one window.</h1>
-    <p class="hero__lede reveal" style="--i: 2">
-      BorgDock watches your checks, tells you what needs you, keeps your work items next to the
-      agents on them, and lets you review and merge without opening a browser tab.
-    </p>
+    <h1 id="hero-title" class="hero__title reveal" style="--i: 1">{title}</h1>
+    <p class="hero__lede reveal" style="--i: 2">{lede}</p>
     <div class="hero__actions reveal" style="--i: 3">
       <DownloadButton />
-      <a class="hero__secondary" href="/features">See how it works</a>
+      <a class="hero__secondary" href={secondary.href}>{secondary.label}</a>
     </div>
   </div>
   <div class="hero__media reveal reveal--media" style="--i: 4">
-    {
-      launchVideo ? (
-        <Recording recording={launchVideo} frame={false} eager />
-      ) : (
-        <Recording slug="pr-detail-push" eager />
-      )
-    }
+    {video ? <Recording recording={video} frame={false} eager /> : <Recording slug={fallback} eager />}
   </div>
 </section>
