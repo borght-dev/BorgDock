@@ -288,6 +288,153 @@
     ]
   },
   {
+    "slug": "dispatch-layouts",
+    "storyId": "main-window-mainwindow--rail-dispatch-states",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "Dispatch in its three layouts: States walks your ADO states, List groups the items by what they need with the selected one beside it, Board puts them in four columns",
+    "page": "Dispatch",
+    "fallback": "dispatch-briefing",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 900
+      },
+      {
+        "do": "click",
+        "selector": "role=group[name=\"Dispatch layout\"] >> text=List",
+        "ms": 2200
+      },
+      {
+        "do": "click",
+        "selector": "role=group[name=\"Dispatch layout\"] >> text=Board",
+        "ms": 2200
+      },
+      {
+        "do": "click",
+        "selector": "role=group[name=\"Dispatch layout\"] >> text=States",
+        "ms": 1600
+      }
+    ]
+  },
+  {
+    "slug": "dispatch-move",
+    "storyId": "main-window-mainwindow--rail-dispatch-states",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "Moving an item with the state menu: every state of its workflow, grouped, and picking Ready For QA opens the sheet for the agent that makes the move",
+    "page": "Dispatch",
+    "fallback": "dispatch-move-sheet",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 700
+      },
+      {
+        "do": "hover",
+        "selector": "role=button[name^=\"State: Code Review\"] >> nth=1",
+        "ms": 500
+      },
+      {
+        "do": "click",
+        "selector": "role=button[name^=\"State: Code Review\"] >> nth=1",
+        "ms": 1500
+      },
+      {
+        "do": "hover",
+        "selector": "role=menuitem[name=\"Ready For QA\"]",
+        "ms": 700
+      },
+      {
+        "do": "click",
+        "selector": "role=menuitem[name=\"Ready For QA\"]",
+        "ms": 2400
+      }
+    ]
+  },
+  {
+    "slug": "dispatch-fix",
+    "storyId": "main-window-mainwindow--rail-dispatch-states",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "Fix out of sync: the sheet groups the items by where they move, and the model picker filters as you type",
+    "page": "Dispatch",
+    "fallback": "dispatch-fix-sheet",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 700
+      },
+      {
+        "do": "hover",
+        "selector": "role=button[name^=\"Fix all\"]",
+        "ms": 500
+      },
+      {
+        "do": "click",
+        "selector": "role=button[name^=\"Fix all\"]",
+        "ms": 2000
+      },
+      {
+        "do": "click",
+        "selector": "role=button[name=\"Model\"]",
+        "ms": 1200
+      },
+      {
+        "do": "type",
+        "selector": "input[placeholder=\"Filter models\"]",
+        "text": "son",
+        "ms": 1800
+      }
+    ]
+  },
+  {
+    "slug": "dispatch-board",
+    "storyId": "main-window-mainwindow--rail-dispatch-board",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "Dispatch as a board: clicking a card opens its detail in a drawer beside the columns",
+    "page": "Dispatch",
+    "fallback": "dispatch-board",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 800
+      },
+      {
+        "do": "hover",
+        "selector": "[aria-label*=\"AB#\"] >> nth=1",
+        "ms": 600
+      },
+      {
+        "do": "click",
+        "selector": "[aria-label*=\"AB#\"] >> nth=1",
+        "ms": 2400
+      },
+      {
+        "do": "click",
+        "selector": "aside.bd-dp-drawer >> role=button[name=\"Close\"]",
+        "ms": 1200
+      }
+    ]
+  },
+  {
     "slug": "flyout",
     "storyId": "flyout-flyoutapp--glance-mixed",
     "viewport": {

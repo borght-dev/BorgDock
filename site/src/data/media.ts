@@ -148,18 +148,17 @@ export const recordings: Recording[] = (
 });
 
 /**
- * The hero cut of the launch video (site/video, composition `LaunchHero`),
- * rendered locally per release with `bun run site:video` into public/video/:
- * `launch-hero.mp4` (dark) and `launch-hero-light.mp4`, each with a `.webp`
- * poster. With both themes, Recording shows the one matching the page; with
- * one, it shows that one everywhere. Null until rendered, so the hero falls
- * back to a recording and the site builds either way.
+ * A hero cut from site/video, rendered locally with `bun run site:video` into
+ * public/video/: `<name>.mp4` (dark) and `<name>-light.mp4`, each with a
+ * `.webp` poster. With both themes, Recording shows the one matching the page;
+ * with one, it shows that one everywhere. Null until rendered, so the page
+ * falls back to a recording and the site builds either way.
  */
-export const launchVideo: Recording | null = (() => {
+function heroVideo(name: string, alt: string): Recording | null {
   const variants: Recording['variants'] = {};
   for (const [t, base] of [
-    ['dark', '/video/launch-hero'],
-    ['light', '/video/launch-hero-light'],
+    ['dark', `/video/${name}`],
+    ['light', `/video/${name}-light`],
   ] as const) {
     const v: RecordingVariant = {
       mp4: exists(`${base}.mp4`) ? `${base}.mp4` : undefined,
@@ -169,16 +168,22 @@ export const launchVideo: Recording | null = (() => {
     if (v.mp4 || v.webm) variants[t] = v;
   }
   if (!variants.dark && !variants.light) return null;
-  return {
-    slug: 'launch-hero',
-    alt:
-      'BorgDock in a minute: open a pull request full screen, filter to what needs you, ' +
-      'review file by file, merge from Focus, then walk your work in Dispatch and start an agent',
-    page: 'Tools',
-    draft: false,
-    variants,
-  };
-})();
+  return { slug: name, alt, page: 'Tools', draft: false, variants };
+}
+
+/** The home page hero: composition `LaunchHero`. */
+export const launchVideo = heroVideo(
+  'launch-hero',
+  'BorgDock in a minute: open a pull request full screen, filter to what needs you, ' +
+    'review file by file, merge from Focus, then walk your work in Dispatch and start an agent',
+);
+
+/** The Dispatch page's hero: composition `DispatchHero`. */
+export const dispatchVideo = heroVideo(
+  'dispatch-hero',
+  'Dispatch in a minute: switch between States, List and Board, filter the briefing, move an item ' +
+    'with an agent, fix everything out of sync at once, start an agent from a free slot and open a card',
+);
 
 export function getCapture(slug: string): Capture {
   const c = captures.find((x) => x.slug === slug);

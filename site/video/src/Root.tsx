@@ -2,7 +2,7 @@ import './fonts';
 import { Composition, Folder } from 'remotion';
 import { Launch, LaunchHero, LaunchPoster } from './Launch';
 import { metadataFor, posterMetadataFor, type VideoProps } from './props';
-import { launchScenes, shortScenes } from './recordings';
+import { dispatchScenes, launchScenes, shortScenes } from './recordings';
 import { Short, ShortPoster } from './Short';
 import { FPS, heroPacing, launchPacing, shortPacing } from './timeline';
 
@@ -11,6 +11,7 @@ import { FPS, heroPacing, launchPacing, shortPacing } from './timeline';
 // reorder or drop scenes without touching the code.
 const launchDefaults: VideoProps = { theme: 'dark', recordings: launchScenes, scenes: null };
 const shortDefaults: VideoProps = { theme: 'dark', recordings: shortScenes, scenes: null };
+const dispatchDefaults: VideoProps = { theme: 'dark', recordings: dispatchScenes, scenes: null };
 
 export const RemotionRoot: React.FC = () => (
   <>
@@ -36,6 +37,16 @@ export const RemotionRoot: React.FC = () => (
         calculateMetadata={metadataFor(heroPacing)}
       />
       <Composition
+        id="DispatchHero"
+        component={LaunchHero}
+        width={1920}
+        height={1080}
+        fps={FPS}
+        durationInFrames={1}
+        defaultProps={dispatchDefaults}
+        calculateMetadata={metadataFor(heroPacing)}
+      />
+      <Composition
         id="Short"
         component={Short}
         width={1080}
@@ -55,6 +66,16 @@ export const RemotionRoot: React.FC = () => (
         fps={FPS}
         durationInFrames={1}
         defaultProps={launchDefaults}
+        calculateMetadata={posterMetadataFor(launchPacing, 84)}
+      />
+      <Composition
+        id="DispatchPoster"
+        component={LaunchPoster}
+        width={1920}
+        height={1080}
+        fps={FPS}
+        durationInFrames={1}
+        defaultProps={dispatchDefaults}
         calculateMetadata={posterMetadataFor(launchPacing, 84)}
       />
       <Composition

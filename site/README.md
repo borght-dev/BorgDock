@@ -45,12 +45,12 @@ site/
     │   ├── media.ts        # joins design/site/*.json with the files in public/
     │   └── changelog.ts    # parses /CHANGELOG.md, finds What's new posts
     ├── components/
-    │   ├── sections/       # Hero, Job (one job with its media), DownloadBlock, ChangelogTeaser
+    │   ├── sections/       # Hero (home and Dispatch), Job (one job with its media), DownloadBlock, ChangelogTeaser
     │   ├── ui/             # Capture, Recording, WindowFrame, BorgDockLogo
     │   ├── DownloadButton.astro, PageHeading.astro, SiteNav.astro, SiteFooter.astro
     │   └── ThemeToggle.tsx # the only hydrated island
     ├── layouts/Layout.astro  # <head>, theme and platform detection before paint
-    ├── pages/              # index, features, gallery, download, changelog, whats-new/[version]
+    ├── pages/              # index, features, dispatch, gallery, download, changelog, whats-new/[version]
     └── styles/
         ├── tokens.css      # GENERATED copy of the app's tokens, do not edit
         └── global.css      # everything else, colours only through tokens
@@ -137,7 +137,7 @@ The generated files are committed: CI builds the site and never starts Storybook
 
 ## Launch video
 
-`site/video/` is a Remotion project (workspace member `borgdock-video`) with three compositions
+`site/video/` is a Remotion project (workspace member `borgdock-video`) with four compositions
 built from the recordings above:
 
 - `Launch`, 1920×1080 at 30 fps, about 70 s: a title card with the hero headline, one scene per
@@ -145,6 +145,8 @@ built from the recordings above:
   and anywhere the video stands on its own.
 - `LaunchHero`, 1920×1080: the same scenes without the title and download cards, fading to the
   background at the end so it loops cleanly. The home page hero plays it, in the page's theme.
+- `DispatchHero`, 1920×1080: `LaunchHero` with the Dispatch scenes (`dispatchScenes`), about
+  a minute. The Dispatch page's hero plays it.
 - `Short`, 1080×1920 at 30 fps, about 20 s: three of the scenes, trimmed to the action and
   cropped for portrait, under the headline, then the download card. For social.
 
@@ -165,7 +167,7 @@ bun run site:video    # everything in public/video/
 bun run site:build
 ```
 
-`site:video` runs `bun run render:all` in `site/video`, which is four renders, each followed by
+`site:video` runs `bun run render:all` in `site/video`, which is six renders, each followed by
 its poster (the first scene once it has settled, `.webp`):
 
 | Script (in `site/video`) | Output in `public/video/` |
@@ -174,6 +176,8 @@ its poster (the first scene once it has settled, `.webp`):
 | `bun run render:short` | `short.mp4`, `short.webp` |
 | `bun run render:hero` | `launch-hero.mp4`, `launch-hero.webp` |
 | `bun run render:hero-light` | `launch-hero-light.mp4`, `launch-hero-light.webp` (`--props=props/light.json`) |
+| `bun run render:dispatch` | `dispatch-hero.mp4`, `dispatch-hero.webp` |
+| `bun run render:dispatch-light` | `dispatch-hero-light.mp4`, `dispatch-hero-light.webp` (`--props=props/light.json`) |
 
 Every render is H.264 at CRF 18 with no audio track. The first run downloads Remotion's headless
 Chrome (about 110 MB); the whole set takes a few minutes. Any composition renders light with
@@ -181,10 +185,12 @@ Chrome (about 110 MB); the whole set takes a few minutes. Any composition render
 Remotion Studio.
 
 It is rendered locally per release, not in CI; the rendered files are committed like the
-recordings. The hero shows `launch-hero.mp4` / `launch-hero-light.mp4` through `Recording.astro`,
-unframed (the video draws its own window frames), playing while on screen and showing the poster
-under reduced motion. When neither file exists the hero falls back to the `pr-detail-push`
-recording, so the site builds either way.
+recordings. `Hero.astro` shows `launch-hero.mp4` / `launch-hero-light.mp4` (the Dispatch page:
+`dispatch-hero*.mp4`) through `Recording.astro`, unframed (the video draws its own window frames),
+playing while on screen and showing the poster under reduced motion. When neither file exists the
+hero falls back to a recording (`pr-detail-push`, on the Dispatch page `dispatch-layouts`), so the
+site builds either way. A Chrome that takes longer than 25 s to start fails a render; rerun the
+script when the machine is less busy.
 
 ## Releases and the download page
 

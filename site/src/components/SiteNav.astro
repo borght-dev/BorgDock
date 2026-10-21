@@ -3,7 +3,7 @@ import BorgDockLogo from '~/components/ui/BorgDockLogo.astro';
 import ThemeToggle from '~/components/ThemeToggle';
 import { REPO_URL, latestRelease } from '~/data/site';
 
-type NavKey = 'home' | 'features' | 'gallery' | 'changelog' | 'download';
+type NavKey = 'home' | 'features' | 'dispatch' | 'gallery' | 'changelog' | 'download';
 
 interface Props {
   current?: NavKey;
@@ -12,6 +12,7 @@ const { current = 'home' } = Astro.props;
 
 const links: { key: NavKey; label: string; href: string }[] = [
   { key: 'features', label: 'Features', href: '/features' },
+  { key: 'dispatch', label: 'Dispatch', href: '/dispatch' },
   { key: 'gallery', label: 'Gallery', href: '/gallery' },
   { key: 'changelog', label: 'Changelog', href: '/changelog' },
 ];

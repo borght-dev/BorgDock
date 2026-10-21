@@ -1,0 +1,269 @@
+---
+import Layout from '~/layouts/Layout.astro';
+import SiteNav from '~/components/SiteNav.astro';
+import SiteFooter from '~/components/SiteFooter.astro';
+import Hero from '~/components/sections/Hero.astro';
+import Job from '~/components/sections/Job.astro';
+import DownloadBlock from '~/components/sections/DownloadBlock.astro';
+import Capture from '~/components/ui/Capture.astro';
+import Recording from '~/components/ui/Recording.astro';
+import { dispatchVideo } from '~/data/media';
+
+const toc = [
+  { id: 'briefing', label: 'The briefing' },
+  { id: 'walk', label: 'The walk' },
+  { id: 'out-of-sync', label: 'Out of sync' },
+  { id: 'sync', label: 'Sync with an agent' },
+  { id: 'start', label: 'Start an agent' },
+  { id: 'answer', label: 'Answer your agents' },
+  { id: 'layouts', label: 'States, List, Board' },
+  { id: 'find-you', label: 'Focus and notifications' },
+  { id: 'machines', label: 'Other machines' },
+  { id: 'setup', label: 'What you need' },
+];
+
+const walk = [
+  { state: 'Code Review', ask: 'Did the pull request merge? Then the item goes to Ready For QA.' },
+  { state: 'Development In Progress', ask: 'Is it really in progress, or is there a pull request already?' },
+  { state: 'Testing Failed', ask: 'Pick it up, fix it, open a pull request.' },
+  { state: 'Needs Human', ask: 'Read what is asked and answer.' },
+  { state: 'New', ask: 'Choose what to start next.' },
+];
+
+const also = [
+  {
+    slug: 'dispatch-sync-live',
+    name: 'Watch a sync at work',
+    text: 'A card in the state shows the agent, how many items it moved and a bar per item. The items it covers are marked, so you leave them alone.',
+  },
+  {
+    slug: 'dispatch-runs',
+    name: 'Read what it did',
+    text: 'When the agent finishes, the card lists every item it moved or kept and why, with Open in T3 one click away.',
+  },
+  {
+    slug: 'dispatch-sync-sheet',
+    name: 'Sync all on a schedule',
+    text: 'Pick the weekdays and a time, and Sync all runs by itself while BorgDock is open, in the slot and model you used last.',
+  },
+  {
+    slug: 'dispatch-launch',
+    name: 'Edit the first message',
+    text: 'Every launch shows the message the agent gets. Change it before it goes out, or edit the templates in Settings → Agents.',
+  },
+  {
+    slug: 'dispatch-list',
+    name: 'The List layout',
+    text: 'Your work grouped by what it needs, with the selected item, its agent and its next step beside the list.',
+  },
+  {
+    slug: 'settings-agents',
+    name: 'Settings → Agents',
+    text: 'Choose which T3 projects count as slots, turn on notifications and edit the prompts Dispatch starts agents with.',
+  },
+];
+
+const needs = [
+  {
+    name: 'BorgDock 4 or later',
+    text: 'Dispatch is the second section in the rail. Keys 1 to 5 switch sections.',
+  },
+  {
+    name: 'Azure DevOps',
+    text: 'Sign in with the Azure CLI or a personal access token under Settings → Azure DevOps. Dispatch shows the items assigned to you.',
+  },
+  {
+    name: 'T3 Code',
+    text: 'Pair it in one click: Settings → Agents → Pair with T3 on this machine. Add your other machines in the same place.',
+  },
+];
+---
+
+<Layout
+  title="Dispatch: BorgDock"
+  description="Dispatch puts every Azure DevOps item assigned to you next to the T3 Code threads and pull requests that belong to it, tells you what each one needs, and hands the busywork to agents."
+>
+  <SiteNav current="dispatch" />
+  <main id="main">
+    <Hero
+      badge={{ href: '/whats-new/4-0-0', text: 'New in BorgDock 4' }}
+      title="Your work items and the agents on them."
+      lede="Dispatch puts every Azure DevOps item assigned to you next to the T3 Code threads and pull requests that belong to it, tells you what each one needs, and hands the busywork to agents."
+      secondary={{ href: '#briefing', label: 'Take the tour' }}
+      video={dispatchVideo}
+      fallback="dispatch-layouts"
+    />
+
+    <nav class="toc dispatch-toc" aria-label="On this page">
+      {toc.map((t) => <a href={`#${t.id}`}>{t.label}</a>)}
+    </nav>
+
+    <div class="jobs">
+      <Job id="briefing" eyebrow="The briefing" title="Know where your morning starts" reading>
+        <p>
+          Dispatch opens with five numbers: how many items need you, how many are out of sync, which
+          are worth a look, how many agents are working and how many are fine.
+        </p>
+        <p>
+          Click a number to see only those items, with "1 of 3" next to each state. Click it again,
+          choose Clear or press Esc to see everything.
+        </p>
+        <p>
+          Below the numbers, every state gets a strip with one square per item in the colour of its
+          verdict. Click a square to open that item.
+        </p>
+        <Recording slot="media" slug="dispatch-briefing" />
+      </Job>
+
+      <Job id="walk" eyebrow="The walk" title="Walk the states in the order you check them" reverse reading>
+        <p>Every state gets a section, in the order of a morning walk:</p>
+        <ol class="walk-steps">
+          {
+            walk.map((w) => (
+              <li>
+                <strong>{w.state}</strong>
+                <span>{w.ask}</span>
+              </li>
+            ))
+          }
+        </ol>
+        <p>
+          Each item says what it needs and why: CI red, Ready to merge, Agent asks, Nobody on it. Next
+          to it are its pull request, its agent and the latest note about it, from Azure DevOps or the
+          agent itself.
+        </p>
+        <Capture slot="media" slug="dispatch-walk" />
+      </Job>
+
+      <Job id="out-of-sync" eyebrow="Out of sync" title="Catch a status that fell behind" reading>
+        <p>
+          A pull request merged last week while the item still sits in Code Review? An open pull
+          request on an item that says New? Dispatch marks it Out of sync and shows the move it needs.
+        </p>
+        <p>
+          Pick Move to Ready For QA, or any state from the state menu on the row. An agent makes the
+          move in T3 Code and fills in the notes and fields your repository's ADO skills ask for, so you
+          don't have to.
+        </p>
+        <p>BorgDock never changes a state on a button. Every move goes through an agent you can watch.</p>
+        <Recording slot="media" slug="dispatch-move" />
+      </Job>
+
+      <Job id="sync" eyebrow="Sync with an agent" title="Let one agent catch up on everything" reverse reading>
+        <p>
+          Fix out of sync hands every item that fell behind to one agent. Sync with agent does the same
+          for one state, and Sync all walks every item you own, one at a time.
+        </p>
+        <p>
+          The sheet groups the items by where they will move, with one checkbox per group. Pick the
+          slot, type to find a model and choose how hard it should think.
+        </p>
+        <p>
+          Start it in the background and keep working. The state shows the agent at work and, when it
+          is done, what it did.
+        </p>
+        <Recording slot="media" slug="dispatch-fix" />
+      </Job>
+
+      <Job id="start" eyebrow="Start an agent" title="Put an agent on the next item" reading>
+        <p>
+          Slots are your T3 Code projects. Click a free one, press S, or drop a card on it, and the
+          launch sheet opens for the next item in line.
+        </p>
+        <p>
+          Choose how the agent begins: a plan for you to approve, straight to work, an update for QA or
+          closing as done. The first message is right there to edit before it goes out.
+        </p>
+        <p>
+          Starting can move the item to Development In Progress for you, so Azure DevOps matches what
+          is happening.
+        </p>
+        <Recording slot="media" slug="dispatch-start" />
+      </Job>
+
+      <Job id="answer" eyebrow="Answer your agents" title="Answer without switching windows" reverse reading>
+        <p>
+          When an agent asks a question you see its options next to the item. Pick one, or type your
+          own answer.
+        </p>
+        <p>
+          A plan gets Approve plan, a finished thread gets Settle thread, and Open in T3 is one key
+          away when you want the whole conversation.
+        </p>
+        <p>An agent that works through subagents, or on the item's epic, still shows as that item's agent.</p>
+        <Capture slot="media" slug="dispatch-plan" />
+      </Job>
+
+      <Job id="layouts" eyebrow="States, List, Board" title="Look at your work the way you think" reading>
+        <p>
+          States walks your Azure DevOps states. List groups the items by what they need, with the
+          selected one beside it. Board puts Needs you, Agents working, Up next and Not started side
+          by side.
+        </p>
+        <p>
+          Click a card to open its detail in a drawer, or drag it onto a free slot to start an agent
+          on it. The counts sit above every layout, so filtering works the same in each.
+        </p>
+        <Recording slot="media" slug="dispatch-board" />
+      </Job>
+
+      <Job id="find-you" eyebrow="Focus and notifications" title="Agents that need you find you" reverse reading>
+        <p>
+          A question, a plan or a failed agent sends a notification with the obvious action on it.
+        </p>
+        <p>
+          Focus shows a row of squares per state and the items that wait on you with their latest
+          message, so you know where to start before you open Dispatch. The tray flyout lists them
+          above your pull requests.
+        </p>
+        <Capture slot="media" slug="focus-agents" />
+      </Job>
+
+      <Job id="machines" eyebrow="Other machines" title="Every machine you run agents on" reading>
+        <p>
+          Run T3 Code on a Mac mini or a build machine too? Add it under Settings → Agents, and its
+          slots and agents show beside the ones on this machine.
+        </p>
+        <p>
+          A machine that goes offline keeps its last known work on screen, so you don't start a second
+          agent on an item that already has one.
+        </p>
+        <Capture slot="media" slug="t3-hosts" />
+      </Job>
+    </div>
+
+    <section class="also" aria-labelledby="also-title">
+      <h2 id="also-title" class="also__title">Also in Dispatch</h2>
+      <div class="also__grid">
+        {
+          also.map((a) => (
+            <figure class="also__item">
+              <Capture slug={a.slug} />
+              <figcaption>
+                <strong class="also__name">{a.name}</strong>
+                {a.text}
+              </figcaption>
+            </figure>
+          ))
+        }
+      </div>
+    </section>
+
+    <section id="setup" class="needs" aria-labelledby="needs-title">
+      <h2 id="needs-title" class="also__title">What you need</h2>
+      <ol class="needs__list">
+        {
+          needs.map((n) => (
+            <li class="needs__item">
+              <strong class="needs__name">{n.name}</strong>
+              <span>{n.text}</span>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <DownloadBlock />
+  </main>
+  <SiteFooter />
+</Layout>

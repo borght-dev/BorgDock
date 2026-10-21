@@ -136,6 +136,68 @@
     "page": "Dispatch"
   },
   {
+    "slug": "dispatch-walk",
+    "storyId": "main-window-mainwindow--rail-dispatch-states",
+    "viewport": {
+      "width": 980,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "selector": "section.bd-dp-wlane",
+    "alt": "Code Review in the walk: each item with its verdict (CI red, Out of sync, Ready to merge), its pull request and the latest note about it",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "dispatch-move-sheet",
+    "storyId": "main-window-mainwindow--rail-dispatch-move-sheet",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3500,
+    "alt": "The sheet for one move: the item, the slot and model for the agent, and the first message that tells it to follow your repository's ADO skills",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "dispatch-sync-sheet",
+    "storyId": "main-window-mainwindow--rail-dispatch-sync-sheet",
+    "viewport": {
+      "width": 1360,
+      "height": 960
+    },
+    "theme": "both",
+    "delay": 3500,
+    "alt": "Sync all: every item you own for one agent, with a schedule to repeat it on the days and at the time you pick",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "dispatch-runs",
+    "storyId": "main-window-mainwindow--rail-dispatch-states-runs",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "The walk after a sync: the agent's report on each item it moved or kept, with Open in T3 and Settle",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "t3-hosts",
+    "storyId": "settings-t3hostscard--three-hosts",
+    "viewport": {
+      "width": 760,
+      "height": 560
+    },
+    "theme": "both",
+    "delay": 2000,
+    "alt": "T3 Code on three machines in Settings → Agents: this machine, a Mac mini and a build machine",
+    "page": "Tools",
+    "selector": "#field-t3-hosts"
+  },
+  {
     "slug": "pr-detail-failing",
     "storyId": "pr-detail-prdetailview--failing",
     "viewport": {

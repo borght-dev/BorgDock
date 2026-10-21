@@ -725,6 +725,87 @@ html.dark .recording__variant--light {
   color: var(--color-text-primary);
 }
 
+/* ---- Dispatch page ---- */
+
+.dispatch-toc {
+  max-width: 900px;
+  margin: 56px auto 0;
+  padding: 0 var(--site-gutter);
+  justify-content: center;
+}
+
+.walk-steps {
+  margin: 4px 0 16px;
+  padding: 0;
+  list-style: none;
+  counter-reset: walk;
+  display: grid;
+  gap: 10px;
+}
+
+.walk-steps li {
+  counter-increment: walk;
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  column-gap: 10px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.walk-steps li::before {
+  content: counter(walk);
+  grid-row: span 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-purple-border);
+}
+
+.walk-steps strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.needs {
+  max-width: var(--site-max);
+  margin: 128px auto 0;
+  padding: 0 var(--site-gutter);
+}
+
+.needs__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.needs__item {
+  padding: 20px 22px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-subtle-border);
+  background: var(--color-surface);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.needs__name {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--color-text-primary);
+}
+
 /* ---- Download block and teaser (home) ---- */
 
 .download-block {
@@ -1362,7 +1443,8 @@ html.dark .recording__variant--light {
     order: 0;
   }
 
-  .also__grid {
+  .also__grid,
+  .needs__list {
     grid-template-columns: 1fr;
   }
 
@@ -1392,6 +1474,8 @@ html.dark .recording__variant--light {
   .jobs,
   .page-heading,
   .also,
+  .needs,
+  .dispatch-toc,
   .download-block,
   .teaser,
   .gallery-filters,
