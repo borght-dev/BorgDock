@@ -1,29 +1,29 @@
 {
   "repo": "borght-dev/BorgDock",
-  "tag": "v4.0.2",
-  "version": "4.0.2",
-  "name": "BorgDock v4.0.2",
-  "date": "2026-10-14",
-  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v4.0.2",
-  "fetchedAt": "2026-10-14T10:05:14.772Z",
+  "tag": "v4.4.1",
+  "version": "4.4.1",
+  "name": "BorgDock v4.4.1",
+  "date": "2026-10-20",
+  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v4.4.1",
+  "fetchedAt": "2026-10-21T13:44:53.527Z",
   "assets": [
     {
-      "name": "BorgDock_4.0.2_x64-setup.exe",
-      "size": 24080977,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.0.2/BorgDock_4.0.2_x64-setup.exe",
-      "digest": "sha256:262afa52802e440684a2c98a148c89c37e6c8f20b9108b79ef9b429ed99e152d"
+      "name": "BorgDock_4.4.1_x64-setup.exe",
+      "size": 30559352,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.4.1/BorgDock_4.4.1_x64-setup.exe",
+      "digest": "sha256:072de92bcc842ef6bf02e8ab41b9711a0650ca6eca3635376e3e5d468e10c9fd"
     },
     {
-      "name": "BorgDock_4.0.2_x64-setup.exe.sig",
+      "name": "BorgDock_4.4.1_x64-setup.exe.sig",
       "size": 420,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.0.2/BorgDock_4.0.2_x64-setup.exe.sig",
-      "digest": "sha256:398e31536e2275ecf32933d12609d3eebc46a3826111df3b552dfca0eddb6504"
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.4.1/BorgDock_4.4.1_x64-setup.exe.sig",
+      "digest": "sha256:1f846ed4a96a0e455a5a34a5999228fb6ad0d8fd0364cc4554ff65feb9c72d77"
     },
     {
       "name": "latest.json",
-      "size": 1775,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.0.2/latest.json",
-      "digest": "sha256:d13d33d218b5df17fe57e20a144547b2c2c4755131b5dc2d179b58e49b9ecb66"
+      "size": 2032,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.4.1/latest.json",
+      "digest": "sha256:5d2444f017f984380c5c81fb6acd3ef861c34db47f768171ba239750b0eff98d"
     }
   ]
 }

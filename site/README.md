@@ -27,6 +27,7 @@ Run these from the repo root.
 
 ```
 site/
+├── release-images.mjs      # Vite plugin: virtual:release-images, the screenshots the release posts show
 ├── video/                  # Remotion project (workspace member borgdock-video): the launch video
 ├── scripts/
 │   ├── assets.mjs          # site:assets: boots Storybook, runs both capture scripts, stops it
@@ -36,7 +37,7 @@ site/
 │   ├── screens/            # <slug>-<light|dark>@2x.png   (generated, committed)
 │   ├── recordings/         # <slug>-<theme>.mp4 and .webp poster  (generated, committed)
 │   ├── video/              # launch, short, launch-hero, launch-hero-light: .mp4 + .webp poster  (site:video, committed)
-│   └── whats-new/<version>/  # images for the long-form release posts
+│   └── whats-new/<version>/  # images for hand-written release posts (generated posts read docs/whats-new)
 └── src/
     ├── data/
     │   ├── site.ts         # app version, release, installers per platform, the freshness check
@@ -49,7 +50,7 @@ site/
     │   ├── DownloadButton.astro, PageHeading.astro, SiteNav.astro, SiteFooter.astro
     │   └── ThemeToggle.tsx # the only hydrated island
     ├── layouts/Layout.astro  # <head>, theme and platform detection before paint
-    ├── pages/              # index, features, gallery, download, changelog, whats-new/<version>
+    ├── pages/              # index, features, gallery, download, changelog, whats-new/[version]
     └── styles/
         ├── tokens.css      # GENERATED copy of the app's tokens, do not edit
         └── global.css      # everything else, colours only through tokens
@@ -96,8 +97,8 @@ live in the app (`src/BorgDock.Tauri/scripts/`) because they use its Playwright 
 element (the Pull requests captures use `main.bd-mainwindow__body` to leave the rail out, so the
 text stays readable at the size the site shows it). `storyId` may be
 `{ "light": "…", "dark": "…" }` for stories that lock their theme. `args` passes string story args
-through the URL. `page` is the gallery filter (`Pull requests`, `Focus`, `Detail`, `Quick review`,
-`Tools`). `draft: true` keeps a capture out of the gallery, for a screen that is still being built.
+through the URL. `page` is the gallery filter (`Pull requests`, `Focus`, `Dispatch`, `Detail`,
+`Quick review`, `Tools`). `draft: true` keeps a capture out of the gallery, for a screen that is still being built.
 Output: `public/screens/<slug>-<theme>@2x.png`. Run it on its own with
 `node scripts/screenshot-manifest.mjs [manifest] [outDir] [--only slug,slug]` from
 `src/BorgDock.Tauri`.
@@ -139,7 +140,7 @@ The generated files are committed: CI builds the site and never starts Storybook
 `site/video/` is a Remotion project (workspace member `borgdock-video`) with three compositions
 built from the recordings above:
 
-- `Launch`, 1920×1080 at 30 fps, 45 to 60 s: a title card with the hero headline, one scene per
+- `Launch`, 1920×1080 at 30 fps, about 70 s: a title card with the hero headline, one scene per
   recording (each in a window frame with a two-line caption), then a download card. For YouTube
   and anywhere the video stands on its own.
 - `LaunchHero`, 1920×1080: the same scenes without the title and download cards, fading to the
@@ -204,12 +205,18 @@ job of `test.yml`.
 ## Changelog and What's new posts
 
 `/changelog` is built from `/CHANGELOG.md`, the file that also feeds the in-app What's new window.
-A release links to a long-form post when `src/pages/whats-new/<version>.astro` exists (dots or
-dashes: `2.0.0.astro` and `2-0-0.astro` both count). The home page teaser shows the last three
-releases from the same file.
+Every release with at least one highlight (a `- **Title** — text` bullet) gets a post at
+`/whats-new/<x-y-z>`, built by `src/pages/whats-new/[version].astro`: one section per highlight with
+its screenshot, then the plain bullets. The screenshots are the hero images in `docs/whats-new/`
+that the changelog already points at: `release-images.mjs` imports exactly those (Astro would ship
+the original of any image imported but not shown), and Astro writes WebP copies at the sizes the
+post shows, so the site keeps no copy of its own. A hand-written page for a version
+(`src/pages/whats-new/<version>.astro`, dots or dashes: `2.0.0.astro` and `2-0-0.astro` both count)
+replaces the generated post. The hero badge, the changelog and the home page teaser (the last three
+releases) link to the posts.
 
 ## Voice
 
 Write like the changelog: benefit first, "you", plain verbs, sentence case. No exclamation marks,
-no "seamless", no engineering prose. Feature names match the labels in the app: Focus, Pull
-requests, Work items, Worktrees, Quick review, Fix with Claude, Open in T3.
+no "seamless", no engineering prose. Feature names match the labels in the app: Focus, Dispatch,
+Pull requests, Work items, Worktrees, Quick review, Fix with Claude, Open in T3.

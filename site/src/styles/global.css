@@ -821,6 +821,16 @@ html.dark .recording__variant--light {
   color: var(--color-text-muted);
 }
 
+.teaser__link {
+  text-decoration: none;
+}
+
+.teaser__link:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* The label text stays in the primary colour (the tinted fills are too light
    for coloured text to reach 4.5:1); the fill and border carry the kind. */
 .kind {
@@ -1243,6 +1253,99 @@ html.dark .recording__variant--light {
 .post .page-heading {
   padding-left: 0;
   padding-right: 0;
+}
+
+/* Posts built from CHANGELOG.md (whats-new/[version].astro). */
+.release-post .page-heading {
+  max-width: 880px;
+  padding-left: var(--site-gutter);
+  padding-right: var(--site-gutter);
+}
+
+.release-post__toc {
+  margin-top: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.release-post__toc a {
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-subtle-border);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.release-post__toc a:hover {
+  color: var(--color-accent);
+  border-color: var(--color-purple-border);
+}
+
+.release-post__item,
+.release-post__also,
+.release-post__nav {
+  max-width: 880px;
+  margin: 72px auto 0;
+  padding: 0 var(--site-gutter);
+}
+
+.release-post__title {
+  margin: 0 0 12px;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  scroll-margin-top: calc(var(--nav-height) + 24px);
+}
+
+.release-post__body {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+
+.release-post__figure {
+  margin: 28px 0 0;
+}
+
+.release-post__figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-subtle-border);
+  box-shadow: var(--elevation-3);
+}
+
+.release-post__figure figcaption {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.release-post__also {
+  padding-top: 40px;
+  border-top: 1px solid var(--color-subtle-border);
+}
+
+.release-post__also-title {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.release-post__nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.release-post__nav > :last-child {
+  text-align: right;
 }
 
 /* ---- Responsive ---- */

@@ -51,6 +51,21 @@ export const launchScenes: SceneSpec[] = [
     detail: 'Focus sorts your work into columns. Merge from the board and the count goes up.',
   },
   {
+    slug: 'dispatch-briefing',
+    headline: 'See your work and the agents on it.',
+    detail: 'Dispatch opens on a briefing. Click a number to see just those items.',
+    // Up to Clear; the item drawer at the end is for the site, not the video.
+    trimStart: 0.8,
+    trimEnd: 8.0,
+  },
+  {
+    slug: 'dispatch-start',
+    headline: 'Start an agent on the next item.',
+    detail: 'Pick a free slot, a model and how it begins. It runs in T3 Code.',
+    trimStart: 1.0,
+    trimEnd: 9.5,
+  },
+  {
     slug: 'flyout',
     headline: 'Check in from the tray.',
     detail: 'The flyout shows what is failing and what is ready, without opening the window.',
@@ -59,22 +74,22 @@ export const launchScenes: SceneSpec[] = [
 
 // Short: three scenes, trimmed to the action and cropped to a portrait-friendly
 // part of each recording. Times and rectangles are for the dark recordings
-// as recorded on 2026-09-25; re-check them when the recordings are redone.
+// as recorded on 2026-10-21; re-check them when the recordings are redone.
 export const shortScenes: SceneSpec[] = [
   {
-    slug: 'pr-detail-push',
-    headline: 'Open a pull request in place.',
-    detail: 'Full screen in the same window. Back returns you to the list.',
-    trimStart: 0.4,
-    trimEnd: 6.0,
-    crop: { x: 205, y: 0, width: 1075, height: 640 },
+    slug: 'dispatch-briefing',
+    headline: 'See what needs you first.',
+    detail: 'Dispatch counts your work. Click a number to see just those items.',
+    trimStart: 0.8,
+    trimEnd: 7.4,
+    crop: { x: 205, y: 0, width: 760, height: 860 },
   },
   {
     slug: 'quick-review',
     headline: 'Review one file at a time.',
     detail: 'Quick review walks the changes. V marks a file reviewed.',
-    trimStart: 0.9,
-    trimEnd: 5.2,
+    trimStart: 1.2,
+    trimEnd: 5.8,
     crop: { x: 21, y: 21, width: 1100, height: 838 },
   },
   {

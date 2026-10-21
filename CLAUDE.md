@@ -243,7 +243,9 @@ Hero images are **real screenshots captured from Storybook**, written large (not
 2. `node_modules/.bin/storybook dev -p 6006 --no-open`, then `node scripts/screenshot-stories.mjs <version>` → `docs/whats-new/<version>/<slug>.png` (2×, forced dark theme). Reference them as `![alt](whats-new/<version>/<slug>.png)`.
 3. `bun run build` regenerates `changelog.ts` and copies `docs/whats-new/*` → `public/whats-new/*`.
 
-Voice: emulate the Home Assistant release blog — benefit-first, "you", per-feature, not root-cause engineering prose. The marketing site's `site/src/pages/changelog.astro` now parses `/CHANGELOG.md` at build time, and `site/src/pages/whats-new/<v>.astro` is the long-form post. The main window (Focus / PRs / Work Items) Storybook catalog is `src/components/layout/MainWindow.stories.tsx`.
+Voice: emulate the Home Assistant release blog — benefit-first, "you", per-feature, not root-cause engineering prose. The marketing site's `site/src/pages/changelog.astro` parses `/CHANGELOG.md` at build time, and `site/src/pages/whats-new/[version].astro` builds a post for every release with a highlight from the same entry and its hero images in `docs/whats-new/` (a hand-written `whats-new/<v>.astro` replaces it). So a release reaches the site's changelog and posts with no extra step; new *surfaces* still need entries in `design/site/screens.json` / `recordings.json` and a `bun run site:assets` (see `site/README.md`). The main window (Focus / PRs / Work Items) Storybook catalog is `src/components/layout/MainWindow.stories.tsx`.
+
+Capturing from Storybook in a fresh worktree: `src/BorgDock.Tauri/public/whats-new/` is gitignored and filled by the build, and Vite serves only the public files that existed when Storybook started. Stories that show description images (`pr-detail-overviewtab--description-with-screenshots`) then render "Image could not load". Copy `docs/whats-new` there (or run `bun run build`) *before* starting Storybook. The first visit to each story compiles on demand, so a cold Storybook times out some `page.goto` calls in the capture scripts; rerun the failed slugs with `--only`.
 
 ## Vitest: a hook that returns a function
 

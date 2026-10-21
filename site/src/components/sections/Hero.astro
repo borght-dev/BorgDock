@@ -10,20 +10,23 @@
 // Without it, the pr-detail-push recording stands in.
 import DownloadButton from '~/components/DownloadButton.astro';
 import Recording from '~/components/ui/Recording.astro';
+import { whatsNewPosts } from '~/data/changelog';
 import { launchVideo } from '~/data/media';
 import { latestRelease } from '~/data/site';
+
+const whatChanged = whatsNewPosts[latestRelease.version] ?? `/changelog#v${latestRelease.version}`;
 ---
 
 <section class="hero" aria-labelledby="hero-title">
   <div class="hero__copy">
-    <a class="hero__badge reveal" style="--i: 0" href="/changelog">
+    <a class="hero__badge reveal" style="--i: 0" href={whatChanged}>
       <span class="hero__badge-dot" aria-hidden="true"></span>
       New in {latestRelease.version}: see what changed
     </a>
     <h1 id="hero-title" class="hero__title reveal" style="--i: 1">Every pull request, one window.</h1>
     <p class="hero__lede reveal" style="--i: 2">
-      BorgDock watches your checks, tells you what needs you, hands failures to Claude, and lets you
-      review and merge without opening a browser tab.
+      BorgDock watches your checks, tells you what needs you, keeps your work items next to the
+      agents on them, and lets you review and merge without opening a browser tab.
     </p>
     <div class="hero__actions reveal" style="--i: 3">
       <DownloadButton />

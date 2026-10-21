@@ -1,0 +1,142 @@
+---
+// The post for every release with a highlight, built from its CHANGELOG.md
+// entry: one section per highlight with its screenshot, then the smaller
+// changes. A hand-written page for a version (2-0-0.astro) takes its place.
+import type { GetStaticPaths } from 'astro';
+import { Image } from 'astro:assets';
+import Layout from '~/layouts/Layout.astro';
+import SiteNav from '~/components/SiteNav.astro';
+import SiteFooter from '~/components/SiteFooter.astro';
+import PageHeading from '~/components/PageHeading.astro';
+import DownloadBlock from '~/components/sections/DownloadBlock.astro';
+import {
+  type ChangelogRelease,
+  KIND_LABEL,
+  KIND_ORDER,
+  type Kind,
+  generatedPostReleases,
+  highlightsOf,
+  postSlug,
+  releases,
+  whatsNewPosts,
+} from '~/data/changelog';
+import releaseImages from 'virtual:release-images';
+import { formatDate } from '~/data/site';
+
+export const getStaticPaths = (() =>
+  generatedPostReleases.map((release) => ({
+    params: { version: postSlug(release.v) },
+    props: { release },
+  }))) satisfies GetStaticPaths;
+
+interface Props {
+  release: ChangelogRelease;
+}
+const { release } = Astro.props;
+
+const highlights = highlightsOf(release).map((h) => ({
+  ...h,
+  id: h.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, ''),
+  picture: h.image ? releaseImages[h.image.path] : undefined,
+}));
+const smaller = KIND_ORDER.map((kind) => ({
+  kind,
+  items: (release.groups[kind] ?? []).filter((e) => !e.body),
+})).filter((g) => g.items.length > 0);
+
+const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const NOUNS: Record<Kind, [string, string]> = {
+  new: ['new feature', 'new features'],
+  improved: ['improvement', 'improvements'],
+  fixed: ['fix', 'fixes'],
+};
+function counted(kind: Kind, n: number): string {
+  const [one, many] = NOUNS[kind];
+  return `${NUMBER_WORDS[n] ?? n} ${n === 1 ? one : many}`;
+}
+const parts = KIND_ORDER.map((kind) => ({ kind, n: release.groups[kind]?.length ?? 0 }))
+  .filter((p) => p.n > 0)
+  .map((p) => counted(p.kind, p.n));
+const summary = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0];
+const lede = `${summary.charAt(0).toUpperCase()}${summary.slice(1)} in this release.`;
+
+const index = releases.findIndex((r) => r.v === release.v);
+const newer = releases.slice(0, index).reverse().find((r) => whatsNewPosts[r.v]);
+const older = releases.slice(index + 1).find((r) => whatsNewPosts[r.v]);
+const description = `What's new in BorgDock ${release.v}: ${highlights.map((h) => h.title).join(', ')}.`;
+---
+
+<Layout title={`BorgDock ${release.v}: what's new`} description={description}>
+  <SiteNav current="changelog" />
+  <main id="main" class="post release-post">
+    <PageHeading eyebrow={`Release · ${formatDate(release.date)}`} title={`BorgDock ${release.v}`} lede={lede}>
+      {
+        highlights.length > 1 && (
+          <nav class="release-post__toc" aria-label="In this release">
+            {highlights.map((h) => (
+              <a href={`#${h.id}`}>{h.title}</a>
+            ))}
+          </nav>
+        )
+      }
+    </PageHeading>
+
+    {
+      highlights.map((h) => (
+        <section class="release-post__item" aria-labelledby={h.id}>
+          <p class="eyebrow">{KIND_LABEL[h.kind]}</p>
+          <h2 id={h.id} class="release-post__title">
+            {h.title}
+          </h2>
+          <p class="release-post__body reading">{h.body}</p>
+          {h.picture && (
+            <figure class="release-post__figure">
+              <Image
+                src={h.picture}
+                alt={h.image?.alt ?? ''}
+                widths={[820, 1640]}
+                sizes="(max-width: 880px) calc(100vw - 40px), 820px"
+                format="webp"
+                quality={82}
+                loading="lazy"
+              />
+              {h.image?.alt && <figcaption>{h.image.alt}</figcaption>}
+            </figure>
+          )}
+        </section>
+      ))
+    }
+
+    {
+      smaller.length > 0 && (
+        <section class="release-post__also" aria-labelledby="also-title">
+          <h2 id="also-title" class="release-post__also-title">
+            Also in this release
+          </h2>
+          {smaller.map((g) => (
+            <div class="changelog-row__group">
+              <span class={`kind kind--${g.kind}`}>{KIND_LABEL[g.kind]}</span>
+              <ul>
+                {g.items.map((it) => (
+                  <li>{it.title}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )
+    }
+
+    <nav class="release-post__nav" aria-label="Other releases">
+      {older ? <a class="link" href={whatsNewPosts[older.v]}>← BorgDock {older.v}</a> : <span />}
+      <a class="link" href={`/changelog#v${release.v}`}>Every release</a>
+      {newer ? <a class="link" href={whatsNewPosts[newer.v]}>BorgDock {newer.v} →</a> : <span />}
+    </nav>
+
+    <DownloadBlock />
+  </main>
+  <SiteFooter />
+</Layout>

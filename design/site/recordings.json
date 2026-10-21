@@ -103,6 +103,40 @@
     ]
   },
   {
+    "slug": "quick-review-images",
+    "storyId": "focus-quick-review--image-comparison",
+    "viewport": {
+      "width": 1480,
+      "height": 925
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Quick review on a changed screenshot: Before and After side by side, and a click zooms into the new one",
+    "page": "Quick review",
+    "fallback": "quick-review-images",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 700
+      },
+      {
+        "do": "hover",
+        "selector": "role=button[name=\"View after image\"]",
+        "ms": 600
+      },
+      {
+        "do": "click",
+        "selector": "role=button[name=\"View after image\"]",
+        "ms": 2200
+      },
+      {
+        "do": "press",
+        "key": "Escape",
+        "ms": 1000
+      }
+    ]
+  },
+  {
     "slug": "fix-with-claude",
     "storyId": "pr-detail-prdetailview--failing",
     "viewport": {
@@ -162,6 +196,94 @@
         "do": "click",
         "selector": "[data-card-action=\"merge\"]",
         "ms": 3200
+      }
+    ]
+  },
+  {
+    "slug": "dispatch-briefing",
+    "storyId": "main-window-mainwindow--rail-dispatch-states",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "The Dispatch briefing: clicking out of sync narrows the walk to those items, need you shows the ones waiting on you, Clear shows everything and a square opens its item",
+    "page": "Dispatch",
+    "fallback": "dispatch-briefing",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 700
+      },
+      {
+        "do": "hover",
+        "selector": ".bd-dp-stat__toggle >> nth=1",
+        "ms": 500
+      },
+      {
+        "do": "click",
+        "selector": ".bd-dp-stat__toggle >> nth=1",
+        "ms": 1800
+      },
+      {
+        "do": "click",
+        "selector": ".bd-dp-stat__toggle >> nth=0",
+        "ms": 1800
+      },
+      {
+        "do": "click",
+        "selector": ".bd-dp-filterbar__clear",
+        "ms": 1200
+      },
+      {
+        "do": "hover",
+        "selector": ".bd-dp-stage__cell >> nth=2",
+        "ms": 500
+      },
+      {
+        "do": "click",
+        "selector": ".bd-dp-stage__cell >> nth=2",
+        "ms": 2200
+      }
+    ]
+  },
+  {
+    "slug": "dispatch-start",
+    "storyId": "main-window-mainwindow--rail-dispatch",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "Dispatch as a list with an agent's question beside it; a free slot opens the launch sheet for the next item, with its slot, model, how to begin and the first message",
+    "page": "Dispatch",
+    "fallback": "dispatch-launch",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 700
+      },
+      {
+        "do": "hover",
+        "selector": ".bd-dp-slot[data-state=\"free\"]:not([disabled]) >> nth=0",
+        "ms": 600
+      },
+      {
+        "do": "click",
+        "selector": ".bd-dp-slot[data-state=\"free\"]:not([disabled]) >> nth=0",
+        "ms": 1800
+      },
+      {
+        "do": "click",
+        "selector": "role=radio[name=\"Straight to work\"]",
+        "ms": 1200
+      },
+      {
+        "do": "click",
+        "selector": "role=radio[name=\"A plan for me to approve\"]",
+        "ms": 1600
       }
     ]
   },
