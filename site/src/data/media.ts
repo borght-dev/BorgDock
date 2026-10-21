@@ -11,8 +11,8 @@ import recordingsManifest from '../../../design/site/recordings.json';
 import screensManifest from '../../../design/site/screens.json';
 
 export type Theme = 'light' | 'dark';
-export type GalleryPage = 'Pull requests' | 'Focus' | 'Detail' | 'Quick review' | 'Tools';
-export const GALLERY_PAGES: GalleryPage[] = ['Pull requests', 'Focus', 'Detail', 'Quick review', 'Tools'];
+export type GalleryPage = 'Pull requests' | 'Focus' | 'Dispatch' | 'Detail' | 'Quick review' | 'Tools';
+export const GALLERY_PAGES: GalleryPage[] = ['Pull requests', 'Focus', 'Dispatch', 'Detail', 'Quick review', 'Tools'];
 
 interface ManifestEntry {
   slug: string;
@@ -172,8 +172,8 @@ export const launchVideo: Recording | null = (() => {
   return {
     slug: 'launch-hero',
     alt:
-      'BorgDock in under a minute: open a pull request full screen, filter to what needs you, ' +
-      'review file by file and merge from Focus',
+      'BorgDock in a minute: open a pull request full screen, filter to what needs you, ' +
+      'review file by file, merge from Focus, then walk your work in Dispatch and start an agent',
     page: 'Tools',
     draft: false,
     variants,

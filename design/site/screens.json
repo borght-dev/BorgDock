@@ -40,6 +40,102 @@
     "page": "Focus"
   },
   {
+    "slug": "focus-agents",
+    "storyId": "main-window-mainwindow--rail-focus-agents",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "Focus with the agents that need you at the top, and a row of squares per state for your work items",
+    "page": "Focus"
+  },
+  {
+    "slug": "dispatch-briefing",
+    "storyId": "main-window-mainwindow--rail-dispatch-states",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "Dispatch opens on the briefing: how many items need you, are out of sync, are worth a look, have an agent working or are fine, with one square per item for each state",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "dispatch-sync-live",
+    "storyId": "main-window-mainwindow--rail-dispatch-states-syncing",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "A sync at work in Code Review: the agent, how many items it has moved and a bar per item",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "dispatch-fix-sheet",
+    "storyId": "main-window-mainwindow--rail-dispatch-fix-sheet",
+    "viewport": {
+      "width": 1360,
+      "height": 900
+    },
+    "theme": "both",
+    "delay": 3500,
+    "alt": "Fix out of sync: the items grouped by the state they move to, each with its reason and pull request, and the slot and model for the agent",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "dispatch-list",
+    "storyId": "main-window-mainwindow--rail-dispatch",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "Dispatch as a list: your work items with the T3 threads on them, and an agent's question open beside the list",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "dispatch-plan",
+    "storyId": "main-window-mainwindow--rail-dispatch-plan",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "An agent's plan in Dispatch, with Approve plan beside it",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "dispatch-launch",
+    "storyId": "main-window-mainwindow--rail-dispatch-launch",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3500,
+    "alt": "The launch sheet: pick a slot, a model and how the agent begins, and edit its first message",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "dispatch-board",
+    "storyId": "main-window-mainwindow--rail-dispatch-board",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "Dispatch as a board: Needs you, Agents working, Up next and Not started side by side",
+    "page": "Dispatch"
+  },
+  {
     "slug": "pr-detail-failing",
     "storyId": "pr-detail-prdetailview--failing",
     "viewport": {
@@ -66,6 +162,18 @@
     "selector": "article.bd-detail"
   },
   {
+    "slug": "pr-description",
+    "storyId": "pr-detail-overviewtab--description-with-screenshots",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "A pull request's overview: the whole description with its screenshots, and the linked work items beside it",
+    "page": "Detail"
+  },
+  {
     "slug": "quick-review-card",
     "storyId": "focus-quick-review--large-pr-card",
     "viewport": {
@@ -90,18 +198,42 @@
     "page": "Quick review"
   },
   {
+    "slug": "quick-review-images",
+    "storyId": "focus-quick-review--image-comparison",
+    "viewport": {
+      "width": 1480,
+      "height": 925
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Quick review comparing a changed screenshot: Before and After side by side",
+    "page": "Quick review"
+  },
+  {
+    "slug": "quick-review-approve",
+    "storyId": "focus-quick-review--ready-to-approve",
+    "viewport": {
+      "width": 1100,
+      "height": 900
+    },
+    "theme": "both",
+    "delay": 3000,
+    "alt": "Quick review with every file reviewed, offering Approve and Approve & auto merge",
+    "page": "Quick review"
+  },
+  {
     "slug": "worktrees",
     "storyId": {
       "light": "worktree-worktreessection--light",
       "dark": "worktree-worktreessection--default"
     },
     "viewport": {
-      "width": 1100,
-      "height": 600
+      "width": 1360,
+      "height": 860
     },
     "theme": "both",
     "delay": 2500,
-    "alt": "The Worktrees section: every worktree of every repository you watch, with favourites and the branch each one is on",
+    "alt": "The Worktrees section: your worktrees grouped by the machine they live on, under that machine's free disk space, each row with its branch, changes and pull request",
     "page": "Tools"
   },
   {
@@ -177,6 +309,18 @@
     "theme": "both",
     "delay": 2000,
     "alt": "Settings, with sections on the left and search at the top",
+    "page": "Tools"
+  },
+  {
+    "slug": "settings-agents",
+    "storyId": "settings-settingsapp--agents",
+    "viewport": {
+      "width": 1100,
+      "height": 760
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Settings → Agents: pair with T3 Code on this machine, add other machines and edit the prompts Dispatch starts agents with",
     "page": "Tools"
   }
 ]

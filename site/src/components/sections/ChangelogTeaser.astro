@@ -1,14 +1,15 @@
 ---
 // The last three releases, straight from /CHANGELOG.md: each with its first
-// highlight (or first line) so the teaser never goes stale.
-import { KIND_LABEL, type Kind, formatShortDate, releases } from '~/data/changelog';
+// highlight (or first line) so the teaser never goes stale, linked to the
+// release's post when it has one.
+import { KIND_LABEL, type Kind, formatShortDate, releases, whatsNewPosts } from '~/data/changelog';
 
 const order: Kind[] = ['new', 'improved', 'fixed'];
 const recent = releases.slice(0, 3).map((r) => {
   const kind = order.find((k) => (r.groups[k]?.length ?? 0) > 0) ?? 'fixed';
   const first = r.groups[kind]?.[0];
   const count = order.reduce((n, k) => n + (r.groups[k]?.length ?? 0), 0);
-  return { v: r.v, date: r.date, kind, title: first?.title ?? '', count };
+  return { v: r.v, date: r.date, kind, title: first?.title ?? '', count, post: whatsNewPosts[r.v] };
 });
 ---
 
@@ -27,7 +28,13 @@ const recent = releases.slice(0, 3).map((r) => {
             <span class="teaser__date">{formatShortDate(r.date)}</span>
           </div>
           <p class="teaser__text">
-            {r.title}
+            {r.post ? (
+              <a class="teaser__link" href={r.post}>
+                {r.title}
+              </a>
+            ) : (
+              r.title
+            )}
             {r.count > 1 && <span class="teaser__more"> and {r.count - 1} more</span>}
           </p>
         </li>

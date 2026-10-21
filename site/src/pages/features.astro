@@ -11,22 +11,23 @@ import Recording from '~/components/ui/Recording.astro';
 const toc = [
   { id: 'watch', label: 'Pull requests' },
   { id: 'decide', label: 'Focus' },
+  { id: 'dispatch', label: 'Dispatch' },
   { id: 'fix', label: 'Fix with Claude' },
   { id: 'review', label: 'Quick review' },
-  { id: 'work', label: 'Work items and Worktrees' },
+  { id: 'work', label: 'Worktrees and Work items' },
   { id: 'tools', label: 'Tools' },
 ];
 
 const tools = [
   {
-    slug: 'worktrees',
-    name: 'Worktrees',
-    text: 'Every worktree of every repository you watch, grouped by repository, with the checks of the pull request each one is on. Pick one and its changes open beside the list.',
+    slug: 'work-items',
+    name: 'Work items',
+    text: 'Your Azure DevOps queries in the same window, grouped by state. Open an item full screen and change it without a browser.',
   },
   {
     slug: 'worktrees-window',
     name: 'Worktrees window',
-    text: 'Press Ctrl+F7 from anywhere for the same list in a small window. Enter opens a terminal in the worktree you picked.',
+    text: 'Press Ctrl+F7 from anywhere for every worktree in a small window. Enter opens a terminal in the one you picked.',
   },
   {
     slug: 'file-palette',
@@ -44,23 +45,23 @@ const tools = [
     text: 'Press Ctrl+F10, write a query and read the results in a grid you can copy straight from.',
   },
   {
-    slug: 'settings',
+    slug: 'settings-agents',
     name: 'Settings',
-    text: 'Every setting in one window, with the sections on the left and a search at the top when you know what you are after.',
+    text: 'Pair with T3 Code in one click, add your other machines and edit the prompts Dispatch starts agents with, under Settings → Agents.',
   },
 ];
 ---
 
 <Layout
   title="Features: BorgDock"
-  description="What BorgDock does for you: watch your pull requests, decide what needs you, hand failures to Claude, review and merge, and keep your work items and worktrees close."
+  description="What BorgDock does for you: watch your pull requests, decide what needs you, walk your work items with the agents on them, hand failures to Claude, review and merge, and keep your worktrees close."
 >
   <SiteNav current="features" />
   <main id="main">
     <PageHeading
       eyebrow="Features"
-      title="Five jobs, one window."
-      lede="BorgDock sits beside your editor and does the parts of pull request work that usually cost you a browser tab."
+      title="Six jobs, one window."
+      lede="BorgDock sits beside your editor and does the parts of pull request and agent work that usually cost you a browser tab."
     >
       <nav class="toc" aria-label="On this page">
         {toc.map((t) => <a href={`#${t.id}`}>{t.label}</a>)}
@@ -78,8 +79,8 @@ const tools = [
           to their new place.
         </p>
         <p>
-          Click a row and the pull request opens full screen in the same window; Back or Esc takes
-          you straight back to where you were.
+          Click a row and the pull request opens full screen in the same window, with its whole
+          description and screenshots. Back or Esc takes you straight back to where you were.
         </p>
         <Recording slot="media" slug="pr-detail-push" />
       </Job>
@@ -90,13 +91,48 @@ const tools = [
           request, a failing check, a conflict.
         </p>
         <p>
-          Work down the list, or switch to the board to see everything in Needs you, Waiting on
-          others, Ready to merge and Stale.
+          An agent with a question, a plan to approve or a failure sits at the top, with the obvious
+          action on it, so you never leave one waiting.
         </p>
         <p>
-          Merge a green pull request right from the board, and Later snoozes a review until tomorrow.
+          Switch to the board to see Needs you, Waiting on others, Ready to merge and Stale side by
+          side, and merge a green pull request right from it.
         </p>
         <Recording slot="media" slug="focus-merge" />
+      </Job>
+
+      <Job id="dispatch" eyebrow="Dispatch" title="Walk your work every morning" reading>
+        <p>
+          Dispatch puts every Azure DevOps item assigned to you next to the T3 Code threads and the
+          pull request that belong to it. It opens on a briefing: how many items need you, are out of
+          sync, are worth a look, have an agent working or are fine.
+        </p>
+        <p>
+          Click a number to see only those items. Below it, every state gets a section in the order
+          you check them, and each item says what it needs and why.
+        </p>
+        <p>
+          A pull request merged while the item still says Code Review? Dispatch marks it Out of sync,
+          and Fix out of sync hands them all to one agent that makes the moves the way your
+          repository's skills ask.
+        </p>
+        <Recording slot="media" slug="dispatch-briefing" />
+      </Job>
+
+      <Job id="agents" eyebrow="Dispatch" title="Start and answer your agents" reverse reading>
+        <p>
+          Click a free slot or press S, then pick the model and how the agent begins: a plan for you
+          to approve, straight to work, an update for QA or closing as done.
+        </p>
+        <p>
+          When an agent asks a question you see its options next to the item. A plan gets Approve
+          plan, and Open in T3 is one key away when you want the whole conversation.
+        </p>
+        <p>
+          Run T3 Code on a Mac mini or a build machine too? Add it under Settings → Agents and its
+          agents show beside yours.
+        </p>
+        <Recording slot="media" slug="dispatch-start" />
       </Job>
 
       <Job id="fix" eyebrow="Fix with Claude" title="Hand a failure to an agent" reading>
@@ -114,30 +150,34 @@ const tools = [
 
       <Job id="review" eyebrow="Quick review" title="Review and merge without a browser" reverse reading>
         <p>
-          Review opens Quick review: read the description, then go through the changes one file at a
-          time, with the tests at the end.
+          Review opens Quick review: read the description with its screenshots, then go through the
+          changes one file at a time. A changed image shows Before and After.
         </p>
         <p>
-          Press V to mark a file reviewed and leave comments beside the code; your drafts wait for you
-          if you step away.
+          Press V to mark a file reviewed and leave comments beside the code. Give it the whole
+          window when a pull request is large, and press W to wrap long lines.
         </p>
         <p>
-          When everything is green, merge from the pull request or right from the Focus board.
+          Once every file is reviewed, Approve & auto merge approves and lets GitHub merge the moment
+          the checks pass.
         </p>
         <Recording slot="media" slug="quick-review" />
       </Job>
 
-      <Job id="work" eyebrow="Work items and Worktrees" title="Keep the rest of your work close" reading>
+      <Job id="work" eyebrow="Worktrees and Work items" title="Keep the rest of your work close" reading>
+        <p>
+          Worktrees groups your worktrees by the machine they live on, under that machine's free disk
+          space. A disk that runs low stands out, with Clean up in T3 right beside it.
+        </p>
+        <p>
+          Every row shows its branch, its changes and the pull request on it. Press O for a terminal,
+          T to open it in T3 or F to make it a favourite.
+        </p>
         <p>
           Work items brings your Azure DevOps queries into the same window, so you can open an item
           and change it without a browser.
         </p>
-        <p>
-          Worktrees lists every worktree of every repository you watch, with the checks of the pull
-          request each one belongs to.
-        </p>
-        <p>Press O for a terminal, T to open it in T3 or F to make it a favourite.</p>
-        <Capture slot="media" slug="work-items" />
+        <Capture slot="media" slug="worktrees" />
       </Job>
     </div>
 

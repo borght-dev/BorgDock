@@ -402,6 +402,8 @@ try {
 
     const raw = await video.path();
     const base = path.join(outDir, `${job.slug}-${job.theme}`);
+    // `-ss` goes after `-i`: ffmpeg then decodes from the start and cuts at the
+    // exact frame, whatever keyframes Playwright's WebM happens to have.
     const vf = crop ? ['-vf', `crop=${crop.w}:${crop.h}:${crop.x}:${crop.y}`] : [];
     try {
       const ss = startSec.toFixed(2);
@@ -410,13 +412,13 @@ try {
       const posterExt = ff.webp ? 'webp' : 'png';
       const posterArgs = ff.webp ? ['-c:v', 'libwebp', '-quality', '82'] : [];
       run(ff.webp ?? ff.png, [
-        '-y', '-loglevel', 'error', '-ss', ss, '-i', raw, ...vf, '-frames:v', '1',
+        '-y', '-loglevel', 'error', '-i', raw, '-ss', ss, ...vf, '-frames:v', '1',
         ...posterArgs, `${base}.${posterExt}`,
       ]);
       fs.rmSync(`${base}.${posterExt === 'webp' ? 'png' : 'webp'}`, { force: true });
       if (ff.h264) {
         run(ff.h264, [
-          '-y', '-loglevel', 'error', '-ss', ss, '-i', raw, ...vf,
+          '-y', '-loglevel', 'error', '-i', raw, '-ss', ss, ...vf,
           '-an', '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-r', '30',
           '-pix_fmt', 'yuv420p', '-movflags', '+faststart', `${base}.mp4`,
         ]);
@@ -424,7 +426,7 @@ try {
         written.push(`${base}.mp4`);
       } else {
         run(ff.png, [
-          '-y', '-loglevel', 'error', '-ss', ss, '-i', raw, ...vf,
+          '-y', '-loglevel', 'error', '-i', raw, '-ss', ss, ...vf,
           '-an', '-c:v', 'libvpx', '-b:v', '2M', `${base}.webm`,
         ]);
         // A stale MP4 from an earlier run would otherwise win over the new WebM.

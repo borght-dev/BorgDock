@@ -34,12 +34,22 @@ import Recording from '~/components/ui/Recording.astro';
         <Capture slot="media" slug="focus-board" />
       </Job>
 
-      <Job id="act" eyebrow="Act" title="Review, fix and merge in the same place">
+      <Job id="dispatch" eyebrow="Dispatch" title="See your work and the agents on it">
         <p>
-          Press Review to open Quick review, which walks you through the changes one file at a time.
-          A failing check goes to Claude with Fix with Claude, and a green pull request merges from
-          the board.
+          Dispatch puts your Azure DevOps items next to the T3 Code threads and pull requests that
+          belong to them, and opens on a briefing: what needs you, what fell out of sync and what an
+          agent is working on.
         </p>
+        <p>Click a number to see just those items, or start an agent on the next one from a free slot.</p>
+        <Recording slot="media" slug="dispatch-briefing" />
+      </Job>
+
+      <Job id="act" eyebrow="Act" title="Review, fix and merge in the same place" reverse>
+        <p>
+          Press Review to open Quick review, which walks you through the changes one file at a time,
+          images included. A failing check goes to Claude with Fix with Claude.
+        </p>
+        <p>Approve & auto merge approves and lets GitHub merge the moment the checks pass.</p>
         <Recording slot="media" slug="quick-review" />
       </Job>
     </div>

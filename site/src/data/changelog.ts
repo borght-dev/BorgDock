@@ -1,13 +1,21 @@
 // Parse /CHANGELOG.md (the source of truth that also feeds the in-app
-// What's new window) for the changelog page and the home page teaser.
+// What's new window) for the changelog page, the release posts and the home
+// page teaser.
 import changelogMd from '../../../CHANGELOG.md?raw';
 
 export type Kind = 'new' | 'improved' | 'fixed';
+
+export interface ReleaseImage {
+  /** Relative to docs/whats-new, e.g. `4.4.1/worktrees-by-host.png`. */
+  path: string;
+  alt: string;
+}
 
 export interface ReleaseEntry {
   title: string;
   /** The rest of the bullet after "**Title** — ", without images. */
   body?: string;
+  image?: ReleaseImage;
 }
 
 export interface ChangelogRelease {
@@ -28,6 +36,8 @@ export const KIND_LABEL: Record<Kind, string> = {
   fixed: 'Fixed',
 };
 
+export const KIND_ORDER: Kind[] = ['new', 'improved', 'fixed'];
+
 export function stripInline(s: string): string {
   return s
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
@@ -35,6 +45,11 @@ export function stripInline(s: string): string {
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function imageOf(s: string): ReleaseImage | undefined {
+  const m = s.match(/!\[([^\]]*)\]\(whats-new\/([^)]+)\)/);
+  return m ? { alt: m[1], path: m[2] } : undefined;
 }
 
 export function parseChangelog(md: string): ChangelogRelease[] {
@@ -58,7 +73,7 @@ export function parseChangelog(md: string): ChangelogRelease[] {
     const t = line.match(/^-\s+\*\*(.+?)\*\*\s*—\s+(.*)$/);
     const p = line.match(/^-\s+(.+)$/);
     const list = (cur.groups[kind] ||= []);
-    if (t) list.push({ title: stripInline(t[1]), body: stripInline(t[2]) });
+    if (t) list.push({ title: stripInline(t[1]), body: stripInline(t[2]), image: imageOf(t[2]) });
     else if (p) list.push({ title: stripInline(p[1]) });
   }
   return releases;
@@ -66,18 +81,41 @@ export function parseChangelog(md: string): ChangelogRelease[] {
 
 export const releases: ChangelogRelease[] = parseChangelog(changelogMd);
 
+/** The bullets of a release that have a title and a description, in kind order. */
+export function highlightsOf(r: ChangelogRelease): (ReleaseEntry & { kind: Kind })[] {
+  return KIND_ORDER.flatMap((kind) =>
+    (r.groups[kind] ?? []).filter((e) => e.body).map((e) => ({ ...e, kind })),
+  );
+}
+
+export function postSlug(v: string): string {
+  return v.replace(/\./g, '-');
+}
+
 /**
- * What's new posts by version, by convention: a page at
- * `src/pages/whats-new/<version>.astro` (dots or dashes, so `2.0.0.astro` and
- * `2-0-0.astro` both count) is the long-form post for that release.
+ * What's new posts by version. A page at `src/pages/whats-new/<version>.astro`
+ * (dots or dashes, so `2.0.0.astro` and `2-0-0.astro` both count) is a
+ * hand-written post for that release. Every other release with at least one
+ * highlight gets a post built from its CHANGELOG.md entry by
+ * `whats-new/[version].astro`.
  */
 const postFiles = Object.keys(import.meta.glob('../pages/whats-new/*.astro'));
-export const whatsNewPosts: Record<string, string> = Object.fromEntries(
-  postFiles.map((file) => {
+export const handWrittenPosts: Record<string, string> = Object.fromEntries(
+  postFiles.flatMap((file) => {
     const base = file.split('/').pop()?.replace(/\.astro$/, '') ?? '';
-    return [base.replace(/-/g, '.'), `/whats-new/${base}`];
+    if (base.startsWith('[')) return [];
+    return [[base.replace(/-/g, '.'), `/whats-new/${base}`]];
   }),
 );
+
+export const generatedPostReleases: ChangelogRelease[] = releases.filter(
+  (r) => !handWrittenPosts[r.v] && highlightsOf(r).length > 0,
+);
+
+export const whatsNewPosts: Record<string, string> = {
+  ...Object.fromEntries(generatedPostReleases.map((r) => [r.v, `/whats-new/${postSlug(r.v)}`])),
+  ...handWrittenPosts,
+};
 
 export function formatShortDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
