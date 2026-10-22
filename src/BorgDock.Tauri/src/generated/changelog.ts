@@ -4,6 +4,17 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.4.2",
+    "date": "2026-10-22",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Approve & auto merge in Quick Review now moves on to the next pull request as soon as your approval is posted, instead of waiting several seconds for GitHub to finish the merge. The merge carries on in the background, and BorgDock tells you if it doesn't go through.",
+      "Approve & auto merge now also merges pull requests that GitHub can merge right away while optional checks are failing or still running. These approvals used to end in \"auto merge not enabled\", leaving you to merge by hand."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.4.1",
     "date": "2026-10-20",
     "summary": "Each machine heads its own worktrees.",
