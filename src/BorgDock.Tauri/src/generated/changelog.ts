@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.4.3",
+    "date": "2026-10-22",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Fixed freezes when opening Worktrees, Files, Work items or SQL with keyboard shortcuts, including repeated presses."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.4.2",
     "date": "2026-10-22",
     "summary": "",

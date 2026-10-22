@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.4.3 — 2026-10-22
+
+### Bug Fixes
+
+- Fixed freezes when opening Worktrees, Files, Work items or SQL with keyboard shortcuts, including repeated presses.
+
 ## 4.4.2 — 2026-10-22
 
 ### Bug Fixes
