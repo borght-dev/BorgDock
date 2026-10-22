@@ -52,6 +52,7 @@ export interface ReviewSnapshot {
   baseSha: string;
   groups: ReviewFileGroup[];
   files: DiffFile[];
+  loadedAt: number;
 }
 
 export const emptyReviewDocument: ReviewDocument = {
@@ -311,5 +312,24 @@ export async function loadReviewSnapshot(
       'GitHub did not return every changed file. Reload or review this PR on GitHub.',
     );
   const groups = groupReviewFiles(files);
-  return { pr: after.pr, baseSha: after.baseSha, groups, files: groups.flatMap((g) => g.files) };
+  return {
+    pr: after.pr,
+    baseSha: after.baseSha,
+    groups,
+    files: groups.flatMap((g) => g.files),
+    loadedAt: Date.now(),
+  };
+}
+
+/** How long a snapshot stands in for GitHub's current head when submitting. */
+const SNAPSHOT_TRUSTED_MS = 30_000;
+
+/**
+ * The PR's head and base to check a submission against. A snapshot loaded
+ * moments ago is used as is, saving a round trip on a quick approval.
+ */
+export async function currentReviewDetails(client: GitHubClient, snapshot: ReviewSnapshot) {
+  if (Date.now() - snapshot.loadedAt < SNAPSHOT_TRUSTED_MS) return snapshot;
+  const { repoOwner, repoName, number } = snapshot.pr;
+  return getPRReviewDetails(client, repoOwner, repoName, number);
 }

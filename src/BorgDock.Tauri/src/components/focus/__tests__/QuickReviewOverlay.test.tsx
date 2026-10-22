@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { prRowKey } from '@/components/pr/pr-card-data';
 import { enableAutoMerge, submitReview } from '@/services/github/mutations';
 import { getPRFiles, getPRReviewDetails } from '@/services/github/pulls';
@@ -177,6 +177,40 @@ describe('Quick review card', () => {
     fireEvent.click(approveButton());
     await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
     expect(enableAutoMerge).not.toHaveBeenCalled();
+  });
+
+  it('moves to the next PR while GitHub is still merging', async () => {
+    vi.mocked(enableAutoMerge).mockReturnValueOnce(new Promise(() => {}));
+    await start();
+    reviewEverything();
+    press('a');
+    await waitFor(() => expect(useQuickReviewStore.getState().currentIndex).toBe(1));
+    expect(enableAutoMerge).toHaveBeenCalledTimes(1);
+  });
+
+  it('toasts when auto merge fails after the card moved on', async () => {
+    vi.mocked(enableAutoMerge).mockRejectedValueOnce(new Error('Merge conflict'));
+    await start();
+    reviewEverything();
+    press('a');
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts.map((t) => t.message)).toEqual([
+        'Approved; auto merge not enabled: Merge conflict',
+      ]),
+    );
+    expect(useQuickReviewStore.getState().currentIndex).toBe(1);
+  });
+
+  it('trusts a snapshot loaded moments ago instead of asking GitHub again', async () => {
+    const readsOfThisPr = () =>
+      vi.mocked(getPRReviewDetails).mock.calls.filter(([, , , n]) => n === pr.pullRequest.number)
+        .length;
+    await start();
+    const loads = readsOfThisPr();
+    reviewEverything();
+    press('a');
+    await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
+    expect(readsOfThisPr()).toBe(loads);
   });
   it('renders nothing while idle', () =>
     expect(render(<QuickReviewOverlay />).container.innerHTML).toBe(''));
@@ -520,6 +554,9 @@ describe('Quick review composer', () => {
     await addDraft();
     finishWalk();
     compose();
+    const later = Date.now() + 60_000;
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(later);
+    onTestFinished(() => clock.mockRestore());
     vi.mocked(getPRReviewDetails).mockResolvedValue({
       pr: { ...pr.pullRequest, headSha: 'new-head' },
       baseSha: 'base',

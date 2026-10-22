@@ -53,7 +53,8 @@ describe('submitted approval updates', () => {
   });
 
   it('approves before enabling auto merge, and remembers that it is enabled', async () => {
-    await submitPrReview(...args, true);
+    const { autoMerge } = await submitPrReview(...args, true);
+    await autoMerge;
     expect(enableAutoMerge).toHaveBeenCalledWith(client, 'acme', 'app', 41, 'reviewed-head');
     expect(vi.mocked(submitReview).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(enableAutoMerge).mock.invocationCallOrder[0]!,
@@ -65,10 +66,18 @@ describe('submitted approval updates', () => {
     vi.mocked(enableAutoMerge).mockRejectedValue(
       new Error('Auto merge is disabled for this repository'),
     );
-    const result = await submitPrReview(...args, true);
-    expect(result.autoMergeError).toBeInstanceOf(Error);
+    const { autoMerge } = await submitPrReview(...args, true);
+    await expect(autoMerge).rejects.toThrow('Auto merge is disabled');
     expect(workbenchPrimaryAction(pr(), FIXTURE_ME)).toBe('merge');
     expect(submitReview).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns once the approval is posted, while GitHub is still merging', async () => {
+    vi.mocked(enableAutoMerge).mockReturnValue(new Promise(() => {}));
+    const { autoMerge } = await submitPrReview(...args, true);
+    expect(autoMerge).toBeInstanceOf(Promise);
+    expect(enableAutoMerge).toHaveBeenCalledOnce();
+    expect(workbenchPrimaryAction(pr(), FIXTURE_ME)).toBe('merge');
   });
 
   it('does not enable auto merge or change review state when approval fails', async () => {
@@ -89,7 +98,8 @@ describe('submitted approval updates', () => {
 
   it('moves a PR that merged immediately into the closed list', async () => {
     vi.mocked(enableAutoMerge).mockResolvedValue('merged');
-    await submitPrReview(...args, true);
+    const { autoMerge } = await submitPrReview(...args, true);
+    await autoMerge;
     expect(usePrStore.getState().pullRequests).toEqual([]);
     expect(usePrStore.getState().closedPullRequests[0]?.pullRequest.mergedAt).toBeTruthy();
   });
