@@ -83,6 +83,19 @@ describe('enableAutoMerge', () => {
     ]);
   });
 
+  it.each([
+    'UNSTABLE',
+    'HAS_HOOKS',
+  ])('merges at once when GitHub reports %s, which refuses auto merge', async (mergeStateStatus) => {
+    const client = createMockClient();
+    target(client, { mergeStateStatus });
+    vi.mocked(client.graphql).mockResolvedValueOnce({
+      mergePullRequest: { pullRequest: { merged: true, autoMergeRequest: null } },
+    });
+    expect(await enableAutoMerge(client, 'owner', 'repo', 42, 'reviewed-sha')).toBe('merged');
+    expect(vi.mocked(client.graphql).mock.calls[1]?.[0]).toContain('mergePullRequest');
+  });
+
   it('does not enable it twice when it was already enabled elsewhere', async () => {
     const client = createMockClient();
     target(client, { autoMergeRequest: { enabledAt: 'earlier' } });

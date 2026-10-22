@@ -139,6 +139,9 @@ export async function submitReview(
   };
 }
 
+/** GitHub merges these at once and refuses to enable auto merge on them. */
+const MERGEABLE_NOW = new Set(['CLEAN', 'UNSTABLE', 'HAS_HOOKS']);
+
 export async function enableAutoMerge(
   client: GitHubClient,
   owner: string,
@@ -175,8 +178,9 @@ export async function enableAutoMerge(
     );
   if (pr.autoMergeRequest) return 'enabled';
   const config = await getRepoMergeConfig(client, owner, repo);
-  const operation =
-    pr.mergeStateStatus === 'CLEAN' ? 'mergePullRequest' : 'enablePullRequestAutoMerge';
+  const operation = MERGEABLE_NOW.has(pr.mergeStateStatus)
+    ? 'mergePullRequest'
+    : 'enablePullRequestAutoMerge';
   const inputType =
     operation === 'mergePullRequest' ? 'MergePullRequestInput' : 'EnablePullRequestAutoMergeInput';
   const result = await client.graphql<

@@ -101,6 +101,7 @@ describe('Review path', () => {
       baseSha: 'base',
       groups,
       files: groups.flatMap((g) => g.files),
+      loadedAt: 0,
     };
     let doc = reconcileReviewDocument(emptyReviewDocument, snapshot);
     doc = {

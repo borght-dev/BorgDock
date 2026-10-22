@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { getPRReviewDetails } from '@/services/github/pulls';
 import { getClientForRepo } from '@/services/github/singleton';
 import { submitPrReview } from '@/services/pr-review';
 import {
+  currentReviewDetails,
   loadReviewSnapshot,
   normalizeReviewDocument,
   type ReviewDocument,
@@ -89,7 +89,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
     const store = useQuickReviewStore.getState();
     store.setSubmitting();
     try {
-      const current = await getPRReviewDetails(client, pr.repoOwner, pr.repoName, pr.number);
+      const current = await currentReviewDetails(client, snapshot);
       if (current.pr.headSha !== doc.headSha || current.baseSha !== doc.baseSha) {
         setStale(true);
         throw new Error(
@@ -97,7 +97,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
         );
       }
       if (current.pr.state.toLowerCase() !== 'open') throw new Error('This PR is no longer open.');
-      const result = await submitPrReview(
+      const { autoMerge: merging } = await submitPrReview(
         client,
         pr.repoOwner,
         pr.repoName,
@@ -117,8 +117,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
       );
       store.discardDocument(key);
       store.advance(doc.event === 'APPROVE' ? 'approved' : 'commented');
-      if (result.autoMergeError)
-        toastError('Approved; auto merge not enabled', result.autoMergeError);
+      merging?.catch((error) => toastError('Approved; auto merge not enabled', error));
     } catch (error) {
       store.setError(`Review not submitted: ${parseError(error).message}`);
       toastError('Review not submitted', error);
