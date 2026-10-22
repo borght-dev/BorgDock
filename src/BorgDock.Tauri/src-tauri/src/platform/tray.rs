@@ -46,7 +46,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "show_flyout" => {
                 let app_handle = app.clone();
-                let _ = app.run_on_main_thread(move || {
+                super::queue_window_action(app, "flyout", move || {
                     if let Err(e) = crate::platform::window::toggle_flyout(&app_handle) {
                         log::error!("tray show_flyout: {e}");
                     }

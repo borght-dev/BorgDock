@@ -1,6 +1,7 @@
 pub mod browser_shortcuts;
 #[cfg(target_os = "windows")]
 pub mod click_outside;
+pub mod deferred_actions;
 pub mod flyout_cache;
 pub mod hotkey;
 pub mod logs;
@@ -13,3 +14,19 @@ pub use hotkey::{register_user_hotkeys, unregister_hotkey};
 pub use logs::{get_log_folder, open_log_folder};
 pub use theme::get_system_theme;
 pub use tray::setup_tray;
+
+pub(crate) fn queue_window_action(
+    app: &tauri::AppHandle,
+    key: &'static str,
+    action: impl FnOnce() + Send + 'static,
+) {
+    use tauri::Manager;
+    match app
+        .state::<deferred_actions::DeferredActions>()
+        .push(key, action)
+    {
+        Ok(true) => {}
+        Ok(false) => log::debug!("window action[{key}]: already pending"),
+        Err(error) => log::error!("window action[{key}]: queue failed: {error}"),
+    }
+}

@@ -178,6 +178,16 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            let dispatcher = app.handle().clone();
+            app.manage(platform::deferred_actions::DeferredActions::new(
+                move |action| {
+                    dispatcher
+                        .run_on_main_thread(action)
+                        .map_err(|e| e.to_string())
+                },
+                |key, error| log::error!("window action[{key}]: {error}"),
+                platform::window::MAIN_THREAD_TIMEOUT,
+            )?);
             platform::tray::setup_tray(app)?;
             platform::tray::start_initializing_animation(app.handle().clone());
 
