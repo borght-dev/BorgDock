@@ -255,7 +255,7 @@ for (const alreadyEnabled of [false, true]) {
     expect(reviews).toEqual([
       { number: 3, body: { event: 'APPROVE', body: '', commit_id: 'sha3', comments: [] } },
     ]);
-    expect(mutations).toEqual(alreadyEnabled ? [] : [
+    await expect.poll(() => mutations).toEqual(alreadyEnabled ? [] : [
       { pullRequestId: 'PR_3', expectedHeadOid: 'sha3', mergeMethod: 'SQUASH' },
     ]);
   });
