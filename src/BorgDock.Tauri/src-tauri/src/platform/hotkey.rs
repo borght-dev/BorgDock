@@ -217,13 +217,11 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
                     }
                     log::info!("{shortcut}: shortcut fired");
                     let app_inner = app_for_cb.clone();
-                    if let Err(e) = app_for_cb.run_on_main_thread(move || {
+                    super::queue_window_action(&app_for_cb, spec.label, move || {
                         if let Err(e) = open_palette_window(&app_inner, spec, true) {
                             log::error!("{shortcut}: open/toggle failed: {e}");
                         }
-                    }) {
-                        log::error!("{shortcut}: run_on_main_thread dispatch failed: {e}");
-                    }
+                    });
                 });
         if let Err(e) = registered {
             log::error!("Failed to register {shortcut} hotkey: {e}");
@@ -264,20 +262,13 @@ pub fn register_user_hotkeys(
             if event.state != ShortcutState::Pressed {
                 return;
             }
-            log::info!("hotkey callback invoked (about to dispatch to main thread)");
-
-            // Marshal onto the main thread — window show/hide on Windows
-            // should run on the thread that owns the window, and
-            // SetForegroundWindow in particular has thread restrictions.
+            log::info!("hotkey callback invoked (queuing main window toggle)");
             let app_cb = app_toggle.clone();
-            match app_toggle.run_on_main_thread(move || {
+            super::queue_window_action(&app_toggle, "main", move || {
                 log::info!("hotkey: running show_or_focus_main_sync on main thread");
                 super::window::show_or_focus_main_sync(&app_cb);
                 log::info!("hotkey toggle main thread work complete");
-            }) {
-                Ok(()) => log::info!("hotkey: run_on_main_thread dispatch succeeded"),
-                Err(e) => log::error!("hotkey: run_on_main_thread dispatch failed: {e}"),
-            }
+            });
         })
         .map_err(|e| format!("Failed to register main-window hotkey: {e}"))?;
 
@@ -293,7 +284,7 @@ pub fn register_user_hotkeys(
                 return;
             }
             let app_cb = app_flyout.clone();
-            let _ = app_flyout.run_on_main_thread(move || {
+            super::queue_window_action(&app_flyout, "flyout", move || {
                 if let Err(e) = super::window::toggle_flyout(&app_cb) {
                     log::error!("flyout hotkey: toggle_flyout failed: {e}");
                 }

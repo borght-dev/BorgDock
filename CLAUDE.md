@@ -112,7 +112,9 @@ pub async fn my_window_command(app: tauri::AppHandle, /* args */) -> Result<T, S
 }
 ```
 
-The command has to be `async` so it can await the bounded oneshot. `toggle_flyout` is the one exception. It is an internal helper called synchronously from the tray event handler, which already runs on the main thread via `run_on_main_thread`.
+The command has to be `async` so it can await the bounded oneshot.
+
+**Global shortcut callbacks must queue window actions with `platform::queue_window_action`.** The shortcut plugin holds its map mutex across the callback, and `run_on_main_thread` executes inline when already on the GUI thread. Creating a WebView pumps Windows messages; another shortcut then reenters the same mutex and deadlocks. `DeferredActions` posts from a worker, waits for each GUI action to finish, and coalesces repeated pending actions by window label. The tray's flyout action shares that queue. Keep native window operations on the GUI thread.
 
 ## Tauri capabilities are per-window — plugin permissions don't auto-propagate
 
