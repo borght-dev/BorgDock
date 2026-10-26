@@ -58,6 +58,25 @@ describe('mergeDocuments', () => {
     expect(document.decisions[0]!.options).toEqual([refKey(A)]);
   });
 
+  it('drops a removed member from the options the other side chose in a conflict', () => {
+    const decided = ok(openDecision(base, 'Which queue?', [refKey(A), refKey(B)], CONTEXT));
+    const id = decided.decisions[0]!.id;
+    const mine = ok(removeMember(decided, refKey(B), CONTEXT));
+    const theirs = {
+      ...decided,
+      revision: 4,
+      members: [...decided.members, member(C)],
+      decisions: decided.decisions.map((d) => ({
+        ...d,
+        options: [refKey(A), refKey(B), refKey(C)],
+      })),
+    };
+    const { document, conflicts } = mergeDocuments(decided, mine, theirs);
+    const options = conflicts.find((c) => c.entryId === id && c.field === 'options')!;
+    const chosen = applyChoice(document, options, options.theirs);
+    expect(chosen.decisions[0]!.options).toEqual([refKey(A), refKey(C)]);
+  });
+
   it('takes the side that changed a field', () => {
     const mine = ok(setGoal(base, 'Pay in one step', CONTEXT));
     const theirs = { ...ok(setNextAction(base, 'Decide', null, 'you', CONTEXT)), revision: 4 };

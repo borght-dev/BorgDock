@@ -239,10 +239,11 @@ export function applyChoice(
   const spec = COLLECTIONS.find((c) => c.name === conflict.collection);
   if (!spec) return document;
   const entries = document[conflict.collection] as unknown as Entity[];
-  return {
+  // The chosen side may name a member the merge removed.
+  return withoutRemovedOptions({
     ...document,
     [conflict.collection]: entries.map((entry) =>
       spec.id(entry) === conflict.entryId ? { ...entry, [conflict.field]: value } : entry,
     ),
-  };
+  });
 }
