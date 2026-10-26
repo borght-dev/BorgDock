@@ -202,3 +202,8 @@ export function t3ShowThread(
 ): Promise<void> {
   return commandData(commands.t3ShowThread(host, threadId, executable ?? null)).then(() => {});
 }
+
+/** The id of the T3 install behind `host`; it names a thread across hosts. */
+export function t3Environment(host: T3HostRef): Promise<string> {
+  return commandData(commands.t3Environment(host));
+}

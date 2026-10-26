@@ -263,6 +263,8 @@ export const commands = {
 	t3ConversationReferences: (host: HostRef_Deserialize, threadIds: string[]) => typedError<{ [key in string]: ConversationReferences }, string>(__TAURI_INVOKE("t3_conversation_references", { host, threadIds })),
 	/**  Bring T3 Code to the front on `thread_id`. */
 	t3ShowThread: (host: HostRef_Deserialize, threadId: string, executable: string | null) => typedError<null, string>(__TAURI_INVOKE("t3_show_thread", { host, threadId, executable })),
+	/**  The id of the T3 install behind `host`: what names a thread across hosts. */
+	t3Environment: (host: HostRef_Deserialize) => typedError<string, string>(__TAURI_INVOKE("t3_environment", { host })),
 	/**  The providers and models the host can start a thread on. */
 	t3Catalogue: (host: HostRef_Deserialize) => typedError<Catalogue, string>(__TAURI_INVOKE("t3_catalogue", { host })),
 	/**

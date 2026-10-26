@@ -182,6 +182,8 @@ export interface DispatchItem {
   linkedPullRequests: LinkedPullRequest[];
   /** The item's parent (a PBI for a task, an epic for a PBI). */
   parentId: number | null;
+  /** The item's children, as ADO's hierarchy links name them. */
+  childIds?: number[];
   changedAt: string;
 }
 
@@ -298,6 +300,11 @@ export interface UnlinkedThread extends AgentThread {
 export interface Overview {
   generatedAt: string;
   items: ItemOverview[];
+  /**
+   * Items Dispatch doesn't list but a workstream links: done ones, epics,
+   * items of others. Built the same way, never shown in Dispatch.
+   */
+  context?: ItemOverview[];
   unlinkedThreads: UnlinkedThread[];
   slots: Slot[];
 }

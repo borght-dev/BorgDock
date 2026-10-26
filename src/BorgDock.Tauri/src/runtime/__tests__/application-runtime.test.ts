@@ -19,6 +19,7 @@ vi.mock('../ado-sync', () => ({ startAdoSync: mocks.startAdo }));
 vi.mock('../dispatch-sync', () => ({ startDispatchSync: mocks.startDispatch }));
 vi.mock('../visibility', () => ({ startVisibilityTracking: () => () => {} }));
 vi.mock('../t3-sessions', () => ({ followT3Sessions: () => () => {} }));
+vi.mock('../workstreams-sync', () => ({ startWorkstreamsSync: () => () => {} }));
 
 const original = useSettingsStore.getState().settings;
 let stop: (() => void) | undefined;

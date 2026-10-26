@@ -23,6 +23,8 @@ export interface SourceStatus {
 export interface HostStatus extends SourceStatus {
   id: string;
   label: string;
+  /** The T3 install behind the host, once read: what a workstream names its threads by. */
+  environmentId?: string | null;
 }
 
 /** `walk`: one section per ADO state, in the order they are checked. */
@@ -99,6 +101,10 @@ interface DispatchState {
   items: DispatchItem[];
   threads: AgentThread[];
   projects: AgentProject[];
+  /** Items only a workstream needs (`overview.context`): done ones, epics, items of others. */
+  contextItems: DispatchItem[];
+  /** Context item ids ADO did not return: deleted, or out of reach. */
+  missingItemIds: number[];
   /** The pull requests ADO links on the items, read from GitHub (`linked-prs.ts`). */
   linkedPullRequests: KnownPullRequest[];
   /** ADO's id of a linked pull request's repository to its GitHub `owner/name`. Persisted. */
@@ -130,6 +136,7 @@ interface DispatchState {
   scheduleLastRun: string | null;
 
   setItems: (items: DispatchItem[], status: SourceStatus) => void;
+  setContextItems: (items: DispatchItem[], missing: number[]) => void;
   setLinkedPullRequests: (
     pullRequests: KnownPullRequest[],
     repositories: Record<string, string>,
@@ -165,6 +172,8 @@ interface DispatchState {
 
 export const useDispatchStore = create<DispatchState>()((set, get) => ({
   items: [],
+  contextItems: [],
+  missingItemIds: [],
   threads: [],
   projects: [],
   linkedPullRequests: [],
@@ -188,6 +197,12 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
 
   setItems: (items, status) =>
     set((state) => ({ items: shareEntities(state.items, items, (item) => item.id), ado: status })),
+
+  setContextItems: (items, missing) =>
+    set((state) => ({
+      contextItems: shareEntities(state.contextItems, items, (item) => item.id),
+      missingItemIds: shareValue(state.missingItemIds, missing),
+    })),
 
   setLinkedPullRequests: (linkedPullRequests, linkedRepositories) => {
     const learned = JSON.stringify(linkedRepositories) !== JSON.stringify(get().linkedRepositories);

@@ -5,6 +5,7 @@ import {
   type T3ConversationReferences,
   type T3Thread,
   t3ConversationReferences,
+  t3Environment,
   t3Snapshot,
   t3ThreadDetail,
 } from '@/services/t3/api';
@@ -18,7 +19,7 @@ import { shareValue } from '@/utils/structural-sharing';
 import { buildOverview } from './engine';
 import { forgetHostsExcept, rememberHost } from './host-memory';
 import { configuredHosts, type DispatchHost, hostRef, isRemote, rawId, scopedId } from './hosts';
-import { loadDispatchItems } from './items';
+import { loadContextItems, loadDispatchItems } from './items';
 import { candidateRepositories, fetchFromGitHub, lookUpLinkedPullRequests } from './linked-prs';
 import { notifyNew } from './notifier';
 import {
@@ -167,6 +168,7 @@ export function recomputeOverview(): void {
     dispatch.hiddenSuggestions,
     dispatch.manualLinks,
     slotPattern,
+    dispatch.contextItems,
     Math.floor(Date.now() / 60_000),
   ];
   if (
@@ -188,6 +190,7 @@ export function recomputeOverview(): void {
     hiddenSuggestions: dispatch.hiddenSuggestions,
     manualLinks: dispatch.manualLinks,
     slotPattern: compileSlotPattern(slotPattern),
+    contextItems: dispatch.contextItems,
   });
   if (!sameOverview(dispatch.overview, overview)) {
     dispatch.setOverview(overview);
@@ -222,6 +225,9 @@ function errorText(error: unknown): string {
 interface HostState {
   /** The address this state was read from; a host that moved starts over. */
   address: string;
+  /** The T3 install behind the address, once read. */
+  environmentId: string | null;
+  readingEnvironment: boolean;
   sequence: number | null;
   /** `lastActivityAt|status` each thread's detail was last read at. */
   detailVersions: Map<string, string>;
@@ -241,6 +247,8 @@ function stateOf(host: DispatchHost): HostState {
   if (!state) {
     state = {
       address: addressOf(host),
+      environmentId: null,
+      readingEnvironment: false,
       sequence: null,
       detailVersions: new Map(),
       referenceVersions: new Map(),
@@ -345,6 +353,24 @@ async function readDetails(host: DispatchHost, state: HostState): Promise<void> 
   recomputeOverview();
 }
 
+/** Learn which T3 install the host is, once per address. */
+async function readEnvironment(host: DispatchHost, state: HostState): Promise<void> {
+  if (state.environmentId || state.readingEnvironment) return;
+  state.readingEnvironment = true;
+  try {
+    const environmentId = await t3Environment(hostRef(host));
+    if (!stillFollowed(host, state)) return;
+    state.environmentId = environmentId;
+    const store = useDispatchStore.getState();
+    const status = store.hosts.find((h) => h.id === host.id);
+    if (status) store.setHostStatus({ ...status, environmentId });
+  } catch {
+    // Read again after the next poll that answers.
+  } finally {
+    state.readingEnvironment = false;
+  }
+}
+
 async function pollHost(host: DispatchHost, state: HostState, force: boolean): Promise<void> {
   const store = useDispatchStore.getState;
   const lastSeen = store().hosts.find((h) => h.id === host.id)?.at ?? null;
@@ -359,6 +385,7 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
       ok: false,
       at: lastSeen,
       error: errorText(error),
+      environmentId: state.environmentId,
     });
     recomputeOverview();
     return;
@@ -400,8 +427,10 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
     ok: true,
     at: new Date().toISOString(),
     error: null,
+    environmentId: state.environmentId,
   });
   recomputeOverview();
+  void readEnvironment(host, state);
 
   await readConversationReferences(host, state);
   await readDetails(host, state);
@@ -453,6 +482,14 @@ export function followHostList(): void {
 
 // ── Azure DevOps ────────────────────────────────────────────
 
+/** The ids of the items a workstream links; read with the items, never shown in Dispatch. */
+let contextIdSource: () => readonly number[] = () => [];
+
+/** Let another feature (workstreams) name the extra items it needs read. */
+export function followContextItems(source: () => readonly number[]): void {
+  contextIdSource = source;
+}
+
 /** The client Dispatch reads and writes ADO with, or `null` when ADO is not set up. */
 export function dispatchAdoClient(): AdoClient | null {
   return adoClient(useSettingsStore.getState().settings.azureDevOps);
@@ -473,7 +510,7 @@ function refreshLinkedPullRequests(): Promise<void> {
     const candidates = candidateRepositories(useSettingsStore.getState().settings.repos);
     try {
       const { pullRequests, repositories } = await lookUpLinkedPullRequests(
-        store().items,
+        [...store().items, ...store().contextItems],
         candidates,
         store().linkedRepositories,
         fetchFromGitHub,
@@ -498,6 +535,7 @@ async function loadItems(): Promise<void> {
   const client = adoClient(ado);
   if (!client) {
     store().setItems([], { ok: false, at: null, error: 'Azure DevOps is not set up.' });
+    store().setContextItems([], []);
     recomputeOverview();
     return;
   }
@@ -509,7 +547,19 @@ async function loadItems(): Promise<void> {
       tracked,
     );
     if (generation !== syncGeneration) return;
+    const listed = new Set(items.map((item) => item.id));
+    const contextIds = [...new Set(contextIdSource())].filter((id) => !listed.has(id));
+    const context =
+      contextIds.length === 0
+        ? { items: [], missing: [] }
+        : await loadContextItems(
+            client,
+            { organization: ado.organization, project: ado.project },
+            contextIds,
+          ).catch(() => null);
+    if (generation !== syncGeneration) return;
     store().setItems(items, { ok: true, at: new Date().toISOString(), error: null });
+    if (context) store().setContextItems(context.items, context.missing);
     void refreshLinkedPullRequests();
   } catch (error) {
     if (generation !== syncGeneration) return;
@@ -533,6 +583,7 @@ export function syncItems(force = false): Promise<void> {
     linkedInFlight = null;
     sourcesRead.delete(ADO_SOURCE);
     useDispatchStore.getState().setItems([], { ok: false, at: null, error: null });
+    useDispatchStore.getState().setContextItems([], []);
     useDispatchStore.getState().setLinkedPullRequests([], {});
     recomputeOverview();
   }

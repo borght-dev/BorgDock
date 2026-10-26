@@ -68,7 +68,17 @@ describe('getWorkItems', () => {
     expect(item.id).toBe(123);
     expect(item.fields['System.Title']).toBe('Fix the bug');
 
-    expect(client.get).toHaveBeenCalledWith('wit/workitems?ids=123&$expand=relations');
+    expect(client.get).toHaveBeenCalledWith(
+      'wit/workitems?ids=123&$expand=relations&errorPolicy=Omit',
+    );
+  });
+
+  it('leaves out an id ADO no longer has instead of failing the batch', async () => {
+    vi.mocked(client.get).mockResolvedValueOnce({ value: [fakeWorkItem, null] });
+
+    const result = await getWorkItems(client, [123, 999]);
+
+    expect(result.map((item) => item.id)).toEqual([123]);
   });
 
   it('batches requests in groups of 200', async () => {

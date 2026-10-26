@@ -27,6 +27,7 @@ const DEVELOPER_NOTES_FIELD = 'Custom.DeveloperNotes';
 
 const GITHUB_PULL_REQUEST_LINK = /^vstfs:\/\/\/GitHub\/PullRequest\/([^%]+)%2F(\d+)$/i;
 const PARENT_LINK = 'System.LinkTypes.Hierarchy-Reverse';
+const CHILD_LINK = 'System.LinkTypes.Hierarchy-Forward';
 const WORK_ITEM_ID_AT_END = /\/(\d+)$/;
 
 // ADO lists a type's states in no useful order. Well-known names follow the
@@ -113,6 +114,13 @@ function parentOf(item: WorkItem): number | null {
   return match ? Number(match[1]) : null;
 }
 
+function childrenOf(item: WorkItem): number[] {
+  return (item.relations ?? []).flatMap((relation) => {
+    const match = relation.rel === CHILD_LINK ? WORK_ITEM_ID_AT_END.exec(relation.url) : null;
+    return match ? [Number(match[1])] : [];
+  });
+}
+
 export function toDispatchItem(
   item: WorkItem,
   states: WorkflowState[],
@@ -148,6 +156,7 @@ export function toDispatchItem(
     url,
     linkedPullRequests: linkedPullRequests(item),
     parentId: parentOf(item),
+    childIds: childrenOf(item),
     changedAt: getField(item, 'System.ChangedDate'),
   };
 }
@@ -161,23 +170,55 @@ export function workItemWebUrl(scope: AdoScope, id: number): string {
   return `https://dev.azure.com/${encodeURIComponent(scope.organization)}/${encodeURIComponent(scope.project)}/_workitems/edit/${id}`;
 }
 
-async function toDispatchItems(
+async function convertItems(
   client: AdoClient,
   scope: AdoScope,
   items: WorkItem[],
   mine: ReadonlySet<number>,
 ): Promise<DispatchItem[]> {
   const scopeKey = `${scope.organization}/${scope.project}`;
-  const converted = await Promise.all(
+  return Promise.all(
     items.map(async (item) => {
       const typeName = getField(item, 'System.WorkItemType') || 'Task';
       const states = await workflowOf(client, scopeKey, typeName).catch(() => []);
       return toDispatchItem(item, states, mine.has(item.id), workItemWebUrl(scope, item.id));
     }),
   );
+}
+
+async function toDispatchItems(
+  client: AdoClient,
+  scope: AdoScope,
+  items: WorkItem[],
+  mine: ReadonlySet<number>,
+): Promise<DispatchItem[]> {
+  const converted = await convertItems(client, scope, items, mine);
   return converted.filter(
     (item) => item.stateCategory !== 'Completed' && item.stateCategory !== 'Removed',
   );
+}
+
+export interface ContextItems {
+  items: DispatchItem[];
+  /** Ids ADO did not return: deleted, or out of reach. */
+  missing: number[];
+}
+
+/**
+ * Items a workstream links that Dispatch doesn't list: done ones, epics,
+ * items of others. Done items stay in, unlike in `loadDispatchItems`.
+ */
+export async function loadContextItems(
+  client: AdoClient,
+  scope: AdoScope,
+  ids: readonly number[],
+  mine: ReadonlySet<number> = new Set(),
+): Promise<ContextItems> {
+  if (ids.length === 0) return { items: [], missing: [] };
+  const found = await getWorkItems(client, [...ids]);
+  const returned = new Set(found.map((item) => item.id));
+  const items = await withLastComments(client, await convertItems(client, scope, found, mine));
+  return { items, missing: ids.filter((id) => !returned.has(id)) };
 }
 
 let myName: Promise<string | null> | null = null;

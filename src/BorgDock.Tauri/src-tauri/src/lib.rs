@@ -194,6 +194,7 @@ macro_rules! app_commands {
             t3::commands::t3_first_user_messages,
             t3::commands::t3_conversation_references,
             t3::commands::t3_show_thread,
+            t3::commands::t3_environment,
             t3::commands::t3_catalogue,
             t3::commands::t3_launch_thread,
             t3::commands::t3_respond,

@@ -391,6 +391,14 @@ async fn environment_id(client: &Client) -> Result<String, String> {
         .ok_or_else(|| "T3 did not report its environment id".to_string())
 }
 
+/// The id of the T3 install behind `host`: what names a thread across hosts.
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn t3_environment(host: HostRef) -> Result<String, String> {
+    let client = Client::connect(&host).await?;
+    environment_id(&client).await
+}
+
 /// Bring T3 Code to the front on `thread_id`.
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]

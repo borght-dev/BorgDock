@@ -1,0 +1,436 @@
+import { scopedId } from '@/services/dispatch/hosts';
+import {
+  type AgentThread,
+  type ItemOverview,
+  NEEDS_YOU,
+  type PullRequestState,
+  THREAD_STATUS_LABEL,
+  type Tone,
+} from '@/services/dispatch/types';
+import type { LookupResult } from '@/services/github/pr-lookup';
+import type { HostStatus, SourceStatus } from '@/stores/dispatch-store';
+import { shortIdentity, sourceUrl } from './identity';
+import type { AdoItemRef, GitHubPrRef, LinkRef, Member, RefKey, T3ThreadRef } from './types';
+
+/**
+ * What a member's source says now. Every reference has its own freshness:
+ * a workstream can hold a live pull request, a work item as of ten minutes
+ * ago and a thread on a host that is offline, side by side.
+ */
+
+export type Freshness = 'live' | 'stale' | 'offline' | 'missing' | 'not-connected' | 'unread';
+
+export const FRESHNESS_LABEL: Record<Freshness, string> = {
+  live: 'Live',
+  stale: 'Out of date',
+  offline: 'Offline',
+  missing: 'Missing',
+  'not-connected': 'Not connected',
+  unread: 'Not read yet',
+};
+
+/** A pull request as the workstream needs it, from BorgDock's poll or a lookup. */
+export interface PrFacts {
+  owner: string;
+  repo: string;
+  number: number;
+  url: string;
+  title: string;
+  state: PullRequestState;
+  isDraft: boolean;
+  mergedAt: string | null;
+  closedAt: string | null;
+  baseRefName: string | null;
+  headRefName: string | null;
+  approved: boolean;
+  checks: 'passed' | 'failed' | 'pending' | null;
+  conflicting: boolean;
+  /** Polled by BorgDock: it opens inside BorgDock. */
+  polled: boolean;
+  repositoryId: string | null;
+  /** `owner/name` now, when GitHub reports one that differs from the reference's. */
+  renamedTo: string | null;
+}
+
+/** The last seen metadata of a reference, kept per device. */
+export interface CachedMeta {
+  title: string;
+  stateLabel: string;
+  at: string;
+}
+
+export interface ResolvedMember {
+  member: Member;
+  freshness: Freshness;
+  /** Why it isn't live: the host is offline, the organization isn't set up. */
+  reason: string | null;
+  /** When the source last said what is shown. */
+  asOf: string | null;
+  title: string;
+  /** "Open", "Merged", "Development In Progress", "Agent asks". */
+  stateLabel: string;
+  tone: Tone | null;
+  /** Done at its source: merged or closed, Resolved or later, settled. A resolved member blocks nothing. */
+  resolved: boolean;
+  /** When it got resolved, as far as the source says. */
+  resolvedAt: string | null;
+  /** Last activity at the source. */
+  activityAt: string | null;
+  needsYou: boolean;
+  url: string;
+  identity: string;
+  item?: ItemOverview;
+  pr?: PrFacts;
+  thread?: AgentThread;
+  hostLabel?: string;
+}
+
+export interface PolledPullRequest extends PrFacts {
+  updatedAt: string | null;
+}
+
+export interface SourceSnapshot {
+  now: number;
+  ado: {
+    organization: string | null;
+    status: SourceStatus;
+    pollMs: number;
+  };
+  /** Every item Dispatch built, its own and the context ones, by id. */
+  items: ReadonlyMap<number, ItemOverview>;
+  missingItemIds: ReadonlySet<number>;
+  gitHub: {
+    configured: boolean;
+    lastPollAt: string | null;
+    pollMs: number;
+  };
+  /** Pull requests BorgDock polls, by `owner/repo#number` in lower case. */
+  polled: ReadonlyMap<string, PolledPullRequest>;
+  /** Pull requests read by number, by the same key. */
+  lookedUp: ReadonlyMap<string, LookupResult>;
+  threads: ReadonlyMap<string, AgentThread>;
+  hosts: readonly HostStatus[];
+  /** Hosts configured in settings, by id. */
+  configuredHosts: ReadonlySet<string>;
+  cache: Readonly<Record<RefKey, CachedMeta>>;
+}
+
+/** A source counts as current while it answered within this many poll intervals. */
+const FRESH_POLLS = 3;
+
+function age(now: number, at: string | null): number {
+  return at ? now - Date.parse(at) : Number.POSITIVE_INFINITY;
+}
+
+function shortTime(at: string | null): string {
+  if (!at) return '';
+  const date = new Date(at);
+  return date.toLocaleString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** "as of 26 Oct 10:42". */
+export function asOfLabel(resolved: Pick<ResolvedMember, 'freshness' | 'asOf' | 'reason'>): string {
+  switch (resolved.freshness) {
+    case 'live':
+      return 'Live';
+    case 'stale':
+      return resolved.asOf ? `As of ${shortTime(resolved.asOf)}` : 'Out of date';
+    case 'offline':
+      return resolved.asOf ? `Offline since ${shortTime(resolved.asOf)}` : 'Offline';
+    default:
+      return FRESHNESS_LABEL[resolved.freshness];
+  }
+}
+
+function base(member: Member, snapshot: SourceSnapshot): ResolvedMember {
+  const cached = snapshot.cache[member.key];
+  return {
+    member,
+    freshness: 'unread',
+    reason: null,
+    asOf: cached?.at ?? null,
+    title: cached?.title || member.label || shortIdentity(member.ref),
+    stateLabel: cached?.stateLabel ?? '',
+    tone: null,
+    resolved: false,
+    resolvedAt: null,
+    activityAt: null,
+    needsYou: false,
+    url: sourceUrl(member.ref),
+    identity: shortIdentity(member.ref),
+  };
+}
+
+export const PR_STATE_LABEL: Record<PullRequestState, string> = {
+  open: 'Open',
+  merged: 'Merged',
+  closed: 'Closed',
+  unknown: 'Unknown',
+};
+
+function prKey(ref: Pick<GitHubPrRef, 'owner' | 'repo' | 'number'>): string {
+  return `${ref.owner}/${ref.repo}#${ref.number}`.toLowerCase();
+}
+
+function prTone(pr: PrFacts): Tone {
+  if (pr.state === 'merged') return 'ok';
+  if (pr.state === 'closed') return 'mute';
+  if (pr.checks === 'failed' || pr.conflicting) return 'bad';
+  if (pr.checks === 'pending') return 'run';
+  return pr.isDraft ? 'mute' : 'warn';
+}
+
+function withPr(resolved: ResolvedMember, pr: PrFacts, activityAt: string | null): ResolvedMember {
+  return {
+    ...resolved,
+    title: pr.title || resolved.title,
+    stateLabel: pr.isDraft && pr.state === 'open' ? 'Draft' : PR_STATE_LABEL[pr.state],
+    tone: prTone(pr),
+    resolved: pr.state === 'merged' || pr.state === 'closed',
+    resolvedAt: pr.mergedAt ?? pr.closedAt,
+    activityAt: activityAt ?? pr.mergedAt ?? pr.closedAt,
+    url: pr.url || resolved.url,
+    pr,
+  };
+}
+
+function resolvePullRequest(
+  member: Member,
+  ref: GitHubPrRef,
+  snapshot: SourceSnapshot,
+): ResolvedMember {
+  const start = base(member, snapshot);
+  if (!snapshot.gitHub.configured) {
+    return { ...start, freshness: 'not-connected', reason: 'GitHub is not set up.' };
+  }
+  const key = prKey(ref);
+  const polled = snapshot.polled.get(key);
+  if (polled) {
+    const fresh =
+      age(snapshot.now, snapshot.gitHub.lastPollAt) < FRESH_POLLS * snapshot.gitHub.pollMs;
+    return withPr(
+      {
+        ...start,
+        freshness: fresh ? 'live' : 'stale',
+        asOf: snapshot.gitHub.lastPollAt,
+        reason: fresh ? null : 'BorgDock has not reached GitHub for a while.',
+      },
+      polled,
+      polled.updatedAt,
+    );
+  }
+  const looked = snapshot.lookedUp.get(key);
+  if (!looked) return start;
+  switch (looked.status) {
+    case 'found': {
+      const pr = looked.pullRequest;
+      const [owner, repo] = pr.nameWithOwner.split('/');
+      const renamed =
+        pr.nameWithOwner &&
+        pr.nameWithOwner.toLowerCase() !== `${ref.owner}/${ref.repo}`.toLowerCase();
+      const facts: PrFacts = {
+        owner: owner ?? ref.owner,
+        repo: repo ?? ref.repo,
+        number: pr.number,
+        url: pr.url,
+        title: pr.title,
+        state: pr.state,
+        isDraft: pr.isDraft,
+        mergedAt: pr.mergedAt,
+        closedAt: pr.closedAt,
+        baseRefName: pr.baseRefName,
+        headRefName: pr.headRefName,
+        approved: pr.approved,
+        checks: pr.checks,
+        conflicting: pr.conflicting,
+        polled: false,
+        repositoryId: pr.repositoryId,
+        renamedTo: renamed ? pr.nameWithOwner : null,
+      };
+      const asOf = new Date(looked.readAt).toISOString();
+      return withPr(
+        {
+          ...start,
+          freshness: looked.failing ? 'stale' : 'live',
+          asOf,
+          reason: looked.failing,
+        },
+        facts,
+        null,
+      );
+    }
+    case 'missing':
+      return looked.confirmed
+        ? { ...start, freshness: 'missing', reason: 'GitHub has no such pull request (any more).' }
+        : start;
+    case 'no-access':
+      return { ...start, freshness: 'not-connected', reason: looked.error };
+    case 'error':
+      return { ...start, freshness: 'offline', reason: looked.error };
+  }
+}
+
+function resolveItem(member: Member, ref: AdoItemRef, snapshot: SourceSnapshot): ResolvedMember {
+  const start = base(member, snapshot);
+  const organization = snapshot.ado.organization;
+  if (!organization) {
+    return { ...start, freshness: 'not-connected', reason: 'Azure DevOps is not set up.' };
+  }
+  if (organization.toLowerCase() !== ref.organization.toLowerCase()) {
+    return {
+      ...start,
+      freshness: 'not-connected',
+      reason: `BorgDock is set up for the ${organization} organization, not ${ref.organization}.`,
+    };
+  }
+  const overview = snapshot.items.get(ref.id);
+  if (!overview) {
+    if (snapshot.missingItemIds.has(ref.id)) {
+      return {
+        ...start,
+        freshness: 'missing',
+        reason: 'Azure DevOps did not return it: deleted, or out of reach.',
+      };
+    }
+    if (!snapshot.ado.status.ok && snapshot.ado.status.at) {
+      return {
+        ...start,
+        freshness: 'offline',
+        reason: snapshot.ado.status.error,
+        asOf: snapshot.ado.status.at,
+      };
+    }
+    return start;
+  }
+  const status = snapshot.ado.status;
+  const fresh = status.ok && age(snapshot.now, status.at) < FRESH_POLLS * snapshot.ado.pollMs;
+  const item = overview.item;
+  const resolvedState = item.stateCategory === 'Resolved' || item.stateCategory === 'Completed';
+  return {
+    ...start,
+    freshness: fresh ? 'live' : status.ok ? 'stale' : 'offline',
+    reason: fresh ? null : (status.error ?? 'Azure DevOps has not answered for a while.'),
+    asOf: status.at,
+    title: item.title,
+    stateLabel: item.state,
+    tone: overview.verdict.tone,
+    resolved: resolvedState,
+    resolvedAt: resolvedState ? item.changedAt : null,
+    activityAt: item.changedAt,
+    needsYou: overview.verdict.tone === 'bad',
+    url: item.url,
+    item: overview,
+  };
+}
+
+function threadTone(thread: AgentThread): Tone {
+  if (!thread.open) return 'mute';
+  if (NEEDS_YOU.includes(thread.status)) return 'bad';
+  return 'run';
+}
+
+function resolveThread(member: Member, ref: T3ThreadRef, snapshot: SourceSnapshot): ResolvedMember {
+  const start = base(member, snapshot);
+  const host =
+    snapshot.hosts.find(
+      (h) => h.environmentId === ref.environmentId && snapshot.configuredHosts.has(h.id),
+    ) ?? null;
+  if (!host) {
+    const linkedFrom = snapshot.hosts.find((h) => h.id === ref.hostId);
+    if (!snapshot.configuredHosts.has(ref.hostId) || !linkedFrom) {
+      return {
+        ...start,
+        freshness: 'not-connected',
+        reason: 'No T3 host BorgDock follows runs the install this thread lives on.',
+      };
+    }
+    if (linkedFrom.environmentId && linkedFrom.environmentId !== ref.environmentId) {
+      return {
+        ...start,
+        freshness: 'not-connected',
+        reason: `${linkedFrom.label} runs another T3 install now. Relink the thread.`,
+        hostLabel: linkedFrom.label,
+      };
+    }
+    if (!linkedFrom.ok) {
+      return {
+        ...start,
+        freshness: 'offline',
+        reason: `${linkedFrom.label} is offline.`,
+        asOf: linkedFrom.at,
+        hostLabel: linkedFrom.label,
+      };
+    }
+    return { ...start, hostLabel: linkedFrom.label };
+  }
+  const thread = snapshot.threads.get(scopedId(host.id, ref.threadId));
+  if (!thread) {
+    if (!host.ok) {
+      return {
+        ...start,
+        freshness: 'offline',
+        reason: `${host.label} is offline.`,
+        asOf: host.at,
+        hostLabel: host.label,
+      };
+    }
+    return {
+      ...start,
+      freshness: 'missing',
+      reason: `T3 on ${host.label} no longer lists it: deleted or archived.`,
+      hostLabel: host.label,
+    };
+  }
+  const live = host.ok && thread.available;
+  const needsYou = thread.open && NEEDS_YOU.includes(thread.status);
+  return {
+    ...start,
+    freshness: live ? 'live' : 'offline',
+    reason: live ? null : `${host.label} is offline.`,
+    asOf: live ? host.at : (host.at ?? null),
+    title: thread.title || start.title,
+    stateLabel: THREAD_STATUS_LABEL[thread.status],
+    tone: threadTone(thread),
+    resolved: !thread.open,
+    resolvedAt: thread.open ? null : thread.lastActivityAt,
+    activityAt: thread.lastActivityAt,
+    needsYou,
+    thread,
+    hostLabel: host.label,
+  };
+}
+
+function resolveLink(member: Member, ref: LinkRef, snapshot: SourceSnapshot): ResolvedMember {
+  return {
+    ...base(member, snapshot),
+    freshness: 'live',
+    title: member.label || ref.title,
+    stateLabel: 'Link',
+    resolved: true,
+    url: ref.url,
+  };
+}
+
+export function resolveMember(member: Member, snapshot: SourceSnapshot): ResolvedMember {
+  switch (member.ref.kind) {
+    case 'github-pr':
+      return resolvePullRequest(member, member.ref, snapshot);
+    case 'ado-item':
+      return resolveItem(member, member.ref, snapshot);
+    case 't3-thread':
+      return resolveThread(member, member.ref, snapshot);
+    case 'link':
+      return resolveLink(member, member.ref, snapshot);
+  }
+}
+
+/** What to keep in the per-device cache for a member that resolved live. */
+export function cacheEntry(resolved: ResolvedMember): CachedMeta | null {
+  if (resolved.freshness !== 'live' || resolved.member.ref.kind === 'link') return null;
+  return { title: resolved.title, stateLabel: resolved.stateLabel, at: new Date().toISOString() };
+}
