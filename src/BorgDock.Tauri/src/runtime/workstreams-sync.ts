@@ -7,13 +7,12 @@ import {
   syncItems,
 } from '@/services/dispatch/sync';
 import type { ItemOverview } from '@/services/dispatch/types';
-import { getGitHubToken } from '@/services/github/auth';
 import { isDue, lookUpPullRequests, targetKey } from '@/services/github/pr-lookup';
-import { getClient, initClient } from '@/services/github/singleton';
+import { getClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import { showWorkstream } from '@/services/navigation';
 import { PollingManager } from '@/services/polling';
-import { t3ThreadDetail } from '@/services/t3/api';
+import { t3ThreadLastMessage } from '@/services/t3/api';
 import { assessWorkstream } from '@/services/workstreams/attention';
 import { parseProposal } from '@/services/workstreams/brief';
 import {
@@ -22,6 +21,7 @@ import {
   recordVerification,
   relinkMember,
 } from '@/services/workstreams/edits';
+import { clientForPullRequest } from '@/services/workstreams/github-client';
 import { prRefFromUrl } from '@/services/workstreams/identity';
 import { ADD_TO_WORKSTREAM_EVENT, type AddRequest } from '@/services/workstreams/membership';
 import {
@@ -31,7 +31,6 @@ import {
 } from '@/services/workstreams/notifier';
 import { type CachedMeta, cacheEntry, type SourceSnapshot } from '@/services/workstreams/resolve';
 import {
-  accountFor,
   contextItemIds,
   polledKey,
   pullRequestTargets,
@@ -81,10 +80,14 @@ export function scheduleRecompute(): void {
   recomputeTimer = setTimeout(recomputeWorkstreams, RECOMPUTE_DELAY_MS);
 }
 
+/**
+ * The open pull requests of the poll. The recently closed list is read once,
+ * without reviews or checks, so closed ones are looked up instead.
+ */
 function polledPullRequests() {
-  const { pullRequests, closedPullRequests, repoPolledAt } = usePrStore.getState();
+  const { pullRequests, repoPolledAt } = usePrStore.getState();
   const polled = new Map<string, ReturnType<typeof toPolled>>();
-  for (const entry of [...closedPullRequests, ...pullRequests]) {
+  for (const entry of pullRequests) {
     const pr = entry.pullRequest;
     const at = repoPolledAt[`${pr.repoOwner}/${pr.repoName}`.toLowerCase()];
     polled.set(
@@ -167,7 +170,6 @@ export function recomputeWorkstreams(): void {
     dispatch.hosts,
     dispatch.ado,
     prs.pullRequests,
-    prs.closedPullRequests,
     prs.lastPollTime,
     prs.repoPolledAt,
     sources.lookedUp,
@@ -238,18 +240,14 @@ async function readProposals(
       askedAt.set(run.key, Date.now());
       reading.add(run.key);
       try {
-        let message = thread.lastAgentMessage;
-        if (!message) {
-          const host = configuredHosts(useSettingsStore.getState().settings).find(
-            (h) => h.id === thread.hostId,
-          );
-          message = (
-            await t3ThreadDetail(
-              { id: thread.hostId, baseUrl: host?.baseUrl },
-              rawId(thread.hostId, thread.id),
-            )
-          ).lastAgentMessage;
-        }
+        // Read whole: the proposal block closes the reply, past Dispatch's excerpt.
+        const host = configuredHosts(useSettingsStore.getState().settings).find(
+          (h) => h.id === thread.hostId,
+        );
+        const message = await t3ThreadLastMessage(
+          { id: thread.hostId, baseUrl: host?.baseUrl },
+          rawId(thread.hostId, thread.id),
+        );
         if (!message) continue;
         const now = new Date().toISOString();
         const hosts = useDispatchStore.getState().hosts;
@@ -348,17 +346,6 @@ function applyFindings(assessments: Record<string, ReturnType<typeof assessWorks
 let lookupInFlight: Promise<void> | null = null;
 let lookupAgain = false;
 
-function clientFor(owner: string, repo: string, account: string | null) {
-  const settings = useSettingsStore.getState().settings;
-  const chosen = accountFor({ owner, repo, account }, settings.repos);
-  if (!chosen) return getClient();
-  const existing = getClient(chosen);
-  if (existing) return existing;
-  if (!getClient()) return null;
-  const pat = settings.gitHub.personalAccessToken;
-  return initClient(() => getGitHubToken(pat, chosen), chosen);
-}
-
 /**
  * The own pull request of every work item a workstream links, when BorgDock
  * doesn't poll it: "item delivered" needs it read, not remembered.
@@ -408,7 +395,7 @@ export function lookUpWorkstreamPullRequests(): Promise<void> {
       const results = await lookUpPullRequests(
         targets,
         (owner, repo) =>
-          clientFor(owner, repo, accounts.get(`${owner}/${repo}`.toLowerCase()) ?? null),
+          clientForPullRequest(owner, repo, accounts.get(`${owner}/${repo}`.toLowerCase()) ?? null),
         previous,
         now,
       );
@@ -507,14 +494,11 @@ export function startWorkstreamsSync(): () => void {
       }
     }),
     usePrStore.subscribe((state, previous) => {
+      // Every accepted poll: what is due is read again, even when nothing changed.
       if (
         state.pullRequests !== previous.pullRequests ||
-        state.closedPullRequests !== previous.closedPullRequests
+        state.lastPollTime !== previous.lastPollTime
       ) {
-        void lookUpWorkstreamPullRequests();
-        scheduleRecompute();
-      } else if (state.lastPollTime !== previous.lastPollTime) {
-        // Every accepted poll: what is due is read again, even when nothing changed.
         void lookUpWorkstreamPullRequests();
         scheduleRecompute();
       }

@@ -2,7 +2,6 @@ import { unitActions } from '@/components/dispatch/unit-actions';
 import { dispatchActions, runItemAction, showDispatchItem } from '@/services/dispatch/actions';
 import { configuredHosts, rawId } from '@/services/dispatch/hosts';
 import { postComment } from '@/services/github/mutations';
-import { getClientForRepo } from '@/services/github/singleton';
 import { showPr, showWorkItem } from '@/services/navigation';
 import { closePr } from '@/services/pr-actions';
 import { t3ShowThread } from '@/services/t3/api';
@@ -10,6 +9,7 @@ import { useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { showToast, toastError } from '@/stores/toast-store';
 import { useWorkstreamSourcesStore } from '@/stores/workstream-sources-store';
+import { clientForPullRequest } from './github-client';
 import type { ResolvedMember } from './resolve';
 import type { RefKey } from './types';
 
@@ -166,7 +166,7 @@ export async function runMemberAction(
   }
   if (ref.kind === 'github-pr' && actionId === 'pr:close' && resolved.pr) {
     const { owner, repo } = resolved.pr;
-    const client = getClientForRepo(owner, repo);
+    const client = clientForPullRequest(owner, repo, ref.account ?? null);
     if (comment?.trim() && client) {
       try {
         await postComment(client, owner, repo, ref.number, comment.trim());
@@ -175,7 +175,7 @@ export async function runMemberAction(
         return false;
       }
     }
-    const closed = await closePr({ repoOwner: owner, repoName: repo, number: ref.number });
+    const closed = await closePr({ repoOwner: owner, repoName: repo, number: ref.number, client });
     if (closed) showToast({ tone: 'success', message: `Closed ${owner}/${repo}#${ref.number}.` });
     return closed;
   }

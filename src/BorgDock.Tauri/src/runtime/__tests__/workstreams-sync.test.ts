@@ -111,12 +111,48 @@ describe('recomputeWorkstreams', () => {
       required: 1,
     });
 
+    // The recently closed list holds no reviews or checks: it is no evidence.
     usePrStore.setState({
       pullRequests: [],
       closedPullRequests: [polledPr('merged')],
       lastPollTime: new Date(),
       repoPolledAt: { 'acme/shop': Date.now() },
     });
+    recomputeWorkstreams();
+    expect(
+      useWorkstreamsStore.getState().entries[id]!.document.outcomes[0]!.verification.state,
+    ).toBe('unverified');
+
+    useWorkstreamSourcesStore.getState().mergeLookups(
+      new Map([
+        [
+          'acme/shop#12',
+          {
+            status: 'found' as const,
+            readAt: Date.now(),
+            checkedAt: Date.now(),
+            failing: null,
+            pullRequest: {
+              number: 12,
+              url: 'https://github.com/acme/shop/pull/12',
+              title: 'Queue rewrite',
+              state: 'merged' as const,
+              isDraft: false,
+              mergedAt: '2026-10-26T10:00:00Z',
+              closedAt: '2026-10-26T10:00:00Z',
+              headRefName: 'feature',
+              baseRefName: 'master',
+              headSha: null,
+              approved: true,
+              conflicting: false,
+              checks: 'passed' as const,
+              repositoryId: 'R_1',
+              nameWithOwner: 'acme/shop',
+            },
+          },
+        ],
+      ]),
+    );
     recomputeWorkstreams();
     const outcome = useWorkstreamsStore.getState().entries[id]!.document.outcomes[0]!;
     expect(outcome.verification).toMatchObject({

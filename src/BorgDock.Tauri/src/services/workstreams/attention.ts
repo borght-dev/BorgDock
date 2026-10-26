@@ -409,6 +409,18 @@ function attentionOf(
     });
   }
 
+  for (const proposal of document.proposals) {
+    const open = proposal.items.filter((item) => item.status === 'open').length;
+    if (open === 0) continue;
+    add({
+      id: `proposal:${proposal.id}`,
+      tone: 'warn',
+      reason: `An agent proposes ${open} ${open === 1 ? 'change' : 'changes'}.`,
+      action: "Go through the agent's proposals.",
+      target: null,
+    });
+  }
+
   for (const decision of openDecisions) {
     const key = decisionKey(decision.id);
     const blocksRequired = outcomes.some(

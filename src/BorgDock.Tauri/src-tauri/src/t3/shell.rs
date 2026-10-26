@@ -12,6 +12,8 @@ use serde_json::Value;
 /// Settled threads older than this are left out.
 const RECENT_DAYS: i64 = 60;
 const AGENT_MESSAGE_LIMIT: usize = 1200;
+/// A workstream review ends its reply with a proposal block, so it is read whole.
+const FULL_MESSAGE_LIMIT: usize = 64_000;
 const FIRST_MESSAGE_LIMIT: usize = 4000;
 
 const RUNNING_STATES: [&str; 5] = ["preparing", "queued", "starting", "running", "waiting"];
@@ -666,14 +668,23 @@ fn parse_question(question: &Value) -> QuestionDto {
     }
 }
 
-/// The agent's last message and its open questions, from a thread snapshot.
-pub fn read_detail(snapshot: &Value) -> ThreadDetail {
-    let last_agent_message = messages_of(snapshot)
+fn last_agent_text(snapshot: &Value) -> Option<&str> {
+    messages_of(snapshot)
         .iter()
         .rev()
         .find(|message| has_text(message, "assistant"))
         .and_then(|message| message["text"].as_str())
-        .map(|text| clipped(text, AGENT_MESSAGE_LIMIT));
+}
+
+/// The agent's last message as it wrote it, not the excerpt Dispatch shows.
+pub fn read_last_message(snapshot: &Value) -> Option<String> {
+    last_agent_text(snapshot).map(|text| clipped(text, FULL_MESSAGE_LIMIT))
+}
+
+/// The agent's last message and its open questions, from a thread snapshot.
+pub fn read_detail(snapshot: &Value) -> ThreadDetail {
+    let last_agent_message =
+        last_agent_text(snapshot).map(|text| clipped(text, AGENT_MESSAGE_LIMIT));
 
     let projection = &snapshot["projection"];
     let pending = projection["runtimeRequests"]
@@ -977,6 +988,22 @@ mod tests {
                 }] }
             ]
         } })
+    }
+
+    #[test]
+    fn the_last_message_is_read_whole() {
+        let long = format!("{}
+```borgdock-proposal
+{{}}
+```", "x".repeat(5000));
+        let snapshot = json!({ "projection": { "messages": [
+            { "role": "assistant", "text": long.clone() }
+        ] } });
+        assert_eq!(read_last_message(&snapshot).as_deref(), Some(long.as_str()));
+        assert_eq!(
+            read_detail(&snapshot).last_agent_message.map(|m| m.chars().count()),
+            Some(AGENT_MESSAGE_LIMIT)
+        );
     }
 
     #[test]

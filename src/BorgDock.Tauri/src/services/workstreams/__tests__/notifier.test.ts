@@ -55,6 +55,13 @@ describe('workstream notifications', () => {
     );
   });
 
+  it('sends a notice again when its cause cleared and came back', () => {
+    notifyWorkstreams(workstreamNotices([document], assessment(['conflict'])), false, true);
+    notifyWorkstreams(workstreamNotices([document], assessment([])), false, true);
+    notifyWorkstreams(workstreamNotices([document], assessment(['conflict'])), false, true);
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
   it('sends nothing when turned off in settings', () => {
     notifyWorkstreams(workstreamNotices([document], assessment(['ready'])), false, false);
     expect(send).not.toHaveBeenCalled();

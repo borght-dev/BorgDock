@@ -351,12 +351,12 @@ export function DecisionPanel({ document, assessment, readOnly }: DecisionPanelP
             <ul className="bd-ws-decision__options">
               {decision.options.map((key) => {
                 const member = assessment?.members.get(key);
+                const ref = document.members.find((m) => m.key === key)?.ref;
                 const kept = decision.chosen === key;
                 return (
                   <li key={key} data-kept={kept || undefined}>
                     <span className="bd-ws-picker__identity">
-                      {member?.identity ??
-                        shortIdentity(document.members.find((m) => m.key === key)!.ref)}
+                      {member?.identity ?? (ref ? shortIdentity(ref) : key)}
                     </span>
                     <span className="bd-ws-decision__option-title">{member?.title}</span>
                     {member?.stateLabel && (

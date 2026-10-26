@@ -206,7 +206,27 @@ export function mergeDocuments(
   document.revision = theirs.revision;
   document.writtenBy = theirs.writtenBy;
   document.updatedAt = theirs.updatedAt;
-  return { document: document as unknown as WorkstreamDocument, conflicts };
+  return { document: withoutRemovedOptions(document as unknown as WorkstreamDocument), conflicts };
+}
+
+/** One side removed a member while the other made it an option of a decision: drop the option. */
+function withoutRemovedOptions(document: WorkstreamDocument): WorkstreamDocument {
+  const keys = new Set(document.members.map((m) => m.key));
+  if (document.decisions.every((d) => d.options.every((option) => keys.has(option)))) {
+    return document;
+  }
+  return {
+    ...document,
+    decisions: document.decisions.map((d) => {
+      const chosenGone = d.chosen !== null && !keys.has(d.chosen);
+      return {
+        ...d,
+        options: d.options.filter((option) => keys.has(option)),
+        chosen: chosenGone ? null : d.chosen,
+        status: chosenGone ? 'open' : d.status,
+      };
+    }),
+  };
 }
 
 /** Take `value` for a conflicting field (a choice in the merge view). */

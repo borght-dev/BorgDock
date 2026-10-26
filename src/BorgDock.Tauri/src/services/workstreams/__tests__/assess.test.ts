@@ -432,6 +432,32 @@ describe('assessWorkstream', () => {
     expect(after.members.get(refKey(A))!.member.role).toBe('superseded');
   });
 
+  it('proposals an agent left open ask for attention', () => {
+    const document = workstream({
+      proposals: [
+        {
+          id: 'p1',
+          runKey: refKey(thread('t1')),
+          at: '2026-10-25T00:00:00Z',
+          items: [
+            {
+              id: 'i1',
+              kind: 'next-action',
+              status: 'open',
+              why: 'unblocks it',
+              text: 'Merge #12',
+            },
+            { id: 'i2', kind: 'next-action', status: 'dismissed', why: '', text: 'x' },
+          ],
+          dropped: [],
+        },
+      ],
+    });
+    expect(assessWorkstream(document, snapshot(), options).attention).toContainEqual(
+      expect.objectContaining({ id: 'proposal:p1', reason: 'An agent proposes 1 change.' }),
+    );
+  });
+
   it('a required outcome that reads an unavailable member asks for attention', () => {
     const { document, outcomeId } = withOutcome(workstream({ members: [member(item(7))] }), [
       { kind: 'item-delivered', target: refKey(item(7)) },

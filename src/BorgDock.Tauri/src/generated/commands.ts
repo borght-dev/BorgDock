@@ -265,6 +265,8 @@ export const commands = {
 	t3ShowThread: (host: HostRef_Deserialize, threadId: string, executable: string | null) => typedError<null, string>(__TAURI_INVOKE("t3_show_thread", { host, threadId, executable })),
 	/**  The id of the T3 install behind `host`: what names a thread across hosts. */
 	t3Environment: (host: HostRef_Deserialize) => typedError<string, string>(__TAURI_INVOKE("t3_environment", { host })),
+	/**  The agent's last message in a thread, whole: a workstream review's proposal is at its end. */
+	t3ThreadLastMessage: (host: HostRef_Deserialize, threadId: string) => typedError<string | null, string>(__TAURI_INVOKE("t3_thread_last_message", { host, threadId })),
 	/**  The providers and models the host can start a thread on. */
 	t3Catalogue: (host: HostRef_Deserialize) => typedError<Catalogue, string>(__TAURI_INVOKE("t3_catalogue", { host })),
 	/**

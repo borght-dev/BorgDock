@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { isFailedRun } from '@/services/github/check-runs';
 import { getCheckRunsForRef, rerunFailedChecks } from '@/services/github/checks';
+import type { GitHubClient } from '@/services/github/client';
 import {
   bypassMergePullRequest,
   closePullRequest,
@@ -143,10 +144,12 @@ export interface ClosePrInput {
   repoOwner: string;
   repoName: string;
   number: number;
+  /** The client the pull request was read with, when its repository isn't configured. */
+  client?: GitHubClient | null;
 }
 
 export async function closePr(pr: ClosePrInput, opts?: ActionOpts): Promise<boolean> {
-  const client = getClientForRepo(pr.repoOwner, pr.repoName);
+  const client = pr.client ?? getClientForRepo(pr.repoOwner, pr.repoName);
   if (!client) return false;
   try {
     await closePullRequest(client, pr.repoOwner, pr.repoName, pr.number);

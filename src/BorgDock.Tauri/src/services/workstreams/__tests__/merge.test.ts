@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { addMembers, addOutcome, removeMember, setGoal, setNextAction, setTitle } from '../edits';
+import {
+  addMembers,
+  addOutcome,
+  openDecision,
+  removeMember,
+  setGoal,
+  setNextAction,
+  setTitle,
+} from '../edits';
 import { refKey } from '../identity';
 import { applyChoice, mergeDocuments } from '../merge';
 import { CONTEXT, member, ok, pr, workstream } from './fixtures';
@@ -38,6 +46,16 @@ describe('mergeDocuments', () => {
     };
     const { document } = mergeDocuments(base, mine, theirs);
     expect(document.members.find((m) => m.key === refKey(A))?.note).toBe('still needed');
+  });
+
+  it('drops an option whose member the other machine removed', () => {
+    const mine = ok(removeMember(base, refKey(B), CONTEXT));
+    const theirs = {
+      ...ok(openDecision(base, 'Which queue?', [refKey(A), refKey(B)], CONTEXT)),
+      revision: 4,
+    };
+    const { document } = mergeDocuments(base, mine, theirs);
+    expect(document.decisions[0]!.options).toEqual([refKey(A)]);
   });
 
   it('takes the side that changed a field', () => {

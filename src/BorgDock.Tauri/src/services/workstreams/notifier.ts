@@ -19,7 +19,7 @@ const TITLE: Record<string, string> = {
   ready: 'Ready to complete',
 };
 
-/** Keys sent, or seen while quiet, this session. */
+/** Keys sent, or seen while quiet, that still hold. */
 const sent = new Set<string>();
 
 /** Forget what was sent (tests). */
@@ -69,6 +69,8 @@ export function notifyWorkstreams(
   quiet: boolean,
   enabled: boolean,
 ): void {
+  const holding = new Set(notices.map((notice) => notice.key));
+  for (const key of sent) if (!holding.has(key)) sent.delete(key);
   for (const notice of notices) {
     if (sent.has(notice.key)) continue;
     sent.add(notice.key);

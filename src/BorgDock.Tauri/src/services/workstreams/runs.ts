@@ -35,6 +35,8 @@ export async function startWorkstreamRun(request: WorkstreamRunRequest): Promise
   const { slot, model } = request;
   const entry = useWorkstreamsStore.getState().entries[request.workstreamId];
   if (!entry) throw new Error('That workstream is gone.');
+  if (entry.readOnly) throw new Error('This workstream was made by a newer BorgDock.');
+  if (entry.conflict) throw new Error('Choose what to keep from the other version first.');
   const written = request.prompt.trim();
   if (!written) throw new Error('The first message is empty.');
   if (written.length > PROMPT_LIMIT)
@@ -84,7 +86,7 @@ export async function startWorkstreamRun(request: WorkstreamRunRequest): Promise
     hostId: slot.hostId,
   };
   const device = useWorkstreamsStore.getState().device.deviceLabel;
-  useWorkstreamsStore.getState().edit(request.workstreamId, (d, c) =>
+  const notRecorded = useWorkstreamsStore.getState().edit(request.workstreamId, (d, c) =>
     addRun(
       d,
       { key: refKey(ref), kind: request.kind, startedAt: c.now, device },
@@ -97,6 +99,9 @@ export async function startWorkstreamRun(request: WorkstreamRunRequest): Promise
       c,
     ),
   );
+  if (notRecorded) {
+    throw new Error(`The thread started, but the workstream did not take it: ${notRecorded}`);
+  }
   if (request.openInT3) {
     await t3ShowThread(hostRef, rawThreadId, settings.agents?.t3Path).catch(() => {});
   }

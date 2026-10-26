@@ -28,14 +28,15 @@ Freshness belongs to each member, not to the workstream.
 | --- | --- | --- | --- | --- |
 | ADO item of Dispatch | ADO answered within 3 poll intervals | ADO answered longer ago | ADO failing | ADO answered without it |
 | ADO item read only for workstreams (context) | its own read (`contextStatus`) answered within 3 poll intervals | older | that read failed | ADO answered without it |
-| PR polled by BorgDock | its repository answered within 3 poll intervals (`repoPolledAt`) | its repository failed since | | |
+| Open PR polled by BorgDock | its repository answered within 3 poll intervals (`repoPolledAt`) | its repository failed since | | |
 | PR looked up | read within 15 min (open), 3 h (closed), any time (merged), and the last read didn't fail | older, or the last read failed | GitHub failing, never read | GitHub said "no such PR" twice in a row |
 | T3 thread | its host answered | | host not answering, last state shown | the host answered without it |
 
 `not-connected` (the organization, account or host isn't configured) and `unread` (not read on this
 device yet) show the label the document stores. Neither counts as evidence.
 
-Looked-up PRs are read again every 5 min (open), every hour (closed), never (merged), every minute
+The recently closed list is read once at start, without reviews or checks, so it is no evidence:
+closed PRs are looked up. Looked-up PRs are read again every 5 min (open), every hour (closed), never (merged), every minute
 after a failure (`pr-lookup.ts` `isDue`).
 
 ## Rules (`rules.ts`)
@@ -92,13 +93,17 @@ First match first. The rail count and the Focus card use the `bad` ones.
 | 2 | completed, and an outcome no longer holds | bad |
 | 3 | an outcome is invalidated | bad |
 | 4 | a member waits on you (thread needs you, or the item's Dispatch verdict is `bad`); an item that waits through its own thread shows once | bad |
-| 5 | an open decision (bad when it blocks a required outcome) | bad / warn |
-| 6 | a member PR fails checks or has merge conflicts | bad |
-| 7 | a required outcome reads a member that can't be read | warn |
-| 8 | two relations make a circle | warn |
-| 9 | a blocker resolved since the next action was set | ok |
-| 10 | no next action, or the next action is 7 days old and nothing moved | warn |
-| 11 | every required outcome verified | ok |
+| 5 | an agent's proposal has open items | warn |
+| 6 | an open decision (bad when it blocks a required outcome) | bad / warn |
+| 7 | a member PR fails checks or has merge conflicts | bad |
+| 8 | a required outcome reads a member that can't be read | warn |
+| 9 | two relations make a circle | warn |
+| 10 | a blocker resolved since the next action was set | ok |
+| 11 | no next action, or the next action is 7 days old and nothing moved | warn |
+| 12 | every required outcome verified | ok |
+
+Conflicts, invalidations, reopened completions, proposals, unblocked blockers and readiness send a
+notification once while they hold. One that clears and comes back notifies again.
 
 ## Storage (`storage.rs`, `workstreams-store.ts`, `merge.ts`)
 
@@ -110,7 +115,7 @@ First match first. The rail count and the Focus card use the `bad` ones.
 - Text edits write after 400 ms, structural edits at once, one queue per workstream. A failed write
   keeps the edit and shows Retry.
 - Merge is three-way on the shared base. Collections merge by id, a removal wins only if the other
-  side didn't change the entry. Scalars take the side that changed; both changed is a conflict you
+  side didn't change the entry, and a decision option whose member is gone is dropped. Scalars take the side that changed; both changed is a conflict you
   choose per field. Verification is one field, except that two machines verifying by rule agree on
   the earlier one.
 - The base moves only when a conflict is resolved. A sync client's conflict copy is merged as
@@ -120,7 +125,8 @@ First match first. The rail count and the Focus card use the `bad` ones.
 ## Agent runs (`brief.ts`, `runs.ts`, `proposals.ts`)
 
 - Review with agent: a T3 thread gets the brief (16 000 characters max) and answers with a
-  ```` ```borgdock-proposal ```` block. BorgDock reads it when the thread settles or waits on you and
+  ```` ```borgdock-proposal ```` block. BorgDock reads the reply whole (`t3_thread_last_message`; the
+  Dispatch excerpt is clipped) when the thread settles or waits on you and
   shows each proposed member, relation, outcome, decision or next action for you to accept or
   reject.
 - Work next action: a T3 thread gets the brief and the next action. It is linked to no item.
