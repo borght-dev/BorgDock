@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.6.0 — 2026-10-26
+
+### New Features
+
+- **Stop a running SQL query** — You can now cancel a query from the toolbar when you no longer need it. A two-minute timeout also stops queries that get stuck, and large results stay within a fixed memory limit. ![The SQL window with a running query and Cancel button](whats-new/4.6.0/sql-cancellation.png)
+
+### Improvements
+
+- **Faster startup and browsing** — Move between pull requests and files with less waiting. Large pull request lists stay responsive, and file coloring and symbol search keep working while you browse. ![The file palette with a highlighted source file](whats-new/4.6.0/responsive-browsing.png)
+
+### Bug Fixes
+
+- Refreshes now ignore replies from a previous account, project or session, so older data cannot replace your current work.
+- Saved SQL snippets and cached schemas are available before GitHub sign-in finishes.
+- Disconnecting or unpairing T3 clears its live session indicators instead of leaving agents marked as running or waiting for approval.
+
 ## 4.4.3 — 2026-10-22
 
 ### Bug Fixes

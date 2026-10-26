@@ -4,6 +4,39 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.6.0",
+    "date": "2026-10-26",
+    "summary": "Stop a running SQL query and Faster startup and browsing.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Stop a running SQL query",
+        "description": "You can now cancel a query from the toolbar when you no longer need it. A two-minute timeout also stops queries that get stuck, and large results stay within a fixed memory limit.",
+        "hero": {
+          "src": "/whats-new/4.6.0/sql-cancellation.png",
+          "alt": "The SQL window with a running query and Cancel button"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Faster startup and browsing",
+        "description": "Move between pull requests and files with less waiting. Large pull request lists stay responsive, and file coloring and symbol search keep working while you browse.",
+        "hero": {
+          "src": "/whats-new/4.6.0/responsive-browsing.png",
+          "alt": "The file palette with a highlighted source file"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Refreshes now ignore replies from a previous account, project or session, so older data cannot replace your current work.",
+      "Saved SQL snippets and cached schemas are available before GitHub sign-in finishes.",
+      "Disconnecting or unpairing T3 clears its live session indicators instead of leaving agents marked as running or waiting for approval."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.4.3",
     "date": "2026-10-22",
     "summary": "",

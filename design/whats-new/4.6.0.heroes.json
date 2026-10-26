@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "sql-cancellation",
+    "storyId": "sql-sqlapp--result-running",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 2000
+  },
+  {
+    "slug": "responsive-browsing",
+    "storyId": "file-palette-filepaletteapp--preview-file-ok",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 2500
+  }
+]
