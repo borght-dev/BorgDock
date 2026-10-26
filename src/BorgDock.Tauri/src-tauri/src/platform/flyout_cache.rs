@@ -13,6 +13,7 @@ pub struct FlyoutCache {
 /// Store the latest flyout payload (JSON string) in Rust state.
 /// Called from the main window's useBadgeSync whenever PR data changes.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub fn cache_flyout_data(
     state: tauri::State<'_, FlyoutCache>,
     payload: String,
@@ -25,6 +26,7 @@ pub fn cache_flyout_data(
 /// Retrieve the cached flyout payload. Returns the JSON string or null.
 /// Called from the flyout window on mount.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub fn get_flyout_data(state: tauri::State<'_, FlyoutCache>) -> Result<Option<String>, String> {
     let data = state.data.lock().map_err(|e| e.to_string())?;
     Ok(data.clone())

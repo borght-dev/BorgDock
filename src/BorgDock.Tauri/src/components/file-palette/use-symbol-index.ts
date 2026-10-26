@@ -1,8 +1,6 @@
-export interface SymbolEntry {
-  name: string;
-  rel_path: string;
-  line: number;
-}
+import type { SymbolEntry } from '@/types/symbol';
+
+export type { SymbolEntry } from '@/types/symbol';
 
 /**
  * Filter a flat list of symbol entries by a case-insensitive substring of the
@@ -20,7 +18,9 @@ export function mergeSymbolHits(all: SymbolEntry[], query: string): SymbolEntry[
 }
 
 /** Language id for a given extension, or null if we don't index it. */
-export function languageForExtension(ext: string): 'typescript' | 'javascript' | 'rust' | 'c_sharp' | null {
+export function languageForExtension(
+  ext: string,
+): 'typescript' | 'javascript' | 'rust' | 'c_sharp' | null {
   const lower = ext.toLowerCase();
   if (lower === 'ts' || lower === 'tsx') return 'typescript';
   if (lower === 'js' || lower === 'jsx' || lower === 'mjs' || lower === 'cjs') return 'javascript';

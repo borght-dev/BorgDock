@@ -1,6 +1,6 @@
 import { memo, useCallback } from 'react';
 import { Button, Pill } from '@/components/shared/primitives';
-import { AlertIcon, CheckCircleIcon, CopyIcon } from './icons';
+import { AlertIcon, CheckCircleIcon, CopyIcon, SpinnerIcon } from './icons';
 import { ResultsTable } from './ResultsTable';
 
 interface ResultSet {
@@ -155,7 +155,13 @@ export function ResultsPanel({
           </div>
         )}
 
-        {!error && hasRun && populated.length === 0 && (
+        {!error && isRunning && (
+          <div className="sql-results__empty" role="status">
+            <SpinnerIcon size={20} />
+            <span>Running query…</span>
+          </div>
+        )}
+        {!error && !isRunning && hasRun && populated.length === 0 && (
           <div className="sql-results__empty">
             <CheckCircleIcon size={20} />
             <span>Query executed — no results returned</span>
@@ -184,7 +190,7 @@ export function ResultsPanel({
             </div>
           ))}
 
-        {!error && !hasRun && (
+        {!error && !isRunning && !hasRun && (
           <div className="sql-results__empty sql-results__empty--idle">
             <span className="sql-results__empty-title">Ready when you are</span>
             <span className="sql-results__empty-sub">

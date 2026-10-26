@@ -3,6 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
+import { startApplicationRuntime } from './runtime/application-runtime';
 import { attachConsoleBridge, createLogger } from './services/logger';
 import './styles/index.css';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
@@ -31,6 +32,9 @@ void getCurrentWindow()
   .isVisible()
   .then((visible) => (visible ? getCurrentWindow().setFocus() : undefined))
   .catch((err) => bootLog.error('setFocus failed', err));
+
+const stopRuntime = startApplicationRuntime();
+if (import.meta.hot) import.meta.hot.dispose(stopRuntime);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

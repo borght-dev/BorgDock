@@ -9,7 +9,8 @@ export function useSyntaxHighlight(
   const [highlights, setHighlights] = useState<Map<number, HighlightSpan[]> | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    setHighlights(null);
 
     // Reconstruct source lines from the diff hunks (head-side)
     const allLines: string[] = [];
@@ -31,9 +32,9 @@ export function useSyntaxHighlight(
 
     if (allLines.length === 0) return;
 
-    highlightLines(filename, allLines)
+    highlightLines(filename, allLines, controller.signal)
       .then((result) => {
-        if (cancelled || !result) return;
+        if (controller.signal.aborted || !result) return;
 
         // Remap source line indices back to diff line indices
         const remapped = new Map<number, HighlightSpan[]>();
@@ -48,7 +49,7 @@ export function useSyntaxHighlight(
       });
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [filename, hunks]);
 

@@ -76,7 +76,10 @@ test('with 200 PRs, a row click pushes the detail view within 100 ms of script a
     .getByRole('navigation', { name: 'Sections' })
     .getByRole('button', { name: /^Pull requests/ })
     .click();
-  await expect(page.locator('.bd-wb-list .bd-wb-row[data-pr-key]')).toHaveCount(200);
+  await expect(page.locator('.bd-wb-list [data-virtual-prs]').first()).toBeVisible();
+  const keys = await page.locator('.bd-wb-list .bd-wb-row[data-pr-key]').evaluateAll(rows => rows.slice(0, 4).map(row => (row as HTMLElement).dataset.prKey!));
+  expect(keys).toHaveLength(4);
+  expect(await page.locator('.bd-wb-list .bd-wb-row[data-pr-key]').count()).toBeLessThan(200);
 
   /** One push, measured: click → forced layout of the pushed view. */
   const push = (key: string) =>
@@ -104,11 +107,12 @@ test('with 200 PRs, a row click pushes the detail view within 100 ms of script a
   };
 
   // Warm-up: the first push loads and compiles the detail view's modules.
-  await push('test-org/borgdock#99');
+  await push(keys[0]!);
+  await expect(page.locator('.bd-detail h1')).toContainText('Open change');
   await back();
 
   const runs = [];
-  for (const key of ['test-org/site#100', 'test-org/portal#101', 'test-org/site#103']) {
+  for (const key of keys.slice(1)) {
     const run = await push(key);
     // The push happened inside the measured span, not after it.
     expect(run.depth).toBe('2');
@@ -122,4 +126,29 @@ test('with 200 PRs, a row click pushes the detail view within 100 ms of script a
     `[perf] 200 PRs: row click → laid-out detail, median ${measured.duration.toFixed(1)} ms (runs ${runs.map((r) => r.toFixed(1)).join(', ')})`,
   );
   expect(measured.duration).toBeLessThan(BUDGET_MS);
+});
+
+test('keyboard navigation reaches rows outside the virtual viewport', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await bootApp(page, '', 'happy-path');
+  await seedMainWindow(page, { prs: PRS });
+  await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: /^Pull requests/ }).click();
+  const rows = page.locator('.bd-wb-list .bd-wb-row[data-pr-key]');
+  await expect(page.locator('[data-virtual-prs]').first()).toBeVisible();
+  const initial = await rows.evaluateAll(elements => elements.map(element => element.getAttribute('data-pr-key')));
+  await page.locator('body').click({ position: { x: 1250, y: 880 } });
+  for (let index = 0; index < 45; index++) await page.keyboard.press('ArrowDown');
+  const selected = page.locator('.bd-wb-list .bd-wb-row[data-selected="true"]');
+  await expect(selected).toBeVisible();
+  expect(initial).not.toContain(await selected.getAttribute('data-pr-key'));
+  for (const theme of ['dark', 'light']) {
+    await seedMainWindow(page, { settings: { ui: { theme } } });
+    await expect(page.locator('html')).toHaveClass(theme === 'dark' ? /dark/ : /^(?!.*dark)/);
+    const path = testInfo.outputPath(`virtual-prs-${theme}.png`);
+    await page.screenshot({ path });
+    await testInfo.attach(`virtual-prs-${theme}`, { path, contentType: 'image/png' });
+  }
+  const title = await selected.getAttribute('aria-label');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.bd-detail h1')).toContainText(title!.split(', #')[0]!);
 });

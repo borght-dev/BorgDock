@@ -6,6 +6,7 @@ use super::{git_command, hidden_command, output_with_timeout, run_git_step, GitS
 const SCAN_CONCURRENCY: usize = 8;
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum WorktreeStatus {
     Clean,
@@ -14,6 +15,7 @@ pub enum WorktreeStatus {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct WorktreeInfo {
     pub path: String,
@@ -209,6 +211,7 @@ pub fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
 }
 
 #[derive(Debug, Clone, Serialize, serde::Deserialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct WorktreeEntry {
     pub path: String,
@@ -234,6 +237,7 @@ pub(crate) fn list_worktrees_bare_sync(base_path: &str) -> Result<Vec<WorktreeEn
 /// Lightweight worktree list — only path + branch, no per-worktree git status/ahead-behind/sha.
 /// Use this when you only need to find a worktree by branch name (e.g. before launching Claude).
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn list_worktrees_bare(base_path: String) -> Result<Vec<WorktreeEntry>, String> {
     tokio::task::spawn_blocking(move || list_worktrees_bare_sync(&base_path))
         .await
@@ -244,6 +248,7 @@ pub async fn list_worktrees_bare(base_path: String) -> Result<Vec<WorktreeEntry>
 /// per worktree run on a small scoped thread pool (`SCAN_CONCURRENCY` wide)
 /// instead of sequentially — 14 worktrees went from ~24 s to a few seconds.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn list_worktrees(base_path: String) -> Result<Vec<WorktreeInfo>, String> {
     tokio::task::spawn_blocking(move || {
         let entries = list_worktrees_bare_sync(&base_path)?;
@@ -306,6 +311,7 @@ fn scan_worktrees_parallel(entries: Vec<WorktreeEntry>) -> Vec<WorktreeInfo> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn create_worktree(
     app: tauri::AppHandle,
     base_path: String,
@@ -364,6 +370,7 @@ pub async fn create_worktree(
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct CheckoutPrResult {
     pub worktree_path: String,
@@ -378,6 +385,7 @@ pub struct CheckoutPrResult {
 /// Returns the worktree path and an ordered list of every git command that ran,
 /// so the UI can render the full transcript.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn checkout_pr(
     app: tauri::AppHandle,
     base_repo_path: String,
@@ -489,6 +497,7 @@ fn format_step_failure(steps: &[GitStep]) -> String {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn remove_worktree(
     app: tauri::AppHandle,
     base_path: String,
@@ -505,6 +514,7 @@ pub async fn remove_worktree(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn open_in_terminal(path: String) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         #[cfg(target_os = "windows")]
@@ -549,6 +559,7 @@ pub async fn open_in_terminal(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn open_in_editor(path: String) -> Result<(), String> {
     // VS Code on Windows installs as `code.cmd` (a batch wrapper). Rust's
     // CreateProcessW only auto-appends `.exe`, so bare "code" returns NotFound
@@ -567,6 +578,7 @@ pub async fn open_in_editor(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn reveal_in_file_manager(path: String) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         #[cfg(target_os = "windows")]
@@ -603,6 +615,7 @@ pub async fn reveal_in_file_manager(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn launch_claude_in_terminal(
     path: String,
     profile_override: Option<String>,

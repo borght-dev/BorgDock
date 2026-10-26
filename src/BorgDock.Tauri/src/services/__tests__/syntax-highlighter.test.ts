@@ -50,7 +50,9 @@ function buildTreeSitterMock(rootNode: ReturnType<typeof makeMockNode> | null = 
   const MockParserClass = vi.fn(function MockParser() {
     return mockParser;
   });
-  (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
+  (MockParserClass as unknown as Record<string, unknown>).init = vi
+    .fn()
+    .mockResolvedValue(undefined);
 
   const MockLanguageClass = {
     load: vi.fn().mockResolvedValue(mockLanguage),
@@ -97,13 +99,13 @@ describe('highlightLines', () => {
   });
 
   it('returns null for unsupported file extensions', async () => {
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('file.xyz', ['hello']);
     expect(result).toBeNull();
   });
 
   it('returns null for files without an extension', async () => {
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('Makefile', ['all: build']);
     expect(result).toBeNull();
   });
@@ -120,7 +122,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['const x = "hello"']);
 
     expect(result).not.toBeNull();
@@ -141,14 +143,16 @@ describe('highlightLines', () => {
       Language: { load: vi.fn() },
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['const x = 1']);
     expect(result).toBeNull();
   });
 
   it('returns null when language loading fails', async () => {
     const MockParserClass = vi.fn();
-    (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
+    (MockParserClass as unknown as Record<string, unknown>).init = vi
+      .fn()
+      .mockResolvedValue(undefined);
 
     vi.doMock('web-tree-sitter', () => ({
       Parser: MockParserClass,
@@ -157,7 +161,7 @@ describe('highlightLines', () => {
       },
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['const x = 1']);
     expect(result).toBeNull();
   });
@@ -170,7 +174,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['const x = 1']);
     expect(result).toBeNull();
   });
@@ -187,7 +191,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['const x = 1', 'return x']);
 
     expect(result).not.toBeNull();
@@ -209,7 +213,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['const x = 1', 'something']);
 
     expect(result).not.toBeNull();
@@ -228,7 +232,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
 
     // Test .js maps to javascript
     const jsResult = await highlightLines('file.js', ['const x']);
@@ -249,7 +253,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['hello']);
 
     expect(result).not.toBeNull();
@@ -269,7 +273,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['if (const x)']);
 
     expect(result).not.toBeNull();
@@ -289,7 +293,9 @@ describe('highlightLines', () => {
         delete: vi.fn(),
       };
     });
-    (MockParserClass as unknown as Record<string, unknown>).init = vi.fn().mockResolvedValue(undefined);
+    (MockParserClass as unknown as Record<string, unknown>).init = vi
+      .fn()
+      .mockResolvedValue(undefined);
     const MockLanguageClass = { load: vi.fn().mockResolvedValue({ name: 'typescript' }) };
 
     vi.doMock('web-tree-sitter', () => ({
@@ -297,7 +303,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['const x = 1']);
     expect(result).toBeNull();
   });
@@ -314,7 +320,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['line0', 'line1']);
 
     expect(result).not.toBeNull();
@@ -342,15 +348,15 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
     const result = await highlightLines('example.ts', ['/* comment', 'middle', 'end */']);
 
     expect(result).not.toBeNull();
-    // Row 0: start at col 2, end should be Infinity (node extends past this row)
+    // Row 0: start at col 2, end is clipped to this source line
     const row0Spans = result!.get(0);
     expect(row0Spans).toBeDefined();
     expect(row0Spans![0]!.start).toBe(2);
-    expect(row0Spans![0]!.end).toBe(Infinity);
+    expect(row0Spans![0]!.end).toBe(10);
   });
 
   it('reuses cached language on second call', async () => {
@@ -362,7 +368,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
 
     // First call loads the language
     const result1 = await highlightLines('example.ts', ['const x']);
@@ -383,7 +389,7 @@ describe('highlightLines', () => {
       Language: MockLanguageClass,
     }));
 
-    const { highlightLines } = await import('../syntax-highlighter');
+    const { highlightLines } = await import('../syntax-engine');
 
     // First call triggers full init path
     await highlightLines('a.ts', ['const x']);

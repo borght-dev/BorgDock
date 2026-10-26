@@ -252,11 +252,12 @@ export async function pollOpenPrsAggregate(
   owner: string,
   repo: string,
 ): Promise<PullRequestWithChecks[]> {
+  const requests = limitClientRequests(client);
   const ids = new Set<string>();
   const cursors = new Set<string>();
   let after: string | null = null;
   do {
-    const data: PollResponse = await client.graphql<PollResponse>(POLL_OPEN_PRS_QUERY, {
+    const data: PollResponse = await requests.graphql<PollResponse>(POLL_OPEN_PRS_QUERY, {
       owner,
       repo,
       after,
@@ -283,7 +284,6 @@ export async function pollOpenPrsAggregate(
   for (let offset = 0; offset < allIds.length; offset += 10) {
     batches.push(allIds.slice(offset, offset + 10));
   }
-  const requests = limitClientRequests(client);
   const results = await mapConcurrent(batches, async (ids) => {
     const data = await requests.graphql<{ nodes: Array<GqlPrNode | null> }>(
       POLL_PR_SUMMARIES_QUERY,
@@ -307,10 +307,14 @@ export async function pollOpenPrsAggregate(
   return results.flat();
 }
 
+const requestLimits = new WeakMap<GitHubClient, Pick<GitHubClient, 'graphql'>>();
+
 function limitClientRequests(client: GitHubClient): Pick<GitHubClient, 'graphql'> {
+  const existing = requestLimits.get(client);
+  if (existing) return existing;
   let active = 0;
   const waiting: Array<() => void> = [];
-  return {
+  const limited: Pick<GitHubClient, 'graphql'> = {
     async graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
       if (active === 4) await new Promise<void>((resolve) => waiting.push(resolve));
       else active++;
@@ -323,6 +327,8 @@ function limitClientRequests(client: GitHubClient): Pick<GitHubClient, 'graphql'
       }
     },
   };
+  requestLimits.set(client, limited);
+  return limited;
 }
 
 async function mapConcurrent<T, R>(items: T[], map: (item: T) => Promise<R>): Promise<R[]> {

@@ -190,10 +190,7 @@ pub fn spawn_refresh(
 }
 
 pub fn db_path() -> std::path::PathBuf {
-    dirs::config_dir()
-        .expect("could not determine config directory")
-        .join("BorgDock")
-        .join("fileindex.db")
+    crate::app_data::directory().join("fileindex.db")
 }
 
 /// Open (or create) the SQLite file and install it into the managed cache

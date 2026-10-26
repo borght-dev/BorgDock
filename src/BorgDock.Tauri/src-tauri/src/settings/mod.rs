@@ -13,7 +13,7 @@ fn migrate_credentials_to_keychain(settings: &mut AppSettings) {
     let mut migrated = false;
 
     if let Some(ref pat) = settings.git_hub.personal_access_token {
-        if let Ok(entry) = keyring::Entry::new("borgdock", "borgdock:github") {
+        if let Ok(entry) = crate::keychain::entry("borgdock:github") {
             let _ = entry.set_password(pat);
         }
         settings.git_hub.personal_access_token = None;
@@ -21,7 +21,7 @@ fn migrate_credentials_to_keychain(settings: &mut AppSettings) {
     }
 
     if let Some(ref pat) = settings.azure_dev_ops.personal_access_token {
-        if let Ok(entry) = keyring::Entry::new("borgdock", "borgdock:azure_devops") {
+        if let Ok(entry) = crate::keychain::entry("borgdock:azure_devops") {
             let _ = entry.set_password(pat);
         }
         settings.azure_dev_ops.personal_access_token = None;
@@ -31,7 +31,7 @@ fn migrate_credentials_to_keychain(settings: &mut AppSettings) {
     for conn in &mut settings.sql.connections {
         if let Some(ref pw) = conn.password {
             let service = format!("borgdock:sql:{}", conn.name);
-            if let Ok(entry) = keyring::Entry::new("borgdock", &service) {
+            if let Ok(entry) = crate::keychain::entry(&service) {
                 let _ = entry.set_password(pw);
             }
             conn.password = None;
@@ -69,9 +69,7 @@ pub fn merge_json(base: &mut Value, overlay: &Value) {
 }
 
 fn settings_dir() -> PathBuf {
-    dirs::config_dir()
-        .expect("could not determine config directory")
-        .join("BorgDock")
+    crate::app_data::directory()
 }
 
 fn settings_path() -> PathBuf {
@@ -135,7 +133,7 @@ pub fn migrate(settings: &mut AppSettings) -> bool {
         // mutate the developer's real Windows credential store.
         #[cfg(not(test))]
         {
-            if let Ok(entry) = keyring::Entry::new("borgdock", "borgdock:claude_api") {
+            if let Ok(entry) = crate::keychain::entry("borgdock:claude_api") {
                 let _ = entry.delete_credential();
             }
         }
@@ -183,6 +181,7 @@ pub fn load_settings_internal() -> Result<AppSettings, String> {
 /// blocking, so this runs on a blocking thread, never inline on the GUI
 /// thread the way a sync command would.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn load_settings() -> Result<AppSettings, String> {
     tokio::task::spawn_blocking(|| {
         let mut settings = load_settings_internal()?;
@@ -267,6 +266,7 @@ pub fn save_settings_internal(settings: &AppSettings) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn save_settings(settings: AppSettings) -> Result<(), String> {
     tokio::task::spawn_blocking(move || save_settings_internal(&settings))
         .await

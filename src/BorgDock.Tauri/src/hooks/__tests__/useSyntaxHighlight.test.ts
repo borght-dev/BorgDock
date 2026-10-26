@@ -181,7 +181,11 @@ describe('useSyntaxHighlight', () => {
     renderHook(() => useSyntaxHighlight('app.tsx', hunks));
 
     await waitFor(() => {
-      expect(mockHighlightLines).toHaveBeenCalledWith('app.tsx', ['line1', 'line2', 'line3']);
+      expect(mockHighlightLines).toHaveBeenCalledWith(
+        'app.tsx',
+        ['line1', 'line2', 'line3'],
+        expect.any(AbortSignal),
+      );
     });
   });
 });

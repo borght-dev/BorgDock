@@ -16,22 +16,12 @@ use crate::cache::PrCache;
 // ─── helpers ──────────────────────────────────────────────────────────────
 
 fn cache_db_path() -> Result<PathBuf, String> {
-    Ok(dirs::config_dir()
-        .ok_or("could not determine config dir")?
-        .join("BorgDock")
-        .join("prcache.db"))
+    Ok(crate::app_data::directory().join("prcache.db"))
 }
 
 /// Returns the settings.json path.
-/// NOTE: `settings::settings_path()` and `settings::settings_dir()` are
-/// private (non-pub) in settings/mod.rs so they cannot be called here.
-/// Duplicating the path logic is intentional; if that helper is ever made
-/// pub(crate), switch this to call it.
 fn settings_file_path() -> Result<PathBuf, String> {
-    Ok(dirs::config_dir()
-        .ok_or("could not determine config dir")?
-        .join("BorgDock")
-        .join("settings.json"))
+    Ok(crate::app_data::directory().join("settings.json"))
 }
 
 fn dir_size(p: &Path) -> u64 {
@@ -56,12 +46,14 @@ fn dir_size(p: &Path) -> u64 {
 // ─── clear_cache + get_cache_size ─────────────────────────────────────────
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct CacheClearResult {
     pub bytes_freed: u64,
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn clear_cache(state: State<'_, PrCache>) -> Result<CacheClearResult, String> {
     let conn_handle = state.conn.clone();
     tokio::task::spawn_blocking(move || {
@@ -97,6 +89,7 @@ pub async fn clear_cache(state: State<'_, PrCache>) -> Result<CacheClearResult, 
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn get_cache_size() -> Result<u64, String> {
     tokio::task::spawn_blocking(|| {
         let path = cache_db_path()?;
@@ -113,9 +106,8 @@ pub async fn get_cache_size() -> Result<u64, String> {
 // ─── reset_all_settings ───────────────────────────────────────────────────
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn reset_all_settings(app: tauri::AppHandle) -> Result<(), String> {
-    let svc = "borgdock";
-
     // Keychain + file I/O off the async runtime threads.
     tokio::task::spawn_blocking(move || {
         // Wipe all known credential entries
@@ -130,7 +122,7 @@ pub async fn reset_all_settings(app: tauri::AppHandle) -> Result<(), String> {
             }
         }
         for user in &users {
-            if let Ok(entry) = keyring::Entry::new(svc, user) {
+            if let Ok(entry) = crate::keychain::entry(user) {
                 let _ = entry.delete_credential();
             }
         }
@@ -153,6 +145,7 @@ pub async fn reset_all_settings(app: tauri::AppHandle) -> Result<(), String> {
 // ─── estimate_worktree_prune_size ─────────────────────────────────────────
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct PruneEstimate {
     pub count: u32,
@@ -160,6 +153,7 @@ pub struct PruneEstimate {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn estimate_worktree_prune_size(paths: Vec<String>) -> Result<PruneEstimate, String> {
     let result = tokio::task::spawn_blocking(move || {
         let mut bytes = 0u64;
@@ -181,6 +175,7 @@ pub async fn estimate_worktree_prune_size(paths: Vec<String>) -> Result<PruneEst
 // ─── run_self_test ───────────────────────────────────────────────────────
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SelfTestResult {
     pub service: String,
@@ -189,6 +184,7 @@ pub struct SelfTestResult {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn run_self_test() -> Result<Vec<SelfTestResult>, String> {
     let mut out = Vec::new();
 
@@ -227,9 +223,7 @@ pub async fn run_self_test() -> Result<Vec<SelfTestResult>, String> {
     });
 
     // Cache: check whether the SQLite db exists.
-    let cache_ok = dirs::config_dir()
-        .map(|d| d.join("BorgDock").join("prcache.db").exists())
-        .unwrap_or(false);
+    let cache_ok = crate::app_data::directory().join("prcache.db").exists();
     out.push(SelfTestResult {
         service: "Cache".into(),
         ok: cache_ok,

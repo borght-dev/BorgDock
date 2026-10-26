@@ -4,6 +4,7 @@ use crate::git::hidden_command;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct GhAccount {
     pub login: String,
@@ -13,6 +14,7 @@ pub struct GhAccount {
 /// Spawns `gh auth token` (200–3000 ms cold on Windows). Async so the
 /// subprocess wait happens on a blocking thread, not the GUI thread.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn gh_cli_token(user: Option<String>) -> Result<String, String> {
     tokio::task::spawn_blocking(move || gh_cli_token_blocking(user.as_deref()))
         .await
@@ -52,6 +54,7 @@ pub(crate) fn gh_cli_token_blocking(user: Option<&str>) -> Result<String, String
 /// separate command from token lookup so Settings can populate account pickers
 /// without exposing credentials to the UI.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn gh_cli_accounts() -> Result<Vec<GhAccount>, String> {
     tokio::task::spawn_blocking(|| {
         let output = hidden_command("gh")
@@ -89,6 +92,7 @@ pub async fn gh_cli_accounts() -> Result<Vec<GhAccount>, String> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn validate_pat(token: String) -> Result<String, String> {
     // Spawn blocking HTTP call to test the token against GitHub API
     let result = tokio::task::spawn_blocking(move || {
@@ -122,6 +126,7 @@ pub async fn validate_pat(token: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn check_github_auth(
     method: String,
     pat: Option<String>,

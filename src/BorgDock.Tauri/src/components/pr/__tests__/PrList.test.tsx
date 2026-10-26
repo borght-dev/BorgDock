@@ -374,11 +374,12 @@ describe('PrList', () => {
       expect(virtual!.querySelectorAll('.bd-wb-row').length).toBeLessThan(200);
     });
 
-    it('renders every open row and changes the filter without FLIP', async () => {
+    it('virtualizes large open groups and changes the filter without FLIP', async () => {
       seed({ prs: manyOpenPrs(200, NOW) });
       render(<PrList />);
-      expect(list().querySelectorAll('.bd-wb-row[data-pr-key]')).toHaveLength(200);
-      expect(list().querySelectorAll(FLIP_ROW_SELECTOR).length).toBeGreaterThan(FLIP_MAX_ROWS);
+      expect(list().querySelectorAll('.bd-wb-row[data-pr-key]').length).toBeLessThan(200);
+      expect(list().querySelector('[data-virtual-prs]')).not.toBeNull();
+      expect(list().querySelectorAll(FLIP_ROW_SELECTOR).length).toBeLessThan(FLIP_MAX_ROWS);
 
       const group = screen.getByRole('group', { name: 'Filter pull requests' });
       await act(async () => {

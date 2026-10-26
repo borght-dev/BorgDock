@@ -1,27 +1,21 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useEffect, useRef, useState } from 'react';
-import { MergeToast, QuickReviewOverlay } from '@/components/focus';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { MergeToast } from '@/components/focus';
 import { MainWindow } from '@/components/layout/MainWindow';
 import { ViewStack } from '@/components/layout/ViewStack';
 import { T3CheckoutDialog } from '@/components/pr/T3CheckoutDialog';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ToastViewport } from '@/components/shared/Toast';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
-import { useAdoPolling } from '@/hooks/useAdoPolling';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
-import { useCacheInit } from '@/hooks/useCacheInit';
 import { useDiskSpace } from '@/hooks/useDiskSpace';
-import { useDispatchSync } from '@/hooks/useDispatchSync';
 import { useExternalMergeCelebration } from '@/hooks/useExternalMergeCelebration';
 import { useFlyoutSync } from '@/hooks/useFlyoutSync';
-import { useGitHubPolling } from '@/hooks/useGitHubPolling';
-import { useInitSequence } from '@/hooks/useInitSequence';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
 import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
 import { useSettingsSync } from '@/hooks/useSettingsSync';
 import { useStateTransitions } from '@/hooks/useStateTransitions';
-import { useT3Sessions } from '@/hooks/useT3Sessions';
 import { useTheme } from '@/hooks/useTheme';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { useWorktreeMap } from '@/hooks/useWorktreeMap';
@@ -29,6 +23,7 @@ import { createLogger } from '@/services/logger';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
+import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import { installTestSeed } from '@/test-support/test-seed';
@@ -46,16 +41,21 @@ const forceWizardFromUrl = (() => {
   return new URLSearchParams(window.location.search).get('wizard') === 'force';
 })();
 
+const QuickReviewOverlay = lazy(() =>
+  import('@/components/focus/QuickReviewOverlay').then((module) => ({
+    default: module.QuickReviewOverlay,
+  })),
+);
 const log = createLogger('app');
 
 export default function App() {
   useSettingsSync();
+  const reviewActive = useQuickReviewStore((s) => s.state !== 'idle');
   // Individual selectors: subscribing to the whole store re-rendered the
   // entire tree (MainWindow → PrList → every card) on any settings write.
   const settings = useSettingsStore((s) => s.settings);
   const isLoading = useSettingsStore((s) => s.isLoading);
   const hasLoaded = useSettingsStore((s) => s.hasLoaded);
-  const loadSettings = useSettingsStore((s) => s.loadSettings);
   const isInitComplete = useInitStore((s) => s.isComplete);
   const [fadingOut, setFadingOut] = useState(false);
   // Latch: once init has completed, never show the splash again
@@ -73,13 +73,6 @@ export default function App() {
     enabled: settingsLoaded,
   });
 
-  // Load settings on mount
-  useEffect(() => {
-    log.info('App mounted — loading settings');
-    loadSettings();
-    return () => log.info('App unmounting');
-  }, [loadSettings]);
-
   // Log transitions through the main gating conditions so the lifecycle is
   // observable without attaching a debugger.
   useEffect(() => {
@@ -92,18 +85,12 @@ export default function App() {
     });
   }, [isLoading, isInitComplete, fadingOut, settings.setupComplete, settings.repos.length]);
 
-  // Initialize SQLite cache
-  useCacheInit();
-
   // GitHub polling (only when setup complete)
   const needsSetup =
     forceWizardFromUrl ||
     !settings.setupComplete ||
     settings.repos.length === 0 ||
     (settings.gitHub.authMethod === 'pat' && !settings.gitHub.personalAccessToken);
-
-  // Run init sequence (auth, discover repos, fetch PRs, fetch checks)
-  useInitSequence(settings, needsSetup || isLoading);
 
   // Fade-out transition when init completes
   useEffect(() => {
@@ -143,46 +130,7 @@ export default function App() {
 
   // Defer polling until init completes — otherwise the first cycle runs
   // before repos/auth are ready and idles for a full interval (~60s).
-  const pollingEnabled = !needsSetup && isInitComplete;
-  const { pollNow } = useGitHubPolling(settings, pollingEnabled);
   useExternalMergeCelebration();
-
-  // Listen for manual refresh requests (from Header button and keyboard shortcut)
-  useEffect(() => {
-    function handleRefresh() {
-      pollNow();
-    }
-    document.addEventListener('borgdock-refresh', handleRefresh);
-    return () => document.removeEventListener('borgdock-refresh', handleRefresh);
-  }, [pollNow]);
-
-  // Listen for refresh requests emitted from the flyout window.
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { listen } = await import('@tauri-apps/api/event');
-        const fn = await listen('flyout-refresh', () => {
-          pollNow();
-        });
-        if (cancelled) {
-          fn();
-          return;
-        }
-        unlisten = fn;
-      } catch {
-        // ignore
-      }
-    })();
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, [pollNow]);
-
-  // Azure DevOps polling
-  useAdoPolling(settings);
 
   // State transition detection for notifications
   const { processTransitions } = useStateTransitions(settings);
@@ -207,8 +155,6 @@ export default function App() {
   // Worktree branch mapping (for PR card badges)
   useWorktreeMap(settings);
   useDiskSpace(hasLoaded, true);
-  useT3Sessions(pollingEnabled);
-  useDispatchSync(pollingEnabled);
 
   // Auto-update
   useAutoUpdate(settings);
@@ -361,7 +307,11 @@ export default function App() {
         <ViewStack />
       </MainWindow>
       <MergeToast />
-      <QuickReviewOverlay />
+      {reviewActive && (
+        <Suspense fallback={null}>
+          <QuickReviewOverlay />
+        </Suspense>
+      )}
       <ToastViewport />
       <T3CheckoutDialog />
     </div>

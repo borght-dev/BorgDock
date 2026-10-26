@@ -2,6 +2,7 @@ use git2::Repository;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct FileChange {
     pub path: String,
@@ -14,6 +15,7 @@ pub struct FileChange {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum FileChangeStatus {
     Added,
@@ -25,6 +27,7 @@ pub enum FileChangeStatus {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct WorktreeChangeSet {
     pub vs_head: Vec<FileChange>,
@@ -36,6 +39,7 @@ pub struct WorktreeChangeSet {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "kebab-case")]
 pub enum BaseBranchSource {
     OriginHead,
@@ -46,6 +50,7 @@ pub enum BaseBranchSource {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct UnifiedDiff {
     pub file_path: String,
@@ -56,6 +61,7 @@ pub struct UnifiedDiff {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct DiffHunk {
     pub header: String,
@@ -67,6 +73,7 @@ pub struct DiffHunk {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct DiffLine {
     pub kind: DiffLineKind,
@@ -76,6 +83,7 @@ pub struct DiffLine {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum DiffLineKind {
     Add,
@@ -84,6 +92,7 @@ pub enum DiffLineKind {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct BinaryMarker {
     pub old_size: Option<u64>,
@@ -529,6 +538,7 @@ fn unified_diff_from_diff(diff: &git2::Diff, file_path: &str) -> UnifiedDiff {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn list_worktree_changes(worktree_path: String) -> Result<WorktreeChangeSet, String> {
     tokio::task::spawn_blocking(move || list_worktree_changes_inner(&worktree_path))
         .await
@@ -536,6 +546,7 @@ pub async fn list_worktree_changes(worktree_path: String) -> Result<WorktreeChan
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn diff_worktree_vs_head(
     worktree_path: String,
     file_path: String,
@@ -546,6 +557,7 @@ pub async fn diff_worktree_vs_head(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn diff_worktree_vs_base(
     worktree_path: String,
     base_branch: String,

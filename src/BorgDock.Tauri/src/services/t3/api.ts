@@ -1,5 +1,12 @@
-import { invoke } from '@tauri-apps/api/core';
-import type { AgentQuestion, ThreadPullRequest, ThreadStatus } from '@/services/dispatch/types';
+import { commands } from '@/generated/commands';
+import type {
+  AgentQuestion,
+  PullRequestState,
+  ThreadPullRequest,
+  ThreadStatus,
+} from '@/services/dispatch/types';
+import { THREAD_STATUS_LABEL } from '@/services/dispatch/types';
+import { commandData } from '@/services/native-command';
 
 /** Id of the T3 Code on this machine. */
 export const LOCAL_T3_HOST_ID = 'local';
@@ -51,11 +58,25 @@ export interface T3ThreadDetail {
 }
 
 export function t3Snapshot(host: T3HostRef, knownSequence: number | null): Promise<T3Snapshot> {
-  return invoke<T3Snapshot>('t3_snapshot', { host, knownSequence });
+  return commandData(commands.t3Snapshot(host, knownSequence)).then((snapshot) => ({
+    ...snapshot,
+    threads: snapshot.threads.map((thread) => ({
+      ...thread,
+      status: (Object.hasOwn(THREAD_STATUS_LABEL, thread.status)
+        ? thread.status
+        : 'failed') as ThreadStatus,
+      pullRequests: thread.pullRequests.map((pr) => ({
+        ...pr,
+        state: (['open', 'merged', 'closed'].includes(pr.state)
+          ? pr.state
+          : 'unknown') as PullRequestState,
+      })),
+    })),
+  }));
 }
 
 export function t3ThreadDetail(host: T3HostRef, threadId: string): Promise<T3ThreadDetail> {
-  return invoke<T3ThreadDetail>('t3_thread_detail', { host, threadId });
+  return commandData(commands.t3ThreadDetail(host, threadId));
 }
 
 /**
@@ -66,7 +87,7 @@ export function t3FirstUserMessages(
   host: T3HostRef,
   threadIds: string[],
 ): Promise<Record<string, string>> {
-  return invoke<Record<string, string>>('t3_first_user_messages', { host, threadIds });
+  return commandData(commands.t3FirstUserMessages(host, threadIds));
 }
 
 export interface T3ConversationReferences {
@@ -78,7 +99,7 @@ export function t3ConversationReferences(
   host: T3HostRef,
   threadIds: string[],
 ): Promise<Record<string, T3ConversationReferences>> {
-  return invoke('t3_conversation_references', { host, threadIds });
+  return commandData(commands.t3ConversationReferences(host, threadIds));
 }
 
 /** Answer an agent's questions: question id to the picked option's value or the typed text. */
@@ -88,7 +109,7 @@ export function t3Respond(
   requestId: string,
   answers: Record<string, string | string[]>,
 ): Promise<void> {
-  return invoke('t3_respond', { host, threadId, requestId, answers });
+  return commandData(commands.t3Respond(host, threadId, requestId, answers)).then(() => {});
 }
 
 /** Send the agent a message and start its next turn. */
@@ -98,11 +119,11 @@ export function t3SendMessage(
   text: string,
   leavePlanMode: boolean,
 ): Promise<void> {
-  return invoke('t3_send_message', { host, threadId, text, leavePlanMode });
+  return commandData(commands.t3SendMessage(host, threadId, text, leavePlanMode)).then(() => {});
 }
 
 export function t3Settle(host: T3HostRef, threadId: string): Promise<void> {
-  return invoke('t3_settle', { host, threadId });
+  return commandData(commands.t3Settle(host, threadId)).then(() => {});
 }
 
 export interface T3ModelChoice {
@@ -157,12 +178,20 @@ export interface T3LaunchRequest {
 }
 
 export function t3Catalogue(host: T3HostRef): Promise<T3Catalogue> {
-  return invoke<T3Catalogue>('t3_catalogue', { host });
+  return commandData(commands.t3Catalogue(host));
 }
 
 /** Start a thread on a project. Resolves with the new thread's id. */
 export function t3LaunchThread(host: T3HostRef, request: T3LaunchRequest): Promise<string> {
-  return invoke<string>('t3_launch_thread', { host, request });
+  return commandData(
+    commands.t3LaunchThread(host, {
+      ...request,
+      modelSelection: {
+        ...request.modelSelection,
+        options: request.modelSelection.options.map((option) => ({ ...option })),
+      },
+    }),
+  );
 }
 
 /** Bring T3 Code to the front on one thread. */
@@ -171,5 +200,5 @@ export function t3ShowThread(
   threadId: string,
   executable: string | undefined,
 ): Promise<void> {
-  return invoke('t3_show_thread', { host, threadId, executable });
+  return commandData(commands.t3ShowThread(host, threadId, executable ?? null)).then(() => {});
 }

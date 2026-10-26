@@ -17,22 +17,19 @@ pub struct PrCache {
 type ConnHandle = Arc<Mutex<Option<Connection>>>;
 
 fn db_path() -> std::path::PathBuf {
-    dirs::config_dir()
-        .expect("could not determine config directory")
-        .join("BorgDock")
-        .join("prcache.db")
+    crate::app_data::directory().join("prcache.db")
 }
 
-/// Run `f` against the open connection on a blocking thread. Returns the
-/// usual "Cache not initialized" error when `cache_init` hasn't run yet.
-async fn with_conn<T, F>(handle: ConnHandle, f: F) -> Result<T, String>
+/// Run `f` on a blocking thread, opening the shared connection on first use.
+pub(crate) async fn with_conn<T, F>(handle: ConnHandle, f: F) -> Result<T, String>
 where
     T: Send + 'static,
     F: FnOnce(&Connection) -> Result<T, String> + Send + 'static,
 {
     tokio::task::spawn_blocking(move || {
-        let lock = handle.lock().unwrap_or_else(|p| p.into_inner());
-        let conn = lock.as_ref().ok_or("Cache not initialized")?;
+        let mut lock = handle.lock().unwrap_or_else(|p| p.into_inner());
+        initialize_connection(&mut lock, &db_path())?;
+        let conn = lock.as_ref().expect("cache initialized");
         f(conn)
     })
     .await
@@ -40,74 +37,78 @@ where
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn cache_init(state: State<'_, PrCache>) -> Result<(), String> {
-    let handle = state.conn.clone();
-    tokio::task::spawn_blocking(move || {
-        let path = db_path();
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create cache dir: {e}"))?;
-        }
+    with_conn(state.conn.clone(), |_| Ok(())).await
+}
 
-        let conn =
-            Connection::open(&path).map_err(|e| format!("Failed to open cache database: {e}"))?;
+fn initialize_connection(
+    slot: &mut Option<Connection>,
+    path: &std::path::Path,
+) -> Result<(), String> {
+    if slot.is_some() {
+        return Ok(());
+    }
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create cache dir: {e}"))?;
+    }
 
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS cached_prs (
-                id INTEGER PRIMARY KEY,
-                repo_owner TEXT NOT NULL,
-                repo_name TEXT NOT NULL,
-                pr_number INTEGER NOT NULL,
-                json_data TEXT NOT NULL,
-                cached_at TEXT NOT NULL
-            );
+    let conn =
+        Connection::open(&path).map_err(|e| format!("Failed to open cache database: {e}"))?;
 
-            CREATE TABLE IF NOT EXISTS cached_tab_data (
-                repo_owner TEXT NOT NULL,
-                repo_name TEXT NOT NULL,
-                pr_number INTEGER NOT NULL,
-                data_type TEXT NOT NULL,
-                json_data TEXT NOT NULL,
-                pr_updated_at TEXT NOT NULL,
-                cached_at TEXT NOT NULL,
-                PRIMARY KEY (repo_owner, repo_name, pr_number, data_type)
-            );
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS cached_prs (
+            id INTEGER PRIMARY KEY,
+            repo_owner TEXT NOT NULL,
+            repo_name TEXT NOT NULL,
+            pr_number INTEGER NOT NULL,
+            json_data TEXT NOT NULL,
+            cached_at TEXT NOT NULL
+        );
 
-            CREATE TABLE IF NOT EXISTS cached_etags (
-                url TEXT PRIMARY KEY,
-                etag TEXT NOT NULL,
-                json_data TEXT NOT NULL,
-                cached_at TEXT NOT NULL
-            );
+        CREATE TABLE IF NOT EXISTS cached_tab_data (
+            repo_owner TEXT NOT NULL,
+            repo_name TEXT NOT NULL,
+            pr_number INTEGER NOT NULL,
+            data_type TEXT NOT NULL,
+            json_data TEXT NOT NULL,
+            pr_updated_at TEXT NOT NULL,
+            cached_at TEXT NOT NULL,
+            PRIMARY KEY (repo_owner, repo_name, pr_number, data_type)
+        );
 
-            CREATE TABLE IF NOT EXISTS cached_sql_schema (
-                connection_name TEXT PRIMARY KEY,
-                database_name   TEXT NOT NULL,
-                json_data       TEXT NOT NULL,
-                cached_at       TEXT NOT NULL
-            );
+        CREATE TABLE IF NOT EXISTS cached_etags (
+            url TEXT PRIMARY KEY,
+            etag TEXT NOT NULL,
+            json_data TEXT NOT NULL,
+            cached_at TEXT NOT NULL
+        );
 
-            CREATE TABLE IF NOT EXISTS sql_snippets (
-                id          TEXT PRIMARY KEY,
-                name        TEXT NOT NULL,
-                body        TEXT NOT NULL,
-                starred     INTEGER NOT NULL DEFAULT 0,
-                last_run    TEXT NOT NULL DEFAULT '',
-                created_at  INTEGER NOT NULL,
-                updated_at  INTEGER NOT NULL
-            );",
-        )
-        .map_err(|e| format!("Failed to create cache tables: {e}"))?;
+        CREATE TABLE IF NOT EXISTS cached_sql_schema (
+            connection_name TEXT PRIMARY KEY,
+            database_name   TEXT NOT NULL,
+            json_data       TEXT NOT NULL,
+            cached_at       TEXT NOT NULL
+        );
 
-        let mut lock = handle.lock().unwrap_or_else(|p| p.into_inner());
-        *lock = Some(conn);
-        Ok(())
-    })
-    .await
-    .map_err(|e| format!("Task join error: {e}"))?
+        CREATE TABLE IF NOT EXISTS sql_snippets (
+            id          TEXT PRIMARY KEY,
+            name        TEXT NOT NULL,
+            body        TEXT NOT NULL,
+            starred     INTEGER NOT NULL DEFAULT 0,
+            last_run    TEXT NOT NULL DEFAULT '',
+            created_at  INTEGER NOT NULL,
+            updated_at  INTEGER NOT NULL
+        );",
+    )
+    .map_err(|e| format!("Failed to create cache tables: {e}"))?;
+
+    *slot = Some(conn);
+    Ok(())
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn cache_load_prs(
     state: State<'_, PrCache>,
     repo_owner: String,
@@ -139,6 +140,7 @@ pub async fn cache_load_prs(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn cache_save_prs(
     state: State<'_, PrCache>,
     repo_owner: String,
@@ -190,6 +192,7 @@ pub async fn cache_save_prs(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn cache_save_tab_data(
     state: State<'_, PrCache>,
     repo_owner: String,
@@ -226,6 +229,7 @@ pub async fn cache_save_tab_data(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn cache_load_tab_data(
     state: State<'_, PrCache>,
     repo_owner: String,
@@ -273,6 +277,7 @@ pub async fn cache_load_tab_data(
 /// matches are skipped entirely (no re-serialisation, no write), and the
 /// remainder go through a single prepared statement in one transaction.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn cache_save_etags(
     state: State<'_, PrCache>,
     entries: Vec<Value>,
@@ -351,6 +356,7 @@ fn save_etags_into(conn: &Connection, entries: &[Value]) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn cache_load_etags(state: State<'_, PrCache>) -> Result<Vec<Value>, String> {
     with_conn(state.conn.clone(), |conn| {
         let mut stmt = conn
@@ -384,6 +390,7 @@ pub async fn cache_load_etags(state: State<'_, PrCache>) -> Result<Vec<Value>, S
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn cache_cleanup(state: State<'_, PrCache>) -> Result<u64, String> {
     with_conn(state.conn.clone(), |conn| {
         let cutoff = seven_days_ago();
@@ -434,6 +441,7 @@ fn seven_days_ago() -> String {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn cache_load_sql_schema(
     state: State<'_, PrCache>,
     connection_name: String,
@@ -462,6 +470,7 @@ pub async fn cache_load_sql_schema(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn cache_save_sql_schema(
     state: State<'_, PrCache>,
     connection_name: String,
@@ -559,5 +568,34 @@ mod tests {
             .unwrap();
         save_etags_into(&conn, &entries).unwrap();
         assert_eq!(row(&conn, "u1").unwrap().2, "sentinel");
+    }
+}
+
+#[cfg(test)]
+mod readiness_tests {
+    use super::*;
+
+    #[test]
+    fn cache_opens_without_auth_and_repeated_initialization_keeps_the_connection() {
+        let path = std::env::temp_dir().join(format!("borgdock-cache-{}.db", uuid::Uuid::new_v4()));
+        let mut slot = None;
+        initialize_connection(&mut slot, &path).unwrap();
+        slot.as_ref()
+            .unwrap()
+            .execute("CREATE TEMP TABLE readiness (value INTEGER)", [])
+            .unwrap();
+        initialize_connection(&mut slot, &path).unwrap();
+        slot.as_ref()
+            .unwrap()
+            .execute("INSERT INTO readiness VALUES (1)", [])
+            .unwrap();
+        let count: i64 = slot
+            .as_ref()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM sql_snippets", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
+        drop(slot);
+        std::fs::remove_file(path).unwrap();
     }
 }

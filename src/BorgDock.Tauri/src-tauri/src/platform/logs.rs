@@ -1,15 +1,13 @@
 use std::path::PathBuf;
 
 fn log_folder() -> PathBuf {
-    dirs::config_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("BorgDock")
-        .join("logs")
+    crate::app_data::directory().join("logs")
 }
 
 /// Return the absolute path of the log folder. Useful for displaying in the
 /// UI or passing to the OS "reveal in file manager" shortcut.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub fn get_log_folder() -> Result<String, String> {
     Ok(log_folder().to_string_lossy().to_string())
 }
@@ -17,6 +15,7 @@ pub fn get_log_folder() -> Result<String, String> {
 /// Open the log folder in the OS file manager (Explorer on Windows, Finder
 /// on macOS, xdg-open on Linux).
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn open_log_folder() -> Result<(), String> {
     tokio::task::spawn_blocking(open_log_folder_blocking)
         .await

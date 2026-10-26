@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -183,18 +183,21 @@ describe('PrDetailPanel', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the PR title', () => {
+  it('renders the PR title', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     expect(screen.getByText('Add feature X')).toBeTruthy();
   });
 
-  it('renders the PR number', () => {
+  it('renders the PR number', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     expect(screen.getByText('#42')).toBeTruthy();
   });
 
-  it('renders all tab buttons', () => {
+  it('renders all tab buttons', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     expect(screen.getByRole('tab', { name: 'Overview' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Commits' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Files' })).toBeTruthy();
@@ -202,52 +205,64 @@ describe('PrDetailPanel', () => {
     expect(screen.getByRole('tab', { name: 'Discussion' })).toBeTruthy();
   });
 
-  it('shows Overview tab content by default', () => {
+  it('shows Overview tab content by default', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     const overviewTab = screen.getByTestId('overview-tab');
     expect(overviewTab.closest('.hidden')).toBeNull();
   });
 
-  it('does not mount inactive tabs until first activation', () => {
+  it('does not mount inactive tabs until first activation', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     expect(screen.queryByTestId('commits-tab')).toBeNull();
   });
 
-  it('switches to Commits tab on click', () => {
+  it('switches to Commits tab on click', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     fireEvent.click(screen.getByRole('tab', { name: 'Commits' }));
+    await act(async () => {});
     const commitsTab = screen.getByTestId('commits-tab');
     expect(commitsTab.closest('.hidden')).toBeNull();
     const overviewTab = screen.getByTestId('overview-tab');
     expect(overviewTab.closest('.hidden')).toBeTruthy();
   });
 
-  it('switches to Files tab on click', () => {
+  it('switches to Files tab on click', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     fireEvent.click(screen.getByRole('tab', { name: 'Files' }));
+    await act(async () => {});
     const filesTab = screen.getByTestId('files-tab');
     expect(filesTab.closest('.hidden')).toBeNull();
   });
 
-  it('switches to Checks tab on click', () => {
+  it('switches to Checks tab on click', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     fireEvent.click(screen.getByRole('tab', { name: 'Checks' }));
+    await act(async () => {});
     const checksTab = screen.getByTestId('checks-tab');
     expect(checksTab.closest('.hidden')).toBeNull();
   });
 
-  it('switches to Discussion tab on click', () => {
+  it('switches to Discussion tab on click', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     fireEvent.click(screen.getByRole('tab', { name: 'Discussion' }));
+    await act(async () => {});
     const discussionTab = screen.getByTestId('discussion-tab');
     expect(discussionTab.closest('.hidden')).toBeNull();
   });
 
-  it('close button calls selectPr(null)', () => {
+  it('close button calls selectPr(null)', async () => {
     const selectPrSpy = vi.fn();
     useUiStore.setState({ selectPr: selectPrSpy });
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     fireEvent.click(screen.getByLabelText('Close'));
+    await act(async () => {});
     expect(selectPrSpy).toHaveBeenCalledWith(null);
   });
 
@@ -257,7 +272,9 @@ describe('PrDetailPanel', () => {
     useUiStore.setState({ selectPr: selectPrSpy });
 
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     fireEvent.click(screen.getByLabelText('Pop out'));
+    await act(async () => {});
 
     expect(mockOpenPrDetail).toHaveBeenCalledWith({
       owner: 'owner',
@@ -274,7 +291,9 @@ describe('PrDetailPanel', () => {
     useUiStore.setState({ selectPr: selectPrSpy });
 
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     fireEvent.click(screen.getByLabelText('Pop out'));
+    await act(async () => {});
 
     // Wait for the rejected promise to settle, then assert no navigation happened.
     await waitFor(() => {
@@ -290,28 +309,32 @@ describe('PrDetailPanel', () => {
     expect(selectPrSpy).not.toHaveBeenCalled();
   });
 
-  it('marks the active tab with aria-selected', () => {
+  it('marks the active tab with aria-selected', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     const overviewTab = screen.getByRole('tab', { name: 'Overview' });
     expect(overviewTab.getAttribute('aria-selected')).toBe('true');
     const commitsTab = screen.getByRole('tab', { name: 'Commits' });
     expect(commitsTab.getAttribute('aria-selected')).toBe('false');
   });
 
-  it('mounts tabs lazily and keeps them cached after activation', () => {
+  it('mounts tabs lazily and keeps them cached after activation', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     expect(screen.getByTestId('overview-tab')).toBeTruthy();
     expect(screen.queryByTestId('commits-tab')).toBeNull();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Commits' }));
+    await act(async () => {});
     expect(screen.getByTestId('commits-tab')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Overview' }));
+    await act(async () => {});
     expect(screen.getByTestId('commits-tab')).toBeTruthy();
   });
 
   describe('terminal state pills', () => {
-    it('renders a Merged pill when mergedAt is set', () => {
+    it('renders a Merged pill when mergedAt is set', async () => {
       render(
         <PrDetailPanel
           pr={makePr({
@@ -323,11 +346,12 @@ describe('PrDetailPanel', () => {
           })}
         />,
       );
+      await act(async () => {});
       const pill = screen.getByText('Merged');
       expect(pill.classList.contains('bd-pill--merged')).toBe(true);
     });
 
-    it('renders a Closed pill when state is closed and not merged', () => {
+    it('renders a Closed pill when state is closed and not merged', async () => {
       render(
         <PrDetailPanel
           pr={makePr({
@@ -339,11 +363,12 @@ describe('PrDetailPanel', () => {
           })}
         />,
       );
+      await act(async () => {});
       const pill = screen.getByText('Closed');
       expect(pill.classList.contains('bd-pill--neutral')).toBe(true);
     });
 
-    it('suppresses the Mergeable pill in terminal state', () => {
+    it('suppresses the Mergeable pill in terminal state', async () => {
       render(
         <PrDetailPanel
           pr={makePr({
@@ -356,10 +381,11 @@ describe('PrDetailPanel', () => {
           })}
         />,
       );
+      await act(async () => {});
       expect(screen.queryByText('Mergeable')).toBeNull();
     });
 
-    it('suppresses the passed-count pill in terminal state', () => {
+    it('suppresses the passed-count pill in terminal state', async () => {
       const merged = makePr({
         pullRequest: { ...makePr().pullRequest, state: 'closed', mergedAt: '2026-05-06T12:00:00Z' },
         checks: [
@@ -375,31 +401,36 @@ describe('PrDetailPanel', () => {
         passedCount: 1,
       });
       render(<PrDetailPanel pr={merged} />);
+      await act(async () => {});
       expect(screen.queryByText(/passed/i)).toBeNull();
     });
 
-    it('shows Mergeable pill when state is open', () => {
+    it('shows Mergeable pill when state is open', async () => {
       render(<PrDetailPanel pr={makePr()} />);
+      await act(async () => {});
       expect(screen.getByText('Mergeable')).toBeTruthy();
     });
   });
 
-  it('shows a yellow "N running" pill in the header when checks are pending', () => {
+  it('shows a yellow "N running" pill in the header when checks are pending', async () => {
     render(<PrDetailPanel pr={makePr({ pendingCheckNames: ['shard-0', 'shard-1'] })} />);
+    await act(async () => {});
     expect(screen.getByText(/2 running/i)).toBeInTheDocument();
   });
 
-  it('renders an ActionBar when the PR is open', () => {
+  it('renders an ActionBar when the PR is open', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     expect(document.querySelector('[data-action-bar]')).not.toBeNull();
   });
 
-  it('renders an ActivityStrip when there are checks', () => {
+  it('renders an ActivityStrip when there are checks', async () => {
     render(<PrDetailPanel pr={makePr({ pendingCheckNames: ['x'], passedCount: 0 })} />);
+    await act(async () => {});
     expect(document.querySelector('[data-activity-strip]')).not.toBeNull();
   });
 
-  it('Checks tab badge uses passed/total format', () => {
+  it('Checks tab badge uses passed/total format', async () => {
     render(
       <PrDetailPanel
         pr={makePr({
@@ -408,20 +439,23 @@ describe('PrDetailPanel', () => {
         })}
       />,
     );
+    await act(async () => {});
     const badge = screen.getByRole('tab', { name: /checks/i }).querySelector('.bd-tab__count');
     expect(badge).not.toBeNull();
     expect(badge!.textContent).toBe('13/15');
   });
 
-  it('exposes a Discussion tab and no Reviews/Comments tabs', () => {
+  it('exposes a Discussion tab and no Reviews/Comments tabs', async () => {
     render(<PrDetailPanel pr={makePr()} />);
+    await act(async () => {});
     expect(screen.getByRole('tab', { name: /discussion/i })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /^reviews$/i })).toBeNull();
     expect(screen.queryByRole('tab', { name: /^comments$/i })).toBeNull();
   });
 
-  it('renders ActionBar, ActivityStrip, smart Checks tab badge, and Discussion tab', () => {
+  it('renders ActionBar, ActivityStrip, smart Checks tab badge, and Discussion tab', async () => {
     render(<PrDetailPanel pr={makePr({ pendingCheckNames: ['x'], passedCount: 5 })} />);
+    await act(async () => {});
 
     expect(document.querySelector('[data-action-bar]')).not.toBeNull();
     expect(document.querySelector('[data-activity-strip]')).not.toBeNull();
@@ -431,18 +465,26 @@ describe('PrDetailPanel', () => {
 
     expect(screen.getByRole('tab', { name: /discussion/i })).toBeInTheDocument();
   });
-  it('starts Quick Review for this PR and uses the main window overlay host', () => {
+  it('starts Quick Review for this PR and uses the main window overlay host', async () => {
     const pr = makePr();
     render(<PrDetailPanel pr={pr} />);
+    await act(async () => {});
     fireEvent.click(screen.getByRole('button', { name: 'Review' }));
+    await act(async () => {});
     expect(useQuickReviewStore.getState().queue).toEqual([pr]);
     expect(useQuickReviewStore.getState().state).toBe('reviewing');
     expect(screen.queryByTestId('quick-review-host')).toBeNull();
     useQuickReviewStore.getState().endSession();
   });
 
-  it('hosts Quick Review in a separate PR window', () => {
+  it('hosts Quick Review in a separate PR window', async () => {
+    useQuickReviewStore.setState({ state: 'reviewing' });
     render(<PrDetailPanel pr={makePr()} popOutWindow />);
+    await act(async () => {});
     expect(screen.getByTestId('quick-review-host')).toBeInTheDocument();
   });
 });
+
+beforeAll(async () => {
+  await import('@/components/focus/QuickReviewOverlay');
+}, 30_000);

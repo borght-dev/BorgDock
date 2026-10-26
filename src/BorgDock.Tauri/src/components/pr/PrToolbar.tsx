@@ -93,14 +93,12 @@ function GroupSortMenu({ groupBy, sortBy, onGroupByChange, onSortChange }: Group
   const close = useCallback(() => setOpen(false), []);
 
   const toggle = useCallback(() => {
-    setOpen((current) => {
-      if (!current && triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        setPosition({ top: rect.bottom + 6, left: Math.max(8, rect.right - 200) });
-      }
-      return !current;
-    });
-  }, []);
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPosition({ top: rect.bottom + 6, left: Math.max(8, rect.right - 200) });
+    }
+    setOpen(!open);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

@@ -6,6 +6,7 @@ const BINARY_SAMPLE_BYTES: usize = 8192;
 const BINARY_THRESHOLD_PERCENT: usize = 10;
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ReadFileError {
     NotFound { path: String },
@@ -15,6 +16,7 @@ pub enum ReadFileError {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn read_text_file(path: String, max_bytes: Option<u64>) -> Result<String, ReadFileError> {
     let limit = max_bytes.unwrap_or(DEFAULT_MAX_BYTES);
     tokio::task::spawn_blocking(move || read_text_file_sync(PathBuf::from(path), limit))

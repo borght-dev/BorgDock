@@ -156,7 +156,7 @@ function useFocusModel() {
       timestamps: s.reviewRequestTimestamps,
     })),
   );
-  const focusPrs = usePrStore((s) => s.focusPrs)();
+  const focusPrs = usePrStore((s) => s.focusPrs());
   const staleSetting = useSettingsStore((s) => s.settings.ui?.staleAfterDays);
   const snoozes = useUiStore((s) => s.focusSnoozes);
   const now = minuteNow();
@@ -391,7 +391,7 @@ function FocusListPane({ prs, ctx, counts, now }: FocusListPaneProps) {
 export function FocusList() {
   const layout = useSettingsStore((s) => s.settings.ui?.focusLayout ?? 'list');
   const { pullRequests, closed, prs, ctx, counts, now } = useFocusModel();
-  const needsMyReview = usePrStore((s) => s.needsMyReview)();
+  const needsMyReview = usePrStore((s) => s.needsMyReview());
   const startSession = useQuickReviewStore((s) => s.startSession);
   const dismissBadge = useOnboardingStore((s) => s.dismissBadge);
   const [heldKeys, setHeldKeys] = useState<ReadonlySet<string>>(NO_KEYS);

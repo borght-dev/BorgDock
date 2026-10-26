@@ -27,6 +27,7 @@ pub const WORKTREES_UPDATED_EVENT: &str = "worktrees-updated";
 const BACKGROUND_REFRESH_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct CachedRepoRef {
     pub owner: String,
@@ -37,6 +38,7 @@ pub struct CachedRepoRef {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteWorktreeRef {
     pub id: String,
@@ -45,6 +47,7 @@ pub struct RemoteWorktreeRef {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct CachedRepoWorktrees {
     pub repo: CachedRepoRef,
@@ -117,6 +120,7 @@ fn now_ms() -> u64 {
 
 /// Instant snapshot of the cache — never touches git.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub fn worktree_cache_get_all(
     state: tauri::State<'_, WorktreeCache>,
 ) -> Result<WorktreeSnapshot, String> {
@@ -126,6 +130,7 @@ pub fn worktree_cache_get_all(
 /// Re-scan every enabled repo concurrently, store, broadcast, and return the
 /// fresh snapshot.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn worktree_cache_refresh(app: AppHandle) -> Result<WorktreeSnapshot, String> {
     refresh_all(&app).await
 }

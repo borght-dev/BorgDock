@@ -82,3 +82,24 @@ jobs:
       # The launch video project (site/video) is rendered locally, but its
       # TypeScript is checked here so it cannot rot between releases.
       - run: bun run site:video:typecheck
+
+  rust:
+    name: rust (${{ matrix.os }})
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CARGO_BUILD_JOBS: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src/BorgDock.Tauri/src-tauri -> target
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+      - name: Native tests and generated command contracts
+        working-directory: src/BorgDock.Tauri/src-tauri
+        run: cargo test --locked --lib

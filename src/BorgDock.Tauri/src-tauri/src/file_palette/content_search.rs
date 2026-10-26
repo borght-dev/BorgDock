@@ -13,12 +13,14 @@ const MAX_PREVIEW_CHARS: usize = 200;
 static CURRENT_TOKEN: AtomicU32 = AtomicU32::new(0);
 
 #[derive(Debug, Serialize, Clone)]
+#[cfg_attr(test, derive(specta::Type))]
 pub struct ContentMatch {
     pub line: u32,
     pub preview: String,
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[cfg_attr(test, derive(specta::Type))]
 pub struct ContentFileResult {
     pub rel_path: String,
     pub match_count: u32,
@@ -26,6 +28,7 @@ pub struct ContentFileResult {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn search_content(
     root: String,
     pattern: String,

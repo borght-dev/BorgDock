@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -106,10 +106,6 @@ vi.mock('@/hooks/useWorktreeMap', () => ({
 
 vi.mock('@/hooks/useAutoUpdate', () => ({
   useAutoUpdate: vi.fn(),
-}));
-
-vi.mock('@/hooks/useInitSequence', () => ({
-  useInitSequence: vi.fn(),
 }));
 
 vi.mock('@/components/SplashScreen', () => ({
@@ -227,6 +223,7 @@ describe('App', () => {
     );
     useSettingsStore.setState({ settings: initial, loadSettings: loadSavedSettings });
     render(<App />);
+    await act(async () => {});
     await waitFor(() => expect(useSettingsStore.getState().isLoading).toBe(false));
     await waitFor(() =>
       expect(vi.mocked(listen).mock.calls.some(([name]) => name === 'settings:changed')).toBe(true),
@@ -242,7 +239,7 @@ describe('App', () => {
     );
   });
 
-  it('shows splash screen when isLoading is true', () => {
+  it('shows splash screen when isLoading is true', async () => {
     useInitStore.setState({ isComplete: false });
     useSettingsStore.setState({
       isLoading: true,
@@ -251,10 +248,11 @@ describe('App', () => {
     });
 
     render(<App />);
+    await act(async () => {});
     expect(screen.getByTestId('splash-screen')).toBeTruthy();
   });
 
-  it('shows splash screen when init is not complete', () => {
+  it('shows splash screen when init is not complete', async () => {
     useInitStore.setState({ isComplete: false });
     useSettingsStore.setState({
       isLoading: false,
@@ -263,10 +261,11 @@ describe('App', () => {
     });
 
     render(<App />);
+    await act(async () => {});
     expect(screen.getByTestId('splash-screen')).toBeTruthy();
   });
 
-  it('shows setup wizard when setup is not complete', () => {
+  it('shows setup wizard when setup is not complete', async () => {
     useSettingsStore.setState({
       isLoading: false,
       settings: { ...fullSettings, setupComplete: false, repos: [] },
@@ -274,10 +273,11 @@ describe('App', () => {
     });
 
     render(<App />);
+    await act(async () => {});
     expect(screen.getByTestId('setup-wizard')).toBeTruthy();
   });
 
-  it('shows setup wizard when no repos configured', () => {
+  it('shows setup wizard when no repos configured', async () => {
     useSettingsStore.setState({
       isLoading: false,
       settings: { ...fullSettings, repos: [] },
@@ -285,10 +285,11 @@ describe('App', () => {
     });
 
     render(<App />);
+    await act(async () => {});
     expect(screen.getByTestId('setup-wizard')).toBeTruthy();
   });
 
-  it('shows setup wizard when PAT auth has no token', () => {
+  it('shows setup wizard when PAT auth has no token', async () => {
     useSettingsStore.setState({
       isLoading: false,
       settings: {
@@ -303,10 +304,11 @@ describe('App', () => {
     });
 
     render(<App />);
+    await act(async () => {});
     expect(screen.getByTestId('setup-wizard')).toBeTruthy();
   });
 
-  it('renders main UI when setup is complete', () => {
+  it('renders main UI when setup is complete', async () => {
     useSettingsStore.setState({
       isLoading: false,
       settings: fullSettings,
@@ -315,11 +317,12 @@ describe('App', () => {
     useUiStore.setState({ activeSection: 'focus' });
 
     render(<App />);
+    await act(async () => {});
     expect(screen.getByTestId('main-window')).toBeTruthy();
     expect(screen.getByTestId('merge-toast')).toBeTruthy();
   });
 
-  it('renders FocusList when activeSection is focus', () => {
+  it('renders FocusList when activeSection is focus', async () => {
     useSettingsStore.setState({
       isLoading: false,
       settings: fullSettings,
@@ -328,10 +331,11 @@ describe('App', () => {
     useUiStore.setState({ activeSection: 'focus' });
 
     render(<App />);
+    await act(async () => {});
     expect(screen.getByTestId('focus-list')).toBeTruthy();
   });
 
-  it('renders PrList when activeSection is prs', () => {
+  it('renders PrList when activeSection is prs', async () => {
     useSettingsStore.setState({
       isLoading: false,
       settings: fullSettings,
@@ -340,10 +344,11 @@ describe('App', () => {
     useUiStore.setState({ activeSection: 'prs' });
 
     render(<App />);
+    await act(async () => {});
     expect(screen.getByTestId('pr-list')).toBeTruthy();
   });
 
-  it('renders WorkItemsSection when activeSection is workitems', () => {
+  it('renders WorkItemsSection when activeSection is workitems', async () => {
     useSettingsStore.setState({
       isLoading: false,
       settings: fullSettings,
@@ -352,10 +357,11 @@ describe('App', () => {
     useUiStore.setState({ activeSection: 'workitems' });
 
     render(<App />);
+    await act(async () => {});
     expect(screen.getByTestId('workitems-section')).toBeTruthy();
   });
 
-  it('calls loadSettings on mount', () => {
+  it('leaves settings loading to the application runtime', async () => {
     const loadSettings = vi.fn();
     useSettingsStore.setState({
       isLoading: false,
@@ -364,10 +370,11 @@ describe('App', () => {
     });
 
     render(<App />);
-    expect(loadSettings).toHaveBeenCalled();
+    await act(async () => {});
+    expect(loadSettings).not.toHaveBeenCalled();
   });
 
-  it('restores persisted UI section on mount', () => {
+  it('restores persisted UI section on mount', async () => {
     const restorePersistedSection = vi.fn();
     useSettingsStore.setState({
       isLoading: false,
@@ -378,10 +385,11 @@ describe('App', () => {
     useOnboardingStore.setState({ restoreOnboardingState: vi.fn(() => Promise.resolve()) });
 
     render(<App />);
+    await act(async () => {});
     expect(restorePersistedSection).toHaveBeenCalled();
   });
 
-  it('restores onboarding state on mount', () => {
+  it('restores onboarding state on mount', async () => {
     const restoreOnboardingState = vi.fn(() => Promise.resolve());
     useSettingsStore.setState({
       isLoading: false,
@@ -391,6 +399,7 @@ describe('App', () => {
     useOnboardingStore.setState({ restoreOnboardingState });
 
     render(<App />);
+    await act(async () => {});
     expect(restoreOnboardingState).toHaveBeenCalled();
   });
 
@@ -415,3 +424,9 @@ describe('App', () => {
     });
   });
 });
+
+beforeAll(async () => {
+  await import('@/components/work-items/WorkItemsSection');
+  await import('@/components/worktree/WorktreesSection');
+  await import('@/components/dispatch/DispatchSection');
+}, 30_000);

@@ -170,6 +170,7 @@ fn spec_for_tool(tool: &str) -> Option<&'static PaletteSpec> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn open_tool_window(app: tauri::AppHandle, tool: String) -> Result<(), String> {
     let spec = spec_for_tool(&tool).ok_or_else(|| format!("Unknown tool window: {tool}"))?;
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -238,6 +239,7 @@ pub fn register_fixed_hotkeys(app: &tauri::AppHandle) -> Result<(), String> {
 /// touches the user shortcuts; the fixed palette/SQL shortcuts are owned by
 /// `register_fixed_hotkeys` and live for the process lifetime.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub fn register_user_hotkeys(
     app: tauri::AppHandle,
     sidebar_shortcut: String,
@@ -300,6 +302,7 @@ pub fn register_user_hotkeys(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub fn unregister_hotkey(app: tauri::AppHandle) -> Result<(), String> {
     let prev_sidebar = SIDEBAR_SHORTCUT.lock().ok().and_then(|mut g| g.take());
     if let Some(shortcut) = prev_sidebar {
@@ -324,6 +327,7 @@ pub fn unregister_hotkey(app: tauri::AppHandle) -> Result<(), String> {
 /// thread and, combined with a JS-side 50ms focus retry loop, saturated
 /// WebView2's PostMessage queue and hard-crashed the process.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn palette_ready(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
     let label = window.label().to_string();
     log::info!("palette_ready[{label}]: entry");

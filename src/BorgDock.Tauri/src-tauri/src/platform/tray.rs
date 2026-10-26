@@ -108,6 +108,7 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum TrayWorstState {
     Failing,
@@ -143,6 +144,7 @@ fn tray_colors(worst: TrayWorstState, dark: bool) -> ([u8; 4], [u8; 4]) {
 /// Update the tray icon to reflect current PR state. Called from the frontend
 /// via IPC whenever PR data changes.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub fn update_tray_icon(
     app: tauri::AppHandle,
     count: u8,
@@ -183,6 +185,7 @@ pub fn update_tray_icon(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub fn update_tray_tooltip(app: tauri::AppHandle, tooltip: String) -> Result<(), String> {
     if let Some(tray) = app.tray_by_id("main") {
         tray.set_tooltip(Some(&tooltip))

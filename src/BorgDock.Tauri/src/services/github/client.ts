@@ -1,5 +1,6 @@
 import { invalidateGitHubTokenCache } from '@/services/github/auth';
 import { createLogger } from '@/services/logger';
+import { withAccountRequest } from './request-budget';
 
 export interface RateLimit {
   remaining: number;
@@ -455,7 +456,11 @@ export class GitHubClient {
     return lastResponse!;
   }
 
-  private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  private fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    return withAccountRequest(this.account, () => this.performFetch(url, init));
+  }
+
+  private async performFetch(url: string, init: RequestInit): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), GITHUB_REQUEST_TIMEOUT_MS);
 

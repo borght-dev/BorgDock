@@ -1,3 +1,6 @@
+import '@/components/work-items/WorkItemsSection';
+import '@/components/worktree/WorktreesSection';
+import '@/components/dispatch/DispatchSection';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -45,50 +48,56 @@ describe('SectionView', () => {
     ['prs', 'prs body'],
     ['workitems', 'workitems body'],
     ['worktrees', 'worktrees body'],
-  ] as const)('renders the %s section', (section, text) => {
+  ] as const)('renders the %s section', async (section, text) => {
     useUiStore.setState({ activeSection: section });
     render(<SectionView />);
+    await act(async () => {});
     expect(screen.getByText(text)).toBeInTheDocument();
   });
 
-  it('does not animate on first render', () => {
+  it('does not animate on first render', async () => {
     render(<SectionView />);
+    await act(async () => {});
     expect(pane('focus body')).not.toHaveClass('bd-section--entering');
   });
 
-  it('crossfades: the old section leaves while the new one enters, then the old one goes', () => {
+  it('crossfades: the old section leaves while the new one enters, then the old one goes', async () => {
     vi.useFakeTimers();
     render(<SectionView />);
-    act(() => useUiStore.getState().setActiveSection('prs'));
+    await act(async () => {});
+    await act(() => useUiStore.getState().setActiveSection('prs'));
 
     expect(pane('prs body')).toHaveClass('bd-section--entering');
     const leaving = pane('focus body');
     expect(leaving).toHaveClass('bd-section--leaving');
     expect(leaving).toHaveAttribute('inert');
 
-    act(() => vi.advanceTimersByTime(300));
+    await act(() => vi.advanceTimersByTime(300));
     expect(screen.queryByText('focus body')).not.toBeInTheDocument();
     expect(pane('prs body')).not.toHaveClass('bd-section--entering');
   });
 
-  it('drops the old section as soon as the new one has finished entering', () => {
+  it('drops the old section as soon as the new one has finished entering', async () => {
     render(<SectionView />);
-    act(() => useUiStore.getState().setActiveSection('prs'));
+    await act(async () => {});
+    await act(() => useUiStore.getState().setActiveSection('prs'));
     endAnimation(pane('prs body') as HTMLElement);
     expect(screen.queryByText('focus body')).not.toBeInTheDocument();
   });
 
-  it('ignores animationend bubbling up from inside the new section', () => {
+  it('ignores animationend bubbling up from inside the new section', async () => {
     render(<SectionView />);
-    act(() => useUiStore.getState().setActiveSection('prs'));
+    await act(async () => {});
+    await act(() => useUiStore.getState().setActiveSection('prs'));
     endAnimation(screen.getByText('prs body'));
     expect(screen.getByText('focus body')).toBeInTheDocument();
   });
 
-  it('swaps instantly under reduced motion', () => {
+  it('swaps instantly under reduced motion', async () => {
     document.documentElement.classList.add('reduce-motion');
     render(<SectionView />);
-    act(() => useUiStore.getState().setActiveSection('prs'));
+    await act(async () => {});
+    await act(() => useUiStore.getState().setActiveSection('prs'));
     expect(screen.queryByText('focus body')).not.toBeInTheDocument();
     expect(pane('prs body')).not.toHaveClass('bd-section--entering');
   });

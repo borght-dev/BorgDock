@@ -12,7 +12,10 @@ pub fn disable<R: tauri::Runtime>(webview: &tauri::Webview<R>) {
             }
         });
         if let Err(e) = result {
-            log::warn!("disable browser accelerator keys on {}: {e}", webview.label());
+            log::warn!(
+                "disable browser accelerator keys on {}: {e}",
+                webview.label()
+            );
         }
     }
     #[cfg(not(windows))]

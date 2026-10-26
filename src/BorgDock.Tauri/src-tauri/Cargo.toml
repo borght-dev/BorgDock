@@ -48,7 +48,7 @@ futures-util = "0.3"
 log = "0.4"
 png = "0.17"
 tiberius = { version = "0.12", default-features = false, features = ["tds73", "chrono", "winauth", "rust_decimal"] }
-tokio-util = { version = "0.7", features = ["compat"] }
+tokio-util = { version = "0.7", features = ["compat", "rt"] }
 rust_decimal = "1"
 chrono = "0.4"
 base64 = "0.22"
@@ -59,6 +59,9 @@ grep-matcher = "0.1"
 blake3 = "1"
 git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
 [dev-dependencies]
+specta = { version = "=2.0.0-rc.26", features = ["derive", "function", "serde_json", "chrono"] }
+specta-typescript = "0.0.13"
+tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
 tempfile = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]

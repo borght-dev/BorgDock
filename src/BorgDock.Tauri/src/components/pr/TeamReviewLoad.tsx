@@ -62,13 +62,5 @@ export function ReviewerRow({ reviewer, onSelect }: ReviewerRowProps) {
 
 /** Pending reviews per reviewer, re-read whenever the PRs or request times change. */
 export function useTeamReviewers(): ReviewerLoad[] {
-  const pullRequests = usePrStore((s) => s.pullRequests);
-  const reviewRequestTimestamps = usePrStore((s) => s.reviewRequestTimestamps);
-  const teamReviewLoad = usePrStore((s) => s.teamReviewLoad);
-
-  // Re-render when data changes
-  void pullRequests;
-  void reviewRequestTimestamps;
-
-  return teamReviewLoad();
+  return usePrStore((s) => s.teamReviewLoad());
 }

@@ -1,10 +1,26 @@
 import clsx from 'clsx';
-import { memo, useLayoutEffect, useRef, useState } from 'react';
-import { DispatchSection } from '@/components/dispatch/DispatchSection';
+import { lazy, memo, Suspense, useLayoutEffect, useRef, useState } from 'react';
+
+const DispatchSection = lazy(() =>
+  import('@/components/dispatch/DispatchSection').then((module) => ({
+    default: module.DispatchSection,
+  })),
+);
+
 import { FocusList } from '@/components/focus';
 import { PrList } from '@/components/pr/PrList';
-import { WorkItemsSection } from '@/components/work-items/WorkItemsSection';
-import { WorktreesSection } from '@/components/worktree/WorktreesSection';
+
+const WorkItemsSection = lazy(() =>
+  import('@/components/work-items/WorkItemsSection').then((module) => ({
+    default: module.WorkItemsSection,
+  })),
+);
+const WorktreesSection = lazy(() =>
+  import('@/components/worktree/WorktreesSection').then((module) => ({
+    default: module.WorktreesSection,
+  })),
+);
+
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
 import { motionMs, motionOK } from '@/utils/motion';
 
@@ -72,7 +88,9 @@ export const SectionView = memo(function SectionView() {
           aria-hidden="true"
           inert
         >
-          <SectionBody section={outgoing} />
+          <Suspense fallback={null}>
+            <SectionBody section={outgoing} />
+          </Suspense>
         </div>
       )}
       <div
@@ -83,7 +101,9 @@ export const SectionView = memo(function SectionView() {
           if (e.target === e.currentTarget) setLeaving(null);
         }}
       >
-        <SectionBody section={active} />
+        <Suspense fallback={<div role="status">Loading…</div>}>
+          <SectionBody section={active} />
+        </Suspense>
       </div>
     </div>
   );

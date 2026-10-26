@@ -41,6 +41,7 @@ fn run_git(working_dir: &str, args: &[&str]) -> Result<String, String> {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct DiscoveredRepo {
     pub owner: String,
@@ -49,6 +50,7 @@ pub struct DiscoveredRepo {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn discover_repos() -> Result<Vec<DiscoveredRepo>, String> {
     tokio::task::spawn_blocking(move || {
         let mut repos = Vec::new();
@@ -151,6 +153,7 @@ fn parse_github_remote(url: &str) -> Option<(String, String)> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn resolve_repo_path(path: String) -> Result<DiscoveredRepo, String> {
     tokio::task::spawn_blocking(move || {
         let p = Path::new(&path);
@@ -219,6 +222,7 @@ fn run_git_verbose(working_dir: &str, args: &[&str]) -> Result<String, String> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn git_fetch(repo_path: String, remote: Option<String>) -> Result<String, String> {
     tokio::task::spawn_blocking(move || {
         let remote = remote.unwrap_or_else(|| "origin".to_string());
@@ -229,6 +233,7 @@ pub async fn git_fetch(repo_path: String, remote: Option<String>) -> Result<Stri
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn git_checkout(repo_path: String, branch: String) -> Result<String, String> {
     tokio::task::spawn_blocking(move || run_git_verbose(&repo_path, &["checkout", &branch]))
         .await
@@ -236,6 +241,7 @@ pub async fn git_checkout(repo_path: String, branch: String) -> Result<String, S
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn git_current_branch(repo_path: String) -> Result<String, String> {
     tokio::task::spawn_blocking(move || run_git(&repo_path, &["rev-parse", "--abbrev-ref", "HEAD"]))
         .await
@@ -245,6 +251,7 @@ pub async fn git_current_branch(repo_path: String) -> Result<String, String> {
 const ALLOWED_SUBCOMMANDS: &[&str] = &["pr", "auth"];
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn run_gh_command(args: Vec<String>) -> Result<String, String> {
     if args.is_empty() {
         return Err("No arguments provided to gh command".to_string());
@@ -284,6 +291,7 @@ pub async fn run_gh_command(args: Vec<String>) -> Result<String, String> {
 // ─── scan_repos_under (settings → Add a repository) ─────────────────────────
 
 #[derive(Serialize, Debug)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct RepoCandidate {
     pub path: String,
@@ -296,6 +304,7 @@ pub struct RepoCandidate {
 /// per `.git`-containing directory, attempting to parse `owner/name` from the
 /// origin remote and flagging whether the repo is already in `settings.repos`.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn scan_repos_under(path: String) -> Result<Vec<RepoCandidate>, String> {
     tokio::task::spawn_blocking(move || {
         let parent = std::path::PathBuf::from(&path);

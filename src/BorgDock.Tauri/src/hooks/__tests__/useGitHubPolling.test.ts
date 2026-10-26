@@ -232,7 +232,7 @@ describe('useGitHubPolling', () => {
   it('initializes the GitHub client on mount', () => {
     renderHook(() => useGitHubPolling(makeSettings()));
 
-    expect(mockInitClient).toHaveBeenCalledWith(expect.any(Function));
+    expect(mockInitClient).not.toHaveBeenCalled();
   });
 
   describe('enabled gate', () => {
@@ -267,53 +267,15 @@ describe('useGitHubPolling', () => {
       });
 
       await vi.waitFor(() => {
-        expect(mockInitClient).toHaveBeenCalledTimes(1);
+        expect(mockInitClient).not.toHaveBeenCalled();
         expect(mockPollOpenPrsAggregate).toHaveBeenCalledWith(mockClientInstance, 'test', 'repo');
       });
     });
   });
 
-  it('detects username via /user API', async () => {
+  it('leaves viewer detection to initialization', () => {
     renderHook(() => useGitHubPolling(makeSettings()));
-
-    await vi.waitFor(() => {
-      expect(mockFetchFn).toHaveBeenCalledWith(
-        'https://api.github.com/user',
-        expect.objectContaining({
-          headers: expect.objectContaining({ 'User-Agent': 'BorgDock' }),
-        }),
-      );
-    });
-
-    await vi.waitFor(() => {
-      expect(usePrStore.getState().username).toBe('testuser');
-    });
-  });
-
-  it('handles username detection failure gracefully', async () => {
-    mockFetchFn.mockRejectedValue(new Error('network error'));
-
-    // Should not throw
-    renderHook(() => useGitHubPolling(makeSettings()));
-
-    await vi.waitFor(() => {
-      expect(mockFetchFn).toHaveBeenCalled();
-    });
-
-    // Username remains empty
-    expect(usePrStore.getState().username).toBe('');
-  });
-
-  it('handles non-ok response for username detection', async () => {
-    mockFetchFn.mockResolvedValue({ ok: false });
-
-    renderHook(() => useGitHubPolling(makeSettings()));
-
-    await vi.waitFor(() => {
-      expect(mockFetchFn).toHaveBeenCalled();
-    });
-
-    expect(usePrStore.getState().username).toBe('');
+    expect(mockFetchFn).not.toHaveBeenCalled();
   });
 
   it('sets polling state to true on mount', () => {
@@ -601,7 +563,7 @@ describe('useGitHubPolling', () => {
       const prs = usePrStore.getState().pullRequests;
       expect(prs).toHaveLength(2);
       expect(prs).toContain(r1Prior); // failed repo: last-known entry kept
-      expect(prs).toContain(r2Fresh); // healthy repo: fresh result used
+      expect(prs).toContainEqual(r2Fresh); // healthy repo: fresh result used
     });
   });
 
@@ -669,8 +631,9 @@ describe('useGitHubPolling', () => {
     expect(mockPollOpenPrsAggregate).not.toHaveBeenCalled();
   });
 
-  it('completes the poll cycle when a repo fetch fails', async () => {
+  it('does not advance freshness when every API fails', async () => {
     mockPollOpenPrsAggregate.mockRejectedValue(new Error('API error'));
+    mockGetOpenPRs.mockRejectedValue(new Error('REST error'));
 
     renderHook(() => useGitHubPolling(makeSettings()));
 
@@ -685,8 +648,10 @@ describe('useGitHubPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(usePrStore.getState().lastPollTime).not.toBeNull();
+      expect(usePrStore.getState().isPolling).toBe(false);
     });
+    expect(mockGetOpenPRs).toHaveBeenCalled();
+    expect(usePrStore.getState().lastPollTime).toBeNull();
   });
 
   it('fetches closed PRs on mount', async () => {
@@ -801,11 +766,11 @@ describe('useGitHubPolling', () => {
       { initialProps: { settings: settings1 } },
     );
 
-    expect(mockInitClient).toHaveBeenCalledTimes(1);
+    expect(mockInitClient).not.toHaveBeenCalled();
 
     rerender({ settings: settings2 });
 
-    expect(mockInitClient).toHaveBeenCalledTimes(2);
+    expect(mockInitClient).not.toHaveBeenCalled();
   });
 
   it('re-creates polling when poll interval changes', () => {
@@ -824,11 +789,11 @@ describe('useGitHubPolling', () => {
       { initialProps: { settings: settings1 } },
     );
 
-    expect(mockInitClient).toHaveBeenCalledTimes(1);
+    expect(mockInitClient).not.toHaveBeenCalled();
 
     rerender({ settings: settings2 });
 
-    expect(mockInitClient).toHaveBeenCalledTimes(2);
+    expect(mockInitClient).not.toHaveBeenCalled();
   });
 
   it('handles poll error and sets polling state to false', async () => {
