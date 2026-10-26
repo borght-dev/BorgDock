@@ -16,6 +16,7 @@ pub mod settings;
 pub mod sql;
 pub mod t3;
 pub mod updater;
+pub mod workstreams;
 
 use cache::PrCache;
 use git::process::ProcessState;
@@ -207,6 +208,16 @@ macro_rules! app_commands {
             file_palette::files::list_root_files,
             file_palette::content_search::search_content,
             file_palette::windows::open_file_viewer_window,
+            // Workstreams
+            workstreams::commands::workstreams_folder_path,
+            workstreams::commands::workstreams_list,
+            workstreams::commands::workstreams_read,
+            workstreams::commands::workstreams_write,
+            workstreams::commands::workstreams_trash,
+            workstreams::commands::workstreams_trashed,
+            workstreams::commands::workstreams_restore,
+            workstreams::commands::workstreams_restore_backup,
+            workstreams::commands::workstreams_device_name,
         ]
     };
 }
