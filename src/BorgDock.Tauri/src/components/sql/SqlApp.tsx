@@ -7,7 +7,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WindowStatusBar } from '@/components/shared/chrome';
 import { Button, Kbd, Pill, ProgressButton } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
+import { commands, type QueryResult_Serialize as QueryResult } from '@/generated/commands';
 import { useSettingsSync } from '@/hooks/useSettingsSync';
+import { commandData } from '@/services/native-command';
 import type { AppSettings, SqlSettings } from '@/types/settings';
 import { parseError } from '@/utils/parse-error';
 import { shortcutLabel } from '@/utils/shortcut-label';
@@ -34,21 +36,6 @@ const SQL_HINTS = [
   { keys: 'Ctrl+Shift+S', label: 'save as' },
   { keys: 'Ctrl+↵', label: 'run' },
 ];
-
-interface ResultSet {
-  columns: string[];
-  rows: (string | null)[][];
-  rowCount: number;
-  truncated: boolean;
-}
-
-interface QueryResult {
-  resultSets: ResultSet[];
-  executionTimeMs: number;
-  totalRowCount: number;
-  /** `null` for SELECT-shaped batches; populated for UPDATE/INSERT/DELETE/MERGE etc. */
-  rowsAffected: number | null;
-}
 
 const QUERY_KEY = 'borgdock-sql-last-query';
 const RAIL_WIDTH_KEY = 'borgdock.sql.railWidth';
@@ -314,6 +301,23 @@ export function SqlApp() {
     }
   }, [railCollapsed]);
 
+  const runningQuery = useRef<string | null>(null);
+  const cancelQuery = useCallback(() => {
+    const queryId = runningQuery.current;
+    if (queryId)
+      void commandData(commands.cancelSqlQuery(queryId)).catch((error) =>
+        setError(parseError(error).message),
+      );
+  }, []);
+  useEffect(
+    () => () => {
+      const queryId = runningQuery.current;
+      runningQuery.current = null;
+      if (queryId) void invoke('cancel_sql_query', { queryId }).catch(() => {});
+    },
+    [],
+  );
+
   /* ── Run query ────────────────────────────────────────── */
   // `textOverride` is what the editor passes when it triggers Mod-Enter — the
   // current selection if any, else the whole document. The toolbar Run button
@@ -321,11 +325,13 @@ export function SqlApp() {
   // a non-empty selection is preferred over the full doc.
   const runQuery = useCallback(
     async (textOverride?: string) => {
-      if (!selectedConnection) return;
+      if (!selectedConnection || runningQuery.current) return;
       const fromEditor = textOverride ?? editorRef.current?.getRunText();
       const toRun = (fromEditor ?? queryRef.current).trim();
       if (!toRun) return;
 
+      const queryId = crypto.randomUUID();
+      runningQuery.current = queryId;
       setIsRunning(true);
       setError(null);
       setResult(null);
@@ -333,18 +339,19 @@ export function SqlApp() {
       setHasRun(true);
 
       try {
-        const res = await invoke<QueryResult>('execute_sql_query', {
-          connectionName: selectedConnection,
-          query: toRun,
-        });
+        const res = await commandData(commands.executeSqlQuery(selectedConnection, toRun, queryId));
+        if (runningQuery.current !== queryId) return;
         setResult(res);
         if (activeSnippetId) {
           update(activeSnippetId, { lastRun: 'just now' });
         }
       } catch (err) {
-        setError(parseError(err).message);
+        if (runningQuery.current === queryId) setError(parseError(err).message);
       } finally {
-        setIsRunning(false);
+        if (runningQuery.current === queryId) {
+          runningQuery.current = null;
+          setIsRunning(false);
+        }
       }
     },
     [selectedConnection, activeSnippetId, update],
@@ -603,9 +610,16 @@ export function SqlApp() {
 
         <span className="sql-toolbar__spacer" />
 
-        <span className="sql-toolbar__hint">Runs the selection, or the whole query</span>
+        {!isRunning && (
+          <span className="sql-toolbar__hint">Runs the selection, or the whole query</span>
+        )}
         {/* Progress semantics (ProgressButton): the fill runs while the query
             does, a second click while busy does nothing. */}
+        {isRunning && (
+          <Button variant="ghost" size="sm" onClick={cancelQuery}>
+            Cancel query
+          </Button>
+        )}
         <ProgressButton
           variant="primary"
           size="sm"

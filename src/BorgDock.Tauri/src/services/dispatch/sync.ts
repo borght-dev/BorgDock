@@ -1,5 +1,6 @@
 import { toggleTrackedWorkItem } from '@/components/work-items/work-item-toggles';
-import { AdoClient } from '@/services/ado/client';
+import type { AdoClient } from '@/services/ado/client';
+import { adoClient } from '@/services/ado/singleton';
 import {
   type T3ConversationReferences,
   type T3Thread,
@@ -12,7 +13,8 @@ import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import type { AppSettings, PullRequestWithChecks } from '@/types';
+import type { PullRequestWithChecks } from '@/types';
+import { shareValue } from '@/utils/structural-sharing';
 import { buildOverview } from './engine';
 import { forgetHostsExcept, rememberHost } from './host-memory';
 import { configuredHosts, type DispatchHost, hostRef, isRemote, rawId, scopedId } from './hosts';
@@ -138,7 +140,7 @@ function sameOverview(a: Overview | null, b: Overview): boolean {
   if (!a) return false;
   const { generatedAt: _a, ...left } = a;
   const { generatedAt: _b, ...right } = b;
-  return JSON.stringify(left) === JSON.stringify(right);
+  return shareValue(left, right) === left;
 }
 
 /**
@@ -146,10 +148,34 @@ function sameOverview(a: Overview | null, b: Overview): boolean {
  * change to one of its inputs; an identical result leaves the store alone, so
  * nothing re-renders.
  */
+let overviewInputs: unknown[] | null = null;
+let computedOverview: Overview | null = null;
+
 export function recomputeOverview(): void {
   const dispatch = useDispatchStore.getState();
   const prs = usePrStore.getState();
   const tracked = useWorkItemsStore.getState().trackedWorkItemIds;
+  const slotPattern = useSettingsStore.getState().settings.agents?.t3SlotPattern;
+  const inputs = [
+    dispatch.items,
+    dispatch.threads,
+    dispatch.projects,
+    prs.pullRequests,
+    prs.closedPullRequests,
+    dispatch.linkedPullRequests,
+    tracked,
+    dispatch.hiddenSuggestions,
+    dispatch.manualLinks,
+    slotPattern,
+    Math.floor(Date.now() / 60_000),
+  ];
+  if (
+    dispatch.overview === computedOverview &&
+    overviewInputs &&
+    inputs.every((value, i) => value === overviewInputs![i])
+  )
+    return;
+  overviewInputs = inputs;
   const { overview, dequeue } = buildOverview({
     items: dispatch.items,
     threads: dispatch.threads,
@@ -161,12 +187,13 @@ export function recomputeOverview(): void {
     queued: tracked,
     hiddenSuggestions: dispatch.hiddenSuggestions,
     manualLinks: dispatch.manualLinks,
-    slotPattern: compileSlotPattern(useSettingsStore.getState().settings.agents?.t3SlotPattern),
+    slotPattern: compileSlotPattern(slotPattern),
   });
   if (!sameOverview(dispatch.overview, overview)) {
     dispatch.setOverview(overview);
     notifyNew(overview, !everySourceRead());
   }
+  computedOverview = useDispatchStore.getState().overview;
   // An agent picked these up; the queue has done its job.
   for (const id of dequeue) {
     if (tracked.has(id)) toggleTrackedWorkItem(id);
@@ -200,6 +227,7 @@ interface HostState {
   detailVersions: Map<string, string>;
   referenceVersions: Map<string, string>;
   inFlight: Promise<void> | null;
+  refreshRequested: boolean;
 }
 
 const hostStates = new Map<string, HostState>();
@@ -217,6 +245,7 @@ function stateOf(host: DispatchHost): HostState {
       detailVersions: new Map(),
       referenceVersions: new Map(),
       inFlight: null,
+      refreshRequested: false,
     };
     hostStates.set(host.id, state);
   }
@@ -232,6 +261,12 @@ function stillFollowed(host: DispatchHost, state: HostState): boolean {
 export function resetHostSync(): void {
   hostStates.clear();
   sourcesRead.clear();
+  syncGeneration++;
+  itemsInFlight = null;
+  itemsConnection = null;
+  linkedInFlight = null;
+  itemsRefreshRequested = false;
+  overviewInputs = null;
 }
 
 const DETAIL_BATCH = 4;
@@ -291,6 +326,7 @@ async function readDetails(host: DispatchHost, state: HostState): Promise<void> 
       stale.slice(start, start + DETAIL_BATCH).map(async (thread) => {
         try {
           const detail = await t3ThreadDetail(hostRef(host), rawId(host.id, thread.id));
+          if (!stillFollowed(host, state)) return;
           state.detailVersions.set(thread.id, version(thread));
           patches.set(thread.id, {
             lastAgentMessage: detail.lastAgentMessage,
@@ -302,8 +338,9 @@ async function readDetails(host: DispatchHost, state: HostState): Promise<void> 
         }
       }),
     );
+    if (!stillFollowed(host, state)) return;
   }
-  if (patches.size === 0) return;
+  if (!stillFollowed(host, state) || patches.size === 0) return;
   useDispatchStore.getState().patchThreads(patches);
   recomputeOverview();
 }
@@ -377,12 +414,19 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
 export async function syncHost(host: DispatchHost, force = false): Promise<void> {
   const state = stateOf(host);
   if (state.inFlight) {
-    if (!force) return state.inFlight;
-    await state.inFlight.catch(() => {});
+    if (force) state.refreshRequested = true;
+    return state.inFlight;
   }
-  const poll = pollHost(host, state, force).finally(() => {
+  const poll = (async () => {
+    let refresh = force;
+    do {
+      state.refreshRequested = false;
+      await pollHost(host, state, refresh);
+      refresh = state.refreshRequested;
+    } while (refresh && stillFollowed(host, state));
+  })().finally(() => {
     if (state.inFlight === poll) state.inFlight = null;
-    sourcesRead.add(host.id);
+    if (stillFollowed(host, state)) sourcesRead.add(host.id);
   });
   state.inFlight = poll;
   return poll;
@@ -409,39 +453,23 @@ export function followHostList(): void {
 
 // ── Azure DevOps ────────────────────────────────────────────
 
-let cachedClient: { key: string; client: AdoClient } | null = null;
-
-function adoClient(ado: AppSettings['azureDevOps']): AdoClient | null {
-  const hasCredentials = ado.authMethod === 'azCli' || !!ado.personalAccessToken;
-  if (!ado.organization || !ado.project || !hasCredentials) return null;
-  const key = [ado.organization, ado.project, ado.authMethod, ado.personalAccessToken].join('|');
-  if (cachedClient?.key !== key) {
-    cachedClient = {
-      key,
-      client: new AdoClient(
-        ado.organization,
-        ado.project,
-        ado.personalAccessToken ?? '',
-        ado.authMethod,
-      ),
-    };
-  }
-  return cachedClient.client;
-}
-
 /** The client Dispatch reads and writes ADO with, or `null` when ADO is not set up. */
 export function dispatchAdoClient(): AdoClient | null {
   return adoClient(useSettingsStore.getState().settings.azureDevOps);
 }
 
+let syncGeneration = 0;
+let itemsConnection: string | null = null;
 let itemsInFlight: Promise<void> | null = null;
 let itemsRefreshRequested = false;
 let linkedInFlight: Promise<void> | null = null;
 
 /** Read the GitHub state of the pull requests ADO links on the items. */
 function refreshLinkedPullRequests(): Promise<void> {
-  linkedInFlight ??= (async () => {
+  if (linkedInFlight) return linkedInFlight;
+  const job = (async () => {
     const store = useDispatchStore.getState;
+    const generation = syncGeneration;
     const candidates = candidateRepositories(useSettingsStore.getState().settings.repos);
     try {
       const { pullRequests, repositories } = await lookUpLinkedPullRequests(
@@ -450,18 +478,21 @@ function refreshLinkedPullRequests(): Promise<void> {
         store().linkedRepositories,
         fetchFromGitHub,
       );
+      if (generation !== syncGeneration) return;
       store().setLinkedPullRequests(pullRequests, repositories);
       recomputeOverview();
     } catch {
       // The items show without it; the next poll tries again.
     }
   })().finally(() => {
-    linkedInFlight = null;
+    if (linkedInFlight === job) linkedInFlight = null;
   });
-  return linkedInFlight;
+  linkedInFlight = job;
+  return job;
 }
 
 async function loadItems(): Promise<void> {
+  const generation = syncGeneration;
   const store = useDispatchStore.getState;
   const ado = useSettingsStore.getState().settings.azureDevOps;
   const client = adoClient(ado);
@@ -477,9 +508,11 @@ async function loadItems(): Promise<void> {
       { organization: ado.organization, project: ado.project },
       tracked,
     );
+    if (generation !== syncGeneration) return;
     store().setItems(items, { ok: true, at: new Date().toISOString(), error: null });
     void refreshLinkedPullRequests();
   } catch (error) {
+    if (generation !== syncGeneration) return;
     store().setAdoStatus({ ok: false, at: store().ado.at, error: errorText(error) });
   }
   recomputeOverview();
@@ -487,20 +520,39 @@ async function loadItems(): Promise<void> {
 
 /** Share polls; a forced refresh during a read queues one fresh read after it. */
 export function syncItems(force = false): Promise<void> {
+  const ado = useSettingsStore.getState().settings.azureDevOps;
+  const connection = JSON.stringify([
+    ado.organization,
+    ado.project,
+    ado.authMethod,
+    ado.personalAccessToken,
+  ]);
+  if (itemsConnection !== null && itemsConnection !== connection) {
+    syncGeneration++;
+    itemsInFlight = null;
+    linkedInFlight = null;
+    sourcesRead.delete(ADO_SOURCE);
+    useDispatchStore.getState().setItems([], { ok: false, at: null, error: null });
+    useDispatchStore.getState().setLinkedPullRequests([], {});
+    recomputeOverview();
+  }
+  itemsConnection = connection;
   if (itemsInFlight) {
     if (force) itemsRefreshRequested = true;
     return itemsInFlight;
   }
-  itemsInFlight = (async () => {
+  const generation = syncGeneration;
+  const poll = (async () => {
     do {
       itemsRefreshRequested = false;
       await loadItems();
-    } while (itemsRefreshRequested);
+    } while (itemsRefreshRequested && generation === syncGeneration);
   })().finally(() => {
-    itemsInFlight = null;
-    sourcesRead.add(ADO_SOURCE);
+    if (itemsInFlight === poll) itemsInFlight = null;
+    if (generation === syncGeneration) sourcesRead.add(ADO_SOURCE);
   });
-  return itemsInFlight;
+  itemsInFlight = poll;
+  return poll;
 }
 
 /** Read everything again: after an action changed T3 or ADO, or on Refresh. */

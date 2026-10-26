@@ -19,7 +19,9 @@
     "screenshot-heroes": "node scripts/screenshot-heroes.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "test:storybook": "test-storybook --url http://localhost:6107"
+    "test:storybook": "test-storybook --url http://localhost:6107",
+    "bindings": "BORGDOCK_UPDATE_BINDINGS=1 cargo test --manifest-path src-tauri/Cargo.toml --lib binding_tests::export_commands",
+    "bindings:check": "cargo test --manifest-path src-tauri/Cargo.toml --lib binding_tests::export_commands"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.2",
@@ -63,6 +65,7 @@
     "@axe-core/playwright": "^4.11.3",
     "@biomejs/biome": "^2.4.14",
     "@playwright/test": "^1.59.1",
+    "@rolldown/plugin-babel": "^0.2.0",
     "@storybook/addon-themes": "^10.3.6",
     "@storybook/react-vite": "^10.3.6",
     "@storybook/test-runner": "^0.24.3",

@@ -15,6 +15,7 @@ use tauri::State;
 use crate::cache::PrCache;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SqlSnippet {
     pub id: String,
@@ -52,17 +53,15 @@ where
     T: Send + 'static,
     F: FnOnce(&Connection) -> Result<T, String> + Send + 'static,
 {
-    tokio::task::spawn_blocking(move || {
-        let lock = handle.lock().unwrap_or_else(|p| p.into_inner());
-        let conn = lock.as_ref().ok_or("Cache not initialized")?;
+    crate::cache::with_conn(handle, move |conn| {
         ensure_table(conn).map_err(|e| format!("Failed to ensure snippets table: {e}"))?;
         f(conn)
     })
     .await
-    .map_err(|e| format!("Task join error: {e}"))?
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn sql_snippets_list(state: State<'_, PrCache>) -> Result<Vec<SqlSnippet>, String> {
     with_snippets_conn(state.conn.clone(), |conn| {
         let mut stmt = conn
@@ -95,6 +94,7 @@ pub async fn sql_snippets_list(state: State<'_, PrCache>) -> Result<Vec<SqlSnipp
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn sql_snippets_save(
     state: State<'_, PrCache>,
     snippet: SqlSnippet,
@@ -128,6 +128,7 @@ pub async fn sql_snippets_save(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn sql_snippets_delete(state: State<'_, PrCache>, id: String) -> Result<(), String> {
     with_snippets_conn(state.conn.clone(), move |conn| {
         conn.execute("DELETE FROM sql_snippets WHERE id = ?1", params![id])

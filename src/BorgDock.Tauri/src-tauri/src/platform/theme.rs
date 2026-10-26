@@ -1,6 +1,7 @@
 /// Spawns a subprocess (`reg` / `defaults` / `gsettings`) — async so the
 /// wait happens on a blocking thread instead of inline on the GUI thread.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn get_system_theme() -> Result<String, String> {
     tokio::task::spawn_blocking(get_system_theme_blocking)
         .await

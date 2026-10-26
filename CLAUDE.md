@@ -37,7 +37,7 @@ If every e2e test hangs on the splash screen (`waitForSelector('[data-app-ready=
 
 ## React Compiler escape hatch
 
-The React Compiler (`babel-plugin-react-compiler`, wired into `@vitejs/plugin-react` in `vite.config.ts`) auto-memoizes function components and hooks at build time. **Not currently active:** `@vitejs/plugin-react` 6 ignores the `babel` option, so the plugin in `vite.config.ts` is a no-op (no `memo_cache_sentinel` in `dist/`). Wiring it back needs the v6 `reactCompilerPreset` + `@rolldown/plugin-babel`. Until then, don't blame stale renders on the compiler. If a specific component breaks under compilation — usually because it relied on referential identity for a side effect — opt it out file-locally with the `"use no memo"` directive at the very top of the file:
+The React Compiler runs on application components and hooks through `reactCompilerPreset` and `@rolldown/plugin-babel` in `vite.config.ts`. Tests and stories are excluded. Select derived Zustand values inside the selector, such as `usePrStore(s => s.filteredPrs())`; selecting a stable getter and calling it afterward can leave compiler-memoized results stale. If a specific component breaks under compilation — usually because it relied on referential identity for a side effect — opt it out file-locally with the `"use no memo"` directive at the very top of the file:
 
 ```ts
 "use no memo";
@@ -48,6 +48,14 @@ export function MyComponent() { /* ... */ }
 ```
 
 This is a per-file escape hatch. The compiler skips that file; everything else still gets memoized. If you have to use this directive, leave a one-line comment explaining why.
+
+## Runtime, bindings and performance
+
+GitHub, ADO and T3 synchronization starts from `src/runtime/application-runtime.ts` in `main.tsx`, independently of React mounts. Reuse that ownership when adding a refresh path. PR detail windows subscribe to the native T3 session cache.
+
+After changing Rust command arguments, results or events, run `bun run bindings`. `cargo test --lib` checks that `src/generated/commands.ts` matches the shared command registry. Type reflection is test-only. Keep the existing numeric wire representation unless every caller migrates with it.
+
+When changing polling, syntax workers, SQL limits, virtualization or native profiling, read `docs/performance/runtime.md` at the repository root for the invariants and proof commands.
 
 ## Project Layout
 
@@ -136,7 +144,7 @@ Rust's `std::process::Command::new("az")` on Windows uses `CreateProcessW`, whic
 
 Tiberius (`tiberius = "0.12"`) is not defensive about column types it doesn't know how to decode. When a result row contains a SQL Server **UDT** (`geography`, `geometry`, `hierarchyid`, a CLR type, sometimes `xml` / `sql_variant`), the decoder hits a `todo!()` / `unimplemented!()` inside `tds::codec::type_info` and **panics** rather than returning an error. A wide `SELECT *` against a certain view is the usual way to hit this.
 
-Because this is a panic (not a `Result`), `try_get`-level handling in `row_to_strings` can never catch it — the panic originates deeper, inside `into_results()` decoding.
+Because this is a panic (not a `Result`), `try_get`-level handling in `row_to_strings` can never catch it — the panic originates deeper, inside stream decoding.
 
 **Two pieces keep this from killing the app:**
 

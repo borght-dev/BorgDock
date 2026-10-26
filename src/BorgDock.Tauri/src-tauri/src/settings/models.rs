@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     /// Bumped by `settings::migrate` after each one-off migration has run.
@@ -40,6 +41,7 @@ pub struct AppSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct FilePaletteRoot {
     pub path: String,
@@ -48,6 +50,7 @@ pub struct FilePaletteRoot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct GitHubSettings {
     #[serde(default = "default_gh_cli")]
@@ -80,6 +83,7 @@ impl Default for GitHubSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct RepoSettings {
     #[serde(default)]
@@ -107,6 +111,7 @@ pub struct RepoSettings {
 /// local checkout, file, editor, and terminal operations, while this list is
 /// only an additional source for the worktree palette.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteWorktreeRepoSettings {
     #[serde(default)]
@@ -138,6 +143,7 @@ fn default_worktree_subfolder() -> String {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct UiSettings {
     #[serde(default = "default_theme")]
@@ -238,6 +244,7 @@ impl Default for UiSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationSettings {
     #[serde(default = "default_true")]
@@ -298,6 +305,7 @@ impl Default for NotificationSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationChannels {
     #[serde(default = "default_true")]
@@ -322,6 +330,7 @@ impl Default for NotificationChannels {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSettings {
     /// Terminal agent for Fix / Resolve / Monitor: "claude" or "codex".
@@ -356,6 +365,7 @@ pub struct AgentSettings {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct T3HostSettings {
     pub id: String,
@@ -364,6 +374,7 @@ pub struct T3HostSettings {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct DispatchPrompts {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -379,6 +390,7 @@ pub struct DispatchPrompts {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct DispatchSyncSchedule {
     #[serde(default)]
@@ -426,6 +438,7 @@ impl Default for AgentSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SummarySettings {
     #[serde(default = "default_summary_provider")]
@@ -454,6 +467,7 @@ impl Default for SummarySettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ClaudeReviewSettings {
     #[serde(default = "default_bot_username")]
@@ -473,6 +487,7 @@ impl Default for ClaudeReviewSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateSettings {
     #[serde(default = "default_true")]
@@ -491,6 +506,7 @@ impl Default for UpdateSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct AzureDevOpsSettings {
     #[serde(default)]
@@ -559,6 +575,7 @@ impl Default for AzureDevOpsSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SqlSettings {
     #[serde(default)]
@@ -585,6 +602,7 @@ impl Default for SqlSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SqlServerConnection {
     #[serde(default)]
@@ -628,6 +646,7 @@ impl Default for SqlServerConnection {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct PrDetailSettings {}
 

@@ -1,7 +1,17 @@
 import clsx from 'clsx';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { PrDetailView } from '@/components/pr-detail/PrDetailView';
-import { WorkItemDetailView } from '@/components/work-items/WorkItemDetailView';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+
+const PrDetailView = lazy(() =>
+  import('@/components/pr-detail/PrDetailView').then((module) => ({
+    default: module.PrDetailView,
+  })),
+);
+const WorkItemDetailView = lazy(() =>
+  import('@/components/work-items/WorkItemDetailView').then((module) => ({
+    default: module.WorkItemDetailView,
+  })),
+);
+
 import { isOverlayOpen, popView, supportsViewTransitions } from '@/services/navigation';
 import { type MainView, useUiStore } from '@/stores/ui-store';
 import { motionMs, motionOK } from '@/utils/motion';
@@ -174,7 +184,15 @@ export function ViewStack() {
             if (e.target === e.currentTarget) setLeaving(null);
           }}
         >
-          <DetailBody view={exiting} />
+          <Suspense
+            fallback={
+              <div role="status" className="bd-detail__state">
+                Loading detail…
+              </div>
+            }
+          >
+            <DetailBody view={exiting} />
+          </Suspense>
         </div>
       )}
       {detail !== null && detailKey !== null && (
@@ -189,7 +207,15 @@ export function ViewStack() {
           data-view-key={detailKey}
           tabIndex={-1}
         >
-          <DetailBody view={detail} />
+          <Suspense
+            fallback={
+              <div role="status" className="bd-detail__state">
+                Loading detail…
+              </div>
+            }
+          >
+            <DetailBody view={detail} />
+          </Suspense>
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 /// reqwest on the Rust side we bypass the browser's same-origin policy.
 
 #[derive(Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 pub struct AdoFetchRequest {
     pub url: String,
     pub method: String, // GET, POST, PATCH, DELETE
@@ -14,6 +15,7 @@ pub struct AdoFetchRequest {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 pub struct AdoFetchResponse {
     pub status: u16,
     pub status_text: String,
@@ -24,8 +26,9 @@ pub struct AdoFetchResponse {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn ado_fetch(request: AdoFetchRequest) -> Result<AdoFetchResponse, String> {
-    let client = reqwest::Client::new();
+    let client = crate::http::client();
 
     let mut builder = match request.method.to_uppercase().as_str() {
         "POST" => client.post(&request.url),

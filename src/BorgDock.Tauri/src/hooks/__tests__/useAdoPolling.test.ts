@@ -343,7 +343,7 @@ describe('useAdoPolling', () => {
     });
 
     await vi.waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to execute ADO query:', expect.any(Error));
+      expect(consoleSpy).toHaveBeenCalledWith('ADO polling error:', expect.any(Error));
     });
 
     await vi.waitFor(() => {
@@ -372,7 +372,7 @@ describe('useAdoPolling', () => {
 
     // Advance by poll interval (10 seconds)
     await act(async () => {
-      vi.advanceTimersByTime(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
     });
 
     await vi.waitFor(() => {

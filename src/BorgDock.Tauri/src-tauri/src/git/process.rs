@@ -26,6 +26,7 @@ pub struct TrackedChild {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SessionInfo {
     pub pid: u32,
@@ -36,6 +37,7 @@ pub struct SessionInfo {
 /// Provider-neutral terminal launcher used when T3 is unavailable or the user
 /// explicitly chooses Claude/Codex for one run.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn launch_agent_session(
     state: State<'_, ProcessState>,
     provider: String,
@@ -112,6 +114,7 @@ pub async fn launch_agent_session(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn get_active_sessions(
     state: State<'_, ProcessState>,
 ) -> Result<Vec<SessionInfo>, String> {
@@ -152,6 +155,7 @@ pub async fn get_active_sessions(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn kill_session(state: State<'_, ProcessState>, pid: u32) -> Result<(), String> {
     let processes = state.processes.clone();
     tokio::task::spawn_blocking(move || {

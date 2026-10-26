@@ -6,6 +6,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::sync::OnceLock;
 
 #[derive(Debug, Default, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ConversationReferences {
     explicit_ids: BTreeSet<u64>,

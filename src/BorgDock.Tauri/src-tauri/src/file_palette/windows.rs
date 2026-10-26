@@ -37,6 +37,7 @@ fn hex16(hash: &blake3::Hash) -> String {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn open_file_viewer_window(
     app: tauri::AppHandle,
     path: String,

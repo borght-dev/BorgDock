@@ -1,7 +1,8 @@
 use keyring::Entry;
 
-fn entry(service: &str) -> Result<Entry, String> {
-    Entry::new("borgdock", service).map_err(|e| format!("Keychain error: {e}"))
+pub(crate) fn entry(service: &str) -> Result<Entry, String> {
+    Entry::new("borgdock", &crate::app_data::credential_service(service))
+        .map_err(|e| format!("Keychain error: {e}"))
 }
 
 // Every command here talks to the OS credential store (Windows Credential
@@ -9,6 +10,7 @@ fn entry(service: &str) -> Result<Entry, String> {
 // are async + `spawn_blocking` so they never run inline on the GUI thread.
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn get_credential(service: String) -> Result<Option<String>, String> {
     tokio::task::spawn_blocking(move || get_credential_blocking(&service))
         .await
@@ -36,6 +38,7 @@ pub(crate) fn get_credential_blocking(service: &str) -> Result<Option<String>, S
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn set_credential(service: String, secret: String) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         let result = entry(&service)?
@@ -55,6 +58,7 @@ pub async fn set_credential(service: String, secret: String) -> Result<(), Strin
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn delete_credential(service: String) -> Result<(), String> {
     tokio::task::spawn_blocking(move || match entry(&service)?.delete_credential() {
         Ok(()) => {

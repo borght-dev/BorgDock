@@ -1,3 +1,5 @@
+import '@/components/pr-detail/PrDetailView';
+import '@/components/work-items/WorkItemDetailView';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -40,6 +42,7 @@ describe('navigation', () => {
   describe('focus', () => {
     it('moves focus into the pushed view and back to the same element on pop', async () => {
       render(<ViewStack />);
+      await act(async () => {});
       const row = screen.getByRole('button', { name: 'Row 7' });
       row.focus();
 
@@ -54,6 +57,7 @@ describe('navigation', () => {
 
     it('focuses the list when the element that had focus is gone', async () => {
       render(<ViewStack />);
+      await act(async () => {});
       const outside = document.createElement('button');
       document.body.appendChild(outside);
       outside.focus();
@@ -67,6 +71,7 @@ describe('navigation', () => {
 
     it('pops one level at a time, focusing the detail view below', async () => {
       render(<ViewStack />);
+      await act(async () => {});
       screen.getByRole('button', { name: 'Row 7' }).focus();
       await act(() => pushView(PR));
       await act(() => pushView(WI));
@@ -81,6 +86,7 @@ describe('navigation', () => {
 
     it('showSection from a detail view returns focus to where the first push started', async () => {
       render(<ViewStack />);
+      await act(async () => {});
       const row = screen.getByRole('button', { name: 'Row 7' });
       row.focus();
       await act(() => pushView(PR));
@@ -150,23 +156,23 @@ describe('navigation', () => {
       document.body.innerHTML = '';
     });
 
-    it('is false with nothing open', () => {
+    it('is false with nothing open', async () => {
       expect(isOverlayOpen()).toBe(false);
     });
 
-    it.each(['dialog', 'alertdialog', 'menu', 'listbox'])('sees role=%s', (role) => {
+    it.each(['dialog', 'alertdialog', 'menu', 'listbox'])('sees role=%s', async (role) => {
       const el = document.createElement('div');
       el.setAttribute('role', role);
       document.body.appendChild(el);
       expect(isOverlayOpen()).toBe(true);
     });
 
-    it('sees Quick Review', () => {
+    it('sees Quick Review', async () => {
       useQuickReviewStore.setState({ state: 'reviewing' });
       expect(isOverlayOpen()).toBe(true);
     });
 
-    it('ignores overlays inside an inert layer', () => {
+    it('ignores overlays inside an inert layer', async () => {
       const layer = document.createElement('div');
       layer.setAttribute('inert', '');
       const menu = document.createElement('div');

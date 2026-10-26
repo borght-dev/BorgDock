@@ -1,4 +1,3 @@
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { GitPullRequest } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -15,27 +14,26 @@ import {
 } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
-import type { PrDensity, PullRequestWithChecks } from '@/types';
+import type { PullRequestWithChecks } from '@/types';
 import { EASE_OUT, FLIP_MAX_ROWS, flip, motionMs, motionOK } from '@/utils/motion';
 import { minuteNow } from '@/utils/relative-time';
 import { type WorkbenchFilter, workbenchFilterCounts, workbenchFilterFor } from './PrFilterControl';
 import { PrRow } from './PrRow';
+import { VIRTUALIZE_THRESHOLD, VirtualizedPrRows } from './VirtualizedPrRows';
+
+export { VIRTUALIZE_THRESHOLD } from './VirtualizedPrRows';
+
 import { WorkbenchPrHead } from './PrToolbar';
 import { prRowKey } from './pr-card-data';
 import { groupFlipKey, WorkbenchGroup, WorkbenchPrGroup } from './RepoGroup';
 import { ReviewSlaIndicator } from './ReviewSlaIndicator';
 import { ReviewerRow, useTeamReviewers } from './TeamReviewLoad';
 
-/** Recently closed switches to a virtualized list above this many PRs. */
-export const VIRTUALIZE_THRESHOLD = 50;
-
 /**
  * Rows `flip()` follows: every keyed row, i.e. every row a virtualizer does
  * not recycle. Above `FLIP_MAX_ROWS` of them a change skips FLIP.
  */
 export const FLIP_ROW_SELECTOR = '[data-key]';
-
-const ROW_HEIGHT: Record<PrDensity, number> = { comfortable: 42, compact: 32 };
 
 const SKELETON_ROWS = ['s1', 's2', 's3', 's4', 's5'];
 
@@ -69,51 +67,6 @@ function OldestRequest({ pr, username }: { pr: PullRequestWithChecks; username: 
 }
 
 /**
- * Recently closed above `VIRTUALIZE_THRESHOLD` rows. The virtualizer
- * recycles rows, so they carry no `data-key` and `flip()` leaves them
- * alone; the block crossfades instead (`data-crossfade`).
- */
-function VirtualizedClosedRows({
-  prs,
-  density,
-  now,
-}: {
-  prs: PullRequestWithChecks[];
-  density: PrDensity;
-  now: number;
-}) {
-  const parentRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
-    count: prs.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_HEIGHT[density],
-    overscan: 10,
-  });
-
-  return (
-    <div ref={parentRef} className="bd-wb-virtual" data-virtual="" data-crossfade="">
-      {/* style: virtualizer total height is computed per render */}
-      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
-        {virtualizer.getVirtualItems().map((item) => {
-          const pr = prs[item.index]!;
-          return (
-            <div
-              key={prRowKey(pr.pullRequest)}
-              data-index={item.index}
-              className="bd-wb-virtual__item"
-              // style: virtualizer offset computed per row
-              style={{ transform: `translateY(${item.start}px)` }}
-            >
-              <PrRow prWithChecks={pr} density={density} now={now} animateKey={false} />
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/**
  * PrList — the Pull requests section (plans/ui-overhaul-workbench.md,
  * phase 2).
  *
@@ -128,6 +81,7 @@ function VirtualizedClosedRows({
  *   crossfades.
  */
 export function PrList() {
+  const hasData = usePrStore((s) => s.pullRequests.length > 0);
   const isPolling = usePrStore((s) => s.isPolling);
   const lastPollTime = usePrStore((s) => s.lastPollTime);
   const {
@@ -148,9 +102,9 @@ export function PrList() {
       reviewRequestTimestamps: s.reviewRequestTimestamps,
     })),
   );
-  const filteredPrs = usePrStore((s) => s.filteredPrs);
-  const counts = usePrStore((s) => s.counts);
-  const needsMyReview = usePrStore((s) => s.needsMyReview);
+  const prs = usePrStore((s) => s.filteredPrs());
+  const counts = usePrStore((s) => s.counts());
+  const needsMyReview = usePrStore((s) => s.needsMyReview());
   const groupBy = useUiStore((s) => s.prGroupBy);
   const density = useSettingsStore((s) => s.settings.ui.prDensity ?? 'comfortable');
   const reviewers = useTeamReviewers();
@@ -167,7 +121,6 @@ export function PrList() {
     [],
   );
 
-  const prs = filteredPrs();
   const groups = useMemo(
     () => groupWorkbenchPrs(prs, groupBy, username, teams, filter === 'all'),
     [prs, groupBy, username, teams, filter],
@@ -176,8 +129,8 @@ export function PrList() {
     () => allClosed.filter((pr) => matchesSearch(pr, searchQuery)),
     [allClosed, searchQuery],
   );
-  const oldestRequest = needsMyReview().find((pr) => matchesSearch(pr, searchQuery));
-  const filterCounts = workbenchFilterCounts(counts());
+  const oldestRequest = needsMyReview.find((pr) => matchesSearch(pr, searchQuery));
+  const filterCounts = workbenchFilterCounts(counts);
   const now = minuteNow();
 
   /**
@@ -189,7 +142,13 @@ export function PrList() {
   const animateChange = useCallback((mutate: () => void, leaving: string[] = []) => {
     const token = ++changeToken.current;
     const container = listRef.current;
-    if (container && container.querySelectorAll(FLIP_ROW_SELECTOR).length > FLIP_MAX_ROWS) {
+    if (
+      container &&
+      (container.querySelector(
+        '.bd-wb-group:not([data-group-key="recently-closed"]) [data-virtual-prs]',
+      ) ||
+        container.querySelectorAll(FLIP_ROW_SELECTOR).length > FLIP_MAX_ROWS)
+    ) {
       mutate();
       if (motionOK() && typeof container.animate === 'function') {
         container.animate([{ opacity: 0 }, { opacity: 1 }], {
@@ -290,7 +249,7 @@ export function PrList() {
     />
   );
 
-  if (!lastPollTime && isPolling) {
+  if (!lastPollTime && isPolling && !hasData) {
     return (
       <div className="bd-wb-prs">
         {head}
@@ -349,7 +308,7 @@ export function PrList() {
           <WorkbenchGroup groupKey="recently-closed" label="Recently closed" count={closed.length}>
             <div className="bd-wb-closed">
               {closed.length > VIRTUALIZE_THRESHOLD ? (
-                <VirtualizedClosedRows prs={closed} density={density} now={now} />
+                <VirtualizedPrRows prs={closed} density={density} now={now} />
               ) : (
                 closed.map((pr) => (
                   <PrRow

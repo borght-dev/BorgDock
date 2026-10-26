@@ -1,10 +1,11 @@
 import { create } from 'zustand';
+import { shareEntities } from '@/utils/structural-sharing';
 
 /** A T3 thread on this machine, as the pull request strip shows it. */
 export interface T3Session {
   threadId: string;
   title: string;
-  branch?: string;
+  branch?: string | null;
   /** `waitingApproval`, `waitingInput`, `settled`, `running` or `active`. */
   status: string;
   updatedAt: string;
@@ -19,5 +20,8 @@ interface T3SessionState {
 
 export const useT3SessionStore = create<T3SessionState>()((set) => ({
   sessions: [],
-  setSessions: (sessions) => set({ sessions }),
+  setSessions: (sessions) =>
+    set((state) => ({
+      sessions: shareEntities(state.sessions, sessions, (session) => session.threadId),
+    })),
 }));

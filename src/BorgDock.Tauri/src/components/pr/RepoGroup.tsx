@@ -6,6 +6,7 @@ import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity } from '@/types';
 import { PrRow } from './PrRow';
 import { prRowKey } from './pr-card-data';
+import { VIRTUALIZE_THRESHOLD, VirtualizedPrRows } from './VirtualizedPrRows';
 
 /** `data-key` of a group heading, so `flip()` moves and fades it like a row. */
 export function groupFlipKey(groupKey: string): string {
@@ -89,9 +90,13 @@ export function WorkbenchPrGroup({ group, density, now, aside }: WorkbenchPrGrou
   );
   return (
     <WorkbenchGroup groupKey={group.key} label={label} count={group.prs.length} aside={aside}>
-      {group.prs.map((pr) => (
-        <PrRow key={prRowKey(pr.pullRequest)} prWithChecks={pr} density={density} now={now} />
-      ))}
+      {group.prs.length > VIRTUALIZE_THRESHOLD ? (
+        <VirtualizedPrRows prs={group.prs} density={density} now={now} />
+      ) : (
+        group.prs.map((pr) => (
+          <PrRow key={prRowKey(pr.pullRequest)} prWithChecks={pr} density={density} now={now} />
+        ))
+      )}
     </WorkbenchGroup>
   );
 }

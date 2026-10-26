@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { createRequire } from "module";
@@ -77,10 +78,11 @@ export default defineConfig({
     __BORGDOCK_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
-    react({
-      babel: {
-        plugins: ["babel-plugin-react-compiler"],
-      },
+    react(),
+    babel({
+      presets: [reactCompilerPreset()],
+      include: /[\\/]src[\\/](?:(?:components|hooks)[\\/].*|App)\.[jt]sx?$/,
+      exclude: [/[\\/]node_modules[\\/]/, /[\\/]__tests__[\\/]/, /\.(test|spec|stories)\.[jt]sx?$/],
     }),
     tailwindcss(),
     changelogPlugin({
@@ -163,7 +165,18 @@ export default defineConfig({
     assetsInlineLimit: (filePath: string) =>
       /\.(woff2?|ttf|otf)$/.test(filePath) ? false : undefined,
     rollupOptions: {
-      output: { manualChunks },
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: "vendor-react",
+              test: (id: string) => ["react", "react-dom", "scheduler"].includes(packageNameFromId(id) ?? ""),
+              priority: 20,
+            },
+            { name: manualChunks, priority: 10 },
+          ],
+        },
+      },
       input: {
         main: path.resolve(__dirname, "index.html"),
         flyout: path.resolve(__dirname, "flyout.html"),
@@ -179,6 +192,7 @@ export default defineConfig({
       },
     },
   },
+  worker: { format: "es" },
   clearScreen: false,
   server: {
     port: 1420,

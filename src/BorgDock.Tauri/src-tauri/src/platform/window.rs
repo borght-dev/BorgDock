@@ -224,6 +224,7 @@ pub(crate) async fn main_thread_result<T>(
 /// leave a newly-created WebView2 window focus-less — this replaces the
 /// dedicated `palette_ready` command for that case).
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn window_ready(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
     let label = window.label().to_string();
     log::info!("window_ready[{label}]: entry");
@@ -261,6 +262,7 @@ pub async fn window_ready(app: tauri::AppHandle, window: tauri::Window) -> Resul
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub fn hide_flyout(app: tauri::AppHandle) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     crate::platform::click_outside::uninstall_hook();
@@ -275,6 +277,7 @@ pub fn hide_flyout(app: tauri::AppHandle) -> Result<(), String> {
 /// bottom edge stays fixed relative to the taskbar; on macOS/Linux
 /// (TopRight) the top edge stays fixed relative to the menu bar.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn resize_flyout(app: tauri::AppHandle, width: u32, height: u32) -> Result<(), String> {
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
     let app_for_run = app.clone();
@@ -303,6 +306,7 @@ pub async fn resize_flyout(app: tauri::AppHandle, width: u32, height: u32) -> Re
 /// dragged an edge (the OS `min_inner_size` then snapped it back up). It no
 /// longer touches size or position; geometry restore in `setup()` owns that.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn show_setup_wizard(app: tauri::AppHandle) -> Result<(), String> {
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
     let app_for_run = app.clone();
@@ -322,6 +326,7 @@ pub async fn show_setup_wizard(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn open_pr_detail_window(
     app: tauri::AppHandle,
     owner: String,
@@ -472,6 +477,7 @@ pub async fn open_pr_detail_window(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn open_whats_new_window(
     app: tauri::AppHandle,
     version: Option<String>,
@@ -563,6 +569,7 @@ pub async fn open_whats_new_window(
 /// Show the main window if hidden, focus it if shown-but-unfocused, or hide it
 /// if it's the foreground window. Replaces the old `toggle_sidebar`.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn show_or_focus_main(app: tauri::AppHandle) -> Result<(), String> {
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
     let app_for_run = app.clone();

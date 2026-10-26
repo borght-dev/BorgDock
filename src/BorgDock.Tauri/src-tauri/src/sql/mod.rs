@@ -1,4 +1,8 @@
-use keyring::Entry;
+use futures_util::TryStreamExt;
+use tiberius::QueryItem;
+mod cancellation;
+mod results;
+pub use cancellation::SqlQueries;
 use serde::Serialize;
 use tiberius::{AuthMethod, Client, Config, Row};
 use tokio::net::TcpStream;
@@ -15,7 +19,7 @@ pub mod snippets;
 /// any code that needs to actually connect must hydrate from here.
 fn load_sql_password(connection_name: &str) -> Option<String> {
     let service = format!("borgdock:sql:{connection_name}");
-    match Entry::new("borgdock", &service) {
+    match crate::keychain::entry(&service) {
         Ok(entry) => match entry.get_password() {
             Ok(pw) => {
                 log::info!(
@@ -45,6 +49,7 @@ fn load_sql_password(connection_name: &str) -> Option<String> {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ResultSet {
     pub columns: Vec<String>,
@@ -54,6 +59,7 @@ pub struct ResultSet {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct QueryResult {
     pub result_sets: Vec<ResultSet>,
@@ -66,7 +72,7 @@ pub struct QueryResult {
     pub rows_affected: Option<u64>,
 }
 
-const MAX_ROWS: usize = 10_000;
+const QUERY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
 
 /// Returns the first SQL keyword in `sql`, uppercased, after skipping leading
 /// whitespace and `--` line / `/* */` block comments. Returns "" if none.
@@ -241,56 +247,47 @@ fn row_to_strings(row: &Row) -> Vec<Option<String>> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn execute_sql_query(
     window: tauri::Window,
+    state: tauri::State<'_, SqlQueries>,
     connection_name: String,
     query: String,
+    query_id: Option<String>,
 ) -> Result<QueryResult, String> {
     if window.label() != "sql" {
         return Err("SQL commands can only be executed from the SQL window".to_string());
     }
+    let (cancel, _registration) =
+        state.register(query_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string()))?;
     log::info!(
         "SQL query executed on connection '{}': {}",
         connection_name,
         query.chars().take(200).collect::<String>()
     );
-    let settings =
-        settings::load_settings_internal().map_err(|e| format!("Failed to load settings: {e}"))?;
-
-    log::info!(
-        "execute_sql_query: requested connection '{}'; available: [{}]",
-        connection_name,
-        settings
+    let conn_config = tokio::task::spawn_blocking(move || {
+        let settings = settings::load_settings_internal()
+            .map_err(|e| format!("Failed to load settings: {e}"))?;
+        let mut config = settings
             .sql
             .connections
-            .iter()
-            .map(|c| format!("'{}' (auth={})", c.name, c.authentication))
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
-
-    let conn_config = settings
-        .sql
-        .connections
-        .iter()
-        .find(|c| c.name == connection_name)
-        .ok_or_else(|| format!("Connection '{}' not found", connection_name))?;
-
-    // Settings on disk have passwords stripped; pull from keychain for SQL auth.
-    let hydrated_password = if conn_config.authentication == "sql" {
-        conn_config
-            .password
-            .clone()
-            .or_else(|| load_sql_password(&conn_config.name))
-    } else {
-        None
-    };
-    if conn_config.authentication == "sql" && hydrated_password.is_none() {
-        return Err(format!(
-            "No password stored in keychain for SQL connection '{}'. Open Settings, re-enter the password, and save.",
-            conn_config.name
-        ));
-    }
+            .into_iter()
+            .find(|c| c.name == connection_name)
+            .ok_or_else(|| format!("Connection '{}' not found", connection_name))?;
+        if config.authentication == "sql" {
+            config.password = config.password.or_else(|| load_sql_password(&config.name));
+            if config.password.is_none() {
+                return Err(
+                    "No password stored. Open Settings and save the connection password."
+                        .to_string(),
+                );
+            }
+        }
+        Ok(config)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    let hydrated_password = conn_config.password.clone();
 
     let config = build_config(
         &conn_config.server,
@@ -312,7 +309,7 @@ pub async fn execute_sql_query(
     // Result, instead of tearing down the whole process.
     let modifies = is_data_modifying(&query);
 
-    let handle = tokio::spawn(async move {
+    let mut handle = tokio::spawn(async move {
         let mut client = connect(&server, port, config).await?;
 
         let start = std::time::Instant::now();
@@ -331,53 +328,34 @@ pub async fn execute_sql_query(
             });
         }
 
-        let stream = client
+        let mut stream = client
             .query(query, &[])
             .await
             .map_err(|e| format!("Query failed: {e}"))?;
-
-        let results = stream
-            .into_results()
+        let mut results = results::BoundedResults::default();
+        while let Some(item) = stream
+            .try_next()
             .await
-            .map_err(|e| format!("Failed to read results: {e}"))?;
-
-        let execution_time_ms = start.elapsed().as_millis() as u64;
-
-        let mut result_sets = Vec::new();
-        let mut total_row_count = 0;
-
-        for rows in results {
-            if rows.is_empty() {
-                continue;
-            }
-
-            let columns: Vec<String> = rows[0]
-                .columns()
-                .iter()
-                .map(|c| c.name().to_string())
-                .collect();
-
-            let mut data_rows: Vec<Vec<Option<String>>> = Vec::new();
-            let mut truncated = false;
-
-            for (i, row) in rows.iter().enumerate() {
-                if i >= MAX_ROWS {
-                    truncated = true;
-                    break;
+            .map_err(|e| format!("Failed to read results: {e}"))?
+        {
+            match item {
+                QueryItem::Metadata(metadata) => results.begin(
+                    metadata
+                        .columns()
+                        .iter()
+                        .map(|column| column.name().to_string())
+                        .collect(),
+                ),
+                QueryItem::Row(row) => {
+                    if results.accepts_row() {
+                        results.push(row_to_strings(&row));
+                    }
                 }
-                data_rows.push(row_to_strings(row));
             }
-
-            let row_count = data_rows.len();
-            total_row_count += row_count;
-
-            result_sets.push(ResultSet {
-                columns,
-                rows: data_rows,
-                row_count,
-                truncated,
-            });
         }
+        let execution_time_ms = start.elapsed().as_millis() as u64;
+        let result_sets = results.sets;
+        let total_row_count = results.rows;
 
         Ok::<QueryResult, String>(QueryResult {
             result_sets,
@@ -387,7 +365,20 @@ pub async fn execute_sql_query(
         })
     });
 
-    match handle.await {
+    let outcome = tokio::select! {
+        result = &mut handle => result,
+        _ = cancel.cancelled() => {
+            handle.abort();
+            let _ = handle.await;
+            return Err("Query cancelled. Statements already completed may have changed data.".into());
+        }
+        _ = tokio::time::sleep(QUERY_TIMEOUT) => {
+            handle.abort();
+            let _ = handle.await;
+            return Err("Query exceeded the 120-second execution limit.".into());
+        }
+    };
+    match outcome {
         Ok(result) => result,
         Err(join_err) if join_err.is_panic() => {
             let panic = join_err.into_panic();
@@ -406,6 +397,7 @@ pub async fn execute_sql_query(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn test_sql_connection(
     server: String,
     port: u16,
@@ -443,6 +435,7 @@ pub async fn test_sql_connection(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn fetch_sql_schema(
     window: tauri::Window,
     connection_name: String,
@@ -586,4 +579,18 @@ pub async fn fetch_sql_schema(
         }
         Err(join_err) => Err(format!("Schema fetch task failed: {join_err}")),
     }
+}
+
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn cancel_sql_query(
+    window: tauri::Window,
+    state: tauri::State<'_, SqlQueries>,
+    query_id: String,
+) -> Result<(), String> {
+    if window.label() != "sql" {
+        return Err("SQL commands require the SQL window".into());
+    }
+    state.cancel(&query_id);
+    Ok(())
 }

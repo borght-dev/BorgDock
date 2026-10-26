@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { openPrDetailMock, getCheckRunsForRef } = vi.hoisted(() => ({
   openPrDetailMock: vi.fn().mockResolvedValue(undefined),
@@ -125,6 +125,7 @@ describe('PrDetailView', () => {
 
   it('shows the PR from the list at once: header, readiness, actions, tabs', async () => {
     render(<ViewStack />);
+    await act(async () => {});
     await act(() => showPr(TARGET));
 
     expect(screen.getByRole('heading', { level: 1, name: 'Add the thing' })).toBeInTheDocument();
@@ -147,6 +148,7 @@ describe('PrDetailView', () => {
 
   it('honours the initial tab and groups the Checks tab', async () => {
     render(<ViewStack />);
+    await act(async () => {});
     await act(() => showPr({ ...TARGET, tab: 'checks' }));
     expect(screen.getByRole('tab', { name: /Checks/ })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByTestId('checks-tab')).toHaveAttribute('data-grouped', 'true');
@@ -154,18 +156,24 @@ describe('PrDetailView', () => {
 
   it('switches tabs with J and K', async () => {
     render(<ViewStack />);
+    await act(async () => {});
     await act(() => showPr(TARGET));
     fireEvent.keyDown(window, { key: 'j' });
+    await act(async () => {});
     expect(screen.getByRole('tab', { name: /Checks/ })).toHaveAttribute('aria-selected', 'true');
     fireEvent.keyDown(window, { key: 'j' });
+    await act(async () => {});
     expect(screen.getByRole('tab', { name: /Files/ })).toHaveAttribute('aria-selected', 'true');
     fireEvent.keyDown(window, { key: 'k' });
+    await act(async () => {});
     fireEvent.keyDown(window, { key: 'k' });
+    await act(async () => {});
     expect(screen.getByRole('tab', { name: /Overview/ })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('Back pops to the list', async () => {
     render(<ViewStack />);
+    await act(async () => {});
     await act(() => showPr(TARGET));
     expect(useUiStore.getState().viewStack).toHaveLength(2);
     await act(async () => {
@@ -178,6 +186,7 @@ describe('PrDetailView', () => {
 
   it('Esc pops too', async () => {
     render(<ViewStack />);
+    await act(async () => {});
     await act(() => showPr(TARGET));
     await act(async () => {
       fireEvent.keyDown(window, { key: 'Escape' });
@@ -187,6 +196,7 @@ describe('PrDetailView', () => {
 
   it('"Open in window" opens the pop-out and returns to the list', async () => {
     render(<ViewStack />);
+    await act(async () => {});
     await act(() => showPr(TARGET));
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Open in window' }));
@@ -207,6 +217,7 @@ describe('PrDetailView', () => {
     });
 
     render(<ViewStack />);
+    await act(async () => {});
     await act(() => showPr(TARGET));
     await act(() => popView());
 
@@ -218,3 +229,8 @@ describe('PrDetailView', () => {
     expect(document.querySelector('.bd-wb-row')).toHaveAttribute('data-selected', 'true');
   });
 });
+
+beforeAll(async () => {
+  await import('@/components/pr-detail/PrDetailView');
+  await import('@/components/work-items/WorkItemDetailView');
+}, 30_000);

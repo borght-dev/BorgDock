@@ -46,6 +46,7 @@ pub fn write_atomic(path: &Path, map: &GeometryMap) -> std::io::Result<()> {
 /// Windows convert to the right physical size on whichever monitor the
 /// window ends up on.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 pub struct Geometry {
     pub x: i32,
     pub y: i32,

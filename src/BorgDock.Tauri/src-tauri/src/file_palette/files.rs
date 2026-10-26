@@ -65,18 +65,21 @@ const ALLOWED_EXTENSIONS: &[&str] = &[
 ];
 
 #[derive(Debug, Serialize, serde::Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 pub struct FileEntry {
     pub rel_path: String,
     pub size: u64,
 }
 
 #[derive(Debug, Serialize, serde::Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 pub struct ListFilesResult {
     pub entries: Vec<FileEntry>,
     pub truncated: bool,
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn list_root_files(
     cache: tauri::State<'_, super::cache::FileIndexCache>,
     root: String,

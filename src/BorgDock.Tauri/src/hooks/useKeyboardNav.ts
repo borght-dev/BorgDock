@@ -2,7 +2,8 @@ import { useCallback, useEffect } from 'react';
 import { unitActions } from '@/components/dispatch/unit-actions';
 import { dispatchActions } from '@/services/dispatch/actions';
 import { isOverlayOpen, showPr, showSection, showWorkItem } from '@/services/navigation';
-import { isReady } from '@/services/pr-grouping';
+import { groupWorkbenchPrs, isReady } from '@/services/pr-grouping';
+import { matchesSearch } from '@/services/pr-search';
 import { openPrDetail } from '@/services/windows';
 import { selectItemOverview, useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -108,6 +109,12 @@ export function useKeyboardNav(): void {
       // PR rows: J/K follow the rows as drawn ("Needs you" first, then the
       // groups; collapsed groups skipped) and Enter opens the selected one in
       // the detail view.
+      if (
+        useUiStore.getState().activeSection === 'prs' &&
+        document.querySelector('.bd-wb-prs [data-virtual-prs]') &&
+        handleVirtualPrKey(e)
+      )
+        return;
       const rows = live<HTMLElement>(PR_ROW_SELECTOR);
       if (rows.length > 0 && handlePrRowKey(e, rows)) return;
 
@@ -558,4 +565,46 @@ function focusSectionSearch(): void {
     return;
   }
   focusPrSearch();
+}
+
+function handleVirtualPrKey(e: KeyboardEvent): boolean {
+  if (!['ArrowDown', 'j', 'ArrowUp', 'k', 'Enter'].includes(e.key)) return false;
+  const ui = useUiStore.getState();
+  const state = usePrStore.getState();
+  const groups = groupWorkbenchPrs(
+    state.filteredPrs(),
+    ui.prGroupBy,
+    state.username,
+    state.teams,
+    state.filter === 'all',
+  );
+  const prs = groups
+    .filter((group) => !ui.collapsedGroups.has(group.key))
+    .flatMap((group) => group.prs);
+  if (state.filter !== 'closed' && !ui.collapsedGroups.has('recently-closed')) {
+    prs.push(...state.closedPullRequests.filter((pr) => matchesSearch(pr, state.searchQuery)));
+  }
+  if (!prs.length) return false;
+  const keyOf = (pr: PullRequestWithChecks) =>
+    pr.pullRequest.repoOwner + '/' + pr.pullRequest.repoName + '#' + pr.pullRequest.number;
+  const current = prs.findIndex((pr) => keyOf(pr) === ui.selectedPrKey);
+  if (e.key === 'Enter') {
+    if (e.target instanceof Element && e.target.closest('[data-pr-card-action]')) return true;
+    const pr = prs[current]?.pullRequest;
+    if (!pr) return false;
+    e.preventDefault();
+    void showPr({ owner: pr.repoOwner, repo: pr.repoName, number: pr.number });
+    return true;
+  }
+  e.preventDefault();
+  const forward = e.key === 'j' || e.key === 'ArrowDown';
+  const index =
+    current < 0 ? 0 : Math.max(0, Math.min(prs.length - 1, current + (forward ? 1 : -1)));
+  const selected = prs[index]!;
+  ui.selectPrKey(keyOf(selected), selected.pullRequest.number);
+  const row = [...document.querySelectorAll<HTMLElement>('.bd-wb-row[data-pr-key]')].find(
+    (row) => row.dataset.prKey === keyOf(selected),
+  );
+  row?.scrollIntoView?.({ block: 'nearest' });
+  return true;
 }

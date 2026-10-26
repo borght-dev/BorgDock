@@ -9,6 +9,7 @@ import type {
   SyncScope,
 } from '@/services/dispatch/types';
 import { type BriefFilter, needingYou } from '@/services/dispatch/walk';
+import { shareEntities, shareValue } from '@/utils/structural-sharing';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
 /** Whether a source (Azure DevOps, a T3 host) answered its last poll. */
@@ -185,7 +186,8 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   runChoice: NO_RUN_CHOICE,
   scheduleLastRun: null,
 
-  setItems: (items, status) => set({ items, ado: status }),
+  setItems: (items, status) =>
+    set((state) => ({ items: shareEntities(state.items, items, (item) => item.id), ado: status })),
 
   setLinkedPullRequests: (linkedPullRequests, linkedRepositories) => {
     const learned = JSON.stringify(linkedRepositories) !== JSON.stringify(get().linkedRepositories);
@@ -199,15 +201,23 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
 
   setHostSnapshot: (hostId, threads, projects) =>
     set((state) => ({
-      threads: [...state.threads.filter((t) => t.hostId !== hostId), ...threads],
-      projects: [...state.projects.filter((p) => p.hostId !== hostId), ...projects],
+      threads: shareEntities(
+        state.threads,
+        [...state.threads.filter((t) => t.hostId !== hostId), ...threads],
+        (thread) => thread.id,
+      ),
+      projects: shareEntities(
+        state.projects,
+        [...state.projects.filter((p) => p.hostId !== hostId), ...projects],
+        (project) => project.id,
+      ),
     })),
 
   patchThreads: (patches) =>
     set((state) => ({
       threads: state.threads.map((thread) => {
         const patch = patches.get(thread.id);
-        return patch ? { ...thread, ...patch } : thread;
+        return patch ? shareValue(thread, { ...thread, ...patch }) : thread;
       }),
     })),
 
@@ -220,8 +230,8 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
           : entry;
       return {
         hosts: [...state.hosts.filter((h) => h.id !== status.id), status],
-        threads: state.threads.map(flip),
-        projects: state.projects.map(flip),
+        threads: shareEntities(state.threads, state.threads.map(flip), (thread) => thread.id),
+        projects: shareEntities(state.projects, state.projects.map(flip), (project) => project.id),
       };
     }),
 

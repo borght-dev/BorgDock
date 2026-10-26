@@ -129,6 +129,7 @@ pub fn output_with_timeout(
 
 /// A single git invocation captured for replay in the UI log.
 #[derive(Debug, Clone, serde::Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct GitStep {
     /// Human-readable representation of what ran, e.g. `git worktree add -B foo …`.

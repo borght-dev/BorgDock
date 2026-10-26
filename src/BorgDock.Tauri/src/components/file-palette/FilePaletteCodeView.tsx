@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
-import {
-  getHighlightClass,
-  highlightLines as runHighlighter,
-} from '@/services/syntax-highlighter';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getHighlightClass, highlightLines as runHighlighter } from '@/services/syntax-highlighter';
 import type { HighlightSpan } from '@/types';
 
 // Must match the `line-height` on `.code-view` in file-palette.css (see
 // var(--code-line-height) fallback). scrollToLine relies on this.
 const LINE_HEIGHT_PX = 20;
 
-export interface FindMatch { line: number; col: number; length: number }
+export interface FindMatch {
+  line: number;
+  col: number;
+  length: number;
+}
 
 export function scanFindMatches(content: string, term: string): FindMatch[] {
   if (!term) return [];
@@ -67,12 +68,13 @@ export function FilePaletteCodeView({
 
   // Load syntax highlighting asynchronously.
   useEffect(() => {
-    let cancelled = false;
-    runHighlighter(path, lines).then((result) => {
-      if (!cancelled) setSpans(result);
+    const controller = new AbortController();
+    setSpans(null);
+    runHighlighter(path, lines, controller.signal).then((result) => {
+      if (!controller.signal.aborted) setSpans(result);
     });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [path, lines]);
 

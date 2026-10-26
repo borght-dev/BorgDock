@@ -6,6 +6,8 @@ export class PollingManager<T> {
   private readonly baseIntervalMs: number;
   private timerId: ReturnType<typeof setTimeout> | null = null;
   private _isPolling = false;
+  private inFlight: Promise<void> | null = null;
+  private generation = 0;
   private _stopped = false;
   private _hidden = false;
   private _hiddenSkips = 0;
@@ -88,6 +90,7 @@ export class PollingManager<T> {
 
   stop(): void {
     this._stopped = true;
+    this.generation++;
     if (this.timerId !== null) {
       clearTimeout(this.timerId);
       this.timerId = null;
@@ -95,7 +98,6 @@ export class PollingManager<T> {
   }
 
   async pollNow(): Promise<void> {
-    if (this._isPolling) return;
     await this.executePoll();
   }
 
@@ -116,16 +118,28 @@ export class PollingManager<T> {
     }, delay);
   }
 
-  private async executePoll(): Promise<void> {
-    if (this._stopped) return;
+  private executePoll(): Promise<void> {
+    if (this.inFlight) return this.inFlight;
+    if (this._stopped) return Promise.resolve();
+    const generation = this.generation;
+    const poll = this.runPoll(generation).finally(() => {
+      if (this.inFlight === poll) this.inFlight = null;
+    });
+    this.inFlight = poll;
+    return poll;
+  }
+
+  private async runPoll(generation: number): Promise<void> {
     this._isPolling = true;
     this._error = null;
 
     try {
       const result = await this.pollFn();
+      if (this._stopped || generation !== this.generation) return;
       this._lastPollTime = new Date();
       this._onResult?.(result);
     } catch (error) {
+      if (this._stopped || generation !== this.generation) return;
       this._error = error instanceof Error ? error : new Error(String(error));
       this._onError?.(this._error);
     } finally {

@@ -24,6 +24,7 @@ import { mergeTeamLists } from '@/services/team-membership';
 import { computeTeamReviewLoad, type ReviewerLoad } from '@/services/team-review-load';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
+import { shareEntities } from '@/utils/structural-sharing';
 import { persistToTauriStore } from '@/utils/tauri-persist';
 
 const log = createLogger('pr-store');
@@ -468,12 +469,23 @@ export const usePrStore = create<PrState>()((set, get) => ({
   },
 
   setPullRequests: (prs) => {
+    const current = get();
+    const shared = shareEntities(current.pullRequests, prs, (value) =>
+      prScoreKey(value.pullRequest),
+    );
+    if (shared === current.pullRequests) return;
     set({
-      pullRequests: prs,
-      reviewRequestTimestamps: nextReviewRequestTimestamps(get().reviewRequestTimestamps, prs),
+      pullRequests: shared,
+      reviewRequestTimestamps: nextReviewRequestTimestamps(current.reviewRequestTimestamps, shared),
     });
   },
-  setClosedPullRequests: (prs) => set({ closedPullRequests: prs, _cachedCounts: null }),
+  setClosedPullRequests: (prs) => {
+    const shared = shareEntities(get().closedPullRequests, prs, (value) =>
+      prScoreKey(value.pullRequest),
+    );
+    if (shared !== get().closedPullRequests)
+      set({ closedPullRequests: shared, _cachedCounts: null });
+  },
   setFilter: (filter) => set({ filter }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSortBy: (sort) => {

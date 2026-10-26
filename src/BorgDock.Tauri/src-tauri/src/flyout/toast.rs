@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ToastAction {
     pub label: String,
@@ -13,6 +14,7 @@ pub struct ToastAction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ToastPayload {
     /// Stable id so React can dedupe / animate. Use pr-key + event-type.
@@ -38,6 +40,7 @@ pub struct ToastPayload {
 /// Idempotent: if the flyout is already shown (glance or toast), we emit the
 /// payload and let the React app decide how to render it (stack, banner).
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn show_flyout_toast(app: tauri::AppHandle, payload: ToastPayload) -> Result<(), String> {
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
     let app_for_run = app.clone();

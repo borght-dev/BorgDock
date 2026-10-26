@@ -12,6 +12,7 @@ fn default_branch_cache() -> &'static Mutex<HashMap<PathBuf, String>> {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct FileDiffOutput {
     /// Unified-diff text from git. Empty if the file is unchanged vs the
@@ -105,6 +106,7 @@ fn resolve_default_branch(toplevel: &Path) -> Result<String, String> {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn git_file_diff(path: String, baseline: String) -> Result<FileDiffOutput, String> {
     tokio::task::spawn_blocking(move || compute_diff(&path, &baseline))
         .await
@@ -158,6 +160,7 @@ fn compute_diff(path: &str, baseline: &str) -> Result<FileDiffOutput, String> {
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ChangedFile {
     pub path: String,
@@ -324,6 +327,7 @@ pub fn parse_name_status(bytes: &[u8], mode: NameStatusMode) -> Vec<ChangedFile>
 }
 
 #[derive(Serialize, Debug)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ChangedFilesOutput {
     pub local: Vec<ChangedFile>,
@@ -333,6 +337,7 @@ pub struct ChangedFilesOutput {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn git_changed_files(root: String) -> Result<ChangedFilesOutput, String> {
     tokio::task::spawn_blocking(move || compute_changed_files(&root))
         .await

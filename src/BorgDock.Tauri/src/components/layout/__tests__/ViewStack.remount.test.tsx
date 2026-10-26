@@ -1,6 +1,6 @@
 import { act, render } from '@testing-library/react';
 import { useEffect } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 const { mounts } = vi.hoisted(() => ({ mounts: { count: 0 } }));
 
@@ -20,13 +20,14 @@ import { ViewStack } from '../ViewStack';
 const PR: MainView = { kind: 'pr-detail', owner: 'octo', repo: 'app', number: 42 };
 
 describe('ViewStack fallback pop', () => {
-  it('keeps the popped detail mounted for its exit animation instead of mounting a copy', () => {
+  it('keeps the popped detail mounted for its exit animation instead of mounting a copy', async () => {
     useUiStore.setState({ viewStack: [{ kind: 'list' }] });
     const { container } = render(<ViewStack />);
-    act(() => useUiStore.getState().pushView(PR));
+    await act(async () => {});
+    await act(() => useUiStore.getState().pushView(PR));
     expect(mounts.count).toBe(1);
 
-    act(() => useUiStore.getState().popView());
+    await act(() => useUiStore.getState().popView());
 
     const leaving = container.querySelector('.bd-viewstack__detail--leaving');
     expect(leaving).not.toBeNull();
@@ -35,3 +36,8 @@ describe('ViewStack fallback pop', () => {
     expect(mounts.count).toBe(1);
   });
 });
+
+beforeAll(async () => {
+  await import('@/components/pr-detail/PrDetailView');
+  await import('@/components/work-items/WorkItemDetailView');
+}, 30_000);

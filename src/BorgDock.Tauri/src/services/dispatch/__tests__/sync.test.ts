@@ -198,6 +198,25 @@ describe('compileSlotPattern', () => {
 });
 
 describe('syncHost', () => {
+  it('does not overwrite current details after a runtime restart', async () => {
+    let finishOld!: (detail: T3ThreadDetail) => void;
+    api.t3Snapshot.mockResolvedValue(snapshot([t3Thread()]));
+    api.t3ConversationReferences.mockResolvedValue({});
+    api.t3ThreadDetail
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishOld = resolve;
+        }),
+      )
+      .mockResolvedValue({ ...DETAIL, lastAgentMessage: 'Current message' });
+    const old = syncHost(LOCAL_HOST);
+    await vi.waitFor(() => expect(api.t3ThreadDetail).toHaveBeenCalledOnce());
+    resetHostSync();
+    await syncHost(LOCAL_HOST);
+    finishOld(DETAIL);
+    await old;
+    expect(useDispatchStore.getState().threads[0]?.lastAgentMessage).toBe('Current message');
+  });
   it('links an item mentioned later in the conversation and rescans after an edit', async () => {
     resetHostSync();
     followInSettings([]);

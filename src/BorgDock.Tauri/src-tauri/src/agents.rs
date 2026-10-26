@@ -4,6 +4,7 @@ use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 
 #[derive(Debug, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct HeadlessPromptRequest {
     pub provider: String,
@@ -15,6 +16,7 @@ pub struct HeadlessPromptRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct AgentAvailability {
     pub claude: bool,
@@ -22,6 +24,7 @@ pub struct AgentAvailability {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct HeadlessPromptResult {
     pub text: String,
@@ -55,6 +58,7 @@ async fn executable_available(program: &str) -> bool {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn agent_provider_availability(
     claude_path: Option<String>,
     codex_path: Option<String>,
@@ -99,6 +103,7 @@ fn parse_codex_output(bytes: &[u8]) -> Result<String, String> {
 /// Run a short, non-interactive agent task. Prompts are sent over stdin so
 /// secrets and large PR bodies do not appear in the process list.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn run_headless_prompt(
     request: HeadlessPromptRequest,
 ) -> Result<HeadlessPromptResult, String> {

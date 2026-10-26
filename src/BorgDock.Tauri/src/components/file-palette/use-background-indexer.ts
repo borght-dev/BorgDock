@@ -1,41 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useEffect, useRef, useState } from 'react';
-import { loadTreeSitter } from '@/services/tree-sitter-runtime';
+import { useEffect, useState } from 'react';
+import { indexSymbols } from '@/services/symbol-indexer';
 import { joinRootAndRel } from './join-path';
 import type { FileEntry } from './use-file-index';
 import { languageForExtension, type SymbolEntry } from './use-symbol-index';
-
-const langCache = new Map<string, Promise<import('web-tree-sitter').Language>>();
-
-function loadLanguage(id: 'typescript' | 'javascript' | 'rust' | 'c_sharp') {
-  if (!langCache.has(id)) {
-    const grammarFile =
-      id === 'typescript'
-        ? 'tree-sitter-typescript.wasm'
-        : id === 'javascript'
-          ? 'tree-sitter-javascript.wasm'
-          : id === 'rust'
-            ? 'tree-sitter-rust.wasm'
-            : 'tree-sitter-c_sharp.wasm';
-    langCache.set(
-      id,
-      loadTreeSitter().then(({ Language }) => Language.load(`/grammars/${grammarFile}`)),
-    );
-  }
-  return langCache.get(id)!;
-}
-
-const queryCache = new Map<string, Promise<string>>();
-
-function loadQuery(id: 'typescript' | 'javascript' | 'rust' | 'c_sharp') {
-  if (!queryCache.has(id)) {
-    queryCache.set(
-      id,
-      import(`./queries/${id}.scm?raw`).then((m: { default: string }) => m.default),
-    );
-  }
-  return queryCache.get(id)!;
-}
 
 interface IndexerResult {
   entries: SymbolEntry[];
@@ -45,113 +13,47 @@ interface IndexerResult {
 }
 
 export function useBackgroundIndexer(root: string | null, files: FileEntry[]): IndexerResult {
-  const [entries, setEntries] = useState<SymbolEntry[]>([]);
-  const [processed, setProcessed] = useState(0);
-  const [indexing, setIndexing] = useState(false);
-  const rootRef = useRef<string | null>(null);
-
+  const [result, setResult] = useState<IndexerResult>({
+    entries: [],
+    processed: 0,
+    total: files.length,
+    indexing: false,
+  });
   useEffect(() => {
-    rootRef.current = root;
-    setEntries([]);
-    setProcessed(0);
-    if (!root || files.length === 0) {
-      setIndexing(false);
-      return;
-    }
-    const indexable = files.filter((f) => {
-      const ext = f.rel_path.split('.').pop() ?? '';
-      return languageForExtension(ext) !== null;
-    });
-    if (indexable.length === 0) {
-      setIndexing(false);
-      return;
-    }
-    setIndexing(true);
-
-    let cancelled = false;
-    (async () => {
-      const { Parser, Query } = await loadTreeSitter();
-      const collected: SymbolEntry[] = [];
-      const byLang = new Map<string, FileEntry[]>();
-      for (const f of indexable) {
-        const lang = languageForExtension(f.rel_path.split('.').pop() ?? '')!;
-        const list = byLang.get(lang) ?? [];
-        list.push(f);
-        byLang.set(lang, list);
-      }
-
-      for (const [langId, group] of byLang) {
-        if (cancelled || rootRef.current !== root) return;
-        const language = await loadLanguage(
-          langId as 'typescript' | 'javascript' | 'rust' | 'c_sharp',
-        );
-        const queryText = await loadQuery(
-          langId as 'typescript' | 'javascript' | 'rust' | 'c_sharp',
-        );
-        const parser = new Parser();
-        let query: import('web-tree-sitter').Query | null = null;
+    const controller = new AbortController();
+    const indexable = root
+      ? files.filter((file) => languageForExtension(file.rel_path.split('.').pop() ?? ''))
+      : [];
+    setResult({ entries: [], processed: 0, total: files.length, indexing: indexable.length > 0 });
+    if (!root || indexable.length === 0) return () => controller.abort();
+    void (async () => {
+      const entries: SymbolEntry[] = [];
+      let processed = 0;
+      for (const file of indexable) {
+        if (controller.signal.aborted) return;
         try {
-          parser.setLanguage(language);
-          query = new Query(language, queryText);
-
-          for (const f of group) {
-            if (cancelled || rootRef.current !== root) {
-              return;
-            }
-            const abs = joinRootAndRel(root, f.rel_path);
-            let content: string;
-            try {
-              content = await invoke<string>('read_text_file', { path: abs });
-            } catch {
-              if (!cancelled && rootRef.current === root) {
-                setProcessed((p) => p + 1);
-              }
-              continue;
-            }
-            const tree = parser.parse(content);
-            if (tree) {
-              const captures = query.captures(tree.rootNode);
-              for (const cap of captures) {
-                if (cap.name === 'symbol.name') {
-                  collected.push({
-                    name: cap.node.text,
-                    rel_path: f.rel_path,
-                    line: cap.node.startPosition.row + 1,
-                  });
-                }
-              }
-              tree.delete();
-            }
-            if (!cancelled && rootRef.current === root) {
-              setProcessed((p) => p + 1);
-            }
-            if (collected.length % 200 === 0) {
-              setEntries([...collected]);
-              await new Promise((resolve) => {
-                if (typeof window.requestIdleCallback === 'function') {
-                  window.requestIdleCallback(() => resolve(null), { timeout: 50 });
-                } else {
-                  window.setTimeout(() => resolve(null), 0);
-                }
-              });
-            }
-          }
-        } finally {
-          query?.delete();
-          parser.delete();
+          const content = await invoke<string>('read_text_file', {
+            path: joinRootAndRel(root, file.rel_path),
+          });
+          if (controller.signal.aborted) return;
+          for (const entry of await indexSymbols(file.rel_path, content, controller.signal))
+            entries.push(entry);
+        } catch {
+          /* Unreadable files do not stop the rest of the index. */
+        }
+        if (controller.signal.aborted) return;
+        processed++;
+        if (processed % 20 === 0 || processed === indexable.length) {
+          setResult({
+            entries: [...entries],
+            processed,
+            total: files.length,
+            indexing: processed < indexable.length,
+          });
         }
       }
-
-      if (!cancelled && rootRef.current === root) {
-        setEntries([...collected]);
-        setIndexing(false);
-      }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [root, files]);
-
-  return { entries, processed, total: files.length, indexing };
+  return result;
 }

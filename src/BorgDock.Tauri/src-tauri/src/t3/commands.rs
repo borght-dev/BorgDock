@@ -9,6 +9,8 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Mutex;
+use tauri::Emitter;
 use uuid::Uuid;
 
 const TOKEN_EXCHANGE_GRANT_TYPE: &str = "urn:ietf:params:oauth:grant-type:token-exchange";
@@ -24,6 +26,7 @@ const DEFAULT_RUNTIME_MODE: &str = "full-access";
 const REMOTE_FIRST_MESSAGES_PER_CALL: usize = 6;
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct T3Probe {
     pub running: bool,
@@ -32,6 +35,7 @@ pub struct T3Probe {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct T3LaunchResult {
     /// 1: T3 was only brought forward (not paired). 2: the thread was created.
@@ -39,7 +43,8 @@ pub struct T3LaunchResult {
     pub thread_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct T3Session {
     pub thread_id: String,
@@ -71,6 +76,7 @@ fn token_exchange_form(pairing_credential: &str) -> Vec<(&'static str, &str)> {
 
 /// Whether T3 answers, and whether it still accepts BorgDock's token.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_probe(host: Option<HostRef>) -> T3Probe {
     let host = host.unwrap_or_else(HostRef::local);
     let Ok(resolved) = hosts::resolve(&host).await else {
@@ -81,7 +87,7 @@ pub async fn t3_probe(host: Option<HostRef>) -> T3Probe {
         };
     };
     let stored = hosts::token(&resolved.id).await.ok().flatten();
-    let mut request = reqwest::Client::new()
+    let mut request = crate::http::client()
         .get(format!("{}/api/auth/session", resolved.origin))
         .timeout(std::time::Duration::from_secs(3));
     if let Some(ref access_token) = stored {
@@ -104,10 +110,11 @@ pub async fn t3_probe(host: Option<HostRef>) -> T3Probe {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_pair(pairing_credential: String, host: Option<HostRef>) -> Result<(), String> {
     let host = host.unwrap_or_else(HostRef::local);
     let resolved = hosts::resolve(&host).await?;
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .post(format!("{}/oauth/token", resolved.origin))
         .form(&token_exchange_form(&pairing_credential))
         .timeout(std::time::Duration::from_secs(10))
@@ -153,6 +160,7 @@ fn issued_token(cli_output: &str) -> Result<String, String> {
 /// Pair with the T3 on this machine without a credential to paste: T3's own
 /// CLI issues a session that can read and operate threads, nothing else.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_pair_local(executable: Option<String>) -> Result<(), String> {
     let output = tokio::task::spawn_blocking(move || {
         desktop::run_cli(
@@ -179,27 +187,71 @@ pub async fn t3_pair_local(executable: Option<String>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn t3_unpair(host: HostRef) -> Result<(), String> {
-    hosts::forget_token(&host.id).await
+#[cfg_attr(test, specta::specta)]
+pub async fn t3_unpair(
+    app: tauri::AppHandle,
+    sessions: tauri::State<'_, T3Sessions>,
+    host: HostRef,
+) -> Result<(), String> {
+    hosts::forget_token(&host.id).await?;
+    if host.is_local() {
+        let generation = sessions.begin();
+        sessions.update(generation, None, Vec::new(), |values| {
+            let _ = app.emit("t3-sessions-updated", T3SessionsUpdated(values.to_vec()));
+        });
+    }
+    Ok(())
 }
 
 /// The host's projects and threads, or `changed: false` when its sequence is
 /// still `known_sequence`.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_snapshot(
+    app: tauri::AppHandle,
+    sessions: tauri::State<'_, T3Sessions>,
     host: HostRef,
     known_sequence: Option<u64>,
 ) -> Result<shell::Snapshot, String> {
-    let client = Client::connect(&host).await?;
-    let raw = client.get(SHELL_PATH).await?;
+    let local = host.is_local();
+    let generation = if local { sessions.begin() } else { 0 };
+    let result = async {
+        let client = Client::connect(&host).await?;
+        client.get(SHELL_PATH).await
+    }
+    .await;
+    let raw = match result {
+        Ok(raw) => raw,
+        Err(error) => {
+            if local {
+                sessions.update(generation, None, Vec::new(), |values| {
+                    let _ = app.emit("t3-sessions-updated", T3SessionsUpdated(values.to_vec()));
+                });
+            }
+            return Err(error);
+        }
+    };
     let sequence = shell::sequence_of(&raw);
-    if known_sequence == Some(sequence) {
+    let unchanged = known_sequence == Some(sequence);
+    if unchanged && (!local || !sessions.needs_snapshot(sequence)) {
         return Ok(shell::unchanged(sequence));
     }
-    Ok(shell::read_snapshot(&raw))
+    let snapshot = shell::read_snapshot(&raw);
+    if local {
+        let values = sessions_from_snapshot(&snapshot);
+        sessions.update(generation, Some(sequence), values, |values| {
+            let _ = app.emit("t3-sessions-updated", T3SessionsUpdated(values.to_vec()));
+        });
+    }
+    Ok(if unchanged {
+        shell::unchanged(sequence)
+    } else {
+        snapshot
+    })
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_thread_detail(
     host: HostRef,
     thread_id: String,
@@ -265,6 +317,7 @@ async fn first_messages_from_snapshots(
 /// The first thing the user wrote in each thread: where "pick up 59541" lives.
 /// Threads missing from the answer can be asked for again.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_first_user_messages(
     host: HostRef,
     thread_ids: Vec<String>,
@@ -293,6 +346,7 @@ pub async fn t3_first_user_messages(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_conversation_references(
     host: HostRef,
     thread_ids: Vec<String>,
@@ -339,6 +393,7 @@ async fn environment_id(client: &Client) -> Result<String, String> {
 
 /// Bring T3 Code to the front on `thread_id`.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_show_thread(
     host: HostRef,
     thread_id: String,
@@ -391,6 +446,7 @@ async fn ensure_project(
 /// bring T3 to the front on it. Not paired: T3 is only brought forward
 /// (tier 1) so the user can start the thread by hand.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 #[allow(clippy::too_many_arguments)]
 pub async fn t3_open_thread(
     workspace_root: String,
@@ -475,6 +531,7 @@ pub async fn t3_open_thread(
 
 /// The providers and models the host can start a thread on.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_catalogue(host: HostRef) -> Result<shell::Catalogue, String> {
     let client = Client::connect(&host).await?;
     let config = client.rpc("server.getConfig", json!({})).await?;
@@ -483,6 +540,7 @@ pub async fn t3_catalogue(host: HostRef) -> Result<shell::Catalogue, String> {
 
 /// What the frontend asks for when it starts an agent on a project.
 #[derive(Debug, serde::Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct LaunchRequest {
     pub project_id: Option<String>,
@@ -514,6 +572,7 @@ fn launch_command(request: &LaunchRequest, thread_id: &str, runtime_mode: &str) 
 /// runtime mode of the thread touched last on that host, as a new thread in
 /// T3 itself would. Returns the new thread's id.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_launch_thread(host: HostRef, request: LaunchRequest) -> Result<String, String> {
     let client = Client::connect(&host).await?;
     launch_with_client(&client, request).await
@@ -585,6 +644,7 @@ fn message_command(thread_id: &str, text: &str) -> Value {
 /// Answer the questions an agent is waiting on. `answers` maps each question
 /// id to the picked option's value, or to the text the user typed.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_respond(
     host: HostRef,
     thread_id: String,
@@ -602,6 +662,7 @@ pub async fn t3_respond(
 /// Send the agent a message and start its next turn. A thread in plan mode
 /// stays read-only, so `leave_plan_mode` switches it back first.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_send_message(
     host: HostRef,
     thread_id: String,
@@ -625,6 +686,7 @@ pub async fn t3_send_message(
 
 /// Settle a thread: it is done, and its project is free for other work.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn t3_settle(host: HostRef, thread_id: String) -> Result<(), String> {
     let client = Client::connect(&host).await?;
     dispatch(
@@ -646,28 +708,135 @@ fn session_status(status: &str) -> &'static str {
 
 /// The threads on this machine, for the T3 strip on pull requests.
 #[tauri::command]
-pub async fn t3_list_sessions() -> Result<Vec<T3Session>, String> {
-    let client = Client::connect(&HostRef::local()).await?;
-    let snapshot = shell::read_snapshot(&client.get(SHELL_PATH).await?);
+#[cfg_attr(test, specta::specta)]
+pub async fn t3_list_sessions(
+    sessions: tauri::State<'_, T3Sessions>,
+) -> Result<Vec<T3Session>, String> {
+    Ok(sessions
+        .0
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .values
+        .clone())
+}
+
+#[derive(Default)]
+pub struct T3Sessions(Mutex<SessionCache>);
+
+#[derive(Default)]
+struct SessionCache {
+    generation: u64,
+    sequence: Option<u64>,
+    values: Vec<T3Session>,
+}
+
+impl T3Sessions {
+    fn begin(&self) -> u64 {
+        let mut cache = self.0.lock().unwrap_or_else(|p| p.into_inner());
+        cache.generation += 1;
+        cache.generation
+    }
+
+    fn needs_snapshot(&self, sequence: u64) -> bool {
+        self.0.lock().unwrap_or_else(|p| p.into_inner()).sequence != Some(sequence)
+    }
+
+    fn update(
+        &self,
+        generation: u64,
+        sequence: Option<u64>,
+        values: Vec<T3Session>,
+        publish: impl FnOnce(&[T3Session]),
+    ) {
+        let mut cache = self.0.lock().unwrap_or_else(|p| p.into_inner());
+        if cache.generation != generation {
+            return;
+        }
+        if sequence.is_none() && cache.sequence.is_none() && cache.values.is_empty() {
+            return;
+        }
+        cache.sequence = sequence;
+        cache.values = values;
+        publish(&cache.values);
+    }
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(test, derive(specta::Type, tauri_specta::Event))]
+#[serde(transparent)]
+pub struct T3SessionsUpdated(pub Vec<T3Session>);
+
+fn sessions_from_snapshot(snapshot: &shell::Snapshot) -> Vec<T3Session> {
     let mut sessions: Vec<T3Session> = snapshot
         .threads
-        .into_iter()
+        .iter()
         .map(|thread| T3Session {
             status: session_status(&thread.status).to_string(),
-            updated_at: thread.last_activity_at,
-            pull_request_urls: thread.pull_requests.into_iter().map(|pr| pr.url).collect(),
-            thread_id: thread.id,
-            title: thread.title,
-            branch: thread.branch,
+            updated_at: thread.last_activity_at.clone(),
+            pull_request_urls: thread
+                .pull_requests
+                .iter()
+                .map(|pr| pr.url.clone())
+                .collect(),
+            thread_id: thread.id.clone(),
+            title: thread.title.clone(),
+            branch: thread.branch.clone(),
         })
         .collect();
     sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-    Ok(sessions)
+    sessions
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn session(title: &str) -> T3Session {
+        T3Session {
+            thread_id: "thread".into(),
+            title: title.into(),
+            branch: None,
+            status: "running".into(),
+            updated_at: "now".into(),
+            pull_request_urls: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn obsolete_snapshots_cannot_publish_over_a_newer_request() {
+        let sessions = T3Sessions::default();
+        let old = sessions.begin();
+        let current = sessions.begin();
+        let mut published = Vec::new();
+        sessions.update(current, Some(2), vec![session("current")], |values| {
+            published.push(values[0].title.clone())
+        });
+        sessions.update(old, Some(1), vec![session("old")], |_| {
+            panic!("obsolete event")
+        });
+        assert_eq!(published, vec!["current"]);
+        assert_eq!(sessions.0.lock().unwrap().values[0].title, "current");
+    }
+
+    #[test]
+    fn invalidation_clears_sessions_and_same_sequence_recovery_repopulates_them() {
+        let sessions = T3Sessions::default();
+        let first = sessions.begin();
+        sessions.update(first, Some(7), vec![session("active")], |_| {});
+        assert!(!sessions.needs_snapshot(7));
+        let invalidation = sessions.begin();
+        sessions.update(invalidation, None, Vec::new(), |values| {
+            assert!(values.is_empty())
+        });
+        assert!(sessions.needs_snapshot(7));
+        sessions.update(first, Some(7), vec![session("obsolete")], |_| {
+            panic!("stale event after invalidation")
+        });
+        let recovery = sessions.begin();
+        sessions.update(recovery, Some(7), vec![session("recovered")], |_| {});
+        assert!(!sessions.needs_snapshot(7));
+        assert_eq!(sessions.0.lock().unwrap().values[0].title, "recovered");
+    }
 
     #[test]
     fn token_exchange_requests_an_access_token_with_both_scopes() {

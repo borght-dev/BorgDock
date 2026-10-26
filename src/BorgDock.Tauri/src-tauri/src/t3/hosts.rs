@@ -11,6 +11,7 @@ const LOCAL_TOKEN_SERVICE: &str = "borgdock:t3";
 /// A T3 server as the frontend names it. `base_url` is absent for the T3 on
 /// this machine, whose address comes from T3's own runtime file.
 #[derive(Debug, Clone, Deserialize, serde::Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct HostRef {
     pub id: String,
@@ -41,6 +42,7 @@ pub struct Host {
 }
 
 #[derive(Debug, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 struct RuntimeFile {
     origin: String,
 }

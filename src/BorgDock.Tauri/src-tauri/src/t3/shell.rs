@@ -17,6 +17,7 @@ const FIRST_MESSAGE_LIMIT: usize = 4000;
 const RUNNING_STATES: [&str; 5] = ["preparing", "queued", "starting", "running", "waiting"];
 
 #[derive(Debug, Default, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase", default)]
 struct ShellProject {
     id: String,
@@ -26,6 +27,7 @@ struct ShellProject {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase", default)]
 struct ModelSelection {
     instance_id: Option<String>,
@@ -34,6 +36,7 @@ struct ModelSelection {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase", default)]
 struct LinkedPullRequest {
     number: u64,
@@ -41,6 +44,7 @@ struct LinkedPullRequest {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase", default)]
 struct PullRequestSnapshot {
     state: Option<String>,
@@ -51,6 +55,7 @@ struct PullRequestSnapshot {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase", default)]
 struct PullRequestLink {
     number: u64,
@@ -60,12 +65,14 @@ struct PullRequestLink {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase", default)]
 struct PendingRuntimeRequest {
     kind: String,
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase", default)]
 struct Lineage {
     parent_thread_id: Option<String>,
@@ -74,6 +81,7 @@ struct Lineage {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase", default)]
 struct ShellThread {
     id: String,
@@ -120,6 +128,7 @@ impl ShellThread {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectDto {
     pub id: String,
@@ -128,6 +137,7 @@ pub struct ProjectDto {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct PullRequestDto {
     pub number: u64,
@@ -140,6 +150,7 @@ pub struct PullRequestDto {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadDto {
     pub id: String,
@@ -163,6 +174,7 @@ pub struct ThreadDto {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     /// False when the host's sequence equals the one the caller already has;
@@ -174,6 +186,7 @@ pub struct Snapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct QuestionOptionDto {
     pub label: String,
@@ -182,6 +195,7 @@ pub struct QuestionOptionDto {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct QuestionDto {
     pub id: String,
@@ -194,6 +208,7 @@ pub struct QuestionDto {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadDetail {
     pub last_agent_message: Option<String>,
@@ -203,6 +218,7 @@ pub struct ThreadDetail {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ModelChoiceDto {
     pub id: String,
@@ -212,6 +228,7 @@ pub struct ModelChoiceDto {
 
 /// One setting a model takes, e.g. its reasoning effort.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ModelOptionDto {
     pub id: String,
@@ -222,6 +239,7 @@ pub struct ModelOptionDto {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ModelDto {
     pub slug: String,
@@ -231,6 +249,7 @@ pub struct ModelDto {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderDto {
     pub instance_id: String,
@@ -241,6 +260,7 @@ pub struct ProviderDto {
 
 /// What a host can start: the providers that are ready, with their models.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct Catalogue {
     pub environment_id: String,

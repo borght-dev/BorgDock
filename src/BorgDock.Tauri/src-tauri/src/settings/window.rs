@@ -6,6 +6,7 @@ const MIN_W: f64 = 880.0;
 const MIN_H: f64 = 560.0;
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn open_settings_window(
     app: tauri::AppHandle,
     section: Option<String>,

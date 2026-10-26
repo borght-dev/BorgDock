@@ -229,6 +229,7 @@ describe('SqlApp', () => {
     });
 
     expect(invoke).toHaveBeenCalledWith('execute_sql_query', {
+      queryId: expect.any(String),
       connectionName: 'DevDB',
       query: 'SELECT * FROM test',
     });
@@ -255,6 +256,7 @@ describe('SqlApp', () => {
     });
 
     expect(invoke).toHaveBeenCalledWith('execute_sql_query', {
+      queryId: expect.any(String),
       connectionName: 'DevDB',
       query: 'SELECT 1',
     });
@@ -281,6 +283,7 @@ describe('SqlApp', () => {
     });
 
     expect(invoke).toHaveBeenCalledWith('execute_sql_query', {
+      queryId: expect.any(String),
       connectionName: 'DevDB',
       query: 'SELECT 1',
     });
@@ -314,6 +317,7 @@ describe('SqlApp', () => {
     });
 
     expect(invoke).toHaveBeenCalledWith('execute_sql_query', {
+      queryId: expect.any(String),
       connectionName: 'DevDB',
       query: 'SELECT 2;',
     });
@@ -346,6 +350,7 @@ describe('SqlApp', () => {
     });
 
     expect(invoke).toHaveBeenCalledWith('execute_sql_query', {
+      queryId: expect.any(String),
       connectionName: 'DevDB',
       query: 'SELECT b;',
     });
@@ -377,6 +382,7 @@ describe('SqlApp', () => {
     });
 
     expect(invoke).toHaveBeenCalledWith('execute_sql_query', {
+      queryId: expect.any(String),
       connectionName: 'DevDB',
       query: fullDoc,
     });

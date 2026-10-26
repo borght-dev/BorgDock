@@ -1,8 +1,15 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import clsx from 'clsx';
 import { ArrowRight, ExternalLink, GitBranch, LoaderCircle, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { QuickReviewOverlay } from '@/components/focus/QuickReviewOverlay';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useQuickReviewStore } from '@/stores/quick-review-store';
+
+const QuickReviewOverlay = lazy(() =>
+  import('@/components/focus/QuickReviewOverlay').then((module) => ({
+    default: module.QuickReviewOverlay,
+  })),
+);
+
 import { passedOfCounted } from '@/components/pr/pr-card-data';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { WindowControls } from '@/components/shared/chrome';
@@ -16,7 +23,6 @@ import { popView } from '@/services/navigation';
 import { openT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
-import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { type PrDetailTab, useUiStore } from '@/stores/ui-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { ActionBar } from './ActionBar';
@@ -225,6 +231,7 @@ export function PrDetailPanel({
     }
   }, [jumpTarget, activeTab]);
 
+  const reviewActive = useQuickReviewStore((s) => s.state !== 'idle');
   const p = pr.pullRequest;
   const isMerged = Boolean(p.mergedAt);
   const isTerminal = isMerged || p.state === 'closed';
@@ -566,7 +573,11 @@ export function PrDetailPanel({
         onCancel={() => actions.setConfirmBypass(false)}
       />
 
-      {popOutWindow && <QuickReviewOverlay />}
+      {popOutWindow && reviewActive && (
+        <Suspense fallback={null}>
+          <QuickReviewOverlay />
+        </Suspense>
+      )}
 
       {actions.actionStatus && (
         <div

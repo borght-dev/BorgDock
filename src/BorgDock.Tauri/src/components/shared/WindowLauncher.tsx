@@ -33,14 +33,12 @@ export function WindowLauncher({ onWindowOpened }: WindowLauncherProps) {
   const close = useCallback(() => setOpen(false), []);
 
   const toggle = useCallback(() => {
-    setOpen((current) => {
-      if (!current && triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        setPosition({ top: rect.bottom + 6, left: Math.max(8, rect.right - 224) });
-      }
-      return !current;
-    });
-  }, []);
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPosition({ top: rect.bottom + 6, left: Math.max(8, rect.right - 224) });
+    }
+    setOpen(!open);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

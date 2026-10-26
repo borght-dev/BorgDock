@@ -43,6 +43,7 @@ pub fn install_pending_update(app: &AppHandle) {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn restart_to_apply_update(app: AppHandle) -> Result<(), String> {
     let pending = app.state::<PendingUpdate<DownloadedUpdate>>();
     let (update, bytes) = pending.take().ok_or("No downloaded update ready")?;
@@ -54,6 +55,7 @@ pub async fn restart_to_apply_update(app: AppHandle) -> Result<(), String> {
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateInfo {
     pub version: String,
@@ -61,6 +63,7 @@ pub struct UpdateInfo {
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn check_for_update(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
     let updater = app.updater().map_err(|e| e.to_string())?;
     match updater.check().await.map_err(|e| e.to_string())? {
@@ -80,6 +83,7 @@ pub async fn check_for_update(app: AppHandle) -> Result<Option<UpdateInfo>, Stri
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn download_update(
     app: AppHandle,
     pending: State<'_, PendingUpdate<DownloadedUpdate>>,

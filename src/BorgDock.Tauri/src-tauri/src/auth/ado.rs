@@ -11,6 +11,7 @@ use tokio::sync::Mutex as AsyncMutex;
 /// Errors that `ado_resolve_auth_header` may surface to the UI.
 /// Serialized as a tagged enum so TS can discriminate.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(tag = "kind", content = "message", rename_all = "snake_case")]
 pub enum AdoAuthError {
     AzNotInstalled,
@@ -164,6 +165,7 @@ pub fn az_cli_token() -> Result<String, AdoAuthError> {
 /// whether it exited successfully. Does not test login state; that
 /// surfaces naturally when a token fetch is attempted.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn az_cli_available() -> bool {
     tokio::task::spawn_blocking(az_cli_available_blocking)
         .await
@@ -216,6 +218,7 @@ pub(crate) fn resolve_header_internal(
 /// `force_refresh = true` (used by the JS client on a 401) bypasses the
 /// cache, evicts it, and fetches a fresh token.
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn ado_resolve_auth_header(
     auth_method: String,
     pat: Option<String>,

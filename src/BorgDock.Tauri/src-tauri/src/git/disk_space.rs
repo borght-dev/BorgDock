@@ -11,6 +11,7 @@ use crate::t3::hosts::HostRef;
 const TIMEOUT: Duration = Duration::from_secs(20);
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct DiskSpace {
     pub drive: String,
@@ -19,6 +20,7 @@ pub struct DiskSpace {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct HostDisks {
     pub id: String,
@@ -191,6 +193,7 @@ fn measurement(
 }
 
 #[tauri::command]
+#[cfg_attr(test, specta::specta)]
 pub async fn host_disk_space() -> Result<Vec<HostDisks>, String> {
     let settings = tokio::task::spawn_blocking(crate::settings::load_settings_internal)
         .await

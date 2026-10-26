@@ -1,12 +1,16 @@
 pub mod ado;
 pub mod agents;
+mod app_data;
 pub mod auth;
 pub mod cache;
 pub mod file_palette;
 pub mod flyout;
 pub mod git;
+mod http;
 pub mod keychain;
 pub mod maintenance;
+mod runtime;
+use tauri::{generate_handler, Emitter, Manager};
 pub mod platform;
 pub mod settings;
 pub mod sql;
@@ -16,13 +20,9 @@ pub mod updater;
 use cache::PrCache;
 use git::process::ProcessState;
 use std::sync::Mutex;
-use tauri::Manager;
 
 fn log_dir() -> std::path::PathBuf {
-    dirs::config_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("BorgDock")
-        .join("logs")
+    crate::app_data::directory().join("logs")
 }
 
 /// Write panic info to a dedicated file synchronously, then chain to the
@@ -83,178 +83,9 @@ fn install_panic_hook() {
     }));
 }
 
-pub fn run() {
-    install_panic_hook();
-
-    // Debug builds: Debug level, plus the webview console so DevTools sees
-    // Rust logs. Release builds: Info level and NO webview target — every
-    // webview log line is an IPC round-trip into the renderer, which at
-    // Debug level meant dozens of hops per poll cycle and per git call.
-    let log_targets = vec![
-        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
-            path: log_dir(),
-            file_name: Some("borgdock".into()),
-        }),
-        // Stream to stdout so `cargo tauri dev` shows live logs.
-        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-        #[cfg(debug_assertions)]
-        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
-    ];
-    #[cfg(debug_assertions)]
-    let log_level = log::LevelFilter::Debug;
-    #[cfg(not(debug_assertions))]
-    let log_level = log::LevelFilter::Info;
-
-    let log_plugin = tauri_plugin_log::Builder::new()
-        .targets(log_targets)
-        .max_file_size(5_000_000)
-        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(5))
-        .level(log_level)
-        // Silence noisy third-party crates that drown out our own logs.
-        .level_for("hyper", log::LevelFilter::Info)
-        .level_for("reqwest", log::LevelFilter::Info)
-        .level_for("tao", log::LevelFilter::Info)
-        .level_for("wry", log::LevelFilter::Info)
-        .build();
-
-    let builder = tauri::Builder::default()
-        .on_page_load(|webview, _| platform::browser_shortcuts::disable(webview))
-        .on_window_event(|window, event| {
-            match event {
-                tauri::WindowEvent::CloseRequested { api, .. }
-                    if window.label() == "main"
-                        || platform::hotkey::is_reusable_tool_window(window.label()) =>
-                {
-                    api.prevent_close();
-                    let _ = window.hide();
-                }
-                // Once a window is truly gone, forget its first-reveal flag so
-                // a future window reusing the same label (e.g. a reopened
-                // pr-detail / settings) reveals again instead of staying
-                // hidden. See platform::window::revealed().
-                tauri::WindowEvent::Destroyed => {
-                    crate::platform::window::mark_window_destroyed(window.label());
-                }
-                _ => {}
-            }
-        })
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
-        ))
-        // Second launch (autostart + manual, or a relaunch while the old
-        // process is still alive): the plugin exits the new instance and
-        // calls this in the surviving one. Bring the main window forward so
-        // the user sees *something* happen instead of a silent no-op.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            log::info!("single-instance: second launch detected, focusing main window");
-            let app_handle = app.clone();
-            let _ = app.run_on_main_thread(move || {
-                platform::window::show_or_focus_main_sync(&app_handle);
-            });
-        }))
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(log_plugin)
-        .plugin(tauri_plugin_os::init())
-        .manage(ProcessState::default())
-        .manage(updater::PendingUpdate::<updater::DownloadedUpdate>::default())
-        .manage(PrCache::default())
-        .manage(platform::flyout_cache::FlyoutCache {
-            data: Mutex::new(None),
-        })
-        .manage(file_palette::cache::FileIndexCache {
-            conn: std::sync::Arc::new(std::sync::Mutex::new(None)),
-            in_flight: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashSet::new())),
-        })
-        .manage(git::worktree_cache::WorktreeCache::default());
-
-    builder
-        .setup(|app| {
-            let dispatcher = app.handle().clone();
-            app.manage(platform::deferred_actions::DeferredActions::new(
-                move |action| {
-                    dispatcher
-                        .run_on_main_thread(action)
-                        .map_err(|e| e.to_string())
-                },
-                |key, error| log::error!("window action[{key}]: {error}"),
-                platform::window::MAIN_THREAD_TIMEOUT,
-            )?);
-            platform::tray::setup_tray(app)?;
-            platform::tray::start_initializing_animation(app.handle().clone());
-
-            // Window geometry store: load once, register, spawn flusher,
-            // then wire main on the GUI thread so it picks up restored
-            // geometry. Main is declared in tauri.conf.json (built before
-            // setup runs), so we look it up by label.
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .map_err(|e| format!("app_data_dir unavailable: {e}"))?;
-            std::fs::create_dir_all(&app_data_dir)
-                .map_err(|e| format!("create app data dir: {e}"))?;
-
-            let geometry_store = std::sync::Arc::new(
-                crate::platform::window_geometry::WindowGeometryStore::load(&app_data_dir),
-            );
-            geometry_store.clone().spawn_flusher();
-            app.manage(geometry_store.clone());
-
-            if let Some(main_win) = app.get_webview_window("main") {
-                let app_handle = app.handle().clone();
-                app_handle
-                    .clone()
-                    .run_on_main_thread(move || {
-                        crate::platform::window_geometry::persist_window_geometry(
-                            &app_handle,
-                            &main_win,
-                            "main",
-                        );
-                    })
-                    .map_err(|e| format!("dispatch persist_window_geometry for main: {e}"))?;
-            } else {
-                log::error!(
-                    "setup: main window not found at startup; geometry persistence skipped"
-                );
-            }
-
-            let file_cache_state = app.state::<file_palette::cache::FileIndexCache>();
-            file_palette::cache::init(&file_cache_state);
-
-            // Register the fixed palette + SQL hotkeys (Ctrl+F7/F8/F9/F10)
-            // once, at setup. These are code-defined and must not be re-
-            // bound on every settings change — see register_fixed_hotkeys
-            // for the rationale.
-            if let Err(e) = platform::hotkey::register_fixed_hotkeys(app.handle()) {
-                log::error!("register_fixed_hotkeys failed: {e}");
-            }
-
-            // Warm the worktree cache (per-repo `git worktree list`, concurrent)
-            // so the palette and PR cards render from a snapshot instead of
-            // spawning git on open. Also runs a slow 5-min revalidation loop.
-            {
-                let app_handle = app.handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    git::worktree_cache::start_background_refresh(app_handle).await;
-                });
-            }
-
-            // The main window is built invisible (visible: false in
-            // tauri.conf.json) and revealed by the React app calling
-            // `window_ready` after first paint. No off-screen parking needed
-            // now that the window is a regular floating frame.
-
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![
+macro_rules! app_commands {
+    ($collector:ident) => {
+        $collector![
             // Settings
             settings::load_settings,
             settings::save_settings,
@@ -334,7 +165,9 @@ pub fn run() {
             maintenance::estimate_worktree_prune_size,
             maintenance::run_self_test,
             // SQL
+            runtime::runtime_visibility,
             sql::execute_sql_query,
+            sql::cancel_sql_query,
             sql::test_sql_connection,
             sql::fetch_sql_schema,
             sql::snippets::sql_snippets_list,
@@ -374,7 +207,196 @@ pub fn run() {
             file_palette::files::list_root_files,
             file_palette::content_search::search_content,
             file_palette::windows::open_file_viewer_window,
-        ])
+        ]
+    };
+}
+
+pub fn run() {
+    install_panic_hook();
+
+    // Debug builds: Debug level, plus the webview console so DevTools sees
+    // Rust logs. Release builds: Info level and NO webview target — every
+    // webview log line is an IPC round-trip into the renderer, which at
+    // Debug level meant dozens of hops per poll cycle and per git call.
+    let log_targets = vec![
+        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+            path: log_dir(),
+            file_name: Some("borgdock".into()),
+        }),
+        // Stream to stdout so `cargo tauri dev` shows live logs.
+        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+        #[cfg(debug_assertions)]
+        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+    ];
+    #[cfg(debug_assertions)]
+    let log_level = log::LevelFilter::Debug;
+    #[cfg(not(debug_assertions))]
+    let log_level = log::LevelFilter::Info;
+
+    let log_plugin = tauri_plugin_log::Builder::new()
+        .targets(log_targets)
+        .max_file_size(5_000_000)
+        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(5))
+        .level(log_level)
+        // Silence noisy third-party crates that drown out our own logs.
+        .level_for("hyper", log::LevelFilter::Info)
+        .level_for("reqwest", log::LevelFilter::Info)
+        .level_for("tao", log::LevelFilter::Info)
+        .level_for("wry", log::LevelFilter::Info)
+        .build();
+
+    let builder = tauri::Builder::default()
+        .on_page_load(|webview, _| platform::browser_shortcuts::disable(webview))
+        .on_window_event(|window, event| {
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. }
+                    if window.label() == "main"
+                        || platform::hotkey::is_reusable_tool_window(window.label()) =>
+                {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+                // Once a window is truly gone, forget its first-reveal flag so
+                // a future window reusing the same label (e.g. a reopened
+                // pr-detail / settings) reveals again instead of staying
+                // hidden. See platform::window::revealed().
+                tauri::WindowEvent::Destroyed => {
+                    crate::platform::window::mark_window_destroyed(window.label());
+                }
+                _ => {}
+            }
+            if matches!(
+                event,
+                tauri::WindowEvent::Focused(_)
+                    | tauri::WindowEvent::CloseRequested { .. }
+                    | tauri::WindowEvent::Destroyed
+            ) {
+                let app = window.app_handle();
+                let _ = app.emit(
+                    "runtime-visibility",
+                    runtime::RuntimeVisibility(runtime::runtime_visibility(app.clone())),
+                );
+            }
+        })
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
+        // Second launch (autostart + manual, or a relaunch while the old
+        // process is still alive): the plugin exits the new instance and
+        // calls this in the surviving one. Bring the main window forward so
+        // the user sees *something* happen instead of a silent no-op.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            log::info!("single-instance: second launch detected, focusing main window");
+            let app_handle = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                platform::window::show_or_focus_main_sync(&app_handle);
+            });
+        }))
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(log_plugin)
+        .plugin(tauri_plugin_os::init())
+        .manage(ProcessState::default())
+        .manage(updater::PendingUpdate::<updater::DownloadedUpdate>::default())
+        .manage(PrCache::default())
+        .manage(sql::SqlQueries::default())
+        .manage(t3::commands::T3Sessions::default())
+        .manage(platform::flyout_cache::FlyoutCache {
+            data: Mutex::new(None),
+        })
+        .manage(file_palette::cache::FileIndexCache {
+            conn: std::sync::Arc::new(std::sync::Mutex::new(None)),
+            in_flight: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashSet::new())),
+        })
+        .manage(git::worktree_cache::WorktreeCache::default());
+
+    builder
+        .setup(move |app| {
+            let dispatcher = app.handle().clone();
+            app.manage(platform::deferred_actions::DeferredActions::new(
+                move |action| {
+                    dispatcher
+                        .run_on_main_thread(action)
+                        .map_err(|e| e.to_string())
+                },
+                |key, error| log::error!("window action[{key}]: {error}"),
+                platform::window::MAIN_THREAD_TIMEOUT,
+            )?);
+            platform::tray::setup_tray(app)?;
+            platform::tray::start_initializing_animation(app.handle().clone());
+
+            // Window geometry store: load once, register, spawn flusher,
+            // then wire main on the GUI thread so it picks up restored
+            // geometry. Main is declared in tauri.conf.json (built before
+            // setup runs), so we look it up by label.
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
+                .map_err(|e| format!("app_data_dir unavailable: {e}"))?;
+            std::fs::create_dir_all(&app_data_dir)
+                .map_err(|e| format!("create app data dir: {e}"))?;
+
+            let geometry_store = std::sync::Arc::new(
+                crate::platform::window_geometry::WindowGeometryStore::load(&app_data_dir),
+            );
+            geometry_store.clone().spawn_flusher();
+            app.manage(geometry_store.clone());
+
+            if let Some(main_win) = app.get_webview_window("main") {
+                let app_handle = app.handle().clone();
+                app_handle
+                    .clone()
+                    .run_on_main_thread(move || {
+                        crate::platform::window_geometry::persist_window_geometry(
+                            &app_handle,
+                            &main_win,
+                            "main",
+                        );
+                    })
+                    .map_err(|e| format!("dispatch persist_window_geometry for main: {e}"))?;
+            } else {
+                log::error!(
+                    "setup: main window not found at startup; geometry persistence skipped"
+                );
+            }
+
+            let file_cache_state = app.state::<file_palette::cache::FileIndexCache>();
+            file_palette::cache::init(&file_cache_state);
+
+            // Register the fixed palette + SQL hotkeys (Ctrl+F7/F8/F9/F10)
+            // once, at setup. These are code-defined and must not be re-
+            // bound on every settings change — see register_fixed_hotkeys
+            // for the rationale.
+            if let Err(e) = platform::hotkey::register_fixed_hotkeys(app.handle()) {
+                log::error!("register_fixed_hotkeys failed: {e}");
+            }
+
+            // Warm the worktree cache (per-repo `git worktree list`, concurrent)
+            // so the palette and PR cards render from a snapshot instead of
+            // spawning git on open. Also runs a slow 5-min revalidation loop.
+            {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    git::worktree_cache::start_background_refresh(app_handle).await;
+                });
+            }
+
+            // The main window is built invisible (visible: false in
+            // tauri.conf.json) and revealed by the React app calling
+            // `window_ready` after first paint. No off-screen parking needed
+            // now that the window is a regular floating frame.
+
+            Ok(())
+        })
+        .invoke_handler(app_commands!(generate_handler))
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
@@ -396,4 +418,47 @@ pub fn run() {
                 updater::install_pending_update(app);
             }
         });
+}
+
+#[cfg(test)]
+fn command_bindings() -> tauri_specta::Builder<tauri::Wry> {
+    use tauri_specta::collect_commands;
+    tauri_specta::Builder::new()
+        .dangerously_cast_bigints_to_number()
+        .events(tauri_specta::collect_events![
+            runtime::RuntimeVisibility,
+            t3::commands::T3SessionsUpdated
+        ])
+        .commands(app_commands!(collect_commands))
+}
+
+#[cfg(test)]
+mod binding_tests {
+    #[test]
+    fn export_commands() {
+        let temporary = tempfile::tempdir().expect("temporary bindings directory");
+        let output = temporary.path().join("commands.ts");
+        super::command_bindings()
+            .export(specta_typescript::Typescript::default(), &output)
+            .expect("export Tauri command contracts");
+        let generated = std::fs::read_to_string(output)
+            .unwrap()
+            .lines()
+            .map(str::trim_end)
+            .collect::<Vec<_>>()
+            .join("\n");
+        let generated = format!("{}\n", generated.trim_end());
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../src/generated/commands.ts");
+        if std::env::var("BORGDOCK_UPDATE_BINDINGS").as_deref() == Ok("1") {
+            std::fs::write(path, generated).expect("write command contracts");
+        } else {
+            let committed = std::fs::read_to_string(path)
+                .expect("run bun run bindings")
+                .replace("\r\n", "\n");
+            assert!(
+                committed == generated,
+                "Tauri contracts changed; run bun run bindings"
+            );
+        }
+    }
 }

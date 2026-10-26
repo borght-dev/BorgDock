@@ -1,3 +1,5 @@
+import '@/components/pr-detail/PrDetailView';
+import '@/components/work-items/WorkItemDetailView';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -20,8 +22,8 @@ function depth() {
   return useUiStore.getState().viewStack.length;
 }
 
-function push(view: MainView) {
-  act(() => useUiStore.getState().pushView(view));
+async function push(view: MainView) {
+  await act(() => useUiStore.getState().pushView(view));
 }
 
 function listLayer() {
@@ -52,16 +54,18 @@ describe('ViewStack', () => {
     document.documentElement.classList.remove('reduce-motion');
   });
 
-  it('renders the list and no detail view at depth 1', () => {
+  it('renders the list and no detail view at depth 1', async () => {
     render(<ViewStack />);
+    await act(async () => {});
     expect(screen.getByTestId('section-view')).toBeInTheDocument();
     expect(listLayer()).not.toHaveAttribute('inert');
     expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
   });
 
-  it('renders a pushed PR detail on top of the list and makes the list inert', () => {
+  it('renders a pushed PR detail on top of the list and makes the list inert', async () => {
     render(<ViewStack />);
-    push(PR);
+    await act(async () => {});
+    await push(PR);
     expect(screen.getByRole('heading', { name: '#42' })).toBeInTheDocument();
     expect(screen.getByText('octo/app')).toBeInTheDocument();
     // The list stays mounted (scroll position survives) but is inert.
@@ -69,69 +73,82 @@ describe('ViewStack', () => {
     expect(listLayer()).toHaveAttribute('inert');
   });
 
-  it('renders a pushed work item detail', () => {
+  it('renders a pushed work item detail', async () => {
     render(<ViewStack />);
-    push(WI);
+    await act(async () => {});
+    await push(WI);
     expect(screen.getByRole('heading', { name: 'AB#1234' })).toBeInTheDocument();
   });
 
-  it('Back pops the detail view', () => {
+  it('Back pops the detail view', async () => {
     render(<ViewStack />);
-    push(PR);
+    await act(async () => {});
+    await push(PR);
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    await act(async () => {});
     expect(depth()).toBe(1);
     expect(listLayer()).not.toHaveAttribute('inert');
   });
 
   describe('keyboard and mouse', () => {
-    it('Esc pops when a detail view is showing', () => {
+    it('Esc pops when a detail view is showing', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       fireEvent.keyDown(document.body, { key: 'Escape' });
+      await act(async () => {});
       expect(depth()).toBe(1);
     });
 
-    it('Esc pops one level at a time', () => {
+    it('Esc pops one level at a time', async () => {
       render(<ViewStack />);
-      push(PR);
-      push(WI);
+      await act(async () => {});
+      await push(PR);
+      await push(WI);
       fireEvent.keyDown(document.body, { key: 'Escape' });
+      await act(async () => {});
       expect(useUiStore.getState().viewStack).toEqual([{ kind: 'list' }, PR]);
     });
 
-    it('Esc at depth 1 does nothing and leaves the event alone', () => {
+    it('Esc at depth 1 does nothing and leaves the event alone', async () => {
       render(<ViewStack />);
+      await act(async () => {});
       const event = escapeEvent();
       document.body.dispatchEvent(event);
       expect(depth()).toBe(1);
       expect(event.defaultPrevented).toBe(false);
     });
 
-    it('Esc does not pop while an input has focus', () => {
+    it('Esc does not pop while an input has focus', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       const input = document.createElement('input');
       document.body.appendChild(input);
       input.focus();
       fireEvent.keyDown(input, { key: 'Escape' });
+      await act(async () => {});
       expect(depth()).toBe(2);
       input.remove();
     });
 
-    it('Esc does not pop while a dialog is open', () => {
+    it('Esc does not pop while a dialog is open', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       const dialog = document.createElement('div');
       dialog.setAttribute('role', 'dialog');
       document.body.appendChild(dialog);
       fireEvent.keyDown(document.body, { key: 'Escape' });
+      await act(async () => {});
       expect(depth()).toBe(2);
       dialog.remove();
     });
 
-    it('Esc that closes a menu on the way (without claiming it) does not pop', () => {
+    it('Esc that closes a menu on the way (without claiming it) does not pop', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       const menu = document.createElement('div');
       menu.setAttribute('role', 'menu');
       document.body.appendChild(menu);
@@ -141,75 +158,94 @@ describe('ViewStack', () => {
       };
       document.addEventListener('keydown', close);
       fireEvent.keyDown(document.body, { key: 'Escape' });
+      await act(async () => {});
       document.removeEventListener('keydown', close);
       expect(menu.isConnected).toBe(false);
       expect(depth()).toBe(2);
       // With the menu gone, the next Esc pops.
       fireEvent.keyDown(document.body, { key: 'Escape' });
+      await act(async () => {});
       expect(depth()).toBe(1);
     });
 
-    it('a dialog left open inside the inert list does not block Esc', () => {
+    it('a dialog left open inside the inert list does not block Esc', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       const dialog = document.createElement('div');
       dialog.setAttribute('role', 'dialog');
       screen.getByTestId('section-view').appendChild(dialog);
       fireEvent.keyDown(document.body, { key: 'Escape' });
+      await act(async () => {});
       expect(depth()).toBe(1);
     });
 
-    it('Esc does not pop while Quick Review is open', () => {
+    it('Esc does not pop while Quick Review is open', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       useQuickReviewStore.setState({ state: 'reviewing' });
       fireEvent.keyDown(document.body, { key: 'Escape' });
+      await act(async () => {});
       expect(depth()).toBe(2);
     });
 
-    it('Esc already claimed by another handler (defaultPrevented) does not pop', () => {
+    it('Esc already claimed by another handler (defaultPrevented) does not pop', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       const claim = (e: KeyboardEvent) => e.preventDefault();
       document.addEventListener('keydown', claim);
       fireEvent.keyDown(document.body, { key: 'Escape' });
+      await act(async () => {});
       document.removeEventListener('keydown', claim);
       expect(depth()).toBe(2);
     });
 
-    it('Alt+ArrowLeft pops', () => {
+    it('Alt+ArrowLeft pops', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       fireEvent.keyDown(document.body, { key: 'ArrowLeft', altKey: true });
+      await act(async () => {});
       expect(depth()).toBe(1);
     });
 
-    it('plain ArrowLeft does not pop', () => {
+    it('plain ArrowLeft does not pop', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       fireEvent.keyDown(document.body, { key: 'ArrowLeft' });
+      await act(async () => {});
       expect(depth()).toBe(2);
     });
 
-    it('the mouse back button pops', () => {
+    it('the mouse back button pops', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       fireEvent.mouseUp(document.body, { button: 3 });
+      await act(async () => {});
       expect(depth()).toBe(1);
     });
 
-    it('other mouse buttons do not pop', () => {
+    it('other mouse buttons do not pop', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       fireEvent.mouseUp(document.body, { button: 0 });
+      await act(async () => {});
       fireEvent.mouseUp(document.body, { button: 4 });
+      await act(async () => {});
       expect(depth()).toBe(2);
     });
 
-    it('stops claiming Esc once back at the list', () => {
+    it('stops claiming Esc once back at the list', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       fireEvent.keyDown(document.body, { key: 'Escape' });
+      await act(async () => {});
       const event = escapeEvent();
       document.body.dispatchEvent(event);
       expect(event.defaultPrevented).toBe(false);
@@ -217,28 +253,31 @@ describe('ViewStack', () => {
   });
 
   describe('fallback transition', () => {
-    it('animates the pushed detail in', () => {
+    it('animates the pushed detail in', async () => {
       render(<ViewStack />);
-      push(PR);
+      await act(async () => {});
+      await push(PR);
       const layer = screen.getByRole('heading', { name: '#42' }).closest('.bd-viewstack__layer');
       expect(layer).toHaveClass('bd-viewstack__detail--entering');
     });
 
-    it('keeps the popped detail for the exit animation, then removes it', () => {
+    it('keeps the popped detail for the exit animation, then removes it', async () => {
       vi.useFakeTimers();
       render(<ViewStack />);
-      push(PR);
-      act(() => useUiStore.getState().popView());
+      await act(async () => {});
+      await push(PR);
+      await act(() => useUiStore.getState().popView());
       const leaving = screen.getByRole('heading', { name: '#42', hidden: true });
       expect(leaving.closest('.bd-viewstack__layer')).toHaveClass('bd-viewstack__detail--leaving');
-      act(() => vi.advanceTimersByTime(400));
+      await act(() => vi.advanceTimersByTime(400));
       expect(screen.queryByRole('heading', { name: '#42', hidden: true })).not.toBeInTheDocument();
     });
 
-    it('drops the popped detail as soon as its exit animation ends', () => {
+    it('drops the popped detail as soon as its exit animation ends', async () => {
       render(<ViewStack />);
-      push(PR);
-      act(() => useUiStore.getState().popView());
+      await act(async () => {});
+      await push(PR);
+      await act(() => useUiStore.getState().popView());
       const layer = screen
         .getByRole('heading', { name: '#42', hidden: true })
         .closest('.bd-viewstack__layer') as HTMLElement;
@@ -246,11 +285,12 @@ describe('ViewStack', () => {
       expect(screen.queryByRole('heading', { name: '#42', hidden: true })).not.toBeInTheDocument();
     });
 
-    it('drops the popped detail at once under reduced motion', () => {
+    it('drops the popped detail at once under reduced motion', async () => {
       document.documentElement.classList.add('reduce-motion');
       render(<ViewStack />);
-      push(PR);
-      act(() => useUiStore.getState().popView());
+      await act(async () => {});
+      await push(PR);
+      await act(() => useUiStore.getState().popView());
       expect(screen.queryByRole('heading', { name: '#42', hidden: true })).not.toBeInTheDocument();
     });
   });

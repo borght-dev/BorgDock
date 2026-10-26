@@ -131,7 +131,7 @@ describe('PollingManager', () => {
       expect(manager.lastPollTime).toBeInstanceOf(Date);
     });
 
-    it('does not execute if already polling', async () => {
+    it('shares completion without overlapping an in-flight poll', async () => {
       let resolvePoll: () => void;
       const slowPollFn = vi.fn(
         () =>
@@ -146,14 +146,14 @@ describe('PollingManager', () => {
       const firstPoll = manager.pollNow();
 
       // Try second poll while first is in progress
-      await manager.pollNow();
+      const secondPoll = manager.pollNow();
 
       // Only one call
       expect(slowPollFn).toHaveBeenCalledTimes(1);
 
       // Clean up
       resolvePoll!();
-      await firstPoll;
+      await Promise.all([firstPoll, secondPoll]);
     });
   });
 

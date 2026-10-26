@@ -40,7 +40,7 @@ impl Client {
         Self {
             host,
             token,
-            http: reqwest::Client::new(),
+            http: crate::http::client(),
         }
     }
 
