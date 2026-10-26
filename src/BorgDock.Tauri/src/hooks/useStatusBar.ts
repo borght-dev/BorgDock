@@ -44,6 +44,9 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
   if (top.kind === 'work-item-detail') {
     return { left: `work item AB#${top.id}`, right: BACK_KEYS };
   }
+  if (top.kind === 'workstream') {
+    return { left: 'workstream · evidence per record', right: BACK_KEYS };
+  }
 
   switch (section) {
     case 'focus':
@@ -78,6 +81,11 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
       return {
         left: 'worktrees from every watched repository',
         right: keys(WORKTREES_STATUS_HINT),
+      };
+    case 'workstreams':
+      return {
+        left: 'goals across items, threads and pull requests',
+        right: keys('J K move · Enter open · N new · E next action'),
       };
   }
 }

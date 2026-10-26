@@ -16,7 +16,7 @@ const actions = vi.hoisted(() => ({
 
 vi.mock('@/services/dispatch/actions', () => ({ dispatchActions: actions }));
 vi.mock('@/services/dispatch/sync', () => ({ syncAll: vi.fn() }));
-vi.mock('@/services/navigation', () => ({ showWorkItem: vi.fn() }));
+vi.mock('@/services/navigation', () => ({ showWorkItem: vi.fn(), isMainWindow: () => true }));
 
 import { syncAll } from '@/services/dispatch/sync';
 import { useDispatchStore } from '@/stores/dispatch-store';

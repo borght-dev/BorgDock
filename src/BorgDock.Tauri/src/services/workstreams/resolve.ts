@@ -185,11 +185,21 @@ function prTone(pr: PrFacts): Tone {
   return pr.isDraft ? 'mute' : 'warn';
 }
 
+/** "Open", "Draft", "Checks fail", "Merge conflict", "Merged". */
+function prStateLabel(pr: PrFacts): string {
+  if (pr.state !== 'open') return PR_STATE_LABEL[pr.state];
+  if (pr.conflicting) return 'Merge conflict';
+  if (pr.checks === 'failed') return 'Checks fail';
+  if (pr.isDraft) return 'Draft';
+  if (pr.checks === 'pending') return 'Checks running';
+  return pr.approved ? 'Approved' : 'Open';
+}
+
 function withPr(resolved: ResolvedMember, pr: PrFacts, activityAt: string | null): ResolvedMember {
   return {
     ...resolved,
     title: pr.title || resolved.title,
-    stateLabel: pr.isDraft && pr.state === 'open' ? 'Draft' : PR_STATE_LABEL[pr.state],
+    stateLabel: prStateLabel(pr),
     tone: prTone(pr),
     resolved: pr.state === 'merged' || pr.state === 'closed',
     resolvedAt: pr.mergedAt ?? pr.closedAt,
@@ -360,6 +370,7 @@ function resolveThread(member: Member, ref: T3ThreadRef, snapshot: SourceSnapsho
     if (!linkedFrom.ok) {
       return {
         ...start,
+        identity: `Thread on ${linkedFrom.label}`,
         freshness: 'offline',
         reason: `${linkedFrom.label} is offline.`,
         asOf: linkedFrom.at,
@@ -373,6 +384,7 @@ function resolveThread(member: Member, ref: T3ThreadRef, snapshot: SourceSnapsho
     if (!host.ok) {
       return {
         ...start,
+        identity: `Thread on ${host.label}`,
         freshness: 'offline',
         reason: `${host.label} is offline.`,
         asOf: host.at,
@@ -381,6 +393,7 @@ function resolveThread(member: Member, ref: T3ThreadRef, snapshot: SourceSnapsho
     }
     return {
       ...start,
+      identity: `Thread on ${host.label}`,
       freshness: 'missing',
       reason: `T3 on ${host.label} no longer lists it: deleted or archived.`,
       hostLabel: host.label,
@@ -400,6 +413,7 @@ function resolveThread(member: Member, ref: T3ThreadRef, snapshot: SourceSnapsho
     resolvedAt: thread.open ? null : thread.lastActivityAt,
     activityAt: thread.lastActivityAt,
     needsYou,
+    identity: `${thread.slot} on ${host.label}`,
     thread,
     hostLabel: host.label,
   };
@@ -410,7 +424,7 @@ function resolveLink(member: Member, ref: LinkRef, snapshot: SourceSnapshot): Re
     ...base(member, snapshot),
     freshness: 'live',
     title: member.label || ref.title,
-    stateLabel: 'Link',
+    stateLabel: '',
     resolved: true,
     url: ref.url,
   };

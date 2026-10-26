@@ -7,6 +7,7 @@ import { T3CheckoutDialog } from '@/components/pr/T3CheckoutDialog';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ToastViewport } from '@/components/shared/Toast';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
+import { WorkstreamSheets } from '@/components/workstreams/WorkstreamSheets';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useDiskSpace } from '@/hooks/useDiskSpace';
 import { useExternalMergeCelebration } from '@/hooks/useExternalMergeCelebration';
@@ -314,6 +315,7 @@ export default function App() {
       )}
       <ToastViewport />
       <T3CheckoutDialog />
+      <WorkstreamSheets />
     </div>
   );
 }

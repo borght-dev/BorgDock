@@ -30,6 +30,15 @@ interface WorkstreamSourcesState {
 
 let cacheTimer: ReturnType<typeof setTimeout> | undefined;
 
+/** Workstreams whose attention asks something of you now: the rail's count. */
+export function selectWorkstreamsNeedingYou(
+  state: Pick<WorkstreamSourcesState, 'assessments'>,
+): number {
+  return Object.values(state.assessments).filter((a) =>
+    a.attention.some((entry) => entry.tone === 'bad'),
+  ).length;
+}
+
 export const useWorkstreamSourcesStore = create<WorkstreamSourcesState>()((set, get) => ({
   lookedUp: new Map(),
   cache: {},

@@ -211,7 +211,7 @@ const ADO_SOURCE = 'ado';
  * True once Azure DevOps and every host have been read, detail included.
  * Until then the overview is still filling up, and nothing in it is news.
  */
-function everySourceRead(): boolean {
+export function everySourceRead(): boolean {
   const hosts = configuredHosts(useSettingsStore.getState().settings);
   return sourcesRead.has(ADO_SOURCE) && hosts.every((host) => sourcesRead.has(host.id));
 }

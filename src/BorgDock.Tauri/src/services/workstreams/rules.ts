@@ -19,6 +19,8 @@ export interface RuleKind {
   label: string;
   /** The kind of member it reads. */
   reads: RefKind;
+  /** The rule in a few words, with its value: "Merged into main". */
+  describe: (rule: EvidenceRule) => string;
   /** What `value` means for this rule, when it takes one. */
   value?: {
     label: string;
@@ -56,6 +58,7 @@ registerRule({
   kind: 'pr-merged',
   label: 'Pull request merged',
   reads: 'github-pr',
+  describe: (rule) => (rule.value?.trim() ? `Merged into ${rule.value.trim()}` : 'Merged'),
   value: { label: 'Into branch', placeholder: 'any branch', required: false },
   evaluate: (rule, member) => {
     const pr = member.pr;
@@ -82,6 +85,7 @@ registerRule({
   kind: 'pr-checks-green',
   label: 'Checks pass',
   reads: 'github-pr',
+  describe: () => 'Checks pass',
   evaluate: (_rule, member) => {
     const checks = member.pr?.checks ?? null;
     if (checks === null) return { result: 'unknown', summary: 'checks not read' };
@@ -94,6 +98,7 @@ registerRule({
   kind: 'pr-approved',
   label: 'Pull request approved',
   reads: 'github-pr',
+  describe: () => 'Approved',
   evaluate: (_rule, member) => {
     if (!member.pr) return { result: 'unknown', summary: 'pull request not read' };
     return member.pr.approved
@@ -106,6 +111,7 @@ registerRule({
   kind: 'item-state',
   label: 'Work item reaches a state',
   reads: 'ado-item',
+  describe: (rule) => `Reaches ${rule.value ?? 'a state'}`,
   value: {
     label: 'State',
     placeholder: 'Ready For QA',
@@ -133,6 +139,7 @@ registerRule({
   kind: 'item-category',
   label: 'Work item resolved or done',
   reads: 'ado-item',
+  describe: (rule) => (rule.value === 'Completed' ? 'Done' : 'Resolved or later'),
   value: {
     label: 'At least',
     placeholder: 'Resolved',
@@ -153,6 +160,7 @@ registerRule({
   kind: 'item-delivered',
   label: "Work item's own pull request merged",
   reads: 'ado-item',
+  describe: () => 'Own pull request merged',
   evaluate: (_rule, member) => {
     const overview = member.item;
     if (!overview) return { result: 'unknown', summary: 'work item not read' };

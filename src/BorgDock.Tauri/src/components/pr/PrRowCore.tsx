@@ -1,7 +1,9 @@
 import clsx from 'clsx';
 import type { HTMLAttributes, MouseEvent, ReactNode } from 'react';
 import { Avatar, CheckBar, checkBarSummary } from '@/components/shared/primitives';
+import { TitleWithChips } from '@/components/workstreams/Membership';
 import { isStaleUpdate } from '@/services/focus-bucket';
+import { pullRequestRef } from '@/services/workstreams/membership';
 import type { PrDensity } from '@/types';
 import { formatAgo, STALE_AFTER_DAYS } from '@/utils/relative-time';
 import {
@@ -153,9 +155,11 @@ export function PrRowCore({
         aria-hidden="true"
       />
       <span className="bd-wb-row__text">
-        <span className="bd-wb-row__title" title={pr.title}>
-          {pr.title}
-        </span>
+        <TitleWithChips refs={[pullRequestRef(pr.repoOwner, pr.repoName, pr.number)]}>
+          <span className="bd-wb-row__title" title={pr.title}>
+            {pr.title}
+          </span>
+        </TitleWithChips>
         {density === 'comfortable' &&
           (meta !== undefined ? (
             <span className="bd-wb-row__meta">{meta}</span>

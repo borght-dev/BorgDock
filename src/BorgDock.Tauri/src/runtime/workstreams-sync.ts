@@ -1,13 +1,26 @@
+import { bringMainWindowForward } from '@/hooks/useFlyoutSync';
 import { configuredHosts } from '@/services/dispatch/hosts';
-import { dispatchAdoClient, followContextItems, syncItems } from '@/services/dispatch/sync';
+import {
+  dispatchAdoClient,
+  everySourceRead,
+  followContextItems,
+  syncItems,
+} from '@/services/dispatch/sync';
 import type { ItemOverview } from '@/services/dispatch/types';
 import { getGitHubToken } from '@/services/github/auth';
 import { isDue, lookUpPullRequests, targetKey } from '@/services/github/pr-lookup';
 import { getClient, initClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
+import { showWorkstream } from '@/services/navigation';
 import { PollingManager } from '@/services/polling';
 import { assessWorkstream } from '@/services/workstreams/attention';
 import { recordVerification, relinkMember } from '@/services/workstreams/edits';
+import { ADD_TO_WORKSTREAM_EVENT, type AddRequest } from '@/services/workstreams/membership';
+import {
+  notifyWorkstreams,
+  SHOW_WORKSTREAM_EVENT,
+  workstreamNotices,
+} from '@/services/workstreams/notifier';
 import { type CachedMeta, cacheEntry, type SourceSnapshot } from '@/services/workstreams/resolve';
 import {
   accountFor,
@@ -23,6 +36,7 @@ import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkstreamSourcesStore } from '@/stores/workstream-sources-store';
 import { settleWrites, useWorkstreamsStore } from '@/stores/workstreams-store';
+import { useWorkstreamsUiStore } from '@/stores/workstreams-ui-store';
 import { trackPolling } from './visibility';
 
 const log = createLogger('workstreams');
@@ -48,6 +62,9 @@ function deviceLabelSetting(): string | null {
 
 let recomputeTimer: ReturnType<typeof setTimeout> | undefined;
 let lastInputs: unknown[] | null = null;
+/** Notifications wait for the first pass after loading, and for hosts that just came back. */
+let notifiedOnce = false;
+let hostsOk = new Map<string, boolean>();
 /** Transitions that failed to apply, so a broken one isn't retried on every change. */
 const failedEdits = new Set<string>();
 
@@ -156,7 +173,39 @@ export function recomputeWorkstreams(): void {
   }
   useWorkstreamSourcesStore.getState().setAssessments(assessments, suggestions);
   useWorkstreamSourcesStore.getState().rememberMeta(seen);
+  notify(assessments);
   applyFindings(assessments);
+}
+
+function notify(assessments: Record<string, ReturnType<typeof assessWorkstream>>): void {
+  const store = useWorkstreamsStore.getState();
+  if (!store.loaded) return;
+  const hosts = useDispatchStore.getState().hosts;
+  const cameBack = hosts.some((host) => host.ok && hostsOk.get(host.id) === false);
+  hostsOk = new Map(hosts.map((host) => [host.id, host.ok]));
+  const quiet = !notifiedOnce || !everySourceRead() || cameBack;
+  notifiedOnce = true;
+  const enabled = useSettingsStore.getState().settings.workstreams?.notifications ?? true;
+  const documents = Object.values(store.entries).map((entry) => entry.document);
+  notifyWorkstreams(workstreamNotices(documents, assessments), quiet, enabled);
+}
+
+/** Listen to the other windows: a pop-out adds records, a notification opens a workstream. */
+async function listenToOtherWindows(): Promise<() => void> {
+  const { listen } = await import('@tauri-apps/api/event');
+  const stops = await Promise.all([
+    listen<AddRequest>(ADD_TO_WORKSTREAM_EVENT, (event) => {
+      void bringMainWindowForward().then(() =>
+        useWorkstreamsUiStore.getState().openAdd(event.payload),
+      );
+    }),
+    listen<{ id: string }>(SHOW_WORKSTREAM_EVENT, (event) => {
+      void bringMainWindowForward().then(() => showWorkstream(event.payload.id));
+    }),
+  ]);
+  return () => {
+    for (const stop of stops) stop();
+  };
 }
 
 /** Write down what the rules found and what GitHub renamed. */
@@ -365,8 +414,19 @@ export function startWorkstreamsSync(): () => void {
     }),
   ];
   const minute = window.setInterval(scheduleRecompute, 60_000);
+  let stopListening: (() => void) | undefined;
+  let stopped = false;
+  listenToOtherWindows()
+    .then((stop) => {
+      if (stopped) stop();
+      else stopListening = stop;
+    })
+    .catch(() => {});
 
   return () => {
+    stopped = true;
+    stopListening?.();
+    notifiedOnce = false;
     folderPoll.stop();
     untrack();
     window.removeEventListener('focus', onFocus);

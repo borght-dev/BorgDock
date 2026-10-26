@@ -1,3 +1,4 @@
+import type { ThreadStatus } from '@/services/dispatch/types';
 import { cyclicRelations } from './graph';
 import { decisionKey, isDecisionKey, isOutcomeKey, outcomeKey, prRefFromUrl } from './identity';
 import { asOfLabel, type ResolvedMember, resolveMember, type SourceSnapshot } from './resolve';
@@ -104,6 +105,15 @@ export interface AssessOptions {
 }
 
 const STALLED_MS = 7 * 86_400_000;
+
+/** What a waiting agent wants from you, as the start of a next action. */
+const THREAD_ASK: Partial<Record<ThreadStatus, string>> = {
+  question: 'Answer the agent',
+  plan: 'Review the plan',
+  approval: 'Approve the request',
+  'your-turn': 'Reply to the agent',
+  failed: 'Look at the failed agent',
+};
 
 const TONE_RANK: Record<AttentionTone, number> = { bad: 0, warn: 1, ok: 2 };
 
@@ -378,18 +388,23 @@ function attentionOf(
     });
   }
 
+  // An item that waits because its agent waits is one thing to do, not two.
+  const waitingThreads = new Set(
+    active.filter((m) => m.needsYou && m.thread).map((m) => m.thread!.id),
+  );
   for (const member of active) {
     if (!member.needsYou) continue;
-    const where = member.thread ? `${member.thread.slot}` : member.identity;
+    if (member.item?.threads.some((t) => waitingThreads.has(t.id))) continue;
+    const thread = member.thread;
     add({
       id: `needs-you:${member.member.key}`,
       tone: 'bad',
-      reason: member.thread
-        ? `${member.stateLabel} in ${where}: ${member.title}`
+      reason: thread
+        ? `${member.stateLabel} in ${thread.slot}: ${member.title}`
         : `${member.item?.verdict.label ?? member.stateLabel}: ${member.identity} ${member.title}`,
-      action: member.thread
-        ? `Answer the agent in ${where} (${member.title}).`
-        : `${member.item?.verdict.label ?? 'Look at'} ${member.identity}.`,
+      action: thread
+        ? `${THREAD_ASK[thread.status] ?? 'Look at the agent'} in ${thread.slot} (${member.title}).`
+        : `${member.item?.verdict.label ?? 'Look at'}: ${member.identity}.`,
       target: member.member.key,
     });
   }
@@ -399,7 +414,11 @@ function attentionOf(
     const blocksRequired = outcomes.some(
       (o) => o.outcome.required && o.blockers.some((b) => b.key === key),
     );
-    const options = decision.options.map((k) => members.get(k)?.identity ?? k).join(' or ');
+    const names = decision.options.map((k) => members.get(k)?.identity ?? k);
+    const options =
+      names.length > 1
+        ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+        : (names[0] ?? '');
     add({
       id: `decision:${decision.id}`,
       tone: blocksRequired ? 'bad' : 'warn',

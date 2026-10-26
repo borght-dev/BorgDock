@@ -8,11 +8,16 @@ import { selectWaitingCount, useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, SECTION_ORDER, useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
+import {
+  selectWorkstreamsNeedingYou,
+  useWorkstreamSourcesStore,
+} from '@/stores/workstream-sources-store';
 
 /** Sentence-case section names, shared by the rail and the title bar. */
 export const SECTION_LABELS: Record<ActiveSection, string> = {
   focus: 'Focus',
   dispatch: 'Dispatch',
+  workstreams: 'Workstreams',
   prs: 'Pull requests',
   workitems: 'Work items',
   worktrees: 'Worktrees',
@@ -49,12 +54,14 @@ function useRailCounts(): Partial<Record<ActiveSection, RailCount>> {
   const waitingCount = useDispatchStore(selectWaitingCount);
   const workItemCount = useWorkItemsStore((s) => s.workItems.length);
   const worktreeCount = useWorktreeCount();
+  const workstreamCount = useWorkstreamSourcesStore(selectWorkstreamsNeedingYou);
 
   const counts: Partial<Record<ActiveSection, RailCount>> = {
     prs: { value: openCount, hot: failing > 0 },
   };
   if (focusCount > 0) counts.focus = { value: focusCount };
   if (waitingCount > 0) counts.dispatch = { value: waitingCount };
+  if (workstreamCount > 0) counts.workstreams = { value: workstreamCount };
   if (workItemCount > 0) counts.workitems = { value: workItemCount };
   if (worktreeCount > 0) counts.worktrees = { value: worktreeCount };
   return counts;
@@ -115,8 +122,9 @@ function SyncBlock() {
  * Rail — the main window's left navigation (plans/ui-overhaul-workbench.md,
  * phase 1): workspace name, the five sections with their counts and a
  * sliding highlight behind the active one, and the sync state with the
- * GitHub rate meter at the bottom. Keys `1`–`5` pick the same sections
- * (wired in useKeyboardNav). Dispatch counts the items waiting on you.
+ * GitHub rate meter at the bottom. Keys `1`–`6` pick the same sections
+ * (wired in useKeyboardNav). Dispatch counts the items waiting on you,
+ * Workstreams the workstreams that need you.
  */
 export function Rail() {
   const activeSection = useUiStore((s) => s.activeSection);

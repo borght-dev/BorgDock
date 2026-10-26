@@ -137,7 +137,7 @@ describe('recomputeWorkstreams', () => {
     recomputeWorkstreams();
     expect(useWorkstreamSourcesStore.getState().cache[refKey(PR)]).toMatchObject({
       title: 'Queue rewrite',
-      stateLabel: 'Open',
+      stateLabel: 'Approved',
     });
   });
 });

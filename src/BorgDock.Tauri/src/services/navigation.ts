@@ -7,6 +7,7 @@ import {
   type PrDetailTab,
   selectTopView,
   useUiStore,
+  type WorkstreamTab,
 } from '@/stores/ui-store';
 import { withViewTransition } from '@/utils/motion';
 
@@ -237,6 +238,31 @@ export async function showWorkItem(id: number): Promise<void> {
   if (top.kind === 'work-item-detail' && top.id === id) return;
   const view: MainView = { kind: 'work-item-detail', id };
   const replacing = top.kind === 'work-item-detail';
+  if (!replacing) {
+    focusBeforePush.push(typeof document === 'undefined' ? null : document.activeElement);
+  }
+  await navigate('push', () => {
+    const state = useUiStore.getState();
+    if (replacing) state.replaceView(view);
+    else state.pushView(view);
+  });
+}
+
+/**
+ * Open a workstream's detail view on top of whatever shows now, so Back
+ * returns there: the Dispatch row, the PR or the list a chip was clicked in.
+ * A workstream already on top is replaced, not stacked; on the same one only
+ * the tab moves.
+ */
+export async function showWorkstream(id: string, tab?: WorkstreamTab): Promise<void> {
+  const ui = useUiStore.getState();
+  const top = selectTopView(ui);
+  const view: MainView = tab ? { kind: 'workstream', id, tab } : { kind: 'workstream', id };
+  if (top.kind === 'workstream' && top.id === id) {
+    if (tab && top.tab !== tab) ui.replaceView(view);
+    return;
+  }
+  const replacing = top.kind === 'workstream';
   if (!replacing) {
     focusBeforePush.push(typeof document === 'undefined' ? null : document.activeElement);
   }
