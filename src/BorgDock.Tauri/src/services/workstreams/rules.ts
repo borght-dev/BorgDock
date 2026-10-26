@@ -164,19 +164,22 @@ registerRule({
   evaluate: (_rule, member) => {
     const overview = member.item;
     if (!overview) return { result: 'unknown', summary: 'work item not read' };
-    const own = overview.pullRequests.filter((pr) => !pr.shared);
-    if (own.length === 0) {
-      return overview.pullRequests.length > 0
-        ? { result: 'unmet', summary: `AB#${overview.item.id} has only a shared plan PR` }
-        : { result: 'unmet', summary: `AB#${overview.item.id} has no pull request yet` };
+    const name = `AB#${overview.item.id}`;
+    // The pull request Dispatch picks for the item; a plan PR shared with
+    // other items never proves this one delivered.
+    const own = overview.pullRequest;
+    if (!own) return { result: 'unmet', summary: `${name} has no pull request yet` };
+    if (own.shared) return { result: 'unmet', summary: `${name} has only a shared plan PR` };
+    const read = member.delivery?.read;
+    if (!read?.facts || read.freshness !== 'live') {
+      return {
+        result: 'unknown',
+        summary: `${name}'s #${own.number} not read: ${read?.reason ?? 'not yet'}`,
+      };
     }
-    const merged = own.find((pr) => pr.state === 'merged');
-    return merged
-      ? { result: 'met', summary: `AB#${overview.item.id}'s #${merged.number} merged` }
-      : {
-          result: 'unmet',
-          summary: `AB#${overview.item.id}'s #${own[0]!.number} is ${own[0]!.state}`,
-        };
+    return read.facts.state === 'merged'
+      ? { result: 'met', summary: `${name}'s #${own.number} merged` }
+      : { result: 'unmet', summary: `${name}'s #${own.number} is ${read.facts.state}` };
   },
 });
 

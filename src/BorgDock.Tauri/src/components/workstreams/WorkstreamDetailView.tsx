@@ -1,11 +1,11 @@
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { Bot, MoreHorizontal, Play, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BackButton } from '@/components/layout/BackButton';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button, IconButton, Input, Pill, Tabs } from '@/components/shared/primitives';
 import { isOverlayOpen, popView } from '@/services/navigation';
 import { setStatus, setTitle } from '@/services/workstreams/edits';
-import { LIMITS } from '@/services/workstreams/types';
+import { LIMITS, type RunKind } from '@/services/workstreams/types';
 import { toastError } from '@/stores/toast-store';
 import { selectTopView, useUiStore, type WorkstreamTab } from '@/stores/ui-store';
 import { useWorkstreamSourcesStore } from '@/stores/workstream-sources-store';
@@ -20,6 +20,9 @@ import { MembersTab } from './MembersTab';
 import { Menu, type MenuItem } from './Menu';
 import { NextActionCard } from './NextActionCard';
 import { OutcomeList } from './OutcomeList';
+import { ProposalsPanel } from './ProposalsPanel';
+import { copyAsMarkdown, exportJson } from './transfer';
+import { WorkstreamRunSheet } from './WorkstreamRunSheet';
 import { wsEdit } from './ws-ui';
 
 const STATUS_PILL = {
@@ -59,6 +62,7 @@ export function WorkstreamDetailView({ id, tab = 'overview' }: WorkstreamDetailV
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [merging, setMerging] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [running, setRunning] = useState<RunKind | null>(null);
   const now = useClock();
 
   useEffect(() => {
@@ -72,6 +76,12 @@ export function WorkstreamDetailView({ id, tab = 'overview' }: WorkstreamDetailV
       if (e.key === 'l' || e.key === 'L') {
         e.preventDefault();
         useWorkstreamsUiStore.getState().openPicker(id);
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        setRunning('review');
+      } else if (e.key === 'w' || e.key === 'W') {
+        e.preventDefault();
+        setRunning('work');
       } else if (e.key === 'e' || e.key === 'E') {
         const edit = window.document.querySelector<HTMLButtonElement>('[data-next-action-edit]');
         if (edit) {
@@ -181,14 +191,37 @@ export function WorkstreamDetailView({ id, tab = 'overview' }: WorkstreamDetailV
           <span className="bd-detail__crumb">Workstream</span>
           <span className="bd-ws-detail__actions">
             {!readOnly && (
-              <Button
-                variant="secondary"
-                size="sm"
-                leading={<Plus size={12} />}
-                onClick={() => openPicker(id)}
-              >
-                Add records
-              </Button>
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  leading={<Play size={12} />}
+                  disabled={!document.nextAction}
+                  title={document.nextAction ? undefined : 'Set a next action first'}
+                  aria-keyshortcuts="W"
+                  onClick={() => setRunning('work')}
+                >
+                  Work next action
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  leading={<Bot size={12} />}
+                  aria-keyshortcuts="R"
+                  onClick={() => setRunning('review')}
+                >
+                  Review with agent
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  leading={<Plus size={12} />}
+                  aria-keyshortcuts="L"
+                  onClick={() => openPicker(id)}
+                >
+                  Add records
+                </Button>
+              </>
             )}
             {!entry.readOnly && (
               <Menu
@@ -201,7 +234,23 @@ export function WorkstreamDetailView({ id, tab = 'overview' }: WorkstreamDetailV
                     aria-label="More for this workstream"
                   />
                 )}
-                groups={[{ items: statusItems }]}
+                groups={[
+                  { items: statusItems },
+                  {
+                    items: [
+                      {
+                        id: 'markdown',
+                        label: 'Copy as Markdown',
+                        onSelect: () => void copyAsMarkdown(document, assessment),
+                      },
+                      {
+                        id: 'json',
+                        label: 'Export JSON…',
+                        onSelect: () => void exportJson(document),
+                      },
+                    ],
+                  },
+                ]}
               />
             )}
           </span>
@@ -300,6 +349,7 @@ export function WorkstreamDetailView({ id, tab = 'overview' }: WorkstreamDetailV
                   readOnly={readOnly}
                   now={now}
                 />
+                <ProposalsPanel document={document} assessment={assessment} readOnly={readOnly} />
                 <OutcomeList document={document} assessment={assessment} readOnly={readOnly} />
                 <DecisionPanel document={document} assessment={assessment} readOnly={readOnly} />
               </div>
@@ -336,6 +386,14 @@ export function WorkstreamDetailView({ id, tab = 'overview' }: WorkstreamDetailV
         </div>
       </div>
 
+      {running && !readOnly && (running === 'review' || document.nextAction) && (
+        <WorkstreamRunSheet
+          document={document}
+          assessment={assessment}
+          kind={running}
+          onClose={() => setRunning(null)}
+        />
+      )}
       {merging && entry.conflict && (
         <ConflictView
           workstreamId={id}

@@ -1,5 +1,5 @@
 /**
- * Workstreams show in development builds only until the whole feature has
- * landed (docs/superpowers/plans/2026-10-26-workstreams.md, slice 11).
+ * Workstreams on or off in one place. On since 4.7.0; the switch stays so a
+ * build can turn the section, its chips and its runtime off together.
  */
-export const WORKSTREAMS_ENABLED: boolean = import.meta.env.DEV;
+export const WORKSTREAMS_ENABLED: boolean = true;

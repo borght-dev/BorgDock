@@ -90,13 +90,16 @@ const COLLECTIONS: Collection[] = [
   { name: 'log', id: (e) => e.id as string, label: () => 'Log' },
 ];
 
-/** Two machines verifying the same outcome by rule agree; the earlier one stands. */
-function settleVerification(mine: Entity, theirs: Entity): Entity {
+/**
+ * Two machines verifying the same outcome by rule agree: the earlier
+ * verification stands on both sides. Any other pair of verifications merges
+ * like every other field.
+ */
+function agreedVerification(mine: Entity, theirs: Entity): Entity | null {
   const a = mine.verification as Entity | undefined;
   const b = theirs.verification as Entity | undefined;
-  if (!a || !b || a.state !== b.state || a.state !== 'verified') return mine;
-  const earlier = String(b.at ?? '') < String(a.at ?? '') ? b : a;
-  return { ...mine, verification: earlier };
+  if (!a || !b || a.state !== 'verified' || b.state !== 'verified') return null;
+  return String(b.at ?? '') < String(a.at ?? '') ? b : a;
 }
 
 function mergeEntity(
@@ -108,9 +111,9 @@ function mergeEntity(
   label: string,
   conflicts: FieldConflict[],
 ): Entity {
-  const outcome = collection === 'outcomes';
-  const settled = outcome ? settleVerification(mine, theirs) : mine;
-  const theirsSettled = outcome ? { ...theirs, verification: settled.verification } : theirs;
+  const agreed = collection === 'outcomes' ? agreedVerification(mine, theirs) : null;
+  const settled = agreed ? { ...mine, verification: agreed } : mine;
+  const theirsSettled = agreed ? { ...theirs, verification: agreed } : theirs;
   const merged: Entity = { ...settled };
   const keys = new Set([...Object.keys(settled), ...Object.keys(theirsSettled)]);
   for (const key of keys) {

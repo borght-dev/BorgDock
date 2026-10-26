@@ -305,6 +305,12 @@ export interface Overview {
    * items of others. Built the same way, never shown in Dispatch.
    */
   context?: ItemOverview[];
+  /**
+   * A Dispatch item's pull requests when the context items count too: a
+   * plan PR linked on one Dispatch item and on context items is shared.
+   * Only for items where that differs; Dispatch itself shows `pullRequests`.
+   */
+  combinedPullRequests?: Record<number, UnitPullRequest[]>;
   unlinkedThreads: UnlinkedThread[];
   slots: Slot[];
 }

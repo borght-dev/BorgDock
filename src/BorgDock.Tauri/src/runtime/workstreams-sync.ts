@@ -1,5 +1,5 @@
 import { bringMainWindowForward } from '@/hooks/useFlyoutSync';
-import { configuredHosts } from '@/services/dispatch/hosts';
+import { configuredHosts, rawId } from '@/services/dispatch/hosts';
 import {
   dispatchAdoClient,
   everySourceRead,
@@ -13,8 +13,16 @@ import { getClient, initClient } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import { showWorkstream } from '@/services/navigation';
 import { PollingManager } from '@/services/polling';
+import { t3ThreadDetail } from '@/services/t3/api';
 import { assessWorkstream } from '@/services/workstreams/attention';
-import { recordVerification, relinkMember } from '@/services/workstreams/edits';
+import { parseProposal } from '@/services/workstreams/brief';
+import {
+  addProposal,
+  markRunRead,
+  recordVerification,
+  relinkMember,
+} from '@/services/workstreams/edits';
+import { prRefFromUrl } from '@/services/workstreams/identity';
 import { ADD_TO_WORKSTREAM_EVENT, type AddRequest } from '@/services/workstreams/membership';
 import {
   notifyWorkstreams,
@@ -74,11 +82,15 @@ export function scheduleRecompute(): void {
 }
 
 function polledPullRequests() {
-  const { pullRequests, closedPullRequests } = usePrStore.getState();
+  const { pullRequests, closedPullRequests, repoPolledAt } = usePrStore.getState();
   const polled = new Map<string, ReturnType<typeof toPolled>>();
   for (const entry of [...closedPullRequests, ...pullRequests]) {
     const pr = entry.pullRequest;
-    polled.set(polledKey(pr.repoOwner, pr.repoName, pr.number), toPolled(entry));
+    const at = repoPolledAt[`${pr.repoOwner}/${pr.repoName}`.toLowerCase()];
+    polled.set(
+      polledKey(pr.repoOwner, pr.repoName, pr.number),
+      toPolled(entry, at ? new Date(at).toISOString() : null),
+    );
   }
   return polled;
 }
@@ -88,11 +100,27 @@ function buildSnapshot(now: number): SourceSnapshot {
   const settings = useSettingsStore.getState().settings;
   const sources = useWorkstreamSourcesStore.getState();
   const items = new Map<number, ItemOverview>();
-  for (const overview of [
-    ...(dispatch.overview?.context ?? []),
-    ...(dispatch.overview?.items ?? []),
-  ]) {
+  const contextIds = new Set<number>();
+  for (const overview of dispatch.overview?.context ?? []) {
     items.set(overview.item.id, overview);
+    contextIds.add(overview.item.id);
+  }
+  // A Dispatch item's pull requests as the workstreams see them: a plan PR it
+  // shares with context items is shared here, though Dispatch shows it as its own.
+  const combined = dispatch.overview?.combinedPullRequests ?? {};
+  for (const overview of dispatch.overview?.items ?? []) {
+    const pullRequests = combined[overview.item.id];
+    items.set(
+      overview.item.id,
+      pullRequests
+        ? {
+            ...overview,
+            pullRequests,
+            pullRequest: pullRequests.find((pr) => !pr.shared) ?? pullRequests[0] ?? null,
+          }
+        : overview,
+    );
+    contextIds.delete(overview.item.id);
   }
   const ado = settings.azureDevOps;
   const adoReady = !!ado.organization && (ado.authMethod === 'azCli' || !!ado.personalAccessToken);
@@ -105,6 +133,8 @@ function buildSnapshot(now: number): SourceSnapshot {
       pollMs: Math.max(ADO_POLL_MS, (ado.pollIntervalSeconds ?? 60) * 1000),
     },
     items,
+    contextIds,
+    contextStatus: dispatch.contextStatus,
     missingItemIds: new Set(dispatch.missingItemIds),
     gitHub: {
       configured: settings.setupComplete && settings.repos.length > 0,
@@ -132,12 +162,14 @@ export function recomputeWorkstreams(): void {
     workstreams.device.deviceLabel,
     dispatch.overview,
     dispatch.missingItemIds,
+    dispatch.contextStatus,
     dispatch.threads,
     dispatch.hosts,
     dispatch.ado,
     prs.pullRequests,
     prs.closedPullRequests,
     prs.lastPollTime,
+    prs.repoPolledAt,
     sources.lookedUp,
     sources.cache,
     settings.azureDevOps,
@@ -175,6 +207,80 @@ export function recomputeWorkstreams(): void {
   useWorkstreamSourcesStore.getState().rememberMeta(seen);
   notify(assessments);
   applyFindings(assessments);
+  void readProposals(assessments);
+}
+
+/** Review threads whose last message is being read, and when each was last asked for. */
+const reading = new Set<string>();
+const askedAt = new Map<string, number>();
+const ASK_AGAIN_MS = 60_000;
+
+/**
+ * A review run that stopped (waiting on you, or settled): read its last
+ * message once, keep the proposal it ends with, and mark the run read.
+ */
+async function readProposals(
+  assessments: Record<string, ReturnType<typeof assessWorkstream>>,
+): Promise<void> {
+  const store = useWorkstreamsStore.getState;
+  for (const [id, assessment] of Object.entries(assessments)) {
+    const entry = store().entries[id];
+    if (!entry || entry.readOnly || entry.conflict) continue;
+    for (const run of entry.document.runs) {
+      if (run.kind !== 'review' || run.read || reading.has(run.key)) continue;
+      const thread = assessment.members.get(run.key)?.thread;
+      if (!thread) continue;
+      // A question or a plan is the agent asking on the way; the answer comes when it stops.
+      const stopped =
+        thread.status === 'your-turn' || thread.status === 'settled' || thread.status === 'failed';
+      if (!thread.available || !stopped) continue;
+      if (Date.now() - (askedAt.get(run.key) ?? 0) < ASK_AGAIN_MS) continue;
+      askedAt.set(run.key, Date.now());
+      reading.add(run.key);
+      try {
+        let message = thread.lastAgentMessage;
+        if (!message) {
+          const host = configuredHosts(useSettingsStore.getState().settings).find(
+            (h) => h.id === thread.hostId,
+          );
+          message = (
+            await t3ThreadDetail(
+              { id: thread.hostId, baseUrl: host?.baseUrl },
+              rawId(thread.hostId, thread.id),
+            )
+          ).lastAgentMessage;
+        }
+        if (!message) continue;
+        const now = new Date().toISOString();
+        const hosts = useDispatchStore.getState().hosts;
+        const ado = useSettingsStore.getState().settings.azureDevOps;
+        const document = store().entries[id]?.document;
+        if (!document) continue;
+        const proposal = parseProposal(message, document, run.key, now, {
+          adoOrganization: ado.organization || null,
+          adoProject: ado.project || null,
+          environments: hosts.flatMap((h) =>
+            h.environmentId ? [{ environmentId: h.environmentId, hostId: h.id }] : [],
+          ),
+        }) ?? {
+          id: `${run.key}@${now}`,
+          runKey: run.key,
+          at: now,
+          items: [],
+          dropped: [],
+          message: message.slice(0, 4_000),
+        };
+        store().edit(id, (d) => {
+          const added = addProposal(d, proposal);
+          return 'error' in added ? added : markRunRead(added.document, run.key);
+        });
+      } catch (error) {
+        log.warn('review not read', { id, error: String(error) });
+      } finally {
+        reading.delete(run.key);
+      }
+    }
+  }
 }
 
 function notify(assessments: Record<string, ReturnType<typeof assessWorkstream>>): void {
@@ -253,6 +359,31 @@ function clientFor(owner: string, repo: string, account: string | null) {
   return initClient(() => getGitHubToken(pat, chosen), chosen);
 }
 
+/**
+ * The own pull request of every work item a workstream links, when BorgDock
+ * doesn't poll it: "item delivered" needs it read, not remembered.
+ */
+function deliveryTargets(polled: ReadonlySet<string>) {
+  const overview = useDispatchStore.getState().overview;
+  if (!overview) return [];
+  const byId = new Map([...(overview.context ?? []), ...overview.items].map((o) => [o.item.id, o]));
+  const combined = overview.combinedPullRequests ?? {};
+  const targets: { owner: string; repo: string; number: number; account: string | null }[] = [];
+  for (const document of documents()) {
+    if (document.status === 'archived') continue;
+    for (const member of document.members) {
+      if (member.ref.kind !== 'ado-item') continue;
+      const found = byId.get(member.ref.id);
+      const pullRequests = combined[member.ref.id] ?? found?.pullRequests ?? [];
+      const own = pullRequests.find((pr) => !pr.shared);
+      const ref = own ? prRefFromUrl(own.url) : null;
+      if (!ref || polled.has(polledKey(ref.owner, ref.repo, ref.number))) continue;
+      targets.push({ owner: ref.owner, repo: ref.repo, number: ref.number, account: null });
+    }
+  }
+  return targets;
+}
+
 /** Read the linked pull requests BorgDock doesn't poll, when they are due. */
 export function lookUpWorkstreamPullRequests(): Promise<void> {
   if (lookupInFlight) {
@@ -265,9 +396,9 @@ export function lookUpWorkstreamPullRequests(): Promise<void> {
       const polled = new Set(polledPullRequests().keys());
       const previous = useWorkstreamSourcesStore.getState().lookedUp;
       const now = Date.now();
-      const targets = pullRequestTargets(documents(), polled).filter((t) =>
-        isDue(previous.get(targetKey(t)), now),
-      );
+      const wanted = [...pullRequestTargets(documents(), polled), ...deliveryTargets(polled)];
+      const unique = new Map(wanted.map((t) => [targetKey(t), t]));
+      const targets = [...unique.values()].filter((t) => isDue(previous.get(targetKey(t)), now));
       if (targets.length === 0 || !getClient()) continue;
       const accounts = new Map<string, string | null>();
       for (const target of targets) {
@@ -383,6 +514,8 @@ export function startWorkstreamsSync(): () => void {
         void lookUpWorkstreamPullRequests();
         scheduleRecompute();
       } else if (state.lastPollTime !== previous.lastPollTime) {
+        // Every accepted poll: what is due is read again, even when nothing changed.
+        void lookUpWorkstreamPullRequests();
         scheduleRecompute();
       }
     }),
@@ -413,7 +546,10 @@ export function startWorkstreamsSync(): () => void {
       scheduleRecompute();
     }),
   ];
-  const minute = window.setInterval(scheduleRecompute, 60_000);
+  const minute = window.setInterval(() => {
+    void lookUpWorkstreamPullRequests();
+    scheduleRecompute();
+  }, 60_000);
   let stopListening: (() => void) | undefined;
   let stopped = false;
   listenToOtherWindows()

@@ -142,7 +142,7 @@ describe('resolving members', () => {
 
   it('marks a polled pull request out of date when the poll stopped', () => {
     const sources = snapshot({
-      polled: new Map([polled('acme', 'shop', 12)]),
+      polled: new Map([polled('acme', 'shop', 12, { polledAt: '2026-10-26T11:00:00Z' })]),
       gitHub: {
         configured: true,
         lastPollAt: new Date(SNAPSHOT_NOW - 10 * 60_000).toISOString(),
@@ -150,6 +150,45 @@ describe('resolving members', () => {
       },
     });
     expect(resolveMember(member(pr('shop', 12)), sources).freshness).toBe('stale');
+  });
+});
+
+describe('freshness of what BorgDock read', () => {
+  it('a polled pull request of a repository that failed its poll is out of date', () => {
+    const sources = snapshot({
+      polled: new Map([polled('acme', 'shop', 12, { polledAt: '2026-10-25T00:00:00Z' })]),
+    });
+    expect(resolveMember(member(pr('shop', 12)), sources).freshness).toBe('stale');
+  });
+
+  it('a looked-up open pull request is out of date once it is not read again', () => {
+    const found = (readAt: number) =>
+      snapshot({
+        lookedUp: new Map([
+          lookedUp('acme', 'shop', 12, {
+            status: 'found',
+            readAt,
+            checkedAt: readAt,
+            failing: null,
+            pullRequest: { state: 'open', nameWithOwner: 'acme/shop', number: 12 } as never,
+          }),
+        ]),
+      });
+    expect(resolveMember(member(pr('shop', 12)), found(SNAPSHOT_NOW - 60_000)).freshness).toBe(
+      'live',
+    );
+    expect(resolveMember(member(pr('shop', 12)), found(SNAPSHOT_NOW - 60 * 60_000)).freshness).toBe(
+      'stale',
+    );
+  });
+
+  it('a context item whose read failed is out of date, whatever ADO said of the rest', () => {
+    const sources = snapshot({
+      items: overviews([], [], [], [makeItem({ id: 900, state: 'Done' })]),
+      contextIds: new Set([900]),
+      contextStatus: { ok: false, at: '2026-10-25T00:00:00Z', error: 'timeout' },
+    });
+    expect(resolveMember(member(item(900)), sources).freshness).toBe('offline');
   });
 });
 
@@ -173,7 +212,9 @@ describe('rules', () => {
 
   it('never says yes or no from evidence that is not live', () => {
     const stale = snapshot({
-      polled: new Map([polled('acme', 'shop', 12, { state: 'merged' })]),
+      polled: new Map([
+        polled('acme', 'shop', 12, { state: 'merged', polledAt: '2026-10-01T00:00:00Z' }),
+      ]),
       gitHub: { configured: true, lastPollAt: '2026-10-01T00:00:00Z', pollMs: 60_000 },
     });
     const resolved = resolveMember(member(pr('shop', 12)), stale);
@@ -201,6 +242,35 @@ describe('rules', () => {
       resolved,
     );
     expect(outcome).toEqual({ result: 'unmet', summary: 'AB#201 has only a shared plan PR' });
+  });
+
+  it('an item is delivered by its own pull request as Dispatch picks it, read live', () => {
+    const items = overviews(
+      [
+        makeItem({
+          id: 210,
+          linkedPullRequests: [
+            { repositoryId: 'r', number: 60 },
+            { repositoryId: 'r', number: 61 },
+          ],
+        }),
+      ],
+      [
+        makeKnownPr({ number: 60, state: 'merged', title: 'AB#210 first try', workItemIds: [210] }),
+        makeKnownPr({ number: 61, state: 'open', title: 'AB#210 second try', workItemIds: [210] }),
+      ],
+    );
+    const rule = (key: string): EvidenceRule => ({ id: 'r', kind: 'item-delivered', target: key });
+    const open = resolveMember(
+      member(item(210)),
+      snapshot({ items, polled: new Map([polled('acme', 'shop', 61)]) }),
+    );
+    expect(evaluateRule(rule(open.member.key), open)).toEqual({
+      result: 'unmet',
+      summary: "AB#210's #61 is open",
+    });
+    const unread = resolveMember(member(item(210)), snapshot({ items }));
+    expect(evaluateRule(rule(unread.member.key), unread).result).toBe('unknown');
   });
 
   it('an item reaches a state once it is there or later in its workflow', () => {

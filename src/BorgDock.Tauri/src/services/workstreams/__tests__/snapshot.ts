@@ -83,6 +83,7 @@ export function polled(
     repositoryId: null,
     renamedTo: null,
     updatedAt: AT,
+    polledAt: AT,
     ...overrides,
   };
   return [`${owner}/${repo}#${number}`.toLowerCase(), pr] as const;
@@ -103,6 +104,8 @@ export function snapshot(overrides: Partial<SourceSnapshot> = {}): SourceSnapsho
     ado: { organization: 'acme', status: { ok: true, at: AT, error: null }, pollMs: 60_000 },
     items: new Map(),
     missingItemIds: new Set(),
+    contextIds: new Set(),
+    contextStatus: { ok: true, at: AT, error: null },
     gitHub: { configured: true, lastPollAt: AT, pollMs: 60_000 },
     polled: new Map(),
     lookedUp: new Map(),

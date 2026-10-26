@@ -105,6 +105,8 @@ interface DispatchState {
   contextItems: DispatchItem[];
   /** Context item ids ADO did not return: deleted, or out of reach. */
   missingItemIds: number[];
+  /** Whether the last read of the context items answered; on a failure the items are as of `at`. */
+  contextStatus: SourceStatus;
   /** The pull requests ADO links on the items, read from GitHub (`linked-prs.ts`). */
   linkedPullRequests: KnownPullRequest[];
   /** ADO's id of a linked pull request's repository to its GitHub `owner/name`. Persisted. */
@@ -136,7 +138,8 @@ interface DispatchState {
   scheduleLastRun: string | null;
 
   setItems: (items: DispatchItem[], status: SourceStatus) => void;
-  setContextItems: (items: DispatchItem[], missing: number[]) => void;
+  setContextItems: (items: DispatchItem[], missing: number[], status: SourceStatus) => void;
+  setContextStatus: (status: SourceStatus) => void;
   setLinkedPullRequests: (
     pullRequests: KnownPullRequest[],
     repositories: Record<string, string>,
@@ -174,6 +177,7 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   items: [],
   contextItems: [],
   missingItemIds: [],
+  contextStatus: NOT_SYNCED,
   threads: [],
   projects: [],
   linkedPullRequests: [],
@@ -198,11 +202,14 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   setItems: (items, status) =>
     set((state) => ({ items: shareEntities(state.items, items, (item) => item.id), ado: status })),
 
-  setContextItems: (items, missing) =>
+  setContextItems: (items, missing, contextStatus) =>
     set((state) => ({
       contextItems: shareEntities(state.contextItems, items, (item) => item.id),
       missingItemIds: shareValue(state.missingItemIds, missing),
+      contextStatus,
     })),
+
+  setContextStatus: (contextStatus) => set({ contextStatus }),
 
   setLinkedPullRequests: (linkedPullRequests, linkedRepositories) => {
     const learned = JSON.stringify(linkedRepositories) !== JSON.stringify(get().linkedRepositories);

@@ -117,6 +117,12 @@ interface PrState extends DerivedCache {
   _detectedTeams: string[];
   isPolling: boolean;
   lastPollTime: Date | null;
+  /**
+   * When each repository last answered a poll (`owner/name` in lower case).
+   * A repository that failed keeps its last pull requests in the list; this
+   * tells them apart from current ones.
+   */
+  repoPolledAt: Record<string, number>;
   rateLimit: RateLimit | null;
   /** Maps "owner/repo#number:reviewerLogin" (or ":team:slug") → ISO timestamp of first detection */
   reviewRequestTimestamps: Record<string, string>;
@@ -148,6 +154,7 @@ interface PrState extends DerivedCache {
   /** Team list detected from `GET /user/teams`. */
   setDetectedTeams: (teams: string[]) => void;
   setPollingState: (isPolling: boolean, lastPollTime?: Date) => void;
+  markReposPolled: (repos: readonly string[], at: number) => void;
   setRateLimit: (rateLimit: RateLimit | null) => void;
   /** Re-fetch a single PR and merge it into the store. Open PRs replace the
    *  matching entry in {@link pullRequests}; closed/merged PRs are moved to
@@ -345,6 +352,7 @@ export const usePrStore = create<PrState>()((set, get) => ({
   _detectedTeams: [],
   isPolling: false,
   lastPollTime: null,
+  repoPolledAt: {},
   rateLimit: null,
   reviewRequestTimestamps: {},
 
@@ -512,6 +520,14 @@ export const usePrStore = create<PrState>()((set, get) => ({
       _detectedTeams: teams,
       teams: mergeTeamLists(state._manualTeams, teams),
     })),
+  markReposPolled: (repos, at) =>
+    set((state) => ({
+      repoPolledAt: {
+        ...state.repoPolledAt,
+        ...Object.fromEntries(repos.map((repo) => [repo, at])),
+      },
+    })),
+
   setPollingState: (isPolling, lastPollTime) =>
     set({ isPolling, ...(lastPollTime ? { lastPollTime } : {}) }),
   setRateLimit: (rateLimit) => set({ rateLimit }),

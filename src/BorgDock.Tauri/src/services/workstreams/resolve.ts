@@ -9,7 +9,7 @@ import {
 } from '@/services/dispatch/types';
 import type { LookupResult } from '@/services/github/pr-lookup';
 import type { HostStatus, SourceStatus } from '@/stores/dispatch-store';
-import { shortIdentity, sourceUrl } from './identity';
+import { prRefFromUrl, shortIdentity, sourceUrl } from './identity';
 import type { AdoItemRef, GitHubPrRef, LinkRef, Member, RefKey, T3ThreadRef } from './types';
 
 /**
@@ -80,6 +80,8 @@ export interface ResolvedMember {
   url: string;
   identity: string;
   item?: ItemOverview;
+  /** An item's own pull request (not a shared plan PR), as BorgDock reads it now. */
+  delivery?: { number: number; read: PrRead } | null;
   pr?: PrFacts;
   thread?: AgentThread;
   hostLabel?: string;
@@ -87,6 +89,8 @@ export interface ResolvedMember {
 
 export interface PolledPullRequest extends PrFacts {
   updatedAt: string | null;
+  /** When its repository last answered a poll. */
+  polledAt: string | null;
 }
 
 export interface SourceSnapshot {
@@ -98,6 +102,9 @@ export interface SourceSnapshot {
   };
   /** Every item Dispatch built, its own and the context ones, by id. */
   items: ReadonlyMap<number, ItemOverview>;
+  /** The items only workstreams read (`overview.context`), and how their last read went. */
+  contextIds: ReadonlySet<number>;
+  contextStatus: SourceStatus;
   missingItemIds: ReadonlySet<number>;
   gitHub: {
     configured: boolean;
@@ -209,33 +216,53 @@ function withPr(resolved: ResolvedMember, pr: PrFacts, activityAt: string | null
   };
 }
 
-function resolvePullRequest(
-  member: Member,
-  ref: GitHubPrRef,
+/** How long a looked-up pull request counts as current: an open one changes, a merged one doesn't. */
+const LOOKUP_FRESH_MS: Record<PullRequestState, number> = {
+  open: 15 * 60_000,
+  closed: 3 * 60 * 60_000,
+  merged: Number.POSITIVE_INFINITY,
+  unknown: 15 * 60_000,
+};
+
+/** What BorgDock knows of one pull request now, from its poll or a lookup. */
+export interface PrRead {
+  facts: PrFacts | null;
+  freshness: Freshness;
+  asOf: string | null;
+  reason: string | null;
+  activityAt: string | null;
+}
+
+/** Read one pull request out of the snapshot: polled first, then looked up. */
+export function readPullRequest(
+  ref: Pick<GitHubPrRef, 'owner' | 'repo' | 'number'>,
   snapshot: SourceSnapshot,
-): ResolvedMember {
-  const start = base(member, snapshot);
+): PrRead {
+  const unread: PrRead = {
+    facts: null,
+    freshness: 'unread',
+    asOf: null,
+    reason: null,
+    activityAt: null,
+  };
   if (!snapshot.gitHub.configured) {
-    return { ...start, freshness: 'not-connected', reason: 'GitHub is not set up.' };
+    return { ...unread, freshness: 'not-connected', reason: 'GitHub is not set up.' };
   }
   const key = prKey(ref);
   const polled = snapshot.polled.get(key);
   if (polled) {
-    const fresh =
-      age(snapshot.now, snapshot.gitHub.lastPollAt) < FRESH_POLLS * snapshot.gitHub.pollMs;
-    return withPr(
-      {
-        ...start,
-        freshness: fresh ? 'live' : 'stale',
-        asOf: snapshot.gitHub.lastPollAt,
-        reason: fresh ? null : 'BorgDock has not reached GitHub for a while.',
-      },
-      polled,
-      polled.updatedAt,
-    );
+    // A repository that failed its poll keeps its last pull requests in the list.
+    const fresh = age(snapshot.now, polled.polledAt) < FRESH_POLLS * snapshot.gitHub.pollMs;
+    return {
+      facts: polled,
+      freshness: fresh ? 'live' : 'stale',
+      asOf: polled.polledAt,
+      reason: fresh ? null : `BorgDock has not read ${ref.owner}/${ref.repo} for a while.`,
+      activityAt: polled.updatedAt,
+    };
   }
   const looked = snapshot.lookedUp.get(key);
-  if (!looked) return start;
+  if (!looked) return unread;
   switch (looked.status) {
     case 'found': {
       const pr = looked.pullRequest;
@@ -262,27 +289,41 @@ function resolvePullRequest(
         repositoryId: pr.repositoryId,
         renamedTo: renamed ? pr.nameWithOwner : null,
       };
-      const asOf = new Date(looked.readAt).toISOString();
-      return withPr(
-        {
-          ...start,
-          freshness: looked.failing ? 'stale' : 'live',
-          asOf,
-          reason: looked.failing,
-        },
+      const current = snapshot.now - looked.readAt <= LOOKUP_FRESH_MS[pr.state];
+      const live = !looked.failing && current;
+      return {
         facts,
-        null,
-      );
+        freshness: live ? 'live' : 'stale',
+        asOf: new Date(looked.readAt).toISOString(),
+        reason: live ? null : (looked.failing ?? 'Not read again since.'),
+        activityAt: null,
+      };
     }
     case 'missing':
       return looked.confirmed
-        ? { ...start, freshness: 'missing', reason: 'GitHub has no such pull request (any more).' }
-        : start;
+        ? { ...unread, freshness: 'missing', reason: 'GitHub has no such pull request (any more).' }
+        : unread;
     case 'no-access':
-      return { ...start, freshness: 'not-connected', reason: looked.error };
+      return { ...unread, freshness: 'not-connected', reason: looked.error };
     case 'error':
-      return { ...start, freshness: 'offline', reason: looked.error };
+      return { ...unread, freshness: 'offline', reason: looked.error };
   }
+}
+
+function resolvePullRequest(
+  member: Member,
+  ref: GitHubPrRef,
+  snapshot: SourceSnapshot,
+): ResolvedMember {
+  const start = base(member, snapshot);
+  const read = readPullRequest(ref, snapshot);
+  const resolved = {
+    ...start,
+    freshness: read.freshness,
+    reason: read.reason,
+    asOf: read.asOf ?? start.asOf,
+  };
+  return read.facts ? withPr(resolved, read.facts, read.activityAt) : resolved;
 }
 
 function resolveItem(member: Member, ref: AdoItemRef, snapshot: SourceSnapshot): ResolvedMember {
@@ -317,9 +358,13 @@ function resolveItem(member: Member, ref: AdoItemRef, snapshot: SourceSnapshot):
     }
     return start;
   }
-  const status = snapshot.ado.status;
+  const status = snapshot.contextIds.has(ref.id) ? snapshot.contextStatus : snapshot.ado.status;
   const fresh = status.ok && age(snapshot.now, status.at) < FRESH_POLLS * snapshot.ado.pollMs;
   const item = overview.item;
+  const own = overview.pullRequest && !overview.pullRequest.shared ? overview.pullRequest : null;
+  const ownRef = own ? prRefFromUrl(own.url) : null;
+  const delivery =
+    own && ownRef ? { number: own.number, read: readPullRequest(ownRef, snapshot) } : null;
   const resolvedState = item.stateCategory === 'Resolved' || item.stateCategory === 'Completed';
   return {
     ...start,
@@ -335,6 +380,7 @@ function resolveItem(member: Member, ref: AdoItemRef, snapshot: SourceSnapshot):
     needsYou: overview.verdict.tone === 'bad',
     url: item.url,
     item: overview,
+    delivery,
   };
 }
 

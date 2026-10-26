@@ -205,6 +205,8 @@ export interface Proposal {
   items: ProposalItem[];
   /** References the agent named that the workstream does not hold. */
   dropped: string[];
+  /** The agent's reply, when it held no proposal block. */
+  message?: string;
 }
 
 export type RunKind = 'review' | 'work';

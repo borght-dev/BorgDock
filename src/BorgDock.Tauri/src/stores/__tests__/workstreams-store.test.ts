@@ -191,6 +191,58 @@ describe('workstreams store', () => {
     });
   });
 
+  it("keeps the other machine's version across a restart while a conflict is open", async () => {
+    const id = store().create('x');
+    await settleWrites();
+    writeElsewhere(id, (d) => ({ ...d, title: 'Theirs', goal: 'their goal' }));
+    edit(id, (d, c) => setTitle(d, 'Mine', c));
+    await settleWrites();
+    expect(store().entries[id]!.conflict).not.toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    await restart();
+    await settleWrites();
+    expect(onDisk(id)).toMatchObject({ title: 'Theirs', goal: 'their goal' });
+    expect(store().entries[id]!.conflict?.conflicts.map((c) => c.path)).toEqual(['title']);
+  });
+
+  it('undo takes back only its own change', async () => {
+    const id = store().create('x');
+    store().edit(id, (d, c) => addMembers(d, [{ ref: A, label: 'a' }], c));
+    await settleWrites();
+    store().edit(id, (d, c) => removeMember(d, refKey(A), c), { undoable: true });
+    await settleWrites();
+    writeElsewhere(id, (d) => ({ ...d, goal: 'from the mini' }));
+    await store().refresh();
+    store().undo(id);
+    await settleWrites();
+    expect(onDisk(id)).toMatchObject({ goal: 'from the mini' });
+    expect(onDisk(id).members.map((m) => m.key)).toEqual([refKey(A)]);
+  });
+
+  it('reads a restored previous version fresh, and saves on top of it', async () => {
+    const id = store().create('first');
+    await settleWrites();
+    edit(id, (d, c) => setTitle(d, 'second', c));
+    await settleWrites();
+    disk.files.get('')!.set(`${id}.json`, { contents: '{ broken', modifiedMs: 999 });
+    await store().restoreBackup(id);
+    expect(store().entries[id]!.document.title).toBe('first');
+    edit(id, (d, c) => setGoal(d, 'after the restore', c));
+    await settleWrites();
+    expect(onDisk(id)).toMatchObject({ title: 'first', goal: 'after the restore' });
+  });
+
+  it('lets go of a workstream deleted on another machine', async () => {
+    const id = store().create('x');
+    await settleWrites();
+    disk.files.get('')!.delete(`${id}.json`);
+    await store().refresh();
+    expect(store().entries[id]).toBeDefined();
+    await store().refresh();
+    expect(store().entries[id]).toBeUndefined();
+  });
+
   it('asks when both machines changed one field, then writes the choice', async () => {
     const id = store().create('x');
     await settleWrites();
@@ -270,6 +322,26 @@ describe('workstreams store', () => {
     expect(store().trashed).toEqual([expect.objectContaining({ id, title: 'Old goal' })]);
     await store().restoreTrashed(id);
     expect(store().entries[id]!.document.title).toBe('Old goal');
+  });
+
+  it('imports a new workstream, and merges one it already holds', async () => {
+    const id = store().create('Exported');
+    store().edit(id, (d, c) => setGoal(d, 'from here', c));
+    await settleWrites();
+    const exported = { ...store().entries[id]!.document, title: 'Renamed elsewhere' };
+    await restart(memoryStorage());
+    expect(store().importDocument(exported)).toBe('created');
+    await settleWrites();
+    expect(store().entries[id]!.document.title).toBe('Renamed elsewhere');
+
+    const changed = { ...exported, goal: 'from the file' };
+    store().edit(id, (d, c) => setTitle(d, 'Renamed here', c));
+    expect(store().importDocument(changed)).toBe('conflict');
+    expect(
+      store()
+        .entries[id]!.conflict?.conflicts.map((c) => c.field)
+        .sort(),
+    ).toEqual(['goal', 'title']);
   });
 
   it('undoes the last undoable edit', async () => {

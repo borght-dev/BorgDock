@@ -241,8 +241,9 @@ export function buildOverview(input: EngineInput): { overview: Overview; dequeue
     .map((thread) => ({ ...thread, guessItemId: guessItem(thread, input.items) }));
 
   const overview: Overview = { generatedAt: now.toISOString(), items, unlinkedThreads, slots };
-  const context = contextOverviews(input, threads, pullRequestsOf, now);
+  const { context, combined } = contextOverviews(input, threads, pullRequestsOf, now);
   if (context.length > 0) overview.context = context;
+  if (Object.keys(combined).length > 0) overview.combinedPullRequests = combined;
   return { overview, dequeue };
 }
 
@@ -286,10 +287,10 @@ function contextOverviews(
   threads: readonly AgentThread[],
   dispatchPullRequests: ReadonlyMap<DispatchItem, UnitPullRequest[]>,
   now: Date,
-): ItemOverview[] {
+): { context: ItemOverview[]; combined: Record<number, UnitPullRequest[]> } {
   const own = new Set(input.items.map((item) => item.id));
   const contextItems = (input.contextItems ?? []).filter((item) => !own.has(item.id));
-  if (contextItems.length === 0) return [];
+  if (contextItems.length === 0) return { context: [], combined: {} };
   const links = linkThreads(contextItems, threads, input.manualLinks);
   const pullRequestsOf = new Map(
     contextItems.map((item) => [
@@ -299,7 +300,12 @@ function contextOverviews(
   );
   const together = new Map([...dispatchPullRequests, ...pullRequestsOf]);
   markShared(together);
-  return contextItems.map((item) =>
+  const combined: Record<number, UnitPullRequest[]> = {};
+  for (const [item, pullRequests] of dispatchPullRequests) {
+    const seen = together.get(item) ?? [];
+    if (seen.some((pr, i) => pr.shared !== pullRequests[i]?.shared)) combined[item.id] = seen;
+  }
+  const context = contextItems.map((item) =>
     itemOverview(
       item,
       links.threadsByItem.get(item.id) ?? [],
@@ -309,4 +315,5 @@ function contextOverviews(
       now,
     ),
   );
+  return { context, combined };
 }

@@ -1,7 +1,7 @@
 //! Tauri commands for workstream files. Every one is async and does its file
 //! I/O on a blocking thread, never inline on the GUI thread.
 
-use super::storage::{self, TrashedWorkstream, WorkstreamFile, WriteOutcome};
+use super::storage::{self, CopyReport, TrashedWorkstream, WorkstreamFile, WriteOutcome};
 use std::path::PathBuf;
 
 /// The sync folder keeps workstreams in a folder of their own.
@@ -105,6 +105,43 @@ pub async fn workstreams_device_name() -> Result<String, String> {
             })
             .unwrap_or_else(|| "This computer".to_string());
         Ok(name)
+    })
+    .await
+}
+
+/// Copy every workstream of `from` into `to` (each a sync folder or none,
+/// for this machine's own folder). A workstream both hold in different
+/// versions lands as a copy named after `device`, offered for merging.
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn workstreams_copy_into(
+    from: Option<String>,
+    to: Option<String>,
+    device: String,
+) -> Result<CopyReport, String> {
+    blocking(move || storage::copy_into(&folder_of(from), &folder_of(to), &device)).await
+}
+
+/// An import is a workstream file, not anything bigger.
+const IMPORT_LIMIT: u64 = 4 * 1024 * 1024;
+
+/// Write an exported workstream to the file the user picked.
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn workstreams_export_file(path: String, contents: String) -> Result<(), String> {
+    blocking(move || std::fs::write(&path, contents).map_err(|e| e.to_string())).await
+}
+
+/// Read a workstream file the user picked to import.
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn workstreams_import_file(path: String) -> Result<String, String> {
+    blocking(move || {
+        let size = std::fs::metadata(&path).map_err(|e| e.to_string())?.len();
+        if size > IMPORT_LIMIT {
+            return Err("That file is too big to be a workstream.".to_string());
+        }
+        std::fs::read_to_string(&path).map_err(|e| e.to_string())
     })
     .await
 }

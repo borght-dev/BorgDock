@@ -310,6 +310,16 @@ export const commands = {
 	workstreamsRestoreBackup: (folder: string | null, id: string) => typedError<null, string>(__TAURI_INVOKE("workstreams_restore_backup", { folder, id })),
 	/**  The computer's name: what a new device is called until it is renamed. */
 	workstreamsDeviceName: () => typedError<string, string>(__TAURI_INVOKE("workstreams_device_name")),
+	/**
+	 *  Copy every workstream of `from` into `to` (each a sync folder or none,
+	 *  for this machine's own folder). A workstream both hold in different
+	 *  versions lands as a copy named after `device`, offered for merging.
+	 */
+	workstreamsCopyInto: (from: string | null, to: string | null, device: string) => typedError<CopyReport, string>(__TAURI_INVOKE("workstreams_copy_into", { from, to, device })),
+	/**  Write an exported workstream to the file the user picked. */
+	workstreamsExportFile: (path: string, contents: string) => typedError<null, string>(__TAURI_INVOKE("workstreams_export_file", { path, contents })),
+	/**  Read a workstream file the user picked to import. */
+	workstreamsImportFile: (path: string) => typedError<string, string>(__TAURI_INVOKE("workstreams_import_file", { path })),
 };
 
 /** Events */
@@ -654,6 +664,18 @@ export type ContentMatch = {
 export type ConversationReferences = {
 	explicitIds: number[],
 	mentionedIds: number[],
+};
+
+export type CopyReport = {
+	/**  Workstreams the target did not have yet. */
+	copied: number,
+	/**
+	 *  Workstreams both had, in another version: left next to the target's
+	 *  as a copy (`<id>-<suffix>.json`), which BorgDock offers to merge.
+	 */
+	copies: number,
+	/**  Workstreams both had, the same. */
+	same: number,
 };
 
 export type DiffHunk = DiffHunk_Serialize | DiffHunk_Deserialize;

@@ -57,7 +57,7 @@ describe('buildOverview with context items', () => {
   it('leaves what Dispatch shows exactly as it was', () => {
     const without = buildOverview(input({ items, threads, pullRequests }));
     const withContext = buildOverview(input({ items, threads, pullRequests, contextItems }));
-    const { context, generatedAt: _a, ...rest } = withContext.overview;
+    const { context, combinedPullRequests: _c, generatedAt: _a, ...rest } = withContext.overview;
     const { generatedAt: _b, ...before } = without.overview;
     expect(rest).toEqual(before);
     expect(withContext.dequeue).toEqual(without.dequeue);
@@ -78,6 +78,12 @@ describe('buildOverview with context items', () => {
     const done = overview.context!.find((o) => o.item.id === 900)!;
     expect(done.pullRequests[0]!.shared).toBe(true);
     expect(done.pullRequest?.shared).toBe(true);
+  });
+
+  it('says which pull request of a Dispatch item is shared once the context items count', () => {
+    const { overview } = buildOverview(input({ items, threads, pullRequests, contextItems }));
+    expect(overview.items.find((o) => o.item.id === 103)!.pullRequests[0]!.shared).toBe(false);
+    expect(overview.combinedPullRequests?.[103]?.[0]).toMatchObject({ number: 9, shared: true });
   });
 
   it('has no context without context items', () => {

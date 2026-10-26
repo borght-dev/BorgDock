@@ -70,7 +70,10 @@ export function pullRequestTargets(
 }
 
 /** A pull request BorgDock polls, as the workstream resolver reads it. */
-export function toPolled(entry: PullRequestWithChecks): PolledPullRequest {
+export function toPolled(
+  entry: PullRequestWithChecks,
+  polledAt: string | null = null,
+): PolledPullRequest {
   const pr = entry.pullRequest;
   const checks =
     entry.checksUnavailable || entry.totalCheckCount === 0
@@ -99,6 +102,7 @@ export function toPolled(entry: PullRequestWithChecks): PolledPullRequest {
     repositoryId: null,
     renamedTo: null,
     updatedAt: pr.updatedAt || null,
+    polledAt,
   };
 }
 

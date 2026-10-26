@@ -1,4 +1,4 @@
-import { FolderOpen, Plus, Search } from 'lucide-react';
+import { FileUp, FolderOpen, Plus, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Kbd, Seg2 } from '@/components/shared/primitives';
 import { commands } from '@/generated/commands';
@@ -12,6 +12,7 @@ import { useWorkstreamSourcesStore } from '@/stores/workstream-sources-store';
 import { type Entry, useWorkstreamsStore } from '@/stores/workstreams-store';
 import { useWorkstreamsUiStore } from '@/stores/workstreams-ui-store';
 import { shortcutLabel } from '@/utils/shortcut-label';
+import { importJson } from './transfer';
 import { WorkstreamCard } from './WorkstreamCard';
 import { ago } from './ws-ui';
 
@@ -143,6 +144,14 @@ export function WorkstreamsSection() {
           onChange={setFilter}
         />
         <span className="bd-ws-head__spacer" />
+        <Button
+          variant="ghost"
+          size="sm"
+          leading={<FileUp size={13} aria-hidden="true" />}
+          onClick={() => void importJson()}
+        >
+          Import…
+        </Button>
         <Button
           variant="primary"
           size="sm"

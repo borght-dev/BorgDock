@@ -1,4 +1,6 @@
 // src/components/settings/sections-catalog.ts
+import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
+
 export type SettingsSectionId =
   | 'github'
   | 'repos'
@@ -6,6 +8,7 @@ export type SettingsSectionId =
   | 'sql'
   | 'appearance'
   | 'notif'
+  | 'workstreams'
   | 'agents'
   | 'updates'
   | 'maintenance';
@@ -32,6 +35,9 @@ export const SETTINGS_SECTIONS: ReadonlyArray<SettingsSectionMeta> = [
   { id: 'sql', label: 'SQL Server', group: 'sources' },
   { id: 'appearance', label: 'Appearance', group: 'app' },
   { id: 'notif', label: 'Notifications', group: 'app' },
+  ...(WORKSTREAMS_ENABLED
+    ? [{ id: 'workstreams' as const, label: 'Workstreams', group: 'app' as const }]
+    : []),
   { id: 'agents', label: 'Agents', group: 'ai' },
   { id: 'updates', label: 'Updates', group: 'system' },
   { id: 'maintenance', label: 'Maintenance', group: 'system' },

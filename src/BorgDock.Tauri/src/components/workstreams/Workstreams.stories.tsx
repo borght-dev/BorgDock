@@ -1,13 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { LAUNCH_CATALOGUE } from '@/components/dispatch/__fixtures__/dispatch-data';
 import { MainWindow } from '@/components/layout/MainWindow';
 import { ViewStack } from '@/components/layout/ViewStack';
 import type { WorkstreamStatus } from '@/services/workstreams/types';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { type ActiveSection, useUiStore, type WorkstreamTab } from '@/stores/ui-store';
+import { useWorkstreamSourcesStore } from '@/stores/workstream-sources-store';
 import { useWorkstreamsStore } from '@/stores/workstreams-store';
 import { useWorkstreamsUiStore } from '@/stores/workstreams-ui-store';
+import { getControl } from '../../../.storybook/mocks/control';
 import { seedWorkstreams, type WorkstreamScene } from './__fixtures__/workstreams-data';
+import { WorkstreamRunSheet } from './WorkstreamRunSheet';
 import { WorkstreamSheets } from './WorkstreamSheets';
 
 interface HarnessProps extends WorkstreamScene {
@@ -16,9 +20,22 @@ interface HarnessProps extends WorkstreamScene {
   tab?: WorkstreamTab;
   filter?: WorkstreamStatus;
   /** Open a sheet over the window. */
-  sheet?: 'new' | 'picker' | 'add';
+  sheet?: 'new' | 'picker' | 'add' | 'review';
   /** Show another section, with the workstreams loaded behind it. */
   section?: ActiveSection;
+}
+
+function ReviewSheet({ id }: { id: string }) {
+  const document = useWorkstreamsStore((s) => s.entries[id]?.document);
+  const assessment = useWorkstreamSourcesStore((s) => s.assessments[id]);
+  return document ? (
+    <WorkstreamRunSheet
+      document={document}
+      assessment={assessment}
+      kind="review"
+      onClose={() => {}}
+    />
+  ) : null;
 }
 
 function Harness({
@@ -30,6 +47,7 @@ function Harness({
   ...scene
 }: HarnessProps) {
   useState(() => {
+    getControl().invokeResponses.t3_catalogue = LAUNCH_CATALOGUE;
     const { ids } = seedWorkstreams(scene);
     const id = open !== undefined ? ids[open] : undefined;
     useWorkstreamsStore.setState({ filter });
@@ -65,6 +83,9 @@ function Harness({
         <ViewStack />
       </MainWindow>
       <WorkstreamSheets />
+      {sheet === 'review' && open !== undefined && (
+        <ReviewSheet id={Object.keys(useWorkstreamsStore.getState().entries)[0] ?? ''} />
+      )}
     </>
   );
 }
@@ -125,3 +146,6 @@ export const DispatchChips: Story = { args: { section: 'dispatch' } };
 
 /** "Add to workstream" from a pull request. */
 export const AddToWorkstream: Story = { args: { section: 'prs', sheet: 'add' } };
+
+/** Review with an agent: a free slot, a model, and the workstream as the first message. */
+export const ReviewWithAgent: Story = { args: { open: 0, sheet: 'review' } };

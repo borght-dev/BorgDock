@@ -25,6 +25,7 @@ import { notifyNew } from './notifier';
 import {
   type AgentProject,
   type AgentThread,
+  type DispatchItem,
   type KnownPullRequest,
   NEEDS_YOU,
   type Overview,
@@ -535,7 +536,7 @@ async function loadItems(): Promise<void> {
   const client = adoClient(ado);
   if (!client) {
     store().setItems([], { ok: false, at: null, error: 'Azure DevOps is not set up.' });
-    store().setContextItems([], []);
+    store().setContextItems([], [], { ok: false, at: null, error: null });
     recomputeOverview();
     return;
   }
@@ -549,17 +550,25 @@ async function loadItems(): Promise<void> {
     if (generation !== syncGeneration) return;
     const listed = new Set(items.map((item) => item.id));
     const contextIds = [...new Set(contextIdSource())].filter((id) => !listed.has(id));
-    const context =
-      contextIds.length === 0
-        ? { items: [], missing: [] }
-        : await loadContextItems(
-            client,
-            { organization: ado.organization, project: ado.project },
-            contextIds,
-          ).catch(() => null);
+    let context: { items: DispatchItem[]; missing: number[] } | null = { items: [], missing: [] };
+    let contextError: string | null = null;
+    if (contextIds.length > 0) {
+      context = await loadContextItems(
+        client,
+        { organization: ado.organization, project: ado.project },
+        contextIds,
+      ).catch((error) => {
+        contextError = errorText(error);
+        return null;
+      });
+    }
     if (generation !== syncGeneration) return;
-    store().setItems(items, { ok: true, at: new Date().toISOString(), error: null });
-    if (context) store().setContextItems(context.items, context.missing);
+    const at = new Date().toISOString();
+    store().setItems(items, { ok: true, at, error: null });
+    // A failed read of the context items keeps the last ones, as of when they were read.
+    if (context)
+      store().setContextItems(context.items, context.missing, { ok: true, at, error: null });
+    else store().setContextStatus({ ok: false, at: store().contextStatus.at, error: contextError });
     void refreshLinkedPullRequests();
   } catch (error) {
     if (generation !== syncGeneration) return;
@@ -583,7 +592,7 @@ export function syncItems(force = false): Promise<void> {
     linkedInFlight = null;
     sourcesRead.delete(ADO_SOURCE);
     useDispatchStore.getState().setItems([], { ok: false, at: null, error: null });
-    useDispatchStore.getState().setContextItems([], []);
+    useDispatchStore.getState().setContextItems([], [], { ok: false, at: null, error: null });
     useDispatchStore.getState().setLinkedPullRequests([], {});
     recomputeOverview();
   }

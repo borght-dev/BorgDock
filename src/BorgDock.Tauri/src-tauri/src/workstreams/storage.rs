@@ -220,7 +220,15 @@ pub fn trash(dir: &Path, file_name: &str) -> Result<(), String> {
     } else {
         format!("{id}{EXTENSION}")
     };
-    fs::rename(dir.join(file_name), trash.join(name)).map_err(|e| e.to_string())
+    let trashed = trash.join(name);
+    fs::rename(dir.join(file_name), &trashed).map_err(|e| e.to_string())?;
+    // The trash keeps a workstream 30 days from when it was deleted, not from
+    // when it last changed.
+    fs::File::options()
+        .write(true)
+        .open(&trashed)
+        .and_then(|file| file.set_modified(SystemTime::now()))
+        .map_err(|e| e.to_string())
 }
 
 /// The workstreams in the trash, newest first.
@@ -284,6 +292,63 @@ pub fn restore_backup(dir: &Path, id: &str) -> Result<(), String> {
     }
     fs::copy(&backup, &target).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Default)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct CopyReport {
+    /// Workstreams the target did not have yet.
+    pub copied: u32,
+    /// Workstreams both had, in another version: left next to the target's
+    /// as a copy (`<id>-<suffix>.json`), which BorgDock offers to merge.
+    pub copies: u32,
+    /// Workstreams both had, the same.
+    pub same: u32,
+}
+
+/// Copy every workstream of `from` into `to`. Nothing in `to` is written
+/// over: a workstream both hold in different versions lands as a copy.
+pub fn copy_into(from: &Path, to: &Path, suffix: &str) -> Result<CopyReport, String> {
+    let suffix: String = suffix
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .take(40)
+        .collect();
+    let suffix = if suffix.is_empty() {
+        "copy".to_string()
+    } else {
+        suffix
+    };
+    let _guard = WRITE_LOCK.lock().map_err(|e| e.to_string())?;
+    fs::create_dir_all(to).map_err(|e| e.to_string())?;
+    let mut report = CopyReport::default();
+    if !from.exists() {
+        return Ok(report);
+    }
+    for entry in fs::read_dir(from).map_err(|e| e.to_string())?.flatten() {
+        let file_name = entry.file_name().to_string_lossy().to_string();
+        let Some((id, false)) = classify(&file_name) else {
+            continue;
+        };
+        let Ok(contents) = fs::read_to_string(entry.path()) else {
+            continue;
+        };
+        let target = file_of(to, &id);
+        match fs::read_to_string(&target) {
+            Ok(existing) if existing == contents => report.same += 1,
+            Ok(_) => {
+                fs::write(to.join(format!("{id}-{suffix}{EXTENSION}")), &contents)
+                    .map_err(|e| e.to_string())?;
+                report.copies += 1;
+            }
+            Err(_) => {
+                fs::write(&target, &contents).map_err(|e| e.to_string())?;
+                report.copied += 1;
+            }
+        }
+    }
+    Ok(report)
 }
 
 /// Workstreams stay in the trash for 30 days.
@@ -415,11 +480,54 @@ mod tests {
     }
 
     #[test]
+    fn counts_the_trash_days_from_the_deletion() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), ID, &doc(1), None).unwrap();
+        let old = SystemTime::now() - Duration::from_secs(90 * 24 * 60 * 60);
+        fs::File::options()
+            .write(true)
+            .open(file_of(dir.path(), ID))
+            .unwrap()
+            .set_modified(old)
+            .unwrap();
+        trash(dir.path(), &format!("{ID}.json")).unwrap();
+        purge_trash(dir.path());
+        assert_eq!(trashed(dir.path()).unwrap().len(), 1);
+    }
+
+    #[test]
     fn refuses_names_outside_the_folder() {
         let dir = tempfile::tempdir().unwrap();
         assert!(read(dir.path(), "../secrets.json").is_err());
         assert!(write(dir.path(), "../x", "{}", None).is_err());
         assert!(trash(dir.path(), "..\\x.json").is_err());
+    }
+
+    #[test]
+    fn copies_into_another_folder_without_writing_over_anything() {
+        let from = tempfile::tempdir().unwrap();
+        let to = tempfile::tempdir().unwrap();
+        const OTHER: &str = "1b9a5a8e-6f4e-4e4b-9d3c-2a1f0e9d8c7b";
+        const SAME: &str = "2b9a5a8e-6f4e-4e4b-9d3c-2a1f0e9d8c7b";
+        write(from.path(), ID, &doc(1), None).unwrap();
+        write(to.path(), ID, &doc(4), None).unwrap();
+        fs::write(file_of(from.path(), OTHER), doc(1)).unwrap();
+        fs::write(file_of(from.path(), SAME), "{}").unwrap();
+        fs::write(file_of(to.path(), SAME), "{}").unwrap();
+        let report = copy_into(from.path(), to.path(), "Laptop 1").unwrap();
+        assert_eq!(
+            report,
+            CopyReport {
+                copied: 1,
+                copies: 1,
+                same: 1
+            }
+        );
+        assert_eq!(read(to.path(), &format!("{ID}.json")).unwrap(), doc(4));
+        assert_eq!(
+            read(to.path(), &format!("{ID}-Laptop1.json")).unwrap(),
+            doc(1)
+        );
     }
 
     #[test]

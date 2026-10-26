@@ -76,6 +76,24 @@ describe('mergeDocuments', () => {
     expect(chosen.members.find((m) => m.key === refKey(A))?.note).toBe('theirs');
   });
 
+  it('takes in a confirmation made on the other machine', () => {
+    const withOutcome = ok(addOutcome(base, 'Merged', true, [], CONTEXT));
+    const theirs = {
+      ...withOutcome,
+      revision: 4,
+      outcomes: withOutcome.outcomes.map((o) => ({
+        ...o,
+        verification: { ...o.verification, state: 'confirmed' as const, note: 'tried it' },
+      })),
+    };
+    const { document, conflicts } = mergeDocuments(withOutcome, withOutcome, theirs);
+    expect(conflicts).toEqual([]);
+    expect(document.outcomes[0]!.verification).toMatchObject({
+      state: 'confirmed',
+      note: 'tried it',
+    });
+  });
+
   it('two machines verifying the same outcome by rule agree on the earlier one', () => {
     const withOutcome = ok(addOutcome(base, 'Merged', true, [], CONTEXT));
     const verified = (at: string) => ({

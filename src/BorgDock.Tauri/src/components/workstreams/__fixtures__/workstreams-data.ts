@@ -203,6 +203,46 @@ function planningBoard(): WorkstreamDocument {
       context(1),
     ),
   );
+  const review = refKey(thread('t-review'));
+  d = {
+    ...d,
+    runs: [
+      { key: review, kind: 'review', startedAt: context(0.1).now, device: 'Laptop', read: true },
+    ],
+    proposals: [
+      {
+        id: `${review}@1`,
+        runKey: review,
+        at: context(0.05).now,
+        dropped: [],
+        items: [
+          {
+            id: 'p1',
+            kind: 'decision',
+            status: 'open',
+            why: 'The job list version reuses the existing selection model; the map version needs a new hit test for clusters.',
+            decisionId: decision.decisionId!,
+            choose: refKey(shopPr(3741)),
+          },
+          {
+            id: 'p2',
+            kind: 'next-action',
+            status: 'open',
+            why: 'The availability endpoint is the only thing left before the board can show who is free.',
+            text: 'Approve the three-step availability plan in W1, then merge #3741 once its checks pass',
+            target: refKey(thread('t-59877')),
+          },
+          {
+            id: 'p3',
+            kind: 'risk',
+            status: 'open',
+            why: '',
+            text: '#3741 fails two checks: the job list test fixture still uses the old assign dialog.',
+          },
+        ],
+      },
+    ],
+  };
   return ok(
     setPinned(
       { ...d, updatedAt: new Date(Date.now() - 40 * 60_000).toISOString(), writtenBy: DEVICE },
@@ -396,6 +436,7 @@ export function seedWorkstreams(scene: WorkstreamScene = {}): { ids: string[] } 
     projects: dispatch.projects,
     overview: dispatch.overview,
     ado: dispatch.ado,
+    contextStatus: dispatch.ado,
     missingItemIds: [61999],
     hosts: dispatch.hosts.map((h) => ({
       ...h,
@@ -417,6 +458,7 @@ export function seedWorkstreams(scene: WorkstreamScene = {}): { ids: string[] } 
       }),
     ],
     lastPollTime: new Date(now - 20_000),
+    repoPolledAt: { 'acme/shop': now - 20_000 },
   });
   const documents = scene.empty
     ? []
@@ -451,6 +493,7 @@ export function seedWorkstreams(scene: WorkstreamScene = {}): { ids: string[] } 
         merged: mine,
         theirsDevice: 'Mac mini',
         copyFileName: null,
+        fromDisk: true,
         conflicts: [
           { path: 'title', field: 'title', label: 'Title', mine: mine.title, theirs: theirs.title },
           {

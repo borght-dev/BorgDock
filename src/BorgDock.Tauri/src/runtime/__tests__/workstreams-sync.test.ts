@@ -115,6 +115,7 @@ describe('recomputeWorkstreams', () => {
       pullRequests: [],
       closedPullRequests: [polledPr('merged')],
       lastPollTime: new Date(),
+      repoPolledAt: { 'acme/shop': Date.now() },
     });
     recomputeWorkstreams();
     const outcome = useWorkstreamsStore.getState().entries[id]!.document.outcomes[0]!;
@@ -133,7 +134,11 @@ describe('recomputeWorkstreams', () => {
     const store = useWorkstreamsStore.getState();
     const id = store.create('x');
     store.edit(id, (d, c) => addMembers(d, [{ ref: PR, label: '' }], c));
-    usePrStore.setState({ pullRequests: [polledPr('open')], lastPollTime: new Date() });
+    usePrStore.setState({
+      pullRequests: [polledPr('open')],
+      lastPollTime: new Date(),
+      repoPolledAt: { 'acme/shop': Date.now() },
+    });
     recomputeWorkstreams();
     expect(useWorkstreamSourcesStore.getState().cache[refKey(PR)]).toMatchObject({
       title: 'Queue rewrite',

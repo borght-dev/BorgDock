@@ -219,6 +219,9 @@ macro_rules! app_commands {
             workstreams::commands::workstreams_restore,
             workstreams::commands::workstreams_restore_backup,
             workstreams::commands::workstreams_device_name,
+            workstreams::commands::workstreams_copy_into,
+            workstreams::commands::workstreams_export_file,
+            workstreams::commands::workstreams_import_file,
         ]
     };
 }

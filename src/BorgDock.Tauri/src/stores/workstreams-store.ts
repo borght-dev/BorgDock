@@ -38,6 +38,12 @@ export interface Conflict {
   merged: WorkstreamDocument;
   /** A sync client's copy, when the conflict came from one. */
   copyFileName: string | null;
+  /**
+   * The other version is the file on disk: resolving moves the base to it.
+   * Until then the base stays where it was, so a restart merges again
+   * instead of writing over what the other machine wrote.
+   */
+  fromDisk: boolean;
   theirsDevice: string;
 }
 
@@ -94,6 +100,8 @@ interface WorkstreamsState {
   retrySave: (id: string) => void;
   /** Finish a conflict: `choices` names `theirs` for every field to take from the other side. */
   resolveConflict: (id: string, choices: Record<string, 'mine' | 'theirs'>) => void;
+  /** Take in an exported workstream: a new one, or merged into the one with its id. */
+  importDocument: (document: WorkstreamDocument) => 'created' | 'merged' | 'conflict' | string;
   trash: (id: string) => Promise<void>;
   restoreTrashed: (id: string) => Promise<void>;
   restoreBackup: (id: string) => Promise<void>;
@@ -113,12 +121,15 @@ const writeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const writing = new Map<string, Promise<void>>();
 /** Edits that came in while a write was under way: write again after it. */
 const writeAgain = new Set<string>();
-const undoStacks = new Map<string, WorkstreamDocument[]>();
+/** The document before and after each undoable edit, newest first. */
+const undoStacks = new Map<string, { before: WorkstreamDocument; after: WorkstreamDocument }[]>();
 /** Workstreams trashed this session: a slow read must not bring one back. */
 const trashedThisSession = new Set<string>();
 /** What each file looked like at the last look, so unchanged ones aren't read again. */
 const seenFiles = new Map<string, string>();
 const parseFailures = new Map<string, number>();
+/** Workstreams whose file was gone at the last look: gone twice is deleted. */
+const goneOnce = new Set<string>();
 let pendingTimer: ReturnType<typeof setTimeout> | undefined;
 let loadGeneration = 0;
 let fallbackDeviceLabel = 'This computer';
@@ -227,12 +238,12 @@ export const useWorkstreamsStore = create<WorkstreamsState>()((set, get) => {
     }
     patch(id, {
       readOnly,
-      ...(copyFileName ? {} : { base: theirs }),
       conflict: {
         theirs,
         conflicts: merge.conflicts,
         merged: merge.document,
         copyFileName,
+        fromDisk: !copyFileName,
         theirsDevice: theirs.writtenBy.deviceLabel || 'another machine',
       },
     });
@@ -347,12 +358,45 @@ export const useWorkstreamsStore = create<WorkstreamsState>()((set, get) => {
     takeTheirs(file.id, parsed.document, parsed.readOnly, file.conflictCopy ? file.fileName : null);
   };
 
+  /**
+   * A workstream whose file is gone was deleted on another machine. Gone at
+   * two looks in a row (a sync client may replace a file in two steps), it
+   * leaves this machine too, unless edits here are not written yet: those
+   * stay, with the reason.
+   */
+  const forgetDeleted = (present: ReadonlySet<string>) => {
+    for (const [id, entry] of Object.entries(get().entries)) {
+      const name = `${id}.json`;
+      if (!entry.base || present.has(name) || writing.has(id) || trashedThisSession.has(id)) {
+        goneOnce.delete(id);
+        continue;
+      }
+      if (!goneOnce.has(id)) {
+        goneOnce.add(id);
+        continue;
+      }
+      goneOnce.delete(id);
+      if (entry.dirty) {
+        patch(id, {
+          saveError: "The workstream's file is gone. It was deleted on another machine.",
+        });
+        continue;
+      }
+      undoStacks.delete(id);
+      set((state) => {
+        const { [id]: _gone, ...entries } = state.entries;
+        return { entries };
+      });
+    }
+  };
+
   const scan = async (generation: number) => {
     const folder = get().folder;
     const files = await storage.list(folder);
     if (generation !== loadGeneration) return;
     const present = new Set(files.map((f) => f.fileName));
     for (const name of [...seenFiles.keys()]) if (!present.has(name)) seenFiles.delete(name);
+    forgetDeleted(present);
     set((state) => ({
       unreadable: state.unreadable.filter((u) => present.has(u.fileName)),
     }));
@@ -520,7 +564,10 @@ export const useWorkstreamsStore = create<WorkstreamsState>()((set, get) => {
       if (problem) return problem;
       if (options.undoable) {
         const stack = undoStacks.get(id) ?? [];
-        undoStacks.set(id, [entry.document, ...stack].slice(0, UNDO_DEPTH));
+        undoStacks.set(
+          id,
+          [{ before: entry.document, after: result.document }, ...stack].slice(0, UNDO_DEPTH),
+        );
       }
       patch(id, { document: result.document, dirty: true });
       persistPending();
@@ -530,11 +577,23 @@ export const useWorkstreamsStore = create<WorkstreamsState>()((set, get) => {
 
     undo: (id) => {
       const stack = undoStacks.get(id);
-      const previous = stack?.[0];
+      const last = stack?.[0];
       const entry = get().entries[id];
-      if (!previous || !entry) return false;
+      if (!last || !entry || entry.readOnly || entry.conflict) return false;
       undoStacks.set(id, stack.slice(1));
-      patch(id, { document: { ...previous, revision: entry.document.revision }, dirty: true });
+      // Take back only what that edit changed: whatever changed since, here or
+      // on another machine, stays.
+      const merge = mergeDocuments(last.after, last.before, entry.document);
+      let document = merge.document;
+      for (const field of merge.conflicts) document = applyChoice(document, field, field.theirs);
+      patch(id, {
+        document: {
+          ...document,
+          revision: entry.document.revision,
+          writtenBy: entry.document.writtenBy,
+        },
+        dirty: true,
+      });
       persistPending();
       scheduleWrite(id, 0);
       return true;
@@ -570,7 +629,13 @@ export const useWorkstreamsStore = create<WorkstreamsState>()((set, get) => {
           ...document.log,
         ],
       };
-      patch(id, { document: resolved, dirty: true, conflict: null, saveError: null });
+      patch(id, {
+        document: resolved,
+        ...(conflict.fromDisk ? { base: conflict.theirs } : {}),
+        dirty: true,
+        conflict: null,
+        saveError: null,
+      });
       persistPending();
       if (conflict.copyFileName) {
         const copy = conflict.copyFileName;
@@ -579,6 +644,55 @@ export const useWorkstreamsStore = create<WorkstreamsState>()((set, get) => {
           .catch((error) => log.warn('copy not trashed', { id, error: errorText(error) }));
       }
       scheduleWrite(id, 0);
+    },
+
+    importDocument: (imported) => {
+      const id = imported.id;
+      trashedThisSession.delete(id);
+      const entry = get().entries[id];
+      if (!entry) {
+        set((state) => ({
+          entries: {
+            ...state.entries,
+            [id]: {
+              document: imported,
+              base: null,
+              readOnly: false,
+              dirty: true,
+              saving: false,
+              saveError: null,
+              conflict: null,
+            },
+          },
+        }));
+        persistPending();
+        scheduleWrite(id, 0);
+        return 'created';
+      }
+      if (entry.readOnly) return 'This workstream was made by a newer BorgDock. Update to edit it.';
+      if (entry.conflict) return 'Choose what to keep from the other version first.';
+      // An export shares no known base with what is here: every difference is a choice.
+      const merge = mergeDocuments(null, entry.document, imported);
+      if (merge.conflicts.length === 0) {
+        patch(id, {
+          document: { ...merge.document, revision: entry.document.revision },
+          dirty: true,
+        });
+        persistPending();
+        scheduleWrite(id, 0);
+        return 'merged';
+      }
+      patch(id, {
+        conflict: {
+          theirs: imported,
+          conflicts: merge.conflicts,
+          merged: { ...merge.document, revision: entry.document.revision },
+          copyFileName: null,
+          fromDisk: false,
+          theirsDevice: 'the imported file',
+        },
+      });
+      return 'conflict';
     },
 
     trash: async (id) => {
@@ -615,6 +729,12 @@ export const useWorkstreamsStore = create<WorkstreamsState>()((set, get) => {
 
     restoreBackup: async (id) => {
       await storage.restoreBackup(get().folder, id);
+      // The restored file is the truth now: drop what was held, so it is read fresh.
+      undoStacks.delete(id);
+      set((state) => {
+        const { [id]: _replaced, ...entries } = state.entries;
+        return { entries };
+      });
       seenFiles.delete(`${id}.json`);
       parseFailures.delete(`${id}.json`);
       set((state) => ({ unreadable: state.unreadable.filter((u) => u.id !== id) }));
@@ -640,6 +760,7 @@ export function resetWorkstreamsStore(): void {
   trashedThisSession.clear();
   seenFiles.clear();
   parseFailures.clear();
+  goneOnce.clear();
   clearTimeout(pendingTimer);
   loadGeneration++;
   deviceLabelOverride = null;
