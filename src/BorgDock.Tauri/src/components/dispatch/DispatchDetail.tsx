@@ -1,6 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import { Button, CheckBar } from '@/components/shared/primitives';
 import { WorkItemTypePill } from '@/components/work-items/WorkItemTypePill';
+import { ItemMembership } from '@/components/workstreams/Membership';
 import type { ItemOverview, Slot } from '@/services/dispatch/types';
 import { AgentSays } from './AgentSays';
 import { StateTrack } from './StateTrack';
@@ -58,6 +59,7 @@ export function DispatchDetail({
         </button>
       </header>
       <h2 className="bd-dp-detail__title">{item.title}</h2>
+      <ItemMembership id={item.id} title={item.title} />
 
       <dl className="bd-dp-facts">
         <div>

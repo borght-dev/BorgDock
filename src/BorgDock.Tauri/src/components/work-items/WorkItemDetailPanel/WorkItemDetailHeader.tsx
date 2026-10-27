@@ -16,6 +16,7 @@ import {
   toggleTrackedWorkItem,
   toggleWorkingOnWorkItem,
 } from '@/components/work-items/work-item-toggles';
+import { ItemMembership } from '@/components/workstreams/Membership';
 import { startWorkItem } from '@/services/dispatch/actions';
 import { isMainWindow } from '@/services/navigation';
 import { useWorkItemsStore } from '@/stores/work-items-store';
@@ -249,6 +250,7 @@ export function WorkItemDetailHeader({
             {working ? 'Working on it' : 'Start working'}
           </Button>
         )}
+        {id !== undefined && <ItemMembership id={id} title={title} />}
       </div>
     </header>
   );

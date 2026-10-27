@@ -10,6 +10,20 @@ export interface FieldEntry {
 }
 
 export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
+  // Workstreams
+  {
+    sectionId: 'workstreams',
+    anchorId: 'workstreams-folder',
+    label: 'Workstreams folder',
+    keywords: ['sync', 'onedrive', 'syncthing', 'share', 'machines', 'goal'],
+  },
+  {
+    sectionId: 'workstreams',
+    anchorId: 'workstreams-device',
+    label: "This machine's name",
+    keywords: ['device', 'computer', 'workstream'],
+  },
+
   // GitHub
   {
     sectionId: 'github',

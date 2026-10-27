@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { unitActions } from '@/components/dispatch/unit-actions';
+import { handleWorkstreamsKey } from '@/components/workstreams/keyboard';
 import { dispatchActions } from '@/services/dispatch/actions';
 import { isOverlayOpen, showPr, showSection, showWorkItem } from '@/services/navigation';
 import { groupWorkbenchPrs, isReady } from '@/services/pr-grouping';
@@ -88,6 +89,7 @@ export function useKeyboardNav(): void {
       if (useUiStore.getState().activeSection === 'dispatch' && handleDispatchActionKey(e)) {
         return;
       }
+      if (handleWorkstreamsKey(e)) return;
       // R, M and O act on the selected row or card, found by its key: a
       // filtered list and the Board's columns have their own order.
       if (isSelectionKey(e)) {

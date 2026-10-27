@@ -87,7 +87,14 @@ describe('ui-store view stack', () => {
   });
 
   it('lists the sections in rail order, Worktrees last', () => {
-    expect(SECTION_ORDER).toEqual(['focus', 'dispatch', 'prs', 'workitems', 'worktrees']);
+    expect(SECTION_ORDER).toEqual([
+      'focus',
+      'dispatch',
+      'workstreams',
+      'prs',
+      'workitems',
+      'worktrees',
+    ]);
   });
 
   it('restores a persisted worktrees section', async () => {

@@ -32,6 +32,12 @@ export interface EngineInput {
   manualLinks: ReadonlyMap<string, number | null>;
   /** Only projects whose title matches count as slots; `null` takes every project. */
   slotPattern: RegExp | null;
+  /**
+   * Items only a workstream needs. They get an overview of their own in
+   * `overview.context`, linked in a pass of their own, so they never change
+   * what Dispatch shows for its items.
+   */
+  contextItems?: readonly DispatchItem[];
   now?: Date;
 }
 
@@ -203,35 +209,13 @@ export function buildOverview(input: EngineInput): { overview: Overview; dequeue
   );
   markShared(pullRequestsOf);
 
-  const items = input.items.map((item): ItemOverview => {
+  const items = input.items.map((item) => {
     const itemThreads = links.threadsByItem.get(item.id) ?? [];
-    const pullRequests = pullRequestsOf.get(item) ?? [];
-    const pullRequest = pullRequests.find((pr) => !pr.shared) ?? pullRequests[0] ?? null;
-    const found = driftOf({ item, threads: itemThreads, pullRequests, now });
-    let suggestion = suggestionOf(item, found);
-    if (suggestion && input.hiddenSuggestions.has(suggestion.id)) suggestion = null;
-    const drift = suggestion ? found : null;
-    const waiting = waitingFor(item, itemThreads);
-
     // Once an agent works on a queued item, the queue has done its job.
     const pickedUp = input.queued.has(item.id) && itemThreads.some((t) => t.open);
     if (pickedUp) dequeue.push(item.id);
     const queued = input.queued.has(item.id) && !pickedUp;
-
-    const facts = { item, threads: itemThreads, pullRequests, now, drift };
-    return {
-      item,
-      bay: bayOf(item, itemThreads, waiting, suggestion, queued),
-      waitingFor: waiting,
-      suggestion,
-      pullRequest,
-      pullRequests,
-      threads: itemThreads.slice(0, MAX_THREADS_PER_ITEM),
-      queued,
-      verdict: verdictOf(facts),
-      evidence: evidenceOf(facts),
-      latest: latestMessage(item, itemThreads),
-    };
+    return itemOverview(item, itemThreads, pullRequestsOf.get(item) ?? [], queued, input, now);
   });
 
   const myItemIds = new Set(input.items.map((item) => item.id));
@@ -256,8 +240,80 @@ export function buildOverview(input: EngineInput): { overview: Overview; dequeue
     .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))
     .map((thread) => ({ ...thread, guessItemId: guessItem(thread, input.items) }));
 
+  const overview: Overview = { generatedAt: now.toISOString(), items, unlinkedThreads, slots };
+  const { context, combined } = contextOverviews(input, threads, pullRequestsOf, now);
+  if (context.length > 0) overview.context = context;
+  if (Object.keys(combined).length > 0) overview.combinedPullRequests = combined;
+  return { overview, dequeue };
+}
+
+function itemOverview(
+  item: DispatchItem,
+  itemThreads: readonly AgentThread[],
+  pullRequests: UnitPullRequest[],
+  queued: boolean,
+  input: EngineInput,
+  now: Date,
+): ItemOverview {
+  const pullRequest = pullRequests.find((pr) => !pr.shared) ?? pullRequests[0] ?? null;
+  const found = driftOf({ item, threads: itemThreads, pullRequests, now });
+  let suggestion = suggestionOf(item, found);
+  if (suggestion && input.hiddenSuggestions.has(suggestion.id)) suggestion = null;
+  const drift = suggestion ? found : null;
+  const waiting = waitingFor(item, itemThreads);
+  const facts = { item, threads: itemThreads, pullRequests, now, drift };
   return {
-    overview: { generatedAt: now.toISOString(), items, unlinkedThreads, slots },
-    dequeue,
+    item,
+    bay: bayOf(item, itemThreads, waiting, suggestion, queued),
+    waitingFor: waiting,
+    suggestion,
+    pullRequest,
+    pullRequests,
+    threads: itemThreads.slice(0, MAX_THREADS_PER_ITEM),
+    queued,
+    verdict: verdictOf(facts),
+    evidence: evidenceOf(facts),
+    latest: latestMessage(item, itemThreads),
   };
+}
+
+/**
+ * Overviews of the items only a workstream needs. A pull request counts as
+ * shared when it is linked on several items across Dispatch's and these, so a
+ * plan PR never proves a context item delivered either.
+ */
+function contextOverviews(
+  input: EngineInput,
+  threads: readonly AgentThread[],
+  dispatchPullRequests: ReadonlyMap<DispatchItem, UnitPullRequest[]>,
+  now: Date,
+): { context: ItemOverview[]; combined: Record<number, UnitPullRequest[]> } {
+  const own = new Set(input.items.map((item) => item.id));
+  const contextItems = (input.contextItems ?? []).filter((item) => !own.has(item.id));
+  if (contextItems.length === 0) return { context: [], combined: {} };
+  const links = linkThreads(contextItems, threads, input.manualLinks);
+  const pullRequestsOf = new Map(
+    contextItems.map((item) => [
+      item,
+      itemPullRequests(item, links.threadsByItem.get(item.id) ?? [], input.pullRequests),
+    ]),
+  );
+  const together = new Map([...dispatchPullRequests, ...pullRequestsOf]);
+  markShared(together);
+  const combined: Record<number, UnitPullRequest[]> = {};
+  for (const [item, pullRequests] of dispatchPullRequests) {
+    const seen = together.get(item) ?? [];
+    if (seen.some((pr, i) => pr.shared !== pullRequests[i]?.shared)) combined[item.id] = seen;
+  }
+  const context = contextItems.map((item) =>
+    itemOverview(
+      item,
+      links.threadsByItem.get(item.id) ?? [],
+      together.get(item) ?? [],
+      false,
+      input,
+      now,
+    ),
+  );
+  return { context, combined };
 }

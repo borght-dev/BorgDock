@@ -2,7 +2,9 @@ import { AppWindow } from 'lucide-react';
 import { BackButton } from '@/components/layout/BackButton';
 import { avatarInitials, prRowKey } from '@/components/pr/pr-card-data';
 import { Avatar, IconButton } from '@/components/shared/primitives';
+import { WorkstreamMembership } from '@/components/workstreams/Membership';
 import { isMyPr } from '@/services/pr-grouping';
+import { pullRequestRef } from '@/services/workstreams/membership';
 import { usePrStore } from '@/stores/pr-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { WorkbenchActionBar } from './ActionBar';
@@ -64,6 +66,9 @@ export function PrDetailHeader({ pr, actions, checks, onOpenInWindow }: PrDetail
         </span>
       </p>
       <ReadinessLine pr={pr} />
+      <WorkstreamMembership
+        records={[{ ref: pullRequestRef(p.repoOwner, p.repoName, p.number), label: p.title }]}
+      />
       <WorkbenchActionBar pr={pr} actions={actions} checks={checks} />
     </header>
   );

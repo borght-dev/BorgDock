@@ -20,6 +20,7 @@ import { SqlSection } from './SqlSection';
 import { SETTINGS_SECTIONS, type SettingsSectionId } from './sections-catalog';
 import { UpdateSection } from './UpdateSection';
 import { PulseProvider } from './useFieldPulse';
+import { WorkstreamsSection } from './WorkstreamsSection';
 
 const STORAGE_KEY = 'settings.lastSection';
 
@@ -157,6 +158,13 @@ export function SettingsApp() {
             summaries={settings.summaries ?? { enabled: true, provider: 'claude', model: 'sonnet' }}
             onAgentsChange={(agents) => update({ agents })}
             onSummariesChange={(summaries) => update({ summaries })}
+          />
+        );
+      case 'workstreams':
+        return (
+          <WorkstreamsSection
+            workstreams={settings.workstreams ?? {}}
+            onChange={(workstreams) => update({ workstreams })}
           />
         );
       case 'updates':

@@ -132,6 +132,10 @@ export interface AgentSettings {
     done?: string;
     sync?: string;
     suggest?: string;
+    /** `{brief}`, `{title}`. */
+    workstreamReview?: string;
+    /** `{brief}`, `{nextAction}`, `{title}`. */
+    workstreamWork?: string;
   };
   /** When "Sync all" runs by itself. Runs while BorgDock is open. */
   dispatchSyncSchedule?: DispatchSyncSchedule;
@@ -223,4 +227,14 @@ export interface AppSettings {
   sql: SqlSettings;
   filePaletteRoots?: FilePaletteRoot[];
   settingsWindow?: { x: number; y: number; width: number; height: number };
+  workstreams?: WorkstreamSettings;
+}
+
+export interface WorkstreamSettings {
+  /** A folder a sync client shares between machines. Empty: this machine only. */
+  folder?: string;
+  /** What this machine is called in a workstream's log. Empty: the computer's name. */
+  deviceLabel?: string;
+  /** Notify when a workstream is unblocked, invalidated or in conflict. Default on. */
+  notifications?: boolean;
 }

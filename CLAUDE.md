@@ -165,6 +165,8 @@ cd src/BorgDock.Tauri/src-tauri && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' ca
 
 Or run cargo from cmd.exe / PowerShell where MSYS isn't involved.
 
+Don't combine `MSYS_NO_PATHCONV=1` with a Git Bash path in `CARGO_TARGET_DIR` (`/e/BorgDock/...`): cargo gets it literally and builds into `E:\e\BorgDock\...`, and the build scripts record that path. Give a Windows path (`E:/BorgDock/...`) or run cargo from PowerShell.
+
 ## T3 Code integration: orchestration protocol 2
 
 Code lives in `src-tauri/src/t3/`: `hosts` (which server, which token), `client` (transport), `shell` (what a host reports, reduced to DTOs), `desktop` (the app on this machine), `commands` (the Tauri commands). The frontend never talks to T3 itself.
@@ -213,6 +215,20 @@ Things that bite:
 - **The schedule** (`agents.dispatchSyncSchedule`) runs only while BorgDock is open. `runScheduleIfDue` marks the day *before* it starts, so a failure never runs twice. It uses the slot and model of the last run (`runChoice`).
 - The rail's count and the Focus card both use `needingYou` (verdict tone `bad`), not the `waiting` bay.
 - The briefing at the top of States (`briefing()` in `walk.ts`) counts every item a fix would take as out of sync, even one that also needs you, so its number matches the Fix button. A sync's progress compares each item's state with `AgentRun.fromStates`, which `startRun` records; runs saved before that field show no progress rather than "0 moved".
+
+## Workstreams: goals across items, threads and pull requests
+
+A workstream is a goal you curate: ADO items, T3 threads, GitHub pull requests and links, the decisions between alternative approaches, the outcomes the goal needs and the evidence behind each. Rules and their reasons: `docs/superpowers/specs/2026-10-26-workstreams.md`.
+
+- `src/services/workstreams/` is pure apart from `actions.ts`, `runs.ts` and `membership.ts`: `edits.ts` (every change, with a log line), `merge.ts` (three-way), `resolve.ts` + `rules.ts` + `attention.ts` (what the sources say now, what verifies, what needs you), `suggest.ts`, `brief.ts` (agent brief and proposals). `src/stores/workstreams-store.ts` holds the documents and writes them; `src/runtime/workstreams-sync.ts` rebuilds the assessments and is the only poller (it lists the folder, nothing else).
+- **Files, not plugin-store.** One `<id>.json` per workstream in `%APPDATA%/BorgDock/workstreams/` or `<sync folder>/BorgDock Workstreams/`, written by `src-tauri/src/workstreams/storage.rs` atomically and only over the revision the writer last saw. A malformed file is never written over; a sync client's `<id>-PC.json` copy is merged.
+- **Never store source metadata in a workstream.** Titles, states and checks change on every poll; writing them would bump the revision and make two machines conflict all day. The per-device cache (`workstreams-cache.json`) keeps the last seen title.
+- **Identity is the `RefKey`**: `gh:github.com/owner/repo#n`, `ado:<org>#id`, `t3:<environmentId>/<threadId>`. A thread is found by its T3 install's environment id (`HostStatus.environmentId`, from `t3_environment`), never by a host label or id.
+- **The base moves only when a conflict is resolved.** `entry.base` is the revision both sides shared; keep it during a conflict so a restart merges again instead of writing over the other machine. Undo is a three-way merge too: it takes back its own change, not everything since.
+- **Freshness is per reference.** A polled PR is live by its repository's own poll time (`pr-store.repoPolledAt`; a failed repository keeps its old PRs in the list), a looked-up one by `LOOKUP_FRESH_MS`, a context item by `dispatch-store.contextStatus`. The recently closed PR list is read once without reviews or checks, so it never counts as polled. Only live evidence can verify or invalidate an outcome; an agent never verifies one.
+- **Context items never change Dispatch.** The engine links them in a pass of their own (`overview.context`); `overview.combinedPullRequests` gives Dispatch items the "shared" flags that count context items too, for the workstreams only. The golden test in `engine-context.test.ts` fails if Dispatch's own overview moves.
+- **Rows in the PR list are virtualized at a fixed height.** Anything a row shows extra (workstream chips) goes on an existing line (`TitleWithChips`), never on a new one.
+- e2e: `tests/e2e/helpers/mock-tauri.ts` answers every `workstreams_*` command from an in-page folder; an unmocked command throws.
 
 ## Floating surfaces need an opaque token
 

@@ -79,6 +79,11 @@ export function t3ThreadDetail(host: T3HostRef, threadId: string): Promise<T3Thr
   return commandData(commands.t3ThreadDetail(host, threadId));
 }
 
+/** The agent's last message, whole: the detail above clips it for display. */
+export function t3ThreadLastMessage(host: T3HostRef, threadId: string): Promise<string | null> {
+  return commandData(commands.t3ThreadLastMessage(host, threadId));
+}
+
 /**
  * The first user message per thread. A thread without one comes back with an
  * empty string; a thread missing from the answer can be asked for again.
@@ -201,4 +206,9 @@ export function t3ShowThread(
   executable: string | undefined,
 ): Promise<void> {
   return commandData(commands.t3ShowThread(host, threadId, executable ?? null)).then(() => {});
+}
+
+/** The id of the T3 install behind `host`; it names a thread across hosts. */
+export function t3Environment(host: T3HostRef): Promise<string> {
+  return commandData(commands.t3Environment(host));
 }

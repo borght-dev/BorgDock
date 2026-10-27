@@ -52,6 +52,7 @@ function TitleBarActions({ hasFailing }: { hasFailing: boolean }) {
 function viewTitle(top: MainView, section: ActiveSection): string {
   if (top.kind === 'pr-detail') return 'Pull request';
   if (top.kind === 'work-item-detail') return 'Work item';
+  if (top.kind === 'workstream') return 'Workstream';
   return SECTION_LABELS[section];
 }
 

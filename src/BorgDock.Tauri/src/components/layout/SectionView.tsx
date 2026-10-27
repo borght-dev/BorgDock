@@ -10,6 +10,11 @@ const DispatchSection = lazy(() =>
 import { FocusList } from '@/components/focus';
 import { PrList } from '@/components/pr/PrList';
 
+const WorkstreamsSection = lazy(() =>
+  import('@/components/workstreams/WorkstreamsSection').then((module) => ({
+    default: module.WorkstreamsSection,
+  })),
+);
 const WorkItemsSection = lazy(() =>
   import('@/components/work-items/WorkItemsSection').then((module) => ({
     default: module.WorkItemsSection,
@@ -30,6 +35,8 @@ function SectionBody({ section }: { section: ActiveSection }) {
       return <FocusList />;
     case 'dispatch':
       return <DispatchSection />;
+    case 'workstreams':
+      return <WorkstreamsSection />;
     case 'prs':
       return <PrList />;
     case 'workitems':

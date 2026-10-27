@@ -270,6 +270,11 @@ export function FlyoutApp() {
               await emitTo('main', 'dispatch-show-item', { itemId: Number(url) });
             }
             break;
+          case 'workstream-show':
+            if (url) {
+              await emitTo('main', 'workstreams-show', { id: url });
+            }
+            break;
           case 'dispatch-act': {
             const [itemId, actionId] = (url ?? '').split(':');
             if (itemId && actionId) {

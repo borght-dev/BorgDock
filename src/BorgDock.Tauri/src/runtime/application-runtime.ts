@@ -1,5 +1,6 @@
 import { listen } from '@tauri-apps/api/event';
 import { resetClient } from '@/services/github/singleton';
+import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import { useInitStore } from '@/stores/initStore';
 import { useSettingsStore } from '@/stores/settings-store';
 import { startAdoSync } from './ado-sync';
@@ -8,6 +9,7 @@ import { createGitHubSync } from './github-sync';
 import { initialize } from './initialize';
 import { followT3Sessions } from './t3-sessions';
 import { startVisibilityTracking } from './visibility';
+import { startWorkstreamsSync } from './workstreams-sync';
 
 let running = false;
 
@@ -25,6 +27,7 @@ export function startApplicationRuntime(): () => void {
   let unlisten: (() => void) | undefined;
   const stopVisibility = startVisibilityTracking();
   const stopSessions = followT3Sessions();
+  const stopWorkstreams = WORKSTREAMS_ENABLED ? startWorkstreamsSync() : undefined;
   const getSettings = () => useSettingsStore.getState().settings;
   const reconcile = (restart = false) => {
     if (stopped || !useSettingsStore.getState().hasLoaded) return;
@@ -114,6 +117,7 @@ export function startApplicationRuntime(): () => void {
     stopDispatch?.();
     stopVisibility();
     stopSessions();
+    stopWorkstreams?.();
     document.removeEventListener('borgdock-refresh', refresh);
   };
 }

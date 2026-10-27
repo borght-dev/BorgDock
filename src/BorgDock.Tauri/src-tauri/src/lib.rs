@@ -16,6 +16,7 @@ pub mod settings;
 pub mod sql;
 pub mod t3;
 pub mod updater;
+pub mod workstreams;
 
 use cache::PrCache;
 use git::process::ProcessState;
@@ -193,6 +194,8 @@ macro_rules! app_commands {
             t3::commands::t3_first_user_messages,
             t3::commands::t3_conversation_references,
             t3::commands::t3_show_thread,
+            t3::commands::t3_environment,
+            t3::commands::t3_thread_last_message,
             t3::commands::t3_catalogue,
             t3::commands::t3_launch_thread,
             t3::commands::t3_respond,
@@ -207,6 +210,19 @@ macro_rules! app_commands {
             file_palette::files::list_root_files,
             file_palette::content_search::search_content,
             file_palette::windows::open_file_viewer_window,
+            // Workstreams
+            workstreams::commands::workstreams_folder_path,
+            workstreams::commands::workstreams_list,
+            workstreams::commands::workstreams_read,
+            workstreams::commands::workstreams_write,
+            workstreams::commands::workstreams_trash,
+            workstreams::commands::workstreams_trashed,
+            workstreams::commands::workstreams_restore,
+            workstreams::commands::workstreams_restore_backup,
+            workstreams::commands::workstreams_device_name,
+            workstreams::commands::workstreams_copy_into,
+            workstreams::commands::workstreams_export_file,
+            workstreams::commands::workstreams_import_file,
         ]
     };
 }

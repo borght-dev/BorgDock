@@ -2,7 +2,8 @@ import type { JsonPatchOperation, WorkItem, WorkItemComment } from '@/types';
 import type { AdoClient } from './client';
 
 interface AdoWorkItemListResponse {
-  value: WorkItem[];
+  /** With `errorPolicy=Omit`, an id that is deleted or out of reach comes back as `null`. */
+  value: (WorkItem | null)[];
 }
 
 export async function getWorkItems(client: AdoClient, ids: number[]): Promise<WorkItem[]> {
@@ -14,12 +15,13 @@ export async function getWorkItems(client: AdoClient, ids: number[]): Promise<Wo
   for (let i = 0; i < ids.length; i += 200) {
     const batch = ids.slice(i, i + 200);
     const idList = batch.join(',');
+    // Without errorPolicy=Omit one deleted id fails the whole batch.
     const response = await client.get<AdoWorkItemListResponse>(
-      `wit/workitems?ids=${idList}&$expand=relations`,
+      `wit/workitems?ids=${idList}&$expand=relations&errorPolicy=Omit`,
     );
 
     if (response.value) {
-      results.push(...response.value);
+      results.push(...response.value.filter((item): item is WorkItem => item !== null));
     }
   }
 

@@ -263,6 +263,10 @@ export const commands = {
 	t3ConversationReferences: (host: HostRef_Deserialize, threadIds: string[]) => typedError<{ [key in string]: ConversationReferences }, string>(__TAURI_INVOKE("t3_conversation_references", { host, threadIds })),
 	/**  Bring T3 Code to the front on `thread_id`. */
 	t3ShowThread: (host: HostRef_Deserialize, threadId: string, executable: string | null) => typedError<null, string>(__TAURI_INVOKE("t3_show_thread", { host, threadId, executable })),
+	/**  The id of the T3 install behind `host`: what names a thread across hosts. */
+	t3Environment: (host: HostRef_Deserialize) => typedError<string, string>(__TAURI_INVOKE("t3_environment", { host })),
+	/**  The agent's last message in a thread, whole: a workstream review's proposal is at its end. */
+	t3ThreadLastMessage: (host: HostRef_Deserialize, threadId: string) => typedError<string | null, string>(__TAURI_INVOKE("t3_thread_last_message", { host, threadId })),
 	/**  The providers and models the host can start a thread on. */
 	t3Catalogue: (host: HostRef_Deserialize) => typedError<Catalogue, string>(__TAURI_INVOKE("t3_catalogue", { host })),
 	/**
@@ -296,6 +300,28 @@ export const commands = {
 	listRootFiles: (root: string, limit: number | null) => typedError<ListFilesResult, string>(__TAURI_INVOKE("list_root_files", { root, limit })),
 	searchContent: (root: string, pattern: string, cancelToken: number) => typedError<ContentFileResult[], string>(__TAURI_INVOKE("search_content", { root, pattern, cancelToken })),
 	openFileViewerWindow: (path: string, baseline: string | null) => typedError<null, string>(__TAURI_INVOKE("open_file_viewer_window", { path, baseline })),
+	/**  The folder workstreams are kept in for `folder` (the sync folder, or none). */
+	workstreamsFolderPath: (folder: string | null) => typedError<string, string>(__TAURI_INVOKE("workstreams_folder_path", { folder })),
+	workstreamsList: (folder: string | null) => typedError<WorkstreamFile[], string>(__TAURI_INVOKE("workstreams_list", { folder })),
+	workstreamsRead: (folder: string | null, fileName: string) => typedError<string, string>(__TAURI_INVOKE("workstreams_read", { folder, fileName })),
+	/**  Write a workstream over `expected_revision`; `None` creates it. */
+	workstreamsWrite: (folder: string | null, id: string, contents: string, expectedRevision: number | null) => typedError<WriteOutcome, string>(__TAURI_INVOKE("workstreams_write", { folder, id, contents, expectedRevision })),
+	workstreamsTrash: (folder: string | null, fileName: string) => typedError<null, string>(__TAURI_INVOKE("workstreams_trash", { folder, fileName })),
+	workstreamsTrashed: (folder: string | null) => typedError<TrashedWorkstream[], string>(__TAURI_INVOKE("workstreams_trashed", { folder })),
+	workstreamsRestore: (folder: string | null, id: string) => typedError<null, string>(__TAURI_INVOKE("workstreams_restore", { folder, id })),
+	workstreamsRestoreBackup: (folder: string | null, id: string) => typedError<null, string>(__TAURI_INVOKE("workstreams_restore_backup", { folder, id })),
+	/**  The computer's name: what a new device is called until it is renamed. */
+	workstreamsDeviceName: () => typedError<string, string>(__TAURI_INVOKE("workstreams_device_name")),
+	/**
+	 *  Copy every workstream of `from` into `to` (each a sync folder or none,
+	 *  for this machine's own folder). A workstream both hold in different
+	 *  versions lands as a copy named after `device`, offered for merging.
+	 */
+	workstreamsCopyInto: (from: string | null, to: string | null, device: string) => typedError<CopyReport, string>(__TAURI_INVOKE("workstreams_copy_into", { from, to, device })),
+	/**  Write an exported workstream to the file the user picked. */
+	workstreamsExportFile: (path: string, contents: string) => typedError<null, string>(__TAURI_INVOKE("workstreams_export_file", { path, contents })),
+	/**  Read a workstream file the user picked to import. */
+	workstreamsImportFile: (path: string) => typedError<string, string>(__TAURI_INVOKE("workstreams_import_file", { path })),
 };
 
 /** Events */
@@ -445,6 +471,7 @@ export type AppSettings_Deserialize = {
 	sql?: SqlSettings_Deserialize,
 	repoPriority?: { [key in string]: string },
 	filePaletteRoots?: FilePaletteRoot_Deserialize[] | null,
+	workstreams?: WorkstreamSettings_Deserialize | null,
 };
 
 export type AppSettings_Serialize = {
@@ -468,6 +495,7 @@ export type AppSettings_Serialize = {
 	sql: SqlSettings_Serialize,
 	repoPriority: { [key in string]: string },
 	filePaletteRoots?: FilePaletteRoot_Serialize[],
+	workstreams?: WorkstreamSettings_Serialize,
 };
 
 export type AzureDevOpsSettings = AzureDevOpsSettings_Serialize | AzureDevOpsSettings_Deserialize;
@@ -640,6 +668,18 @@ export type ConversationReferences = {
 	mentionedIds: number[],
 };
 
+export type CopyReport = {
+	/**  Workstreams the target did not have yet. */
+	copied: number,
+	/**
+	 *  Workstreams both had, in another version: left next to the target's
+	 *  as a copy (`<id>-<suffix>.json`), which BorgDock offers to merge.
+	 */
+	copies: number,
+	/**  Workstreams both had, the same. */
+	same: number,
+};
+
 export type DiffHunk = DiffHunk_Serialize | DiffHunk_Deserialize;
 
 export type DiffHunk_Deserialize = {
@@ -698,6 +738,8 @@ export type DispatchPrompts_Deserialize = {
 	done?: string | null,
 	sync?: string | null,
 	suggest?: string | null,
+	workstreamReview?: string | null,
+	workstreamWork?: string | null,
 };
 
 export type DispatchPrompts_Serialize = {
@@ -706,6 +748,8 @@ export type DispatchPrompts_Serialize = {
 	done?: string,
 	sync?: string,
 	suggest?: string,
+	workstreamReview?: string,
+	workstreamWork?: string,
 };
 
 export type DispatchSyncSchedule = DispatchSyncSchedule_Serialize | DispatchSyncSchedule_Deserialize;
@@ -1504,6 +1548,12 @@ export type ToastPayload_Serialize = {
 	actions: ToastAction_Serialize[],
 };
 
+export type TrashedWorkstream = {
+	id: string,
+	deletedMs: number | null,
+	contents: string,
+};
+
 export type TrayWorstState = "failing" | "pending" | "passing" | "idle" | "initializing";
 
 export type UiSettings = UiSettings_Serialize | UiSettings_Deserialize;
@@ -1626,6 +1676,39 @@ export type UpdateSettings_Serialize = {
 
 export type Value = null | boolean | number | string | Value[] | { [key in string]: Value };
 
+export type WorkstreamFile = {
+	/**  The workstream id this file belongs to. */
+	id: string,
+	fileName: string,
+	modifiedMs: number | null,
+	size: number | null,
+	/**
+	 *  A copy a sync client made next to the real file (`<id>-PC.json`,
+	 *  `<id> (1).json`): it names the workstream it is a copy of.
+	 */
+	conflictCopy: boolean,
+};
+
+export type WorkstreamSettings = WorkstreamSettings_Serialize | WorkstreamSettings_Deserialize;
+
+export type WorkstreamSettings_Deserialize = {
+	/**  A folder a sync client shares between machines. Absent: this machine only. */
+	folder?: string | null,
+	/**  What this machine is called in a workstream's log. Absent: the computer's name. */
+	deviceLabel?: string | null,
+	/**  Notify when a workstream is unblocked, invalidated or in conflict. Absent: on. */
+	notifications?: boolean | null,
+};
+
+export type WorkstreamSettings_Serialize = {
+	/**  A folder a sync client shares between machines. Absent: this machine only. */
+	folder?: string,
+	/**  What this machine is called in a workstream's log. Absent: the computer's name. */
+	deviceLabel?: string,
+	/**  Notify when a workstream is unblocked, invalidated or in conflict. Absent: on. */
+	notifications?: boolean,
+};
+
 export type WorktreeChangeSet = WorktreeChangeSet_Serialize | WorktreeChangeSet_Deserialize;
 
 export type WorktreeChangeSet_Deserialize = {
@@ -1664,6 +1747,10 @@ export type WorktreeInfo = {
 };
 
 export type WorktreeStatus = "clean" | "dirty" | "conflict";
+
+export type WriteOutcome = { status: "written" } |
+/**  The file holds another revision than the writer expected; `disk` is what it holds. */
+{ status: "conflict"; disk: string };
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

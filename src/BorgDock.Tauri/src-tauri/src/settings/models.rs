@@ -38,6 +38,23 @@ pub struct AppSettings {
     pub repo_priority: std::collections::HashMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_palette_roots: Option<Vec<FilePaletteRoot>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workstreams: Option<WorkstreamSettings>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct WorkstreamSettings {
+    /// A folder a sync client shares between machines. Absent: this machine only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder: Option<String>,
+    /// What this machine is called in a workstream's log. Absent: the computer's name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_label: Option<String>,
+    /// Notify when a workstream is unblocked, invalidated or in conflict. Absent: on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notifications: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -387,6 +404,10 @@ pub struct DispatchPrompts {
     pub sync: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub suggest: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workstream_review: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workstream_work: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
