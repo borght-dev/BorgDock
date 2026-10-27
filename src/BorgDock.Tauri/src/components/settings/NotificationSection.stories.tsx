@@ -2,6 +2,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { NotificationSettings } from '@/types/settings';
+import { getControl } from '../../../.storybook/mocks/control';
 import { configuredSettings, SectionFrame, withSettings } from './__fixtures__/settings-data';
 import { NotificationSection } from './NotificationSection';
 
@@ -59,4 +60,32 @@ export const AllDisabled: Story = {
 export const Mixed: Story = {
   decorators: [withSettings(configuredSettings)],
   args: { notifications: mixed, onChange: () => {} },
+};
+
+/** Activity popups per kind of update, and the phone channel through Home Assistant. */
+export const PhonePush: Story = {
+  decorators: [
+    withSettings(configuredSettings),
+    (Story) => {
+      getControl().invokeResponses.activity_push_target = {
+        url: 'https://home.example.com/api/webhook/borgdock',
+        hasToken: false,
+      };
+      return <Story />;
+    },
+  ],
+  args: {
+    notifications: {
+      ...configuredSettings.notifications,
+      channels: { sound: true },
+      activity: {
+        categories: { 'agent.turn': { popup: false } },
+        seenInT3: true,
+        markReadOnOpen: true,
+        taskbarBadge: true,
+        push: { enabled: true, preset: 'home-assistant', awayMinutes: 10, hideTitles: false },
+      },
+    },
+    onChange: () => {},
+  },
 };

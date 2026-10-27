@@ -80,7 +80,7 @@ export function NotificationSection({ notifications, onChange }: Props) {
           role="table"
           aria-label="Activity notifications per kind of update"
         >
-          <span role="columnheader" className="sr-only">
+          <span role="columnheader" className="text-[11px] text-[var(--color-text-muted)]">
             Update
           </span>
           <span

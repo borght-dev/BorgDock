@@ -185,6 +185,18 @@
     "page": "Dispatch"
   },
   {
+    "slug": "activity",
+    "storyId": "activity-activity--unread",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Activity: what changed since you last checked, one row per change with the action that fits, grouped by day",
+    "page": "Activity"
+  },
+  {
     "slug": "t3-hosts",
     "storyId": "settings-t3hostscard--three-hosts",
     "viewport": {
