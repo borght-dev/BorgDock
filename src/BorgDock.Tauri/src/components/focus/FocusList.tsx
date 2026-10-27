@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
+import { SinceLastCheckedCard } from '@/components/activity/SinceLastCheckedCard';
 import { CiFailuresFocusCard } from '@/components/ci-failures/CiFailuresFocusCard';
 import { DispatchFocusCard } from '@/components/dispatch/DispatchFocusCard';
 import { PrRow } from '@/components/pr/PrRow';
@@ -464,6 +465,7 @@ export function FocusList() {
           </Button>
         )}
       </div>
+      <SinceLastCheckedCard />
       <DispatchFocusCard />
       <WorkstreamsFocusCard />
       <CiFailuresFocusCard />

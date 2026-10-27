@@ -4,6 +4,7 @@ import { BorgDockLogo } from '@/components/shared/icons';
 import { SlidingHighlight } from '@/components/shared/primitives';
 import { useWorktreeCount } from '@/hooks/useWorktreeMap';
 import { showSection } from '@/services/navigation';
+import { selectNeedsYou, useActivityStore } from '@/stores/activity-store';
 import { selectWaitingCount, useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, SECTION_ORDER, useUiStore } from '@/stores/ui-store';
@@ -21,6 +22,7 @@ export const SECTION_LABELS: Record<ActiveSection, string> = {
   prs: 'Pull requests',
   workitems: 'Work items',
   worktrees: 'Worktrees',
+  activity: 'Activity',
 };
 
 /** How often the "Synced … ago" line re-renders. */
@@ -55,6 +57,7 @@ function useRailCounts(): Partial<Record<ActiveSection, RailCount>> {
   const workItemCount = useWorkItemsStore((s) => s.workItems.length);
   const worktreeCount = useWorktreeCount();
   const workstreamCount = useWorkstreamSourcesStore(selectWorkstreamsNeedingYou);
+  const activityCount = useActivityStore(selectNeedsYou);
 
   const counts: Partial<Record<ActiveSection, RailCount>> = {
     prs: { value: openCount, hot: failing > 0 },
@@ -64,6 +67,7 @@ function useRailCounts(): Partial<Record<ActiveSection, RailCount>> {
   if (workstreamCount > 0) counts.workstreams = { value: workstreamCount };
   if (workItemCount > 0) counts.workitems = { value: workItemCount };
   if (worktreeCount > 0) counts.worktrees = { value: worktreeCount };
+  if (activityCount > 0) counts.activity = { value: activityCount, hot: true };
   return counts;
 }
 
@@ -122,9 +126,10 @@ function SyncBlock() {
  * Rail — the main window's left navigation (plans/ui-overhaul-workbench.md,
  * phase 1): workspace name, the five sections with their counts and a
  * sliding highlight behind the active one, and the sync state with the
- * GitHub rate meter at the bottom. Keys `1`–`6` pick the same sections
+ * GitHub rate meter at the bottom. Keys `1`–`7` pick the same sections
  * (wired in useKeyboardNav). Dispatch counts the items waiting on you,
- * Workstreams the workstreams that need you.
+ * Workstreams the workstreams that need you, Activity the unread entries
+ * that need you.
  */
 export function Rail() {
   const activeSection = useUiStore((s) => s.activeSection);

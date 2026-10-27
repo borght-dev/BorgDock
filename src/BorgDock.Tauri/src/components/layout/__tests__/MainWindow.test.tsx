@@ -45,7 +45,7 @@ describe('MainWindow', () => {
         </MainWindow>,
       );
       const nav = screen.getByRole('navigation', { name: 'Sections' });
-      expect(within(nav).getAllByRole('button')).toHaveLength(6);
+      expect(within(nav).getAllByRole('button')).toHaveLength(7);
       expect(screen.queryByRole('tab')).not.toBeInTheDocument();
       expect(screen.getByTestId('content')).toBeInTheDocument();
       expect(screen.getByLabelText('Refresh')).toBeInTheDocument();

@@ -11,6 +11,7 @@
 @import "./worktrees-workbench.css";
 @import "./tool-windows.css";
 @import "./ci-failures.css";
+@import "./activity-workbench.css";
 
 /*
  * @theme inline — promote every runtime CSS custom property into a Tailwind

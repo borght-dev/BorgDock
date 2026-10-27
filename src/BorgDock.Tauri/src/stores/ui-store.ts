@@ -11,9 +11,13 @@ export type ActiveSection =
   | 'dispatch'
   | 'workstreams'
   | 'workitems'
-  | 'worktrees';
+  | 'worktrees'
+  | 'activity';
 
-/** Sections in rail order; keys `1`–`6` pick them by position. */
+/**
+ * Sections in rail order; keys `1`–`7` pick them by position. Activity goes
+ * last, so the keys of the sections before it stay the same.
+ */
 export const SECTION_ORDER: readonly ActiveSection[] = [
   'focus',
   'dispatch',
@@ -21,10 +25,13 @@ export const SECTION_ORDER: readonly ActiveSection[] = [
   'prs',
   'workitems',
   'worktrees',
+  'activity',
 ];
 
 /** Tabs of a workstream's detail view. */
 export type WorkstreamTab = 'overview' | 'members' | 'map' | 'activity';
+
+const ACTIVITY_VISITED_STORE_KEY = 'activityVisitedAt';
 
 function isActiveSection(value: unknown): value is ActiveSection {
   return typeof value === 'string' && (SECTION_ORDER as readonly string[]).includes(value);
@@ -122,6 +129,10 @@ interface UiState {
   unsnoozeFocusPr: (key: string) => void;
   /** Read the persisted snoozes back (called by `restorePersistedSection`). */
   restoreFocusSnoozes: () => void;
+  /** When Activity was last open: what "since you last checked" counts from. */
+  activityVisitedAt: string | null;
+  /** Leaving Activity: everything up to now was in front of me. */
+  markActivityVisited: () => void;
 }
 
 /** The view the main window is showing. */
@@ -144,6 +155,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   viewStack: [LIST_VIEW],
   focusFilter: 'all',
   focusSnoozes: {},
+  activityVisitedAt: null,
 
   setActiveSection: (section) => {
     set({ activeSection: section, _hasUserNavigated: true });
@@ -232,7 +244,22 @@ export const useUiStore = create<UiState>()((set, get) => ({
     persistSnoozes(focusSnoozes);
   },
 
+  markActivityVisited: () => {
+    const activityVisitedAt = new Date().toISOString();
+    set({ activityVisitedAt });
+    persistToTauriStore('ui-state.json', ACTIVITY_VISITED_STORE_KEY, activityVisitedAt).catch(
+      () => {},
+    );
+  },
+
   restoreFocusSnoozes: () => {
+    readFromTauriStore<string>('ui-state.json', ACTIVITY_VISITED_STORE_KEY)
+      .then((visited) => {
+        if (typeof visited === 'string' && !get().activityVisitedAt) {
+          set({ activityVisitedAt: visited });
+        }
+      })
+      .catch(() => {});
     Promise.resolve()
       .then(() =>
         readFromTauriStore<Record<string, number>>('ui-state.json', FOCUS_SNOOZES_STORE_KEY),

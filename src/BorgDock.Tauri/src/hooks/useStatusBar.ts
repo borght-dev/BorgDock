@@ -87,5 +87,10 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
         left: 'goals across items, threads and pull requests',
         right: keys('J K move · Enter open · N new · E next action'),
       };
+    case 'activity':
+      return {
+        left: 'what changed since you last checked',
+        right: keys('J K move · Enter act · E read · U unread · # dismiss · Z undo'),
+      };
   }
 }
