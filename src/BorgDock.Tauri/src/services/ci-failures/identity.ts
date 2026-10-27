@@ -3,26 +3,9 @@
  * crosses: one repository as one account sees it on one GitHub host.
  */
 
-export const GITHUB_HOST = 'github.com';
+import { parseScope } from '@/services/github/scope';
 
-export interface ScopeParts {
-  host: string;
-  account: string;
-  owner: string;
-  repo: string;
-}
-
-/** `github.com|<account>|<owner>/<repo>`, lower-case; the account is empty for the default one. */
-export function scopeOf({ host, account, owner, repo }: ScopeParts): string {
-  return `${host}|${account.trim().toLowerCase()}|${owner.toLowerCase()}/${repo.toLowerCase()}`;
-}
-
-export function parseScope(scope: string): ScopeParts | null {
-  const [host, account, path] = scope.split('|');
-  const [owner, repo] = (path ?? '').split('/');
-  if (!host || account === undefined || !owner || !repo) return null;
-  return { host, account, owner, repo };
-}
+export { GITHUB_HOST, parseScope, type ScopeParts, scopeOf } from '@/services/github/scope';
 
 /** Scopes in the same account on the same host, the only ones cross-repo suggestions compare. */
 export function sameAccount(a: string, b: string): boolean {
