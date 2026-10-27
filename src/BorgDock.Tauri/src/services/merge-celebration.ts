@@ -34,11 +34,7 @@ export function wasRecentlyCelebrated(pr: {
   return true;
 }
 
-export function markCelebrated(pr: {
-  repoOwner: string;
-  repoName: string;
-  number: number;
-}): void {
+export function markCelebrated(pr: { repoOwner: string; repoName: string; number: number }): void {
   recentlyCelebrated.set(key(pr), Date.now() + DEDUP_WINDOW_MS);
 }
 
@@ -63,13 +59,26 @@ function playTada(): void {
  *  Safe to call from any merge-related code path; the gating lives here so
  *  there's exactly one place that owns the audio + setting check. */
 export function playMergeSoundIfEnabled(): void {
-  if (useSettingsStore.getState().settings.notifications.playMergeSound) {
+  const notifications = useSettingsStore.getState().settings.notifications;
+  if (notifications.playMergeSound && notifications.channels?.sound !== false) {
     playTada();
   }
 }
 
+/** PRs merged from BorgDock this session: their activity entry needs no second popup. */
+const mergedHere = new Set<string>();
+
+export function wasMergedHere(pr: {
+  repoOwner: string;
+  repoName: string;
+  number: number;
+}): boolean {
+  return mergedHere.has(key(pr).toLowerCase());
+}
+
 export function celebrateMerge(pr: CelebratablePr): void {
   markCelebrated(pr);
+  mergedHere.add(key(pr).toLowerCase());
 
   // sendOsNotification fires the tada sound itself for severity 'merged'
   // (gated by the playMergeSound setting), so we don't call

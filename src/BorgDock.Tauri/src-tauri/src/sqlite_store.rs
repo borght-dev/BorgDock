@@ -389,7 +389,10 @@ mod tests {
         for suffix in ["-wal", "-shm"] {
             let side = dir.path().join(format!("sample.db{suffix}"));
             let old = std::fs::read(&side).unwrap_or_default();
-            assert!(!old.starts_with(b"old "), "{suffix} survived next to the fresh file");
+            assert!(
+                !old.starts_with(b"old "),
+                "{suffix} survived next to the fresh file"
+            );
         }
         assert_eq!(user_version(&opened.conn), 2);
     }

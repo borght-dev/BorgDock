@@ -7,10 +7,7 @@ const mockSettings = {
   notifications: {
     playMergeSound: true,
     onlyMyPRs: false,
-    toastOnCheckStatusChange: true,
     toastOnNewPR: false,
-    toastOnReviewUpdate: true,
-    toastOnMergeable: true,
     reviewNudgeEnabled: true,
     reviewNudgeIntervalMinutes: 60,
     reviewNudgeEscalation: true,
@@ -83,7 +80,11 @@ describe('celebrateMerge', () => {
         prRepo: 'repo',
         prNumber: 42,
         actions: [
-          { label: 'View on GitHub', action: 'open-url', url: 'https://github.com/owner/repo/pull/42' },
+          {
+            label: 'View on GitHub',
+            action: 'open-url',
+            url: 'https://github.com/owner/repo/pull/42',
+          },
         ],
       }),
     });
@@ -129,17 +130,13 @@ describe('wasRecentlyCelebrated dedup', () => {
   it('returns true within the dedup window after celebrating', async () => {
     const { celebrateMerge, wasRecentlyCelebrated } = await import('../merge-celebration');
     celebrateMerge(samplePr);
-    expect(
-      wasRecentlyCelebrated({ repoOwner: 'owner', repoName: 'repo', number: 42 }),
-    ).toBe(true);
+    expect(wasRecentlyCelebrated({ repoOwner: 'owner', repoName: 'repo', number: 42 })).toBe(true);
   });
 
   it('returns false for a different PR', async () => {
     const { celebrateMerge, wasRecentlyCelebrated } = await import('../merge-celebration');
     celebrateMerge(samplePr);
-    expect(
-      wasRecentlyCelebrated({ repoOwner: 'owner', repoName: 'repo', number: 99 }),
-    ).toBe(false);
+    expect(wasRecentlyCelebrated({ repoOwner: 'owner', repoName: 'repo', number: 99 })).toBe(false);
   });
 
   it('expires after the dedup window', async () => {
@@ -147,9 +144,7 @@ describe('wasRecentlyCelebrated dedup', () => {
     const { celebrateMerge, wasRecentlyCelebrated } = await import('../merge-celebration');
     celebrateMerge(samplePr);
     vi.advanceTimersByTime(31_000);
-    expect(
-      wasRecentlyCelebrated({ repoOwner: 'owner', repoName: 'repo', number: 42 }),
-    ).toBe(false);
+    expect(wasRecentlyCelebrated({ repoOwner: 'owner', repoName: 'repo', number: 42 })).toBe(false);
     vi.useRealTimers();
   });
 });

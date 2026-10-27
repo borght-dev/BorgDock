@@ -121,6 +121,7 @@ pub async fn reset_all_settings(
             "borgdock:github".to_string(),
             "borgdock:azure_devops".to_string(),
             "borgdock:claude_api".to_string(),
+            crate::activity::push::PUSH_SERVICE.to_string(),
         ];
         if let Ok(s) = crate::settings::load_settings_internal() {
             for c in &s.sql.connections {

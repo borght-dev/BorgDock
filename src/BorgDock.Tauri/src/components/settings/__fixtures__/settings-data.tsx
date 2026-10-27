@@ -33,17 +33,14 @@ const defaultSettings: AppSettings = {
     restoreLastSelection: true,
   },
   notifications: {
-    toastOnCheckStatusChange: true,
     toastOnNewPR: false,
-    toastOnReviewUpdate: true,
-    toastOnMergeable: true,
     onlyMyPRs: false,
     playMergeSound: true,
     reviewNudgeEnabled: true,
     reviewNudgeIntervalMinutes: 60,
     reviewNudgeEscalation: true,
     deduplicationWindowSeconds: 60,
-    channels: { tray: true, system: true, sound: true, emailDigest: false },
+    channels: { sound: true },
   },
   claudeReview: {
     botUsername: 'claude[bot]',

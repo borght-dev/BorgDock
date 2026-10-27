@@ -86,24 +86,16 @@ export type FocusLayout = 'list' | 'board';
 export type PrDensity = 'comfortable' | 'compact';
 
 export interface NotificationSettings {
-  toastOnCheckStatusChange: boolean;
   toastOnNewPR: boolean;
-  toastOnReviewUpdate: boolean;
-  toastOnMergeable: boolean;
   onlyMyPRs: boolean;
   playMergeSound: boolean;
   reviewNudgeEnabled: boolean;
   reviewNudgeIntervalMinutes: number;
   reviewNudgeEscalation: boolean;
   deduplicationWindowSeconds: number;
-  channels: { tray: boolean; system: boolean; sound: boolean; emailDigest: boolean };
+  /** Sound for merges; the other channels went with the activity journal. */
+  channels: { sound: boolean };
   lastTestFiredAt?: number;
-  /** A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner. */
-  ciFailureGroupGrows?: boolean;
-  /** The owner of a related CI failure went quiet. */
-  ciFailureOwnerStale?: boolean;
-  /** A related CI failure's fix merged while PRs are still red. */
-  ciFailureFixMerged?: boolean;
   /** The activity journal: popups, push and read behaviour per category. */
   activity?: ActivityNotificationSettings;
 }
@@ -196,8 +188,6 @@ export interface AgentSettings {
   };
   /** When "Sync all" runs by itself. Runs while BorgDock is open. */
   dispatchSyncSchedule?: DispatchSyncSchedule;
-  /** Notify when an agent asks, proposes a plan, finishes or fails. Default on. */
-  dispatchNotifications?: boolean;
   /** T3 servers on other machines. The one on this machine is always followed. */
   t3Hosts?: T3HostSettings[];
 }
@@ -293,6 +283,4 @@ export interface WorkstreamSettings {
   folder?: string;
   /** What this machine is called in a workstream's log. Empty: the computer's name. */
   deviceLabel?: string;
-  /** Notify when a workstream is unblocked, invalidated or in conflict. Default on. */
-  notifications?: boolean;
 }

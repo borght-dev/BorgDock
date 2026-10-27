@@ -4,6 +4,7 @@ pub mod click_outside;
 pub mod deferred_actions;
 pub mod flyout_cache;
 pub mod hotkey;
+pub mod idle;
 pub mod logs;
 pub mod taskbar;
 pub mod theme;

@@ -360,6 +360,11 @@ export const commands = {
 	/**  Retention: run at startup and once a day. */
 	activityPrune: () => typedError<number, string>(__TAURI_INVOKE("activity_prune")),
 	activityStoreInfo: () => typedError<ActivityStoreInfo_Serialize, string>(__TAURI_INVOKE("activity_store_info")),
+	activityPushTarget: () => typedError<ActivityPushTarget_Serialize, string>(__TAURI_INVOKE("activity_push_target")),
+	/**  Store the webhook; an empty URL removes it. A `None` token keeps the stored one. */
+	activityPushSave: (url: string, token: string | null) => typedError<null, string>(__TAURI_INVOKE("activity_push_save", { url, token })),
+	/**  Send a test push now, away or not. */
+	activityPushTest: () => typedError<null, string>(__TAURI_INVOKE("activity_push_test")),
 	/**
 	 *  Show `count` on the main window's taskbar icon; 0 clears it. Runs on the
 	 *  GUI thread with the shared timeout, like every window command.
@@ -833,6 +838,21 @@ export type ActivityPushSettings_Serialize = {
 	hideTitles: boolean,
 };
 
+/**  What Settings shows about the webhook; the token itself never leaves Rust. */
+export type ActivityPushTarget = ActivityPushTarget_Serialize | ActivityPushTarget_Deserialize;
+
+/**  What Settings shows about the webhook; the token itself never leaves Rust. */
+export type ActivityPushTarget_Deserialize = {
+	url?: string | null,
+	hasToken: boolean,
+};
+
+/**  What Settings shows about the webhook; the token itself never leaves Rust. */
+export type ActivityPushTarget_Serialize = {
+	url: string | null,
+	hasToken: boolean,
+};
+
 /**
  *  An entry's read state, as `activity_mark` found it and `activity_restore`
  *  puts it back.
@@ -1071,7 +1091,10 @@ export type AgentSettings_Deserialize = {
 	dispatchPrompts?: DispatchPrompts_Deserialize | null,
 	/**  When Dispatch's "Sync all" runs by itself. Absent: never. */
 	dispatchSyncSchedule?: DispatchSyncSchedule_Deserialize | null,
-	/**  Notify when an agent asks, proposes a plan, finishes or fails. Absent: on. */
+	/**
+	 *  Read once by `settings::migrate` (v3), never written: the `agent.*`
+	 *  activity categories replaced it.
+	 */
 	dispatchNotifications?: boolean | null,
 	/**  T3 servers on other machines that Dispatch follows. */
 	t3Hosts?: T3HostSettings[],
@@ -1096,8 +1119,6 @@ export type AgentSettings_Serialize = {
 	dispatchPrompts?: DispatchPrompts_Serialize,
 	/**  When Dispatch's "Sync all" runs by itself. Absent: never. */
 	dispatchSyncSchedule?: DispatchSyncSchedule_Serialize,
-	/**  Notify when an agent asks, proposes a plan, finishes or fails. Absent: on. */
-	dispatchNotifications?: boolean,
 	/**  T3 servers on other machines that Dispatch follows. */
 	t3Hosts?: T3HostSettings[],
 };
@@ -2296,25 +2317,24 @@ export type ModelOptionDto = {
 export type NotificationChannels = NotificationChannels_Serialize | NotificationChannels_Deserialize;
 
 export type NotificationChannels_Deserialize = {
-	tray?: boolean,
-	system?: boolean,
+	/**  Never read; dropped on the next save. */
+	tray?: boolean | null,
+	system?: boolean | null,
 	sound?: boolean,
-	emailDigest?: boolean,
+	emailDigest?: boolean | null,
 };
 
 export type NotificationChannels_Serialize = {
-	tray: boolean,
-	system: boolean,
 	sound: boolean,
-	emailDigest: boolean,
 };
 
 export type NotificationSettings = NotificationSettings_Serialize | NotificationSettings_Deserialize;
 
 export type NotificationSettings_Deserialize = {
-	toastOnCheckStatusChange?: boolean,
-	toastOnReviewUpdate?: boolean,
-	toastOnMergeable?: boolean,
+	/**  Read once by `settings::migrate` (v3), never written: activity categories replaced it. */
+	toastOnCheckStatusChange?: boolean | null,
+	toastOnReviewUpdate?: boolean | null,
+	toastOnMergeable?: boolean | null,
 	playMergeSound?: boolean,
 	reviewNudgeEnabled?: boolean,
 	reviewNudgeIntervalMinutes?: number,
@@ -2323,11 +2343,11 @@ export type NotificationSettings_Deserialize = {
 	channels?: NotificationChannels_Deserialize,
 	lastTestFiredAt?: number | null,
 	/**  A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner. */
-	ciFailureGroupGrows?: boolean,
+	ciFailureGroupGrows?: boolean | null,
 	/**  The owner of a related CI failure went quiet. */
-	ciFailureOwnerStale?: boolean,
+	ciFailureOwnerStale?: boolean | null,
 	/**  A related CI failure's fix merged while PRs are still red. */
-	ciFailureFixMerged?: boolean,
+	ciFailureFixMerged?: boolean | null,
 	/**  The activity journal: popups, push and read behaviour per category. */
 	activity?: ActivityNotificationSettings_Deserialize,
 } & ({
@@ -2341,10 +2361,7 @@ export type NotificationSettings_Deserialize = {
 });
 
 export type NotificationSettings_Serialize = {
-	toastOnCheckStatusChange: boolean,
 	toastOnNewPR: boolean,
-	toastOnReviewUpdate: boolean,
-	toastOnMergeable: boolean,
 	onlyMyPRs: boolean,
 	playMergeSound: boolean,
 	reviewNudgeEnabled: boolean,
@@ -2353,12 +2370,6 @@ export type NotificationSettings_Serialize = {
 	deduplicationWindowSeconds: number,
 	channels: NotificationChannels_Serialize,
 	lastTestFiredAt?: number,
-	/**  A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner. */
-	ciFailureGroupGrows: boolean,
-	/**  The owner of a related CI failure went quiet. */
-	ciFailureOwnerStale: boolean,
-	/**  A related CI failure's fix merged while PRs are still red. */
-	ciFailureFixMerged: boolean,
 	/**  The activity journal: popups, push and read behaviour per category. */
 	activity: ActivityNotificationSettings_Serialize,
 };
@@ -3201,7 +3212,10 @@ export type WorkstreamSettings_Deserialize = {
 	folder?: string | null,
 	/**  What this machine is called in a workstream's log. Absent: the computer's name. */
 	deviceLabel?: string | null,
-	/**  Notify when a workstream is unblocked, invalidated or in conflict. Absent: on. */
+	/**
+	 *  Read once by `settings::migrate` (v3), never written: the
+	 *  `workstream.*` activity categories replaced it.
+	 */
 	notifications?: boolean | null,
 };
 
@@ -3210,8 +3224,6 @@ export type WorkstreamSettings_Serialize = {
 	folder?: string,
 	/**  What this machine is called in a workstream's log. Absent: the computer's name. */
 	deviceLabel?: string,
-	/**  Notify when a workstream is unblocked, invalidated or in conflict. Absent: on. */
-	notifications?: boolean,
 };
 
 export type WorktreeChangeSet = WorktreeChangeSet_Serialize | WorktreeChangeSet_Deserialize;

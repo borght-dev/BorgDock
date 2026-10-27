@@ -271,7 +271,7 @@ export function FlyoutApp() {
             }
             break;
           case 'activity-open':
-            if (url) await emitTo('main', 'activity-show', { id: url });
+            await emitTo('main', 'activity-show', { id: url ?? '' });
             break;
           case 'activity-act':
             if (url) await emitTo('main', 'activity-act', { id: url });

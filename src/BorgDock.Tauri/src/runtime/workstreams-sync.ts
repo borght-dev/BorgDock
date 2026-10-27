@@ -22,14 +22,10 @@ import {
   recordVerification,
   relinkMember,
 } from '@/services/workstreams/edits';
+import { SHOW_WORKSTREAM_EVENT } from '@/services/workstreams/events';
 import { clientForPullRequest } from '@/services/workstreams/github-client';
 import { prRefFromUrl } from '@/services/workstreams/identity';
 import { ADD_TO_WORKSTREAM_EVENT, type AddRequest } from '@/services/workstreams/membership';
-import {
-  notifyWorkstreams,
-  SHOW_WORKSTREAM_EVENT,
-  workstreamNotices,
-} from '@/services/workstreams/notifier';
 import { type CachedMeta, cacheEntry, type SourceSnapshot } from '@/services/workstreams/resolve';
 import {
   contextItemIds,
@@ -288,12 +284,9 @@ function notify(assessments: Record<string, ReturnType<typeof assessWorkstream>>
   const hosts = useDispatchStore.getState().hosts;
   const cameBack = hosts.some((host) => host.ok && hostsOk.get(host.id) === false);
   hostsOk = new Map(hosts.map((host) => [host.id, host.ok]));
-  const quiet = !notifiedOnce || !everySourceRead() || cameBack;
   const firstPass = !notifiedOnce || !everySourceRead();
   notifiedOnce = true;
-  const enabled = useSettingsStore.getState().settings.workstreams?.notifications ?? true;
   const documents = Object.values(store.entries).map((entry) => entry.document);
-  notifyWorkstreams(workstreamNotices(documents, assessments), quiet, enabled);
   // Until every source was read once the assessments are still filling up;
   // the persisted baseline then catches up on the first full pass.
   if (!firstPass) ingestWorkstreams(documents, assessments, cameBack);

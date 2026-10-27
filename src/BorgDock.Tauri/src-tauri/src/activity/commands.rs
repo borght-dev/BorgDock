@@ -21,6 +21,8 @@ pub struct ActivityChanged {
 
 fn notify(app: &AppHandle, changed: Option<ActivityChanged>) {
     let Some(changed) = changed else { return };
+    // A new entry may be due for the phone, a read one due for a clear.
+    super::push::wake();
     if let Err(error) = app.emit(CHANGED_EVENT, changed) {
         log::warn!("activity store: could not emit {CHANGED_EVENT}: {error}");
     }

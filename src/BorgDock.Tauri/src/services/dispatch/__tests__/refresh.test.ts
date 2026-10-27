@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../items', () => ({ loadDispatchItems: vi.fn() }));
-vi.mock('../notifier', () => ({ notifyNew: vi.fn() }));
 vi.mock('../linked-prs', () => ({
   candidateRepositories: () => [],
   fetchFromGitHub: vi.fn(),

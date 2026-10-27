@@ -9,7 +9,6 @@ import {
 } from '@/services/ci-failures/actions';
 import { CiEventTracker } from '@/services/ci-failures/events';
 import { trackFixes } from '@/services/ci-failures/fixes';
-import { followCiNotifications } from '@/services/ci-failures/notify';
 import { ownerStatusOf } from '@/services/ci-failures/ownership';
 import { ciFailureSettings } from '@/services/ci-failures/settings';
 import * as store from '@/services/ci-failures/store-api';
@@ -114,7 +113,6 @@ export function startCiFailuresSync(): () => void {
   const unsubscribeGroups = useCiFailuresStore.subscribe((state, previous) => {
     if (state.groups !== previous.groups) checkEvents();
   });
-  const stopNotifications = followCiNotifications();
 
   const followUp = async () => {
     if (!ciFailureSettings(settings()).enabled) return;
@@ -185,7 +183,6 @@ export function startCiFailuresSync(): () => void {
     unsubscribePolls();
     unsubscribeSettings();
     unsubscribeGroups();
-    stopNotifications();
     stopFollowing();
     stopListening?.();
   };

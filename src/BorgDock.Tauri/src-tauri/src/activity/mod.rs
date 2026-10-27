@@ -7,6 +7,7 @@
 
 pub mod commands;
 pub mod dto;
+pub mod push;
 pub(crate) mod queries;
 mod schema;
 

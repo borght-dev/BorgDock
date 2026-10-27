@@ -50,17 +50,14 @@ function makeSettings(
       restoreLastSelection: true,
     },
     notifications: {
-      toastOnCheckStatusChange: true,
       toastOnNewPR: true,
-      toastOnReviewUpdate: true,
-      toastOnMergeable: true,
       onlyMyPRs: false,
       playMergeSound: true,
       reviewNudgeEnabled: false,
       reviewNudgeIntervalMinutes: 30,
       reviewNudgeEscalation: false,
       deduplicationWindowSeconds: 60,
-      channels: { tray: true, system: true, sound: true, emailDigest: false },
+      channels: { sound: true },
     },
     claudeReview: { botUsername: '' },
     updates: {

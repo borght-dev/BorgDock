@@ -3,7 +3,8 @@ import { bringMainWindowForward } from '@/hooks/useFlyoutSync';
 import { act } from '@/services/activity/actions';
 import { DELIVERY_MS, pollDeliveries } from '@/services/activity/adapters/delivery';
 import * as api from '@/services/activity/api';
-import { retireSourcesExcept } from '@/services/activity/ingest';
+import { onActivityCommitted, retireSourcesExcept } from '@/services/activity/ingest';
+import { cancelDrain, drainPopups, scheduleDrain } from '@/services/activity/policy';
 import { sourceId } from '@/services/activity/sources';
 import type { ActivityEntry } from '@/services/activity/types';
 import { parseScope } from '@/services/github/scope';
@@ -19,6 +20,8 @@ import { trackPolling } from './visibility';
 
 const log = createLogger('activity-runtime');
 
+/** The popup outbox is swept this often besides after each commit (a retry, a missed wake). */
+const POPUP_SWEEP_MS = 60_000;
 /** Retention runs at startup and then once a day. */
 const PRUNE_MS = 24 * 60 * 60_000;
 
@@ -87,6 +90,12 @@ export function startActivitySync(): () => void {
 
   const stopBadge = followTaskbarBadge();
 
+  // Popups come from committed entries only: rows left from before a
+  // restart, and every commit that inserted something.
+  const stopCommitted = onActivityCommitted(() => scheduleDrain());
+  scheduleDrain();
+  const drainTimer = setInterval(() => void drainPopups(), POPUP_SWEEP_MS);
+
   let stopListening: (() => void) | undefined;
   let stopped = false;
   void listenToOtherWindows().then((stop) => {
@@ -102,6 +111,9 @@ export function startActivitySync(): () => void {
     untrackDeliveries();
     unsubscribeSettings();
     stopBadge();
+    stopCommitted();
+    cancelDrain();
+    clearInterval(drainTimer);
     stopListening?.();
   };
 }
@@ -144,9 +156,11 @@ async function entryById(id: string): Promise<ActivityEntry | null> {
 /** Show an entry in Activity, selected and open. */
 export async function showActivityEntry(id: string): Promise<void> {
   await bringMainWindowForward();
-  const view = useActivityViewStore.getState();
-  view.select(id);
-  if (useActivityViewStore.getState().expandedId !== id) view.toggleExpanded(id);
+  if (id) {
+    const view = useActivityViewStore.getState();
+    view.select(id);
+    if (useActivityViewStore.getState().expandedId !== id) view.toggleExpanded(id);
+  }
   await showSection('activity');
 }
 

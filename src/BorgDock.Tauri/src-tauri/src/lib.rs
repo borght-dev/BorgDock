@@ -251,6 +251,9 @@ macro_rules! app_commands {
             activity::commands::activity_export,
             activity::commands::activity_prune,
             activity::commands::activity_store_info,
+            activity::push::activity_push_target,
+            activity::push::activity_push_save,
+            activity::push::activity_push_test,
             platform::taskbar::set_taskbar_badge,
             // Workstreams
             workstreams::commands::workstreams_folder_path,
@@ -391,6 +394,7 @@ pub fn run() {
                 platform::window::MAIN_THREAD_TIMEOUT,
             )?);
             platform::tray::setup_tray(app)?;
+            activity::push::start(app.handle().clone());
             platform::tray::start_initializing_animation(app.handle().clone());
 
             // Window geometry store: load once, register, spawn flusher,

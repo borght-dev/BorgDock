@@ -23,7 +23,6 @@ import { forgetHostsExcept, rememberHost } from './host-memory';
 import { configuredHosts, type DispatchHost, hostRef, isRemote, rawId, scopedId } from './hosts';
 import { loadContextItems, loadDispatchItems } from './items';
 import { candidateRepositories, fetchFromGitHub, lookUpLinkedPullRequests } from './linked-prs';
-import { notifyNew } from './notifier';
 import {
   type AgentProject,
   type AgentThread,
@@ -198,7 +197,6 @@ export function recomputeOverview(): void {
   });
   if (!sameOverview(dispatch.overview, overview)) {
     dispatch.setOverview(overview);
-    notifyNew(overview, !everySourceRead());
   }
   computedOverview = useDispatchStore.getState().overview;
   // An agent picked these up; the queue has done its job.

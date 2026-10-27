@@ -290,6 +290,18 @@
     }
   }
 
+  /* The popup and phone boxes in Settings, Notifications. */
+  .bd-act-check {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+  .bd-act-check:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
   /* ── Since you last checked, at the top of Focus ───────── */
   .bd-act-fcard__counts {
     margin: 0;

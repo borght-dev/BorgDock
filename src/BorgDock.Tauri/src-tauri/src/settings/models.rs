@@ -54,8 +54,9 @@ pub struct WorkstreamSettings {
     /// What this machine is called in a workstream's log. Absent: the computer's name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_label: Option<String>,
-    /// Notify when a workstream is unblocked, invalidated or in conflict. Absent: on.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Read once by `settings::migrate` (v3), never written: the
+    /// `workstream.*` activity categories replaced it.
+    #[serde(default, skip_serializing)]
     pub notifications: Option<bool>,
 }
 
@@ -280,18 +281,19 @@ impl Default for UiSettings {
 #[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationSettings {
-    #[serde(default = "default_true")]
-    pub toast_on_check_status_change: bool,
+    /// Read once by `settings::migrate` (v3), never written: activity categories replaced it.
+    #[serde(default, skip_serializing)]
+    pub toast_on_check_status_change: Option<bool>,
     // The TS type spells "PR" as an uppercase acronym; serde's auto camelCase
     // would emit `toastOnNewPr` (lowercase r), which never matches the
     // frontend key. The explicit `rename` keeps both sides in sync; the
     // `alias` lets settings.json files saved before this fix still load.
     #[serde(default, rename = "toastOnNewPR", alias = "toastOnNewPr")]
     pub toast_on_new_pr: bool,
-    #[serde(default = "default_true")]
-    pub toast_on_review_update: bool,
-    #[serde(default = "default_true")]
-    pub toast_on_mergeable: bool,
+    #[serde(default, skip_serializing)]
+    pub toast_on_review_update: Option<bool>,
+    #[serde(default, skip_serializing)]
+    pub toast_on_mergeable: Option<bool>,
     #[serde(default, rename = "onlyMyPRs", alias = "onlyMyPrs")]
     pub only_my_prs: bool,
     #[serde(default = "default_true")]
@@ -309,14 +311,14 @@ pub struct NotificationSettings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_test_fired_at: Option<i64>,
     /// A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner.
-    #[serde(default = "default_true")]
-    pub ci_failure_group_grows: bool,
+    #[serde(default, skip_serializing)]
+    pub ci_failure_group_grows: Option<bool>,
     /// The owner of a related CI failure went quiet.
-    #[serde(default = "default_true")]
-    pub ci_failure_owner_stale: bool,
+    #[serde(default, skip_serializing)]
+    pub ci_failure_owner_stale: Option<bool>,
     /// A related CI failure's fix merged while PRs are still red.
-    #[serde(default = "default_true")]
-    pub ci_failure_fix_merged: bool,
+    #[serde(default, skip_serializing)]
+    pub ci_failure_fix_merged: Option<bool>,
     /// The activity journal: popups, push and read behaviour per category.
     #[serde(default)]
     pub activity: ActivityNotificationSettings,
@@ -414,10 +416,10 @@ fn default_dedup_window() -> u32 {
 impl Default for NotificationSettings {
     fn default() -> Self {
         Self {
-            toast_on_check_status_change: true,
+            toast_on_check_status_change: None,
             toast_on_new_pr: false,
-            toast_on_review_update: true,
-            toast_on_mergeable: true,
+            toast_on_review_update: None,
+            toast_on_mergeable: None,
             only_my_prs: false,
             play_merge_sound: true,
             review_nudge_enabled: true,
@@ -426,9 +428,9 @@ impl Default for NotificationSettings {
             deduplication_window_seconds: 60,
             channels: NotificationChannels::default(),
             last_test_fired_at: None,
-            ci_failure_group_grows: true,
-            ci_failure_owner_stale: true,
-            ci_failure_fix_merged: true,
+            ci_failure_group_grows: None,
+            ci_failure_owner_stale: None,
+            ci_failure_fix_merged: None,
             activity: ActivityNotificationSettings::default(),
         }
     }
@@ -438,23 +440,24 @@ impl Default for NotificationSettings {
 #[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationChannels {
-    #[serde(default = "default_true")]
-    pub tray: bool,
-    #[serde(default = "default_true")]
-    pub system: bool,
+    /// Never read; dropped on the next save.
+    #[serde(default, skip_serializing)]
+    pub tray: Option<bool>,
+    #[serde(default, skip_serializing)]
+    pub system: Option<bool>,
     #[serde(default = "default_true")]
     pub sound: bool,
-    #[serde(default)]
-    pub email_digest: bool,
+    #[serde(default, skip_serializing)]
+    pub email_digest: Option<bool>,
 }
 
 impl Default for NotificationChannels {
     fn default() -> Self {
         Self {
-            tray: true,
-            system: true,
+            tray: None,
+            system: None,
             sound: true,
-            email_digest: false,
+            email_digest: None,
         }
     }
 }
@@ -486,8 +489,9 @@ pub struct AgentSettings {
     /// When Dispatch's "Sync all" runs by itself. Absent: never.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dispatch_sync_schedule: Option<DispatchSyncSchedule>,
-    /// Notify when an agent asks, proposes a plan, finishes or fails. Absent: on.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Read once by `settings::migrate` (v3), never written: the `agent.*`
+    /// activity categories replaced it.
+    #[serde(default, skip_serializing)]
     pub dispatch_notifications: Option<bool>,
     /// T3 servers on other machines that Dispatch follows.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -860,10 +864,9 @@ mod redesign_field_tests {
         assert!(s.sql.default_connection_name.is_none());
         assert!(s.sql.read_only_by_default);
         assert!(s.sql.confirm_destructive_without_where);
-        assert!(s.notifications.channels.tray);
-        assert!(s.notifications.channels.system);
         assert!(s.notifications.channels.sound);
-        assert!(!s.notifications.channels.email_digest);
+        assert!(s.notifications.activity.seen_in_t3);
+        assert!(!s.notifications.activity.push.enabled);
         assert!(s.notifications.last_test_fired_at.is_none());
         assert!(s.remote_worktree_repos.is_empty());
     }
@@ -877,7 +880,7 @@ mod redesign_field_tests {
         s.ui.reduce_motion = Some(true);
         s.ui.focus_layout = Some("board".to_string());
         s.ui.stale_after_days = Some(10);
-        s.notifications.channels.email_digest = true;
+        s.notifications.channels.sound = false;
         s.remote_worktree_repos.push(RemoteWorktreeRepoSettings {
             id: "mac-fsp".to_string(),
             label: "Mac mini".to_string(),
@@ -904,7 +907,7 @@ mod redesign_field_tests {
         assert_eq!(back.ui.stale_after_days, Some(10));
         assert!(json.contains("\"focusLayout\":\"board\""));
         assert!(json.contains("\"staleAfterDays\":10"));
-        assert!(back.notifications.channels.email_digest);
+        assert!(!back.notifications.channels.sound);
         assert_eq!(back.remote_worktree_repos.len(), 1);
         assert_eq!(
             back.remote_worktree_repos[0].ssh_target,
@@ -948,7 +951,12 @@ mod redesign_field_tests {
             .unwrap());
         assert_eq!(json["ui"]["quickReviewHotkey"], "");
         assert!(json["sql"]["readOnlyByDefault"].as_bool().unwrap());
-        assert!(json["notifications"]["channels"]["tray"].as_bool().unwrap());
+        assert!(json["notifications"]["channels"]["sound"]
+            .as_bool()
+            .unwrap());
+        assert!(json["notifications"]["activity"]["seenInT3"]
+            .as_bool()
+            .unwrap());
     }
 
     #[test]
