@@ -51,6 +51,18 @@ function factsOf(host: DispatchHost, thread: AgentThread, items: number[]): T3Th
   };
 }
 
+/** The threads as the T3 derivation reads them; subagents included, it skips them. */
+export function t3Facts(
+  host: DispatchHost,
+  threads: readonly AgentThread[],
+  items: ReadonlyMap<string, number[]> = new Map(),
+): T3ThreadFacts[] {
+  return threads.flatMap((thread) => {
+    const fact = factsOf(host, thread, items.get(thread.id) ?? []);
+    return fact ? [fact] : [];
+  });
+}
+
 export function t3Source(host: DispatchHost, environmentId: string) {
   return {
     sourceId: sourceId.t3(host.id),
@@ -72,11 +84,7 @@ export function ingestT3Host(
   threads: readonly AgentThread[],
 ): void {
   if (!environmentId || sequence === null) return;
-  const items = linkedItems();
-  const facts = threads.flatMap((thread) => {
-    const fact = factsOf(host, thread, items.get(thread.id) ?? []);
-    return fact ? [fact] : [];
-  });
+  const facts = t3Facts(host, threads, linkedItems());
   const seenInT3 = useSettingsStore.getState().settings.notifications.activity?.seenInT3 !== false;
   void ingest(t3Source(host, environmentId), { sequence }, deriveT3, {
     hostId: host.id,

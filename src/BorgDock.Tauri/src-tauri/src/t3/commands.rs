@@ -1053,6 +1053,12 @@ mod tests {
         if let Some(thread) = snapshot.threads.iter().find(|t| t.run.id.is_some()) {
             println!("sample run: {:?}", thread.run);
         }
+        // BORGDOCK_T3_DUMP=<file> keeps the snapshot for the activity replay
+        // (`LIVE_SHELL=<file> bunx vitest run src/services/activity/__tests__/live-t3.test.ts`).
+        if let Ok(path) = std::env::var("BORGDOCK_T3_DUMP") {
+            std::fs::write(&path, serde_json::to_string(&snapshot).unwrap()).unwrap();
+            println!("snapshot written to {path}");
+        }
 
         if let Some(thread) = snapshot.threads.iter().find(|t| t.status != "settled") {
             let detail =

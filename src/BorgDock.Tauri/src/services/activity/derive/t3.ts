@@ -144,8 +144,24 @@ function blankBaseline(createdAt: string): T3ThreadBaseline {
 }
 
 /** What a thread is now, as the next observation compares it. */
+/**
+ * A run moved past its usage limit: it works again, or a later run started.
+ * T3 keeps `limitRecovery` after that, so the limit alone says nothing.
+ */
+function limitResumed(thread: T3ThreadFacts, limitRunId: string | null): boolean {
+  const working = thread.runStatus !== null && WORKING.has(thread.runStatus);
+  const ordinal = ordinalOf(thread.runId);
+  const limitOrdinal = ordinalOf(limitRunId);
+  return working || (limitOrdinal !== null && ordinal !== null && ordinal > limitOrdinal);
+}
+
 function baselineOf(thread: T3ThreadFacts, previous: T3ThreadBaseline | null): T3ThreadBaseline {
   const planRunId = thread.hasPlan && thread.runStatus === 'completed' ? thread.runId : null;
+  // Only a limit that still holds is remembered, so its resolution fires once.
+  const limit =
+    thread.limitRecovery && !limitResumed(thread, thread.limitRecovery.runId)
+      ? thread.limitRecovery
+      : null;
   const errorKey =
     thread.runStatus === 'failed' || thread.runStatus === 'interrupted'
       ? `${thread.runId}:${thread.runStatus}`
@@ -158,8 +174,8 @@ function baselineOf(thread: T3ThreadFacts, previous: T3ThreadBaseline | null): T
     requestKind: thread.pendingRequest?.kind ?? null,
     planRunId,
     errorKey,
-    limitRequestId: thread.limitRecovery ? limitKeyOf(thread.limitRecovery) : null,
-    limitOrdinal: thread.limitRecovery ? ordinalOf(thread.limitRecovery.runId) : null,
+    limitRequestId: limit ? limitKeyOf(limit) : null,
+    limitOrdinal: limit ? ordinalOf(limit.runId) : null,
     lastVisitedAt: normalizeTime(thread.lastVisitedAt) ?? previous?.lastVisitedAt ?? null,
     createdAt: thread.createdAt,
     detailKey: detailKeyOf(thread.detail) ?? previous?.detailKey ?? null,
@@ -374,13 +390,12 @@ function deriveThread(
   // Usage limits. T3 keeps `limitRecovery` after the run resumes, so the
   // run moving past the limited one is what resolves it.
   const limit = thread.limitRecovery;
-  const limitOrdinal = limit ? ordinalOf(limit.runId) : null;
-  const resumed = (limitAt: number | null) =>
-    working || (limitAt !== null && ordinal !== null && ordinal > limitAt);
-  if (base.limitRequestId && resumed(base.limitOrdinal)) {
+  const resumedSince = (limitOrdinal: number | null) =>
+    working || (limitOrdinal !== null && ordinal !== null && ordinal > limitOrdinal);
+  if (base.limitRequestId && resumedSince(base.limitOrdinal)) {
     draft.resolutions.push(resolveIds(ctx, [`limit:${base.limitRequestId}`], 'resumed'));
   }
-  if (limit && limitKeyOf(limit) !== base.limitRequestId && !resumed(limitOrdinal)) {
+  if (limit && limitKeyOf(limit) !== base.limitRequestId && !limitResumed(thread, limit.runId)) {
     add({
       nativeKey: `limit:${limitKeyOf(limit)}`,
       category: 'agent.limited',

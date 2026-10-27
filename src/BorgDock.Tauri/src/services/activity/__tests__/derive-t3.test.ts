@@ -260,6 +260,42 @@ describe('deriveT3', () => {
     expect(resumed.entries.map((e) => e.category)).toEqual(['agent.turn']);
   });
 
+  it('resolves a usage limit once, not on every read after the run resumed', () => {
+    const limit = {
+      requestId: 'limit-1',
+      runId: 'run:thread:a:ordinal:4',
+      resetAt: '2026-10-27T12:00:00.000Z',
+      autoResume: true,
+    };
+    const limited = deriveT3(
+      context(),
+      seeded(),
+      observe([
+        thread({
+          ...completed(4),
+          runStatus: 'interrupted',
+          stopRequested: true,
+          limitRecovery: limit,
+        }),
+      ]),
+    );
+    const resumed = deriveT3(
+      context(),
+      limited.baseline,
+      observe([thread({ ...completed(5), limitRecovery: limit })]),
+    );
+    expect(resumed.resolutions).toContainEqual(
+      expect.objectContaining({ ids: ['t3:local|limit:limit-1'] }),
+    );
+    const again = deriveT3(
+      context(),
+      resumed.baseline,
+      observe([thread({ ...completed(5), limitRecovery: limit })]),
+    );
+    expect(again.resolutions).toEqual([]);
+    expect(again.entries).toEqual([]);
+  });
+
   it('ignores an old limit T3 keeps after the run resumed', () => {
     const limit = {
       requestId: 'limit-1',
