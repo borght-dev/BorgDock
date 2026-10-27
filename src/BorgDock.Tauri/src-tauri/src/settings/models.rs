@@ -35,6 +35,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub sql: SqlSettings,
     #[serde(default)]
+    pub ci_failures: CiFailureSettings,
+    #[serde(default)]
     pub repo_priority: std::collections::HashMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_palette_roots: Option<Vec<FilePaletteRoot>>,
@@ -292,6 +294,15 @@ pub struct NotificationSettings {
     pub channels: NotificationChannels,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_test_fired_at: Option<i64>,
+    /// A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner.
+    #[serde(default = "default_true")]
+    pub ci_failure_group_grows: bool,
+    /// The owner of a related CI failure went quiet.
+    #[serde(default = "default_true")]
+    pub ci_failure_owner_stale: bool,
+    /// A related CI failure's fix merged while PRs are still red.
+    #[serde(default = "default_true")]
+    pub ci_failure_fix_merged: bool,
 }
 
 fn default_nudge_interval() -> u32 {
@@ -317,6 +328,9 @@ impl Default for NotificationSettings {
             deduplication_window_seconds: 60,
             channels: NotificationChannels::default(),
             last_test_fired_at: None,
+            ci_failure_group_grows: true,
+            ci_failure_owner_stale: true,
+            ci_failure_fix_merged: true,
         }
     }
 }
@@ -454,6 +468,66 @@ impl Default for AgentSettings {
             dispatch_sync_schedule: None,
             dispatch_notifications: None,
             t3_hosts: Vec::new(),
+        }
+    }
+}
+
+/// Related CI failures: whether evidence is collected and within which limits.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct CiFailureSettings {
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub include_default_branch: bool,
+    #[serde(default)]
+    pub cross_repo_suggestions: bool,
+    #[serde(default = "default_ci_retention_days")]
+    pub retention_days: u32,
+    #[serde(default = "default_ci_max_log_mib")]
+    pub max_log_mib: u32,
+    #[serde(default = "default_ci_log_timeout_seconds")]
+    pub log_timeout_seconds: u32,
+    #[serde(default = "default_ci_daily_evidence_limit")]
+    pub daily_evidence_limit: u32,
+    #[serde(default = "default_ci_lease_hours")]
+    pub lease_hours: u32,
+    #[serde(default = "default_ci_notify_threshold")]
+    pub notify_threshold: u32,
+}
+
+fn default_ci_retention_days() -> u32 {
+    30
+}
+fn default_ci_max_log_mib() -> u32 {
+    2
+}
+fn default_ci_log_timeout_seconds() -> u32 {
+    15
+}
+fn default_ci_daily_evidence_limit() -> u32 {
+    300
+}
+fn default_ci_lease_hours() -> u32 {
+    24
+}
+fn default_ci_notify_threshold() -> u32 {
+    3
+}
+
+impl Default for CiFailureSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            include_default_branch: true,
+            cross_repo_suggestions: false,
+            retention_days: default_ci_retention_days(),
+            max_log_mib: default_ci_max_log_mib(),
+            log_timeout_seconds: default_ci_log_timeout_seconds(),
+            daily_evidence_limit: default_ci_daily_evidence_limit(),
+            lease_hours: default_ci_lease_hours(),
+            notify_threshold: default_ci_notify_threshold(),
         }
     }
 }

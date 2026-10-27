@@ -440,6 +440,63 @@ describe('pollOpenPrsAggregate (adapter)', () => {
     });
   });
 
+  it('keeps the identity of the latest completed checks for related CI failures', async () => {
+    const [pr] = await callAdapter([
+      makeNode(
+        makeRollup([
+          attempt({ databaseId: 5, conclusion: 'FAILURE', startedAt: '2026-09-29T21:00:00Z' }),
+          attempt({
+            databaseId: 9,
+            conclusion: 'FAILURE',
+            startedAt: '2026-09-29T22:00:00Z',
+            completedAt: '2026-09-29T22:05:00Z',
+            checkSuite: {
+              databaseId: 4,
+              app: { slug: 'github-actions' },
+              workflowRun: {
+                databaseId: 70,
+                runNumber: 12,
+                event: 'pull_request',
+                workflow: { name: 'CI' },
+              },
+            },
+          }),
+          attempt({ databaseId: 11, name: 'Lint', status: 'IN_PROGRESS', conclusion: null }),
+          {
+            __typename: 'StatusContext',
+            context: 'ci/jenkins',
+            state: 'ERROR',
+            createdAt: '2026-09-29T22:01:00Z',
+            description: 'Build broke',
+          },
+        ]),
+      ),
+    ]);
+    expect(pr!.ciJobs).toEqual([
+      {
+        id: 9,
+        kind: 'actions',
+        name: 'Prepare',
+        workflowName: 'CI',
+        workflowEvent: 'pull_request',
+        runId: 70,
+        runNumber: 12,
+        checkSuiteId: 4,
+        appSlug: 'github-actions',
+        conclusion: 'failure',
+        completedAt: '2026-09-29T22:05:00Z',
+      },
+      {
+        id: 0,
+        kind: 'status',
+        name: 'ci/jenkins',
+        conclusion: 'failure',
+        completedAt: '2026-09-29T22:01:00Z',
+        description: 'Build broke',
+      },
+    ]);
+  });
+
   it('rejects incomplete pagination rather than publishing partial check results', async () => {
     const commits = makeRollup([attempt()]);
     const node = makeNode(commits);

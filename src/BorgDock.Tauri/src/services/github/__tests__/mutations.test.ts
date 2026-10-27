@@ -18,7 +18,6 @@ vi.mock('@tauri-apps/api/core', () => ({
 function createMockClient() {
   return {
     get: vi.fn(),
-    getRaw: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
     patch: vi.fn(),

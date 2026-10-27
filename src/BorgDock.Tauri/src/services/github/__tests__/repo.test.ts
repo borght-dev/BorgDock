@@ -1,15 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitHubClient } from '../client';
-import {
-  __resetRepoMergeConfigCacheForTests,
-  getRepoMergeConfig,
-  pickMergeMethod,
-} from '../repo';
+import { __resetRepoMergeConfigCacheForTests, getRepoMergeConfig, pickMergeMethod } from '../repo';
 
 function createMockClient() {
   return {
     get: vi.fn(),
-    getRaw: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
     patch: vi.fn(),
@@ -104,13 +99,11 @@ describe('getRepoMergeConfig', () => {
 
   it('does not cache failures', async () => {
     const client = createMockClient();
-    vi.mocked(client.get)
-      .mockRejectedValueOnce(new Error('boom'))
-      .mockResolvedValueOnce({
-        allow_merge_commit: false,
-        allow_squash_merge: true,
-        allow_rebase_merge: false,
-      });
+    vi.mocked(client.get).mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce({
+      allow_merge_commit: false,
+      allow_squash_merge: true,
+      allow_rebase_merge: false,
+    });
 
     await expect(getRepoMergeConfig(client, 'octo', 'cat')).rejects.toThrow('boom');
     const config = await getRepoMergeConfig(client, 'octo', 'cat');

@@ -8,6 +8,11 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: unknown[]) => mockInvoke(...args),
 }));
 
+const mockGuardLaunch = vi.fn(async () => 'proceed');
+vi.mock('@/services/ci-failures/launch-guard', () => ({
+  guardLaunch: (...args: unknown[]) => mockGuardLaunch(...(args as [])),
+}));
+
 vi.mock('@/services/notification', () => ({
   sendOsNotification: (...args: unknown[]) => mockNotify(...args),
 }));
@@ -111,6 +116,18 @@ describe('t3-thread', () => {
 
     expect(mockInvoke).not.toHaveBeenCalledWith('t3_open_thread', expect.anything());
     expect(useT3ThreadStore.getState().pendingCheckout).toEqual(pr);
+  });
+
+  it('opens nothing when the launch guard cancels', async () => {
+    mockGuardLaunch.mockResolvedValueOnce('cancel');
+
+    await requestT3Thread(pr);
+
+    expect(mockGuardLaunch).toHaveBeenCalledWith(
+      { owner: 'test', repo: 'repo', prNumber: pr.number, checkNames: [] },
+      'Open in T3',
+    );
+    expect(mockInvoke).not.toHaveBeenCalled();
   });
 
   it('ignores the main worktree even when it is on the PR branch', async () => {

@@ -295,6 +295,43 @@ export const commands = {
 	t3OpenThread: (workspaceRoot: string, branch: string, title: string, repository: string, prNumber: number, prUrl: string, model: string, modelInstance: string, executable: string | null) => typedError<T3LaunchResult_Serialize, string>(__TAURI_INVOKE("t3_open_thread", { workspaceRoot, branch, title, repository, prNumber, prUrl, model, modelInstance, executable })),
 	/**  The threads on this machine, for the T3 strip on pull requests. */
 	t3ListSessions: () => typedError<T3Session_Serialize[], string>(__TAURI_INVOKE("t3_list_sessions")),
+	/**
+	 *  The failure signals in a GitHub Actions job's log: the tail is read with a
+	 *  byte cap and a deadline, sanitized, and parsed off the async runtime. The
+	 *  raw log never leaves Rust. Read failures are an evidence state, not an
+	 *  error, so the caller can show why there is no evidence.
+	 */
+	ciReadJobLog: (request: JobLogRequest_Deserialize) => typedError<JobLogEvidence_Serialize, string>(__TAURI_INVOKE("ci_read_job_log", { request })),
+	/**
+	 *  Sanitized copies of `texts`, for evidence read through the GitHub client
+	 *  (annotations, check-run output) rather than from a log.
+	 */
+	ciSanitizeTexts: (texts: string[]) => typedError<string[], string>(__TAURI_INVOKE("ci_sanitize_texts", { texts })),
+	ciRecord: (batch: CiRecordBatch_Deserialize) => typedError<number, string>(__TAURI_INVOKE("ci_record", { batch })),
+	ciKnownOccurrences: (scope: string, since: string) => typedError<CiKnownOccurrence_Serialize[], string>(__TAURI_INVOKE("ci_known_occurrences", { scope, since })),
+	ciLoadScope: (scopes: string[]) => typedError<CiScopeSnapshot_Serialize, string>(__TAURI_INVOKE("ci_load_scope", { scopes })),
+	ciLoadPr: (scope: string, prNumber: number) => typedError<CiPrFailures_Serialize, string>(__TAURI_INVOKE("ci_load_pr", { scope, prNumber })),
+	ciLoadGroup: (groupId: string) => typedError<CiGroupDetail_Serialize, string>(__TAURI_INVOKE("ci_load_group", { groupId })),
+	ciMergeGroups: (keep: string, merge: string, keepClaimOf: string | null) => typedError<number, string>(__TAURI_INVOKE("ci_merge_groups", { keep, merge, keepClaimOf })),
+	ciSplitFingerprint: (groupId: string, fingerprint: string, version: number, title: string) => typedError<string, string>(__TAURI_INVOKE("ci_split_fingerprint", { groupId, fingerprint, version, title })),
+	ciDismissCandidate: (groupA: string, groupB: string) => typedError<null, string>(__TAURI_INVOKE("ci_dismiss_candidate", { groupA, groupB })),
+	ciSetCandidateVerdict: (groupA: string, groupB: string, verdict: Value) => typedError<null, string>(__TAURI_INVOKE("ci_set_candidate_verdict", { groupA, groupB, verdict })),
+	ciSetGroup: (id: string, patch: CiGroupPatch_Deserialize, expectedRevision: number) => typedError<CiGroupSummary_Serialize, string>(__TAURI_INVOKE("ci_set_group", { id, patch, expectedRevision })),
+	ciClaim: (groupId: string, owner: CiClaimOwner_Deserialize, leaseUntil: string | null, note: string | null) => typedError<CiClaimResult_Serialize, string>(__TAURI_INVOKE("ci_claim", { groupId, owner, leaseUntil, note })),
+	ciUpdateClaim: (claimId: string, expectedRevision: number, patch: CiClaimPatch_Deserialize, eventKind: string | null, eventDetail: string | null) => typedError<CiClaim_Serialize, string>(__TAURI_INVOKE("ci_update_claim", { claimId, expectedRevision, patch, eventKind, eventDetail })),
+	ciClaimEvent: (claimId: string, kind: string, detail: string | null) => typedError<null, string>(__TAURI_INVOKE("ci_claim_event", { claimId, kind, detail })),
+	ciUsage: (day: string, account: string) => typedError<CiUsage, string>(__TAURI_INVOKE("ci_usage", { day, account })),
+	/**
+	 *  Bookkeeping for the daily read limit: no revision, no event, since the
+	 *  `ci_record` that follows a read announces it.
+	 */
+	ciCountUsage: (day: string, account: string, reads: number, logBytes: number, skipped: number) => typedError<null, string>(__TAURI_INVOKE("ci_count_usage", { day, account, reads, logBytes, skipped })),
+	ciBranchWatch: (scope: string) => typedError<CiBranchWatch_Serialize[], string>(__TAURI_INVOKE("ci_branch_watch", { scope })),
+	/**  The runtime's own bookkeeping: no revision, no event. */
+	ciSetBranchWatch: (rows: CiBranchWatch_Deserialize[]) => typedError<null, string>(__TAURI_INVOKE("ci_set_branch_watch", { rows })),
+	ciRetention: (activeScopes: string[], retentionDays: number, maxPerScope: number, inactiveGraceDays: number) => typedError<CiRetentionReport, string>(__TAURI_INVOKE("ci_retention", { activeScopes, retentionDays, maxPerScope, inactiveGraceDays })),
+	ciClear: (keepDecisions: boolean) => typedError<null, string>(__TAURI_INVOKE("ci_clear", { keepDecisions })),
+	ciStoreInfo: () => typedError<CiStoreInfo, string>(__TAURI_INVOKE("ci_store_info")),
 	adoFetch: (request: AdoFetchRequest_Deserialize) => typedError<AdoFetchResponse_Serialize, string>(__TAURI_INVOKE("ado_fetch", { request })),
 	readTextFile: (path: string, maxBytes: number | null) => typedError<string, ReadFileError>(__TAURI_INVOKE("read_text_file", { path, maxBytes })),
 	listRootFiles: (root: string, limit: number | null) => typedError<ListFilesResult, string>(__TAURI_INVOKE("list_root_files", { root, limit })),
@@ -326,6 +363,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	ciFailuresChanged: makeEvent<CiFailuresChanged, CiFailuresChanged>("ci-failures-changed"),
 	runtimeVisibility: makeEvent<RuntimeVisibility, RuntimeVisibility>("runtime-visibility"),
 	t3SessionsUpdated: makeEvent<T3SessionsUpdated_Serialize, T3SessionsUpdated_Deserialize>("t3-sessions-updated"),
 };
@@ -469,6 +507,7 @@ export type AppSettings_Deserialize = {
 	prDetail?: PrDetailSettings,
 	azureDevOps?: AzureDevOpsSettings_Deserialize,
 	sql?: SqlSettings_Deserialize,
+	ciFailures?: CiFailureSettings_Deserialize,
 	repoPriority?: { [key in string]: string },
 	filePaletteRoots?: FilePaletteRoot_Deserialize[] | null,
 	workstreams?: WorkstreamSettings_Deserialize | null,
@@ -493,6 +532,7 @@ export type AppSettings_Serialize = {
 	prDetail: PrDetailSettings,
 	azureDevOps: AzureDevOpsSettings_Serialize,
 	sql: SqlSettings_Serialize,
+	ciFailures: CiFailureSettings_Serialize,
 	repoPriority: { [key in string]: string },
 	filePaletteRoots?: FilePaletteRoot_Serialize[],
 	workstreams?: WorkstreamSettings_Serialize,
@@ -642,6 +682,578 @@ export type CheckoutPrResult = {
 	steps: GitStep[],
 };
 
+export type CiBranchWatch = CiBranchWatch_Serialize | CiBranchWatch_Deserialize;
+
+export type CiBranchWatch_Deserialize = {
+	scope: string,
+	workflowPath: string,
+	lastFailedRun?: number | null,
+	lastPassedRun?: number | null,
+	checkedAt?: string | null,
+};
+
+export type CiBranchWatch_Serialize = {
+	scope: string,
+	workflowPath: string,
+	lastFailedRun: number | null,
+	lastPassedRun: number | null,
+	checkedAt: string | null,
+};
+
+export type CiCandidateRow = {
+	groupA: string,
+	groupB: string,
+	reasons: string[],
+};
+
+export type CiCandidateView = CiCandidateView_Serialize | CiCandidateView_Deserialize;
+
+export type CiCandidateView_Deserialize = {
+	/**  The other group. */
+	group: CiGroupSummary_Deserialize,
+	reasons: string[],
+	agentVerdict?: Value | null,
+};
+
+export type CiCandidateView_Serialize = {
+	/**  The other group. */
+	group: CiGroupSummary_Serialize,
+	reasons: string[],
+	agentVerdict: Value | null,
+};
+
+export type CiClaim = CiClaim_Serialize | CiClaim_Deserialize;
+
+export type CiClaimEvent = CiClaimEvent_Serialize | CiClaimEvent_Deserialize;
+
+export type CiClaimEvent_Deserialize = {
+	claimId: string,
+	at: string,
+	kind: string,
+	detail?: string | null,
+};
+
+export type CiClaimEvent_Serialize = {
+	claimId: string,
+	at: string,
+	kind: string,
+	detail: string | null,
+};
+
+export type CiClaimOwner = CiClaimOwner_Serialize | CiClaimOwner_Deserialize;
+
+export type CiClaimOwner_Deserialize = {
+	/**  `me`, `t3`, `terminal` or `github_issue`. */
+	kind: string,
+	ownerRef: string,
+	label?: string | null,
+	hostId?: string | null,
+};
+
+export type CiClaimOwner_Serialize = {
+	/**  `me`, `t3`, `terminal` or `github_issue`. */
+	kind: string,
+	ownerRef: string,
+	label: string | null,
+	hostId: string | null,
+};
+
+export type CiClaimPatch = CiClaimPatch_Serialize | CiClaimPatch_Deserialize;
+
+export type CiClaimPatch_Deserialize = {
+	ownerRef?: string | null,
+	ownerLabel?: string | null,
+	state?: string | null,
+	leaseUntil?: string | null,
+	note?: string | null,
+};
+
+export type CiClaimPatch_Serialize = {
+	ownerRef?: string | null,
+	ownerLabel?: string | null,
+	state?: string | null,
+	leaseUntil?: string | null,
+	note?: string | null,
+};
+
+export type CiClaimResult = CiClaimResult_Serialize | CiClaimResult_Deserialize;
+
+export type CiClaimResult_Deserialize = { outcome: "claimed"; claim: CiClaim_Deserialize } |
+/**  Someone else got there first; this is their live claim. */
+{ outcome: "alreadyClaimed"; claim: CiClaim_Deserialize };
+
+export type CiClaimResult_Serialize = { outcome: "claimed"; claim: CiClaim_Serialize } |
+/**  Someone else got there first; this is their live claim. */
+{ outcome: "alreadyClaimed"; claim: CiClaim_Serialize };
+
+export type CiClaim_Deserialize = {
+	id: string,
+	groupId: string,
+	/**  `me`, `t3`, `terminal` or `github_issue`. */
+	ownerKind: string,
+	ownerRef: string,
+	ownerLabel?: string | null,
+	hostId?: string | null,
+	claimedAt: string,
+	leaseUntil?: string | null,
+	/**  `active`, `stale`, `launch_failed`, `released` or `resolved`. */
+	state: string,
+	note?: string | null,
+	revision: number,
+	updatedAt: string,
+};
+
+export type CiClaim_Serialize = {
+	id: string,
+	groupId: string,
+	/**  `me`, `t3`, `terminal` or `github_issue`. */
+	ownerKind: string,
+	ownerRef: string,
+	ownerLabel: string | null,
+	hostId: string | null,
+	claimedAt: string,
+	leaseUntil: string | null,
+	/**  `active`, `stale`, `launch_failed`, `released` or `resolved`. */
+	state: string,
+	note: string | null,
+	revision: number,
+	updatedAt: string,
+};
+
+export type CiDecision = CiDecision_Serialize | CiDecision_Deserialize;
+
+export type CiDecision_Deserialize = {
+	id: string,
+	scope: string,
+	/**  `must_link` or `cannot_link`. */
+	kind: string,
+	version: number,
+	fingerprintA: string,
+	fingerprintB: string,
+	note?: string | null,
+	ambiguous: boolean,
+	createdAt: string,
+};
+
+export type CiDecision_Serialize = {
+	id: string,
+	scope: string,
+	/**  `must_link` or `cannot_link`. */
+	kind: string,
+	version: number,
+	fingerprintA: string,
+	fingerprintB: string,
+	note: string | null,
+	ambiguous: boolean,
+	createdAt: string,
+};
+
+/**  Related CI failures: whether evidence is collected and within which limits. */
+export type CiFailureSettings = CiFailureSettings_Serialize | CiFailureSettings_Deserialize;
+
+/**  Related CI failures: whether evidence is collected and within which limits. */
+export type CiFailureSettings_Deserialize = {
+	enabled?: boolean,
+	includeDefaultBranch?: boolean,
+	crossRepoSuggestions?: boolean,
+	retentionDays?: number,
+	maxLogMib?: number,
+	logTimeoutSeconds?: number,
+	dailyEvidenceLimit?: number,
+	leaseHours?: number,
+	notifyThreshold?: number,
+};
+
+/**  Related CI failures: whether evidence is collected and within which limits. */
+export type CiFailureSettings_Serialize = {
+	enabled: boolean,
+	includeDefaultBranch: boolean,
+	crossRepoSuggestions: boolean,
+	retentionDays: number,
+	maxLogMib: number,
+	logTimeoutSeconds: number,
+	dailyEvidenceLimit: number,
+	leaseHours: number,
+	notifyThreshold: number,
+};
+
+/**
+ *  Sent to every window after a write; a window reloads when a scope it
+ *  shows is listed.
+ */
+export type CiFailuresChanged = {
+	revision: number,
+	scopes: string[],
+};
+
+export type CiFingerprintRow = {
+	scope: string,
+	version: number,
+	fingerprint: string,
+	groupId: string,
+	/**  Opaque to Rust except `catalogId`. */
+	facets: Value,
+	firstSeenAt: string,
+};
+
+export type CiGroupDetail = CiGroupDetail_Serialize | CiGroupDetail_Deserialize;
+
+export type CiGroupDetail_Deserialize = {
+	summary: CiGroupSummary_Deserialize,
+	/**  The newest 200. */
+	occurrences: CiOccurrenceDetail_Deserialize[],
+	candidates: CiCandidateView_Deserialize[],
+	decisions: CiDecision_Deserialize[],
+	/**  Newest first. */
+	claimEvents: CiClaimEvent_Deserialize[],
+};
+
+export type CiGroupDetail_Serialize = {
+	summary: CiGroupSummary_Serialize,
+	/**  The newest 200. */
+	occurrences: CiOccurrenceDetail_Serialize[],
+	candidates: CiCandidateView_Serialize[],
+	decisions: CiDecision_Serialize[],
+	/**  Newest first. */
+	claimEvents: CiClaimEvent_Serialize[],
+};
+
+export type CiGroupPatch = CiGroupPatch_Serialize | CiGroupPatch_Deserialize;
+
+export type CiGroupPatch_Deserialize = {
+	title?: string | null,
+	classification?: string | null,
+	status?: string | null,
+	fixPr?: string | null,
+	fixMergedAt?: string | null,
+	trackingIssue?: string | null,
+};
+
+export type CiGroupPatch_Serialize = {
+	title?: string | null,
+	classification?: string | null,
+	status?: string | null,
+	fixPr?: string | null,
+	fixMergedAt?: string | null,
+	trackingIssue?: string | null,
+};
+
+export type CiGroupSummary = CiGroupSummary_Serialize | CiGroupSummary_Deserialize;
+
+export type CiGroupSummary_Deserialize = {
+	id: string,
+	scope: string,
+	title: string,
+	classification?: string | null,
+	/**  `active`, `quiet`, `resolved` or `merged`. */
+	status: string,
+	mergedInto?: string | null,
+	fixPr?: string | null,
+	fixMergedAt?: string | null,
+	trackingIssue?: string | null,
+	firstObservedAt: string,
+	lastObservedAt: string,
+	revision: number,
+	prNumbers: number[],
+	/**  Run numbers (run ids when GitHub gave none) of default-branch failures. */
+	defaultBranchRuns: number[],
+	occurrenceCount: number,
+	runCount: number,
+	passedOnRetry: number,
+	catalogIds: string[],
+	failedSteps: string[],
+	workflowNames: string[],
+	maxTier: string,
+	candidateCount: number,
+	claim?: CiClaim_Deserialize | null,
+};
+
+export type CiGroupSummary_Serialize = {
+	id: string,
+	scope: string,
+	title: string,
+	classification: string | null,
+	/**  `active`, `quiet`, `resolved` or `merged`. */
+	status: string,
+	mergedInto: string | null,
+	fixPr: string | null,
+	fixMergedAt: string | null,
+	trackingIssue: string | null,
+	firstObservedAt: string,
+	lastObservedAt: string,
+	revision: number,
+	prNumbers: number[],
+	/**  Run numbers (run ids when GitHub gave none) of default-branch failures. */
+	defaultBranchRuns: number[],
+	occurrenceCount: number,
+	runCount: number,
+	passedOnRetry: number,
+	catalogIds: string[],
+	failedSteps: string[],
+	workflowNames: string[],
+	maxTier: string,
+	candidateCount: number,
+	claim: CiClaim_Serialize | null,
+};
+
+export type CiKnownOccurrence = CiKnownOccurrence_Serialize | CiKnownOccurrence_Deserialize;
+
+export type CiKnownOccurrence_Deserialize = {
+	id: string,
+	evidenceState: string,
+	evidenceAttempts: number,
+	retryAt?: string | null,
+	conclusion: string,
+	prNumber?: number | null,
+	runId?: number | null,
+	jobName: string,
+	testedSha: string,
+	observedAt: string,
+	outcome?: string | null,
+};
+
+export type CiKnownOccurrence_Serialize = {
+	id: string,
+	evidenceState: string,
+	evidenceAttempts: number,
+	retryAt: string | null,
+	conclusion: string,
+	prNumber: number | null,
+	runId: number | null,
+	jobName: string,
+	testedSha: string,
+	observedAt: string,
+	outcome: string | null,
+};
+
+export type CiNewGroup = {
+	id: string,
+	scope: string,
+	title: string,
+	firstObservedAt: string,
+};
+
+/**  One failed GitHub job attempt. A rerun is a new occurrence. */
+export type CiOccurrence = CiOccurrence_Serialize | CiOccurrence_Deserialize;
+
+export type CiOccurrenceDetail = CiOccurrenceDetail_Serialize | CiOccurrenceDetail_Deserialize;
+
+export type CiOccurrenceDetail_Deserialize = {
+	occurrence: CiOccurrence_Deserialize,
+	signals: CiSignalRow_Deserialize[],
+	outcome?: CiOutcome_Deserialize | null,
+};
+
+export type CiOccurrenceDetail_Serialize = {
+	occurrence: CiOccurrence_Serialize,
+	signals: CiSignalRow_Serialize[],
+	outcome: CiOutcome_Serialize | null,
+};
+
+/**  One failed GitHub job attempt. A rerun is a new occurrence. */
+export type CiOccurrence_Deserialize = {
+	id: string,
+	scope: string,
+	/**  `pull_request` or `default_branch`. */
+	source: string,
+	prNumber?: number | null,
+	prHeadSha?: string | null,
+	testedSha: string,
+	headBranch?: string | null,
+	event?: string | null,
+	workflowId?: number | null,
+	workflowPath?: string | null,
+	workflowName?: string | null,
+	runId?: number | null,
+	runAttempt?: number | null,
+	runNumber?: number | null,
+	jobId?: number | null,
+	jobName: string,
+	matrix: string[],
+	checkSuiteId?: number | null,
+	appSlug?: string | null,
+	htmlUrl?: string | null,
+	conclusion: string,
+	failedStep?: string | null,
+	failedStepNumber?: number | null,
+	runnerName?: string | null,
+	runnerGroup?: string | null,
+	runnerLabels: string[],
+	startedAt?: string | null,
+	completedAt?: string | null,
+	observedAt: string,
+	/**  `pending`, `ready`, `limited`, `unavailable` or `failed`. */
+	evidenceState: string,
+	evidenceReason?: string | null,
+	bytesRead?: number | null,
+	totalBytes?: number | null,
+	truncated: boolean,
+	evidenceAttempts: number,
+	retryAt?: string | null,
+};
+
+/**  One failed GitHub job attempt. A rerun is a new occurrence. */
+export type CiOccurrence_Serialize = {
+	id: string,
+	scope: string,
+	/**  `pull_request` or `default_branch`. */
+	source: string,
+	prNumber: number | null,
+	prHeadSha: string | null,
+	testedSha: string,
+	headBranch: string | null,
+	event: string | null,
+	workflowId: number | null,
+	workflowPath: string | null,
+	workflowName: string | null,
+	runId: number | null,
+	runAttempt: number | null,
+	runNumber: number | null,
+	jobId: number | null,
+	jobName: string,
+	matrix: string[],
+	checkSuiteId: number | null,
+	appSlug: string | null,
+	htmlUrl: string | null,
+	conclusion: string,
+	failedStep: string | null,
+	failedStepNumber: number | null,
+	runnerName: string | null,
+	runnerGroup: string | null,
+	runnerLabels: string[],
+	startedAt: string | null,
+	completedAt: string | null,
+	observedAt: string,
+	/**  `pending`, `ready`, `limited`, `unavailable` or `failed`. */
+	evidenceState: string,
+	evidenceReason: string | null,
+	bytesRead: number | null,
+	totalBytes: number | null,
+	truncated: boolean,
+	evidenceAttempts: number,
+	retryAt: string | null,
+};
+
+export type CiOutcome = CiOutcome_Serialize | CiOutcome_Deserialize;
+
+export type CiOutcome_Deserialize = {
+	occurrenceId: string,
+	/**  `passed_on_retry`, `passed_after_push` or `superseded`. */
+	kind: string,
+	byJobId?: number | null,
+	observedAt: string,
+};
+
+export type CiOutcome_Serialize = {
+	occurrenceId: string,
+	/**  `passed_on_retry`, `passed_after_push` or `superseded`. */
+	kind: string,
+	byJobId: number | null,
+	observedAt: string,
+};
+
+export type CiPrFailures = CiPrFailures_Serialize | CiPrFailures_Deserialize;
+
+export type CiPrFailures_Deserialize = {
+	occurrences: CiOccurrenceDetail_Deserialize[],
+	groups: CiGroupSummary_Deserialize[],
+};
+
+export type CiPrFailures_Serialize = {
+	occurrences: CiOccurrenceDetail_Serialize[],
+	groups: CiGroupSummary_Serialize[],
+};
+
+export type CiRecordBatch = CiRecordBatch_Serialize | CiRecordBatch_Deserialize;
+
+export type CiRecordBatch_Deserialize = {
+	occurrences: CiOccurrence_Deserialize[],
+	signals: CiSignalRow_Deserialize[],
+	/**  Occurrences whose stored signals are replaced by this batch's. */
+	replaceSignalsFor: string[],
+	newGroups: CiNewGroup[],
+	mappings: CiFingerprintRow[],
+	candidates: CiCandidateRow[],
+	outcomes: CiOutcome_Deserialize[],
+};
+
+export type CiRecordBatch_Serialize = {
+	occurrences: CiOccurrence_Serialize[],
+	signals: CiSignalRow_Serialize[],
+	/**  Occurrences whose stored signals are replaced by this batch's. */
+	replaceSignalsFor: string[],
+	newGroups: CiNewGroup[],
+	mappings: CiFingerprintRow[],
+	candidates: CiCandidateRow[],
+	outcomes: CiOutcome_Serialize[],
+};
+
+export type CiRetentionReport = {
+	deletedOccurrences: number,
+	deletedGroups: number,
+};
+
+export type CiScopeSnapshot = CiScopeSnapshot_Serialize | CiScopeSnapshot_Deserialize;
+
+export type CiScopeSnapshot_Deserialize = {
+	index: CiFingerprintRow[],
+	/**  `must_link` decisions only. */
+	links: CiDecision_Deserialize[],
+	/**  Every group that isn't merged. */
+	groups: CiGroupSummary_Deserialize[],
+};
+
+export type CiScopeSnapshot_Serialize = {
+	index: CiFingerprintRow[],
+	/**  `must_link` decisions only. */
+	links: CiDecision_Serialize[],
+	/**  Every group that isn't merged. */
+	groups: CiGroupSummary_Serialize[],
+};
+
+export type CiSignalRow = CiSignalRow_Serialize | CiSignalRow_Deserialize;
+
+export type CiSignalRow_Deserialize = {
+	occurrenceId: string,
+	ordinal: number,
+	signal: Signal_Deserialize,
+	fingerprintVersion: number,
+	fingerprint: string,
+	/**  `high`, `medium` or `low`. */
+	tier: string,
+	/**  Filled on reads; ignored on writes. */
+	groupId?: string | null,
+};
+
+export type CiSignalRow_Serialize = {
+	occurrenceId: string,
+	ordinal: number,
+	signal: Signal_Serialize,
+	fingerprintVersion: number,
+	fingerprint: string,
+	/**  `high`, `medium` or `low`. */
+	tier: string,
+	/**  Filled on reads; ignored on writes. */
+	groupId: string | null,
+};
+
+export type CiStoreInfo = {
+	path: string,
+	readOnly: boolean,
+	revision: number,
+	occurrences: number,
+	groups: number,
+	decisions: number,
+};
+
+export type CiUsage = {
+	day: string,
+	account: string,
+	reads: number,
+	logBytes: number,
+	skipped: number,
+};
+
 export type ClaudeReviewSettings = ClaudeReviewSettings_Serialize | ClaudeReviewSettings_Deserialize;
 
 export type ClaudeReviewSettings_Deserialize = {
@@ -769,6 +1381,12 @@ export type DispatchSyncSchedule_Serialize = {
 	/**  Days it runs on, 0 = Sunday. */
 	weekdays: number[],
 };
+
+export type EvidenceState = "ready" |
+/**  Retrying won't help: the log is gone or not ours to read. */
+"unavailable" |
+/**  Retrying later may help; see `retry_after_secs`. */
+"failed";
 
 export type FileChange = FileChange_Serialize | FileChange_Deserialize;
 
@@ -935,6 +1553,64 @@ export type HostRef_Serialize = {
 	baseUrl: string | null,
 };
 
+export type JobLogEvidence = JobLogEvidence_Serialize | JobLogEvidence_Deserialize;
+
+export type JobLogEvidence_Deserialize = {
+	state: EvidenceState,
+	reason?: string | null,
+	signals: Signal_Deserialize[],
+	/**  The failed step's section was found and extraction kept to it. */
+	stepFound: boolean,
+	bytesRead: number,
+	totalBytes?: number | null,
+	/**  Only the tail of the log was read. */
+	truncated: boolean,
+	retryAfterSecs?: number | null,
+};
+
+export type JobLogEvidence_Serialize = {
+	state: EvidenceState,
+	reason: string | null,
+	signals: Signal_Serialize[],
+	/**  The failed step's section was found and extraction kept to it. */
+	stepFound: boolean,
+	bytesRead: number,
+	totalBytes: number | null,
+	/**  Only the tail of the log was read. */
+	truncated: boolean,
+	retryAfterSecs: number | null,
+};
+
+export type JobLogRequest = JobLogRequest_Serialize | JobLogRequest_Deserialize;
+
+export type JobLogRequest_Deserialize = {
+	/**  Used for the one API request and dropped; never logged. */
+	token: string,
+	owner: string,
+	repo: string,
+	jobId: number,
+	/**  The job step GitHub reports as failed, to narrow extraction to it. */
+	failedStep?: string | null,
+	/**  Tail bytes kept; 2 MiB when absent. */
+	maxBytes?: number | null,
+	/**  Deadline for the whole read, body included; 15 s when absent. */
+	timeoutMs?: number | null,
+};
+
+export type JobLogRequest_Serialize = {
+	/**  Used for the one API request and dropped; never logged. */
+	token: string,
+	owner: string,
+	repo: string,
+	jobId: number,
+	/**  The job step GitHub reports as failed, to narrow extraction to it. */
+	failedStep: string | null,
+	/**  Tail bytes kept; 2 MiB when absent. */
+	maxBytes: number | null,
+	/**  Deadline for the whole read, body included; 15 s when absent. */
+	timeoutMs: number | null,
+};
+
 /**  What the frontend asks for when it starts an agent on a project. */
 export type LaunchRequest = LaunchRequest_Serialize | LaunchRequest_Deserialize;
 
@@ -1014,6 +1690,12 @@ export type NotificationSettings_Deserialize = {
 	deduplicationWindowSeconds?: number,
 	channels?: NotificationChannels_Deserialize,
 	lastTestFiredAt?: number | null,
+	/**  A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner. */
+	ciFailureGroupGrows?: boolean,
+	/**  The owner of a related CI failure went quiet. */
+	ciFailureOwnerStale?: boolean,
+	/**  A related CI failure's fix merged while PRs are still red. */
+	ciFailureFixMerged?: boolean,
 } & ({
 	toastOnNewPR?: boolean,
 } & {
@@ -1037,6 +1719,12 @@ export type NotificationSettings_Serialize = {
 	deduplicationWindowSeconds: number,
 	channels: NotificationChannels_Serialize,
 	lastTestFiredAt?: number,
+	/**  A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner. */
+	ciFailureGroupGrows: boolean,
+	/**  The owner of a related CI failure went quiet. */
+	ciFailureOwnerStale: boolean,
+	/**  A related CI failure's fix merged while PRs are still red. */
+	ciFailureFixMerged: boolean,
 };
 
 export type PrDetailSettings = Record<string, never>;
@@ -1267,6 +1955,104 @@ export type SessionInfo = {
 	pid: number,
 	prNumber: number,
 	description: string,
+};
+
+/**
+ *  One failure found in a job's evidence, sanitized but not normalized:
+ *  fingerprinting normalizes in TypeScript, so a new fingerprint version can
+ *  re-run over stored signals without the log.
+ */
+export type Signal = Signal_Serialize | Signal_Deserialize;
+
+/**  What a failure signal describes. Fingerprinting picks its fields by kind. */
+export type SignalKind =
+/**  A named test that failed (dotnet test, Playwright, Vitest, cargo test). */
+"test" |
+/**  A compiler error with a code and a location (MSBuild, TypeScript). */
+"compile" |
+/**  A lint rule violation. */
+"lint" |
+/**  A `##[error]` line or a check-run annotation. */
+"annotation" |
+/**  The output of a check another app reports (title, summary, text). */
+"check-output" |
+/**  A package manager or container build failure. */
+"tooling" |
+/**  A line that only says something failed. */
+"generic" |
+/**  A test runner's totals ("3 failed, 40 passed"). Never fingerprinted. */
+"summary";
+
+/**
+ *  One failure found in a job's evidence, sanitized but not normalized:
+ *  fingerprinting normalizes in TypeScript, so a new fingerprint version can
+ *  re-run over stored signals without the log.
+ */
+export type Signal_Deserialize = {
+	kind: SignalKind,
+	/**
+	 *  The parser that found it: `msbuild`, `dotnet-test`, `typescript`,
+	 *  `eslint`, `playwright`, `vitest`, `cargo-test`, `npm`, `docker`,
+	 *  `actions-annotation`, `check-annotation`, `check-output`, `generic`.
+	 */
+	parser: string,
+	/**  A test's identity without its parameters. */
+	testId?: string | null,
+	/**  A parameterized test's arguments, as written. */
+	params?: string | null,
+	path?: string | null,
+	line?: number | null,
+	column?: number | null,
+	/**  A compiler code (`CS1002`, `TS2322`), lint rule or tool error code. */
+	code?: string | null,
+	/**  An exception or assertion type (`AssertionError`, `Xunit.Sdk.EqualException`). */
+	errorClass?: string | null,
+	expected?: string | null,
+	actual?: string | null,
+	/**  The first line that says what went wrong. */
+	message: string,
+	/**  The lines around it, at most `MAX_EXCERPT_LINES`. */
+	excerpt: string[],
+	/**  Application stack frames, top first, at most `MAX_FRAMES`. */
+	frames: string[],
+	/**  How often the same failure repeated in this job (retries). */
+	repeats: number,
+};
+
+/**
+ *  One failure found in a job's evidence, sanitized but not normalized:
+ *  fingerprinting normalizes in TypeScript, so a new fingerprint version can
+ *  re-run over stored signals without the log.
+ */
+export type Signal_Serialize = {
+	kind: SignalKind,
+	/**
+	 *  The parser that found it: `msbuild`, `dotnet-test`, `typescript`,
+	 *  `eslint`, `playwright`, `vitest`, `cargo-test`, `npm`, `docker`,
+	 *  `actions-annotation`, `check-annotation`, `check-output`, `generic`.
+	 */
+	parser: string,
+	/**  A test's identity without its parameters. */
+	testId: string | null,
+	/**  A parameterized test's arguments, as written. */
+	params: string | null,
+	path: string | null,
+	line: number | null,
+	column: number | null,
+	/**  A compiler code (`CS1002`, `TS2322`), lint rule or tool error code. */
+	code: string | null,
+	/**  An exception or assertion type (`AssertionError`, `Xunit.Sdk.EqualException`). */
+	errorClass: string | null,
+	expected: string | null,
+	actual: string | null,
+	/**  The first line that says what went wrong. */
+	message: string,
+	/**  The lines around it, at most `MAX_EXCERPT_LINES`. */
+	excerpt: string[],
+	/**  Application stack frames, top first, at most `MAX_FRAMES`. */
+	frames: string[],
+	/**  How often the same failure repeated in this job (retries). */
+	repeats: number,
 };
 
 export type Snapshot = Snapshot_Serialize | Snapshot_Deserialize;

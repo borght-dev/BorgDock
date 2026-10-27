@@ -1,0 +1,2 @@
+# Captured GitHub job logs are LF; a CRLF checkout would test different input.
+src/BorgDock.Tauri/src-tauri/src/ci_failures/fixtures/** text eol=lf

@@ -11,6 +11,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { RelatedFailuresCard } from '@/components/ci-failures/RelatedFailuresCard';
 import {
   Button,
   Card,
@@ -19,9 +20,12 @@ import {
   Pill,
 } from '@/components/shared/primitives';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
-import { type FirstFailure, loadFirstFailure } from '@/services/first-failure';
+import { type PrCiFailures, usePrCiFailures } from '@/hooks/usePrCiFailures';
+import { ciFailureSettings } from '@/services/ci-failures/settings';
+import { excerptFromSignals, type FirstFailure, loadFirstFailure } from '@/services/first-failure';
 import { sendOsNotification } from '@/services/notification';
 import { rerunChecks } from '@/services/pr-actions';
+import { useSettingsStore } from '@/stores/settings-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { parseError } from '@/utils/parse-error';
 import { ChecksGrouped } from './ChecksGrouped';
@@ -243,22 +247,28 @@ function CheckRow({ run, state, onFixClick }: CheckRowProps) {
 /* ── Main component ────────────────────────────────── */
 
 /**
- * The first failure's log excerpt, fetched once the grouped list shows a
- * failed GitHub Actions job (one request per job, cached).
+ * The first failure's log excerpt. With related CI failures on, the runtime
+ * has already read the job's evidence into the store, so the excerpt comes
+ * from there and no log is read twice; otherwise it is fetched once the
+ * grouped list shows a failed GitHub Actions job (one request per job,
+ * cached).
  */
 function useFirstFailure(
   pr: PullRequestWithChecks | undefined,
   checks: CheckRun[],
   enabled: boolean,
+  failures: PrCiFailures,
 ): FirstFailure | null {
   const [excerpt, setExcerpt] = useState<FirstFailure | null>(null);
+  const collecting = useSettingsStore((s) => ciFailureSettings(s.settings).enabled);
   const owner = pr?.pullRequest.repoOwner ?? '';
   const repo = pr?.pullRequest.repoName ?? '';
   const failed = checks.filter((c) => classifyCheck(c) === 'failed');
   const failedKey = failed.map((c) => c.id).join(',');
+  const stored = collecting ? storedFirstFailure(failed, failures.data) : null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: `failedKey` stands for `failed`, which is rebuilt every render
   useEffect(() => {
-    if (!enabled || !owner || !repo || failed.length === 0) {
+    if (!enabled || !owner || !repo || failed.length === 0 || collecting) {
       setExcerpt(null);
       return;
     }
@@ -269,18 +279,35 @@ function useFirstFailure(
     return () => {
       cancelled = true;
     };
-  }, [enabled, owner, repo, failedKey]);
-  return excerpt;
+  }, [enabled, owner, repo, failedKey, collecting]);
+  return enabled ? (stored ?? excerpt) : null;
+}
+
+/** The excerpt of the first failed check whose evidence the store has. */
+function storedFirstFailure(failed: CheckRun[], data: PrCiFailures['data']): FirstFailure | null {
+  for (const run of failed) {
+    const detail = data?.occurrences.find((o) => o.occurrence.jobId === run.id);
+    if (!detail) continue;
+    const lines = excerptFromSignals(detail.signals.map((s) => s.signal));
+    if (lines.length > 0) return { checkName: run.name, lines };
+  }
+  return null;
 }
 
 export function ChecksTab({ checks, pr, grouped = false }: ChecksTabProps) {
   const { fixWithClaude } = useClaudeActions();
-  const firstFailure = useFirstFailure(pr, checks, grouped);
+  const failures = usePrCiFailures(
+    pr?.pullRequest.repoOwner ?? '',
+    pr?.pullRequest.repoName ?? '',
+    pr?.pullRequest.number ?? 0,
+  );
+  const firstFailure = useFirstFailure(pr, checks, grouped, failures);
+  const related = pr ? <RelatedFailuresCard pr={pr} checks={checks} failures={failures} /> : null;
 
   const handleFixCheck = useCallback(
     (checkName: string) => {
       if (!pr) return;
-      fixWithClaude(pr, [checkName], [], [], '').catch((err) => {
+      fixWithClaude(pr, [checkName]).catch((err) => {
         console.error('Fix with Claude failed:', err);
         void sendOsNotification({
           title: 'Fix with Claude failed',
@@ -305,6 +332,7 @@ export function ChecksTab({ checks, pr, grouped = false }: ChecksTabProps) {
     const p = pr?.pullRequest;
     return (
       <div className="bd-detail__pane-body" data-checks-tab="">
+        {related}
         <ChecksGrouped
           checks={checks}
           onFix={pr ? (run) => handleFixCheck(run.name) : undefined}
@@ -339,6 +367,7 @@ export function ChecksTab({ checks, pr, grouped = false }: ChecksTabProps) {
 
   return (
     <div className="space-y-3 p-3" data-checks-tab="">
+      {related}
       <SummaryBar checks={checks} />
 
       {pendingRuns.length > 0 && (

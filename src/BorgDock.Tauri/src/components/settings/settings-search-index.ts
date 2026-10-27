@@ -39,6 +39,30 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
     keywords: ['frequency', 'refresh'],
   },
   { sectionId: 'github', anchorId: 'rate-limit', label: 'Rate limit', keywords: ['quota'] },
+  {
+    sectionId: 'github',
+    anchorId: 'ci-daily-limit',
+    label: 'Related CI failures',
+    keywords: ['ci', 'failures', 'evidence', 'grouping', 'flaky', 'checks'],
+  },
+  {
+    sectionId: 'github',
+    anchorId: 'ci-log-tail',
+    label: 'CI log tail',
+    keywords: ['logs', 'size'],
+  },
+  {
+    sectionId: 'github',
+    anchorId: 'ci-retention',
+    label: 'CI failure history',
+    keywords: ['retention'],
+  },
+  {
+    sectionId: 'github',
+    anchorId: 'ci-lease',
+    label: 'Investigation owner check-in',
+    keywords: ['claim', 'lease'],
+  },
 
   // Repositories
   { sectionId: 'repos', anchorId: 'tracked-repositories', label: 'Tracked repositories' },

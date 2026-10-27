@@ -1,14 +1,17 @@
+import { evidenceSection, type FixEvidence } from '@/services/ci-failures/prompts';
 import { findRepoConfig } from '@/services/repo-lookup';
-import type { ParsedError, PullRequestWithChecks, RepoSettings } from '@/types';
+import type { PullRequestWithChecks, RepoSettings } from '@/types';
 import type { AgentProvider } from '@/types/settings';
 
-// Build a fix prompt for Claude Code when checks are failing
+/**
+ * The prompt for fixing failed checks. `evidence` is what the CI failure
+ * store recorded for them: sanitized excerpts and the groups they share with
+ * other PRs, which tell the agent not to fix a shared failure in this branch.
+ */
 export function buildFixPrompt(
   pr: PullRequestWithChecks,
   failedCheckNames: string[],
-  errors: ParsedError[],
-  changedFiles: string[],
-  rawLog: string,
+  evidence: FixEvidence | null,
   repoSettings: RepoSettings,
 ): string {
   const p = pr.pullRequest;
@@ -21,32 +24,7 @@ export function buildFixPrompt(
   prompt += `- **Author:** ${p.authorLogin}\n`;
   prompt += `- **Failed checks:** ${failedCheckNames.join(', ')}\n\n`;
 
-  if (errors.length > 0) {
-    prompt += `## Parsed Errors\n\n`;
-    for (const error of errors) {
-      prompt += `- **${error.filePath}`;
-      if (error.lineNumber) prompt += `:${error.lineNumber}`;
-      prompt += `**: ${error.message}`;
-      if (error.errorCode) prompt += ` (${error.errorCode})`;
-      prompt += `\n`;
-    }
-    prompt += `\n`;
-  }
-
-  if (changedFiles.length > 0) {
-    prompt += `## Changed Files in This PR\n\n`;
-    for (const file of changedFiles) {
-      prompt += `- ${file}\n`;
-    }
-    prompt += `\n`;
-  }
-
-  if (rawLog) {
-    // Include last 200 lines of raw log
-    const logLines = rawLog.split('\n');
-    const tail = logLines.slice(-200).join('\n');
-    prompt += `## Raw Log (last 200 lines)\n\n\`\`\`\n${tail}\n\`\`\`\n\n`;
-  }
+  prompt += evidenceSection(evidence, p.baseRef);
 
   // Use custom template if provided
   if (repoSettings.fixPromptTemplate) {

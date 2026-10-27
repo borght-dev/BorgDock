@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { CiSheetHost } from '@/components/ci-failures/CiSheetHost';
+import { LaunchGuardDialog } from '@/components/ci-failures/LaunchGuardDialog';
 import { MergeToast } from '@/components/focus';
 import { MainWindow } from '@/components/layout/MainWindow';
 import { ViewStack } from '@/components/layout/ViewStack';
@@ -316,6 +318,8 @@ export default function App() {
       <ToastViewport />
       <T3CheckoutDialog />
       <WorkstreamSheets />
+      <LaunchGuardDialog />
+      <CiSheetHost />
     </div>
   );
 }

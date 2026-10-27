@@ -13,7 +13,6 @@ import {
 function createMockClient() {
   const client = {
     get: vi.fn(),
-    getRaw: vi.fn(),
     post: vi.fn(),
     getRateLimit: vi.fn(),
     isRateLimitLow: false,

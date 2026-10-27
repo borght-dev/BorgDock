@@ -107,7 +107,11 @@ pub async fn get_cache_size() -> Result<u64, String> {
 
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
-pub async fn reset_all_settings(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn reset_all_settings(
+    app: tauri::AppHandle,
+    ci_store: tauri::State<'_, crate::ci_failures::store::CiStore>,
+) -> Result<(), String> {
+    let ci_store = ci_store.inner().clone();
     // Keychain + file I/O off the async runtime threads.
     tokio::task::spawn_blocking(move || {
         // Wipe all known credential entries
@@ -124,6 +128,17 @@ pub async fn reset_all_settings(app: tauri::AppHandle) -> Result<(), String> {
         for user in &users {
             if let Ok(entry) = crate::keychain::entry(user) {
                 let _ = entry.delete_credential();
+            }
+        }
+
+        // A reset starts over, CI failure history included. Close first so
+        // Windows releases the file.
+        crate::ci_failures::store::close(&ci_store);
+        let ci_db = crate::ci_failures::store::db_path();
+        for suffix in ["", "-wal", "-shm"] {
+            let path = std::path::PathBuf::from(format!("{}{suffix}", ci_db.display()));
+            if path.exists() {
+                let _ = std::fs::remove_file(&path);
             }
         }
 

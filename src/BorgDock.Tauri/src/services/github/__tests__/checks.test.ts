@@ -4,7 +4,7 @@ import {
   getCheckRunsForRef,
   getCheckSuites,
   getCheckSummaryForRef,
-  getJobLog,
+  readJobEvidence,
   rerunFailedChecks,
   rerunWorkflow,
 } from '../checks';
@@ -13,7 +13,7 @@ import type { GitHubClient } from '../client';
 function createMockClient() {
   return {
     get: vi.fn(),
-    getRaw: vi.fn(),
+    readJobLog: vi.fn(),
     post: vi.fn(),
     getRateLimit: vi.fn(),
     isRateLimitLow: false,
@@ -434,17 +434,20 @@ describe('rerunFailedChecks', () => {
   });
 });
 
-describe('getJobLog', () => {
-  it('fetches raw log content for a job', async () => {
+describe('readJobEvidence', () => {
+  it('reads the job log through the client', async () => {
     const client = createMockClient();
-    vi.mocked(client.getRaw).mockResolvedValueOnce(
-      '2025-01-15 Build started\n2025-01-15 Build completed',
-    );
+    const evidence = { state: 'unavailable', reason: 'expired', signals: [] };
+    vi.mocked(client.readJobLog).mockResolvedValueOnce(evidence as never);
 
-    const result = await getJobLog(client, 'owner', 'repo', 12345);
+    const result = await readJobEvidence(client, 'owner', 'repo', 12345, {
+      failedStep: 'Run e2e',
+    });
 
-    expect(result).toBe('2025-01-15 Build started\n2025-01-15 Build completed');
-    expect(client.getRaw).toHaveBeenCalledWith('repos/owner/repo/actions/jobs/12345/logs');
+    expect(result).toBe(evidence);
+    expect(client.readJobLog).toHaveBeenCalledWith('owner', 'repo', 12345, {
+      failedStep: 'Run e2e',
+    });
   });
 });
 

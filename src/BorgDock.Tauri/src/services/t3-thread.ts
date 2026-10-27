@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { type GuardDecision, guardLaunch } from '@/services/ci-failures/launch-guard';
 import { createLogger } from '@/services/logger';
 import { sendOsNotification } from '@/services/notification';
 import { findRepoConfig } from '@/services/repo-lookup';
@@ -70,6 +71,23 @@ export async function openT3Thread(
 }
 
 /**
+ * Every way to open a T3 thread for a PR asks this first, so a failure
+ * someone already investigates doesn't get a second agent.
+ */
+export function guardT3Launch(pr: PullRequest): Promise<GuardDecision> {
+  return guardLaunch(
+    {
+      owner: pr.repoOwner,
+      repo: pr.repoName,
+      prNumber: pr.number,
+      checkNames: [],
+      headSha: pr.headSha,
+    },
+    'Open in T3',
+  );
+}
+
+/**
  * Entry point for "Open a new thread in T3". Opens the thread straight away
  * when the PR branch is already checked out in a worktree; otherwise hands
  * the PR to the worktree picker (see `T3CheckoutDialog`), which calls
@@ -91,6 +109,7 @@ export async function requestT3Thread(pr: PullRequest): Promise<void> {
       `No worktree base path configured for ${pr.repoOwner}/${pr.repoName}. Configure it in Settings → Repos.`,
     );
   }
+  if ((await guardT3Launch(pr)) === 'cancel') return;
   const existing = await log.time('find worktree', () =>
     findWorktreeForBranch(repoConfig.worktreeBasePath, pr.headRef),
   );

@@ -3,10 +3,10 @@ export {
   getCheckRuns,
   getCheckRunsForRef,
   getCheckSuites,
-  getJobLog,
+  readJobEvidence,
   rerunWorkflow,
 } from './checks';
-export type { RateLimit } from './client';
+export type { JobLogOptions, RateLimit } from './client';
 export { GitHubApiError, GitHubAuthError, GitHubClient, GitHubRateLimitError } from './client';
 export { mergePullRequest, postComment, submitReview, toggleDraft } from './mutations';
 export { POLL_OPEN_PRS_QUERY, pollOpenPrsAggregate } from './polling';

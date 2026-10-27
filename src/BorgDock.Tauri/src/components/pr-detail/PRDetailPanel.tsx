@@ -20,7 +20,7 @@ import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
 import { createLogger } from '@/services/logger';
 import { computeMergeScore } from '@/services/merge-score';
 import { popView } from '@/services/navigation';
-import { openT3Thread } from '@/services/t3-thread';
+import { guardT3Launch, openT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
 import { type PrDetailTab, useUiStore } from '@/stores/ui-store';
@@ -546,9 +546,11 @@ export function PrDetailPanel({
           windowsTerminalProfile={actions.windowsTerminalProfile}
           onDismiss={() => actions.setCheckoutOpen(false)}
           onOpenInT3={(worktreePath) => {
-            openT3Thread(p, worktreePath).catch((err) =>
-              log.error('openT3Thread failed', err, { worktreePath }),
-            );
+            guardT3Launch(p)
+              .then((decision) =>
+                decision === 'cancel' ? undefined : openT3Thread(p, worktreePath),
+              )
+              .catch((err) => log.error('openT3Thread failed', err, { worktreePath }));
           }}
         />
       )}

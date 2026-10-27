@@ -4,6 +4,7 @@ import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import { useInitStore } from '@/stores/initStore';
 import { useSettingsStore } from '@/stores/settings-store';
 import { startAdoSync } from './ado-sync';
+import { startCiFailuresSync } from './ci-failures-sync';
 import { startDispatchSync } from './dispatch-sync';
 import { createGitHubSync } from './github-sync';
 import { initialize } from './initialize';
@@ -23,6 +24,7 @@ export function startApplicationRuntime(): () => void {
   let gitHub: ReturnType<typeof createGitHubSync> | undefined;
   let ado: ReturnType<typeof startAdoSync> | undefined;
   let stopDispatch: (() => void) | undefined;
+  let stopCiFailures: (() => void) | undefined;
   let settingsTimer: ReturnType<typeof setTimeout> | undefined;
   let unlisten: (() => void) | undefined;
   const stopVisibility = startVisibilityTracking();
@@ -51,12 +53,17 @@ export function startApplicationRuntime(): () => void {
       gitHub = undefined;
       stopDispatch?.();
       stopDispatch = undefined;
+      stopCiFailures?.();
+      stopCiFailures = undefined;
       resetClient();
       if (nextGitHub) {
         const sync = createGitHubSync(getSettings);
         gitHub = sync;
         void initialize(settings, sync, () => stopped || generation !== current).then((ready) => {
-          if (ready && !stopped && generation === current) stopDispatch = startDispatchSync();
+          if (ready && !stopped && generation === current) {
+            stopDispatch = startDispatchSync();
+            stopCiFailures = startCiFailuresSync();
+          }
         });
       }
     }
@@ -115,6 +122,7 @@ export function startApplicationRuntime(): () => void {
     gitHub?.stop();
     ado?.stop();
     stopDispatch?.();
+    stopCiFailures?.();
     stopVisibility();
     stopSessions();
     stopWorkstreams?.();

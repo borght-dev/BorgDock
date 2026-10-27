@@ -52,6 +52,9 @@ const defaultSettings: AppSettings = {
     reviewNudgeEscalation: true,
     deduplicationWindowSeconds: 60,
     channels: { tray: true, system: true, sound: true, emailDigest: false },
+    ciFailureGroupGrows: true,
+    ciFailureOwnerStale: true,
+    ciFailureFixMerged: true,
   },
   agents: {
     defaultProvider: 'claude',

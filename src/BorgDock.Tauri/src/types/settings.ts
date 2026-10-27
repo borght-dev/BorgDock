@@ -90,6 +90,25 @@ export interface NotificationSettings {
   deduplicationWindowSeconds: number;
   channels: { tray: boolean; system: boolean; sound: boolean; emailDigest: boolean };
   lastTestFiredAt?: number;
+  /** A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner. */
+  ciFailureGroupGrows?: boolean;
+  /** The owner of a related CI failure went quiet. */
+  ciFailureOwnerStale?: boolean;
+  /** A related CI failure's fix merged while PRs are still red. */
+  ciFailureFixMerged?: boolean;
+}
+
+/** Related CI failures: whether evidence is collected and within which limits. */
+export interface CiFailureSettings {
+  enabled: boolean;
+  includeDefaultBranch: boolean;
+  crossRepoSuggestions: boolean;
+  retentionDays: number;
+  maxLogMib: number;
+  logTimeoutSeconds: number;
+  dailyEvidenceLimit: number;
+  leaseHours: number;
+  notifyThreshold: number;
 }
 
 /** Terminal agents used by Fix / Resolve / Monitor. T3 is not a provider:
@@ -225,6 +244,7 @@ export interface AppSettings {
   prDetail?: PrDetailSettings;
   azureDevOps: AzureDevOpsSettings;
   sql: SqlSettings;
+  ciFailures?: CiFailureSettings;
   filePaletteRoots?: FilePaletteRoot[];
   settingsWindow?: { x: number; y: number; width: number; height: number };
   workstreams?: WorkstreamSettings;

@@ -3,6 +3,8 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useEffect, useState } from 'react';
 import { Button, Card, SectionHeader } from '@/components/shared/primitives';
 import { WorktreePruneDialog } from '@/components/worktree/WorktreePruneDialog';
+import * as ciStore from '@/services/ci-failures/store-api';
+import type { CiStoreInfo } from '@/services/ci-failures/types';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { type SelfTestResult, SelfTestResultsDialog } from './SelfTestResultsDialog';
@@ -21,6 +23,15 @@ export function MaintenanceSection() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [selfTestOpen, setSelfTestOpen] = useState(false);
   const [selfTestResults, setSelfTestResults] = useState<SelfTestResult[]>([]);
+  const [ciInfo, setCiInfo] = useState<CiStoreInfo | null>(null);
+  const [forgetDecisions, setForgetDecisions] = useState(false);
+
+  useEffect(() => {
+    ciStore
+      .storeInfo()
+      .then(setCiInfo)
+      .catch(() => setCiInfo(null));
+  }, []);
 
   useEffect(() => {
     invoke<number>('get_cache_size')
@@ -35,6 +46,15 @@ export function MaintenanceSection() {
       console.info('cache cleared', r);
     } catch (e) {
       console.error('clear cache failed', e);
+    }
+  };
+
+  const handleClearCiFailures = async () => {
+    try {
+      await ciStore.clear(!forgetDecisions);
+      setCiInfo(await ciStore.storeInfo());
+    } catch (e) {
+      console.error('clear CI failure history failed', e);
     }
   };
 
@@ -146,6 +166,38 @@ export function MaintenanceSection() {
           </div>
           <Button variant="secondary" size="sm" onClick={handleClearCache}>
             Clear cache
+          </Button>
+        </div>
+        <div
+          id="field-clear-ci-failures"
+          className="flex items-center gap-3.5 border-b border-[var(--color-subtle-border)] py-3"
+        >
+          <div className="flex-1">
+            <div className="text-xs font-medium text-[var(--color-text-primary)]">
+              Clear CI failure history
+            </div>
+            <div className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">
+              Forgets recorded failures, groups and owners. The PR cache above is separate.
+              {ciInfo &&
+                ` ${ciInfo.occurrences} failures in ${ciInfo.groups} groups, ${ciInfo.decisions} merges and splits.`}
+              {ciInfo?.readOnly && ' Written by a newer BorgDock, so it is read-only.'}
+            </div>
+            <label className="mt-1 flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
+              <input
+                type="checkbox"
+                checked={forgetDecisions}
+                onChange={(e) => setForgetDecisions(e.target.checked)}
+              />
+              Also forget merges and splits
+            </label>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={ciInfo?.readOnly}
+            onClick={handleClearCiFailures}
+          >
+            Clear history
           </Button>
         </div>
         <div id="field-reset-everything" className="flex items-center gap-3.5 py-3">

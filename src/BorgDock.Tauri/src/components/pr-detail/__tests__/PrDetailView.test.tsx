@@ -16,7 +16,7 @@ vi.mock('@/services/github/singleton', () => ({
   getClient: () => ({}),
   getClientForRepo: () => ({}),
 }));
-vi.mock('@/services/github/checks', () => ({ getCheckRunsForRef, getJobLog: vi.fn() }));
+vi.mock('@/services/github/checks', () => ({ getCheckRunsForRef, readJobEvidence: vi.fn() }));
 vi.mock('@/services/windows', () => ({ openPrDetail: openPrDetailMock }));
 vi.mock('@/hooks/useClaudeActions', () => ({
   useClaudeActions: () => ({

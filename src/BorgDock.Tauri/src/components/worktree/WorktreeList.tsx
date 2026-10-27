@@ -17,7 +17,7 @@ import { publishWorktreeCount } from '@/hooks/useWorktreeMap';
 import { diskForPath, freshDisks } from '@/services/disk-space';
 import { createLogger } from '@/services/logger';
 import { isOverlayOpen, showPr } from '@/services/navigation';
-import { openT3Thread } from '@/services/t3-thread';
+import { guardT3Launch, openT3Thread } from '@/services/t3-thread';
 import { markWorktreeUsed, readWorktreeUsage } from '@/services/worktree-usage';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -373,9 +373,11 @@ export function WorktreeList({
     (entry: WorktreeListEntry, pr: PullRequestWithChecks | undefined) => {
       if (!pr || entry.repo.remote) return;
       noteUsed(entry);
-      openT3Thread(pr.pullRequest, entry.wt.path).catch((err) =>
-        log.error('open in T3 failed', err, { path: entry.wt.path }),
-      );
+      guardT3Launch(pr.pullRequest)
+        .then((decision) =>
+          decision === 'cancel' ? undefined : openT3Thread(pr.pullRequest, entry.wt.path),
+        )
+        .catch((err) => log.error('open in T3 failed', err, { path: entry.wt.path }));
     },
     [noteUsed],
   );

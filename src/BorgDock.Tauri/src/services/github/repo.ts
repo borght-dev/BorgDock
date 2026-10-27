@@ -9,40 +9,51 @@ export interface RepoMergeConfig {
 }
 
 interface RepoApiResponse {
+  default_branch?: string;
   allow_merge_commit?: boolean;
   allow_squash_merge?: boolean;
   allow_rebase_merge?: boolean;
 }
 
-const cache = new Map<string, Promise<RepoMergeConfig>>();
+const cache = new Map<string, Promise<RepoApiResponse>>();
 
 /**
- * Fetch a repo's allowed merge methods. Cached per `owner/repo` for the
- * lifetime of the module — these settings rarely change and we don't want to
- * burn an API call on every merge button click. A failed fetch is not cached
- * so a transient network error doesn't poison the result.
+ * The repo's settings, cached per `owner/repo` for the lifetime of the
+ * module: they rarely change and we don't want to burn an API call on every
+ * merge button click or CI sync. A failed fetch is not cached so a transient
+ * network error doesn't poison the result.
  */
+function fetchRepo(client: GitHubClient, owner: string, repo: string): Promise<RepoApiResponse> {
+  const key = `${owner}/${repo}`.toLowerCase();
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const promise = client.get<RepoApiResponse>(`repos/${owner}/${repo}`);
+  cache.set(key, promise);
+  promise.catch(() => cache.delete(key));
+  return promise;
+}
+
+/** A repo's allowed merge methods. */
 export async function getRepoMergeConfig(
   client: GitHubClient,
   owner: string,
   repo: string,
 ): Promise<RepoMergeConfig> {
-  const key = `${owner}/${repo}`.toLowerCase();
-  const hit = cache.get(key);
-  if (hit) return hit;
+  const data = await fetchRepo(client, owner, repo);
+  return {
+    allowMergeCommit: data.allow_merge_commit !== false,
+    allowSquashMerge: data.allow_squash_merge !== false,
+    allowRebaseMerge: data.allow_rebase_merge !== false,
+  };
+}
 
-  const promise = (async () => {
-    const data = await client.get<RepoApiResponse>(`repos/${owner}/${repo}`);
-    return {
-      allowMergeCommit: data.allow_merge_commit !== false,
-      allowSquashMerge: data.allow_squash_merge !== false,
-      allowRebaseMerge: data.allow_rebase_merge !== false,
-    };
-  })();
-
-  cache.set(key, promise);
-  promise.catch(() => cache.delete(key));
-  return promise;
+/** A repo's default branch, or null when GitHub didn't say. */
+export async function getRepoDefaultBranch(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+): Promise<string | null> {
+  return (await fetchRepo(client, owner, repo)).default_branch ?? null;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ParsedError, PullRequestWithChecks, RepoSettings } from '@/types';
+import type { PullRequestWithChecks, RepoSettings } from '@/types';
 import { buildConflictPrompt, buildFixPrompt, buildMonitorPrompt } from '../claude-launcher';
 
 function makePrWithChecks(overrides: Partial<PullRequestWithChecks> = {}): PullRequestWithChecks {
@@ -50,30 +50,9 @@ function makeRepoSettings(overrides: Partial<RepoSettings> = {}): RepoSettings {
   };
 }
 
-function makeErrors(): ParsedError[] {
-  return [
-    {
-      filePath: 'src/auth.ts',
-      lineNumber: 42,
-      message: 'Property does not exist on type',
-      errorCode: 'TS2339',
-      category: 'typescript',
-      isIntroducedByPr: true,
-    },
-    {
-      filePath: 'src/utils.ts',
-      lineNumber: undefined,
-      message: 'Missing semicolon',
-      errorCode: 'lint/semi',
-      category: 'eslint',
-      isIntroducedByPr: false,
-    },
-  ];
-}
-
 describe('buildFixPrompt', () => {
   it('includes the check name in the title for single check', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), ['ci/build'], [], [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(makePrWithChecks(), ['ci/build'], null, makeRepoSettings());
 
     expect(prompt).toContain('# Fix Failing Check: ci/build');
   });
@@ -82,9 +61,7 @@ describe('buildFixPrompt', () => {
     const prompt = buildFixPrompt(
       makePrWithChecks(),
       ['ci/build', 'ci/test'],
-      [],
-      [],
-      '',
+      null,
       makeRepoSettings(),
     );
 
@@ -93,71 +70,41 @@ describe('buildFixPrompt', () => {
   });
 
   it('includes PR number and title', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], null, makeRepoSettings());
 
     expect(prompt).toContain('#42 Fix login flow');
   });
 
   it('includes branch names', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], null, makeRepoSettings());
 
     expect(prompt).toContain('fix/login');
     expect(prompt).toContain('main');
     expect(prompt).toMatch(/fix\/login.*→.*main/);
   });
 
-  it('includes parsed errors with file paths and line numbers', () => {
-    const errors = makeErrors();
+  it('carries sanitized evidence and warns about a shared failure', () => {
     const prompt = buildFixPrompt(
       makePrWithChecks(),
       ['build'],
-      errors,
-      [],
-      '',
+      {
+        failures: [
+          {
+            checkName: 'build',
+            lines: ['src/auth.ts:42 TS2339', 'Property does not exist on type'],
+            jobUrl: null,
+          },
+        ],
+        shared: [
+          { title: 'TS2339 in src/auth.ts', prNumbers: [7], onDefaultBranch: false, owner: null },
+        ],
+      },
       makeRepoSettings(),
     );
 
-    expect(prompt).toContain('src/auth.ts:42');
-    expect(prompt).toContain('Property does not exist on type');
-    expect(prompt).toContain('(TS2339)');
-    expect(prompt).toContain('src/utils.ts');
-    expect(prompt).toContain('Missing semicolon');
-    expect(prompt).toContain('(lint/semi)');
-  });
-
-  it('includes changed file list', () => {
-    const changedFiles = ['src/auth.ts', 'src/components/Login.tsx'];
-    const prompt = buildFixPrompt(
-      makePrWithChecks(),
-      ['build'],
-      [],
-      changedFiles,
-      '',
-      makeRepoSettings(),
-    );
-
-    expect(prompt).toContain('## Changed Files in This PR');
-    expect(prompt).toContain('- src/auth.ts');
-    expect(prompt).toContain('- src/components/Login.tsx');
-  });
-
-  it('truncates raw log to last 200 lines', () => {
-    const logLines = Array.from({ length: 300 }, (_, i) => `log line ${i + 1}`);
-    const rawLog = logLines.join('\n');
-
-    const prompt = buildFixPrompt(
-      makePrWithChecks(),
-      ['build'],
-      [],
-      [],
-      rawLog,
-      makeRepoSettings(),
-    );
-
-    expect(prompt).toContain('## Raw Log (last 200 lines)');
-    expect(prompt).toContain('log line 101');
-    expect(prompt).toContain('log line 300');
-    expect(prompt).not.toContain('log line 100\n');
+    expect(prompt).toContain('## Failure Evidence (sanitized)');
+    expect(prompt).toContain('src/auth.ts:42 TS2339');
+    expect(prompt).toContain('also appears in #7');
   });
 
   it('includes custom template when provided', () => {
@@ -165,14 +112,14 @@ describe('buildFixPrompt', () => {
       fixPromptTemplate: 'Always run `npm test` after making changes.',
     });
 
-    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], '', repoSettings);
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], null, repoSettings);
 
     expect(prompt).toContain('## Additional Instructions');
     expect(prompt).toContain('Always run `npm test` after making changes.');
   });
 
   it('includes task instructions with single check', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], null, makeRepoSettings());
 
     expect(prompt).toContain('## Task');
     expect(prompt).toContain('Fix the failing check (build)');
@@ -182,21 +129,14 @@ describe('buildFixPrompt', () => {
   });
 
   it('includes task instructions with multiple checks', () => {
-    const prompt = buildFixPrompt(
-      makePrWithChecks(),
-      ['build', 'test'],
-      [],
-      [],
-      '',
-      makeRepoSettings(),
-    );
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build', 'test'], null, makeRepoSettings());
 
     expect(prompt).toContain('## Task');
     expect(prompt).toContain('Fix the failing checks (build, test)');
   });
 
   it('includes commit, push and monitoring instructions', () => {
-    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], [], [], '', makeRepoSettings());
+    const prompt = buildFixPrompt(makePrWithChecks(), ['build'], null, makeRepoSettings());
 
     expect(prompt).toContain('## After Fixing: Commit, Push & Monitor');
     expect(prompt).toContain('git commit');

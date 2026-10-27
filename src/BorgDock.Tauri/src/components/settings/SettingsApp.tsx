@@ -2,6 +2,7 @@ import { listen } from '@tauri-apps/api/event';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { useSettingsSync } from '@/hooks/useSettingsSync';
+import { ciFailureSettings } from '@/services/ci-failures/settings';
 import { flushSettings, useSettingsStore } from '@/stores/settings-store';
 import { applyTheme } from '@/utils/theme';
 import { revealWindow } from '@/utils/window-reveal';
@@ -9,6 +10,7 @@ import { AdoSection } from './AdoSection';
 import { AgentSection } from './AgentSection';
 import { AppearanceSection } from './AppearanceSection';
 // Existing section components — bodies are rewritten in later tasks.
+import { CiFailuresCard } from './CiFailuresCard';
 import { GitHubSection } from './GitHubSection';
 import { MaintenanceSection } from './MaintenanceSection';
 import { NotificationSection } from './NotificationSection';
@@ -116,7 +118,16 @@ export function SettingsApp() {
   const sectionContent = useMemo(() => {
     switch (active) {
       case 'github':
-        return <GitHubSection github={settings.gitHub} onChange={(gitHub) => update({ gitHub })} />;
+        return (
+          <>
+            <GitHubSection github={settings.gitHub} onChange={(gitHub) => update({ gitHub })} />
+            <CiFailuresCard
+              ciFailures={ciFailureSettings(settings)}
+              repos={settings.repos}
+              onChange={(ciFailures) => update({ ciFailures })}
+            />
+          </>
+        );
       case 'repos':
         return (
           <RepoSection

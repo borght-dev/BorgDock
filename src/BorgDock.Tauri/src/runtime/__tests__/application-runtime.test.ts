@@ -17,6 +17,7 @@ vi.mock('../initialize', () => ({ initialize: mocks.initialize }));
 vi.mock('../github-sync', () => ({ createGitHubSync: mocks.createGitHub }));
 vi.mock('../ado-sync', () => ({ startAdoSync: mocks.startAdo }));
 vi.mock('../dispatch-sync', () => ({ startDispatchSync: mocks.startDispatch }));
+vi.mock('../ci-failures-sync', () => ({ startCiFailuresSync: () => () => {} }));
 vi.mock('../visibility', () => ({ startVisibilityTracking: () => () => {} }));
 vi.mock('../t3-sessions', () => ({ followT3Sessions: () => () => {} }));
 vi.mock('../workstreams-sync', () => ({ startWorkstreamsSync: () => () => {} }));

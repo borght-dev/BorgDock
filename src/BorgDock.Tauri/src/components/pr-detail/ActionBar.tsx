@@ -222,13 +222,7 @@ export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchAction
     'Failed to re-run checks',
   );
   const fix = useProgressAction(async () => {
-    await fixWithClaude(
-      pr,
-      pr.failedCheckNames.length > 0 ? pr.failedCheckNames : ['unknown'],
-      [],
-      [],
-      '',
-    );
+    await fixWithClaude(pr, pr.failedCheckNames.length > 0 ? pr.failedCheckNames : ['unknown']);
     return true;
   }, 'Fix with Claude failed');
 

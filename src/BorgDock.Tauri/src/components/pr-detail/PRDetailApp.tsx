@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { LaunchGuardDialog } from '@/components/ci-failures/LaunchGuardDialog';
 import { T3CheckoutDialog } from '@/components/pr/T3CheckoutDialog';
 import { IconButton } from '@/components/shared/primitives';
 import { usePrDetailData } from '@/hooks/usePrDetailData';
@@ -148,6 +149,7 @@ export function PrDetailApp() {
         <PrDetailPanel pr={pr} checks={checks} popOutWindow />
       </div>
       <T3CheckoutDialog />
+      <LaunchGuardDialog />
     </div>
   );
 }

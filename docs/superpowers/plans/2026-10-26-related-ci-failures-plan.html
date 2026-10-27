@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BorgDock: Related CI failures plan (2026-10-26)</title>
+<style>
+  :root { --ink:#1b1f27; --muted:#5b6472; --line:#e3e6ea; --bg:#fff; --soft:#f6f7f9; --accent:#5b4bdb; --red:#c0392b; --amber:#b9770e; --green:#1e8449; --code:#f1f2f6; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#e6e8ee; --muted:#9aa3b2; --line:#2a2f3a; --bg:#0f1218; --soft:#161a22; --accent:#9d8cff; --red:#ff6b5b; --amber:#f0b24a; --green:#4cd28a; --code:#1b2029; } }
+  body { font: 15px/1.55 system-ui, -apple-system, Segoe UI, sans-serif; color:var(--ink); background:var(--bg); margin:0; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 28px 80px; }
+  h1 { font-size: 30px; margin: 0 0 4px; }
+  h2 { font-size: 22px; margin: 44px 0 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+  h3 { font-size: 17px; margin: 26px 0 8px; }
+  h4 { font-size: 15px; margin: 18px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  p, li { max-width: 80ch; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  code { font: 13px/1.4 Cascadia Code, Consolas, ui-monospace, monospace; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow:auto; font-size: 12.5px; line-height:1.45; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { background: var(--soft); font-weight: 600; }
+  .tag { display:inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); margin-right: 4px; white-space: nowrap; }
+  .p0 { color:#fff; background: var(--red); border-color: var(--red); }
+  .p1 { color:#fff; background: var(--amber); border-color: var(--amber); }
+  .p2 { color:#fff; background: var(--green); border-color: var(--green); }
+  .verified { color: var(--green); }
+  .callout { border-left: 4px solid var(--accent); background: var(--soft); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+  .callout.warn { border-color: var(--red); }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card { border:1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--soft); }
+  .card h3 { margin-top: 0; }
+  .toc { columns: 2; column-gap: 28px; font-size: 14px; }
+  .toc li { break-inside: avoid; }
+  ul.checks li { list-style: none; margin-left: -18px; }
+  ul.checks li::before { content: "☐ "; color: var(--muted); }
+  small { color: var(--muted); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Related CI failures</h1>
+<p class="sub">2026-10-26 · issue <a href="https://github.com/borght-dev/BorgDock/issues/90">#90</a> · baseline master @ <code>3f0964d2</code> (4.6.0) · scope: the full feature, not the MVP in the issue. Paths are relative to <code>src/BorgDock.Tauri/</code> unless they start with <code>/</code>.</p>
+
+<div class="callout">
+<strong>Summary.</strong> BorgDock already sees every failed check of every open PR on each poll. It throws that away. The GraphQL rollup carries job ids, then <code>contextToCheckRunLite</code> sets <code>id: 0</code> and keeps only names. This feature keeps the identity of every failed job attempt and reads a bounded, sanitized piece of evidence for each one: job metadata, annotations and the tail of its log. It fingerprints the failure and groups equal fingerprints across PRs and the default branch. Each group gets a confidence with its reasons, a hypothesis (infrastructure, base branch, flaky, branch-specific) and one explicit owner. The owner is a T3 thread, a terminal session, you, or a GitHub tracking issue. Every agent launch on a grouped failure checks the owner first. Grouping only advises: it never changes what checks say, never reruns anything on its own and never edits a PR.
+<br><br>
+Along the way it fixes three things that are wrong today. The first-failure excerpt downloads the whole job log through the webview with no byte cap, its timeout ends when headers arrive, and the CSP's <code>connect-src</code> doesn't allow the blob host GitHub redirects logs to (so it probably fails in packaged builds). Fix prompts never receive the parsed errors: every caller passes <code>errors=[]</code> and <code>rawLog=''</code>. And nothing stops two agents from chasing the same failure.
+</div>
+
+<h3>Contents</h3>
+<ol class="toc">
+  <li><a href="#decisions">Decisions I made for you</a></li>
+  <li><a href="#today">What exists today</a></li>
+  <li><a href="#experience">What you will see</a></li>
+  <li><a href="#model">Domain model and identity</a></li>
+  <li><a href="#pipeline">Evidence pipeline</a></li>
+  <li><a href="#fingerprint">Fingerprints and confidence</a></li>
+  <li><a href="#hypotheses">Hypotheses and classification</a></li>
+  <li><a href="#ownership">Ownership and duplicate launches</a></li>
+  <li><a href="#investigate">Investigations, fixes and reruns</a></li>
+  <li><a href="#storage">Storage, retention and account boundaries</a></li>
+  <li><a href="#privacy">Sanitization and privacy</a></li>
+  <li><a href="#architecture">Module layout, commands and events</a></li>
+  <li><a href="#sequence">Implementation sequence (12 PRs)</a></li>
+  <li><a href="#verification">Verification</a></li>
+  <li><a href="#risks">Risks and things to prove first</a></li>
+  <li><a href="#ac">Acceptance criteria mapping</a></li>
+  <li><a href="#out">Out of scope</a></li>
+</ol>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="decisions">1. Decisions I made for you</h2>
+
+<p>The issue leaves these open. I picked the option below and wrote the rest of the plan around it. Each row says what changes if you pick the alternative.</p>
+
+<table>
+<tr><th>#</th><th>Decision</th><th>My pick</th><th>Alternative, and its cost</th></tr>
+<tr><td>D1</td><td>Where ownership lives</td><td>Local claims in SQLite. An explicit <em>Track on GitHub</em> action opens a tracking issue whose assignee is the shared owner. Other installs find it by label.</td><td>Local only: drop PR 12. Claims stay on one machine and the UI says so. PR comments: one comment per PR per group, too noisy.</td></tr>
+<tr><td>D2</td><td>What <em>Investigate</em> launches</td><td>A T3 thread with the evidence as its first message, so its status tells BorgDock when the owner went quiet. The terminal Fix path remains as a fallback owner without status.</td><td>T3 only: simpler, but useless unpaired. Terminal only: ownership needs manual release forever.</td></tr>
+<tr><td>D3</td><td>Which runs count</td><td>Open PRs plus push runs on each repo's default branch. Cross-repo matches are an opt-in setting and only ever <em>suggested</em> (PR 11).</td><td>PRs only: a broken master then looks like infrastructure, the exact confusion the issue wants to avoid.</td></tr>
+<tr><td>D4</td><td>Follow-ups in scope</td><td>All four: flaky detection, fix tracking with a confirmed <em>Rerun affected</em> sheet, agent-assisted compare for uncertain pairs, notifications plus digest events for #88.</td><td>Each is its own PR (9, 10, 11) and can be dropped without touching the rest.</td></tr>
+<tr><td>D5</td><td>Collection default</td><td>On, with limits shown in Settings. There are no users yet, and identity costs no requests because it comes from the existing poll. Only evidence reads cost requests.</td><td>Off by default, as the issue suggests. One line in the defaults.</td></tr>
+<tr><td>D6</td><td>Where log parsing runs</td><td>Rust. One command downloads the log tail with a byte cap and a timeout, extracts, sanitizes and returns signals. The raw log never enters the webview. <code>log-parser.ts</code> is ported, then deleted.</td><td>Keep the TS parser in a web worker. Two parsers for a while, raw logs in the webview heap, and the CSP and redirect problem stays.</td></tr>
+<tr><td>D7</td><td>Limits</td><td>30 days, 20,000 occurrences per repo scope, 2 MiB log tail, 15 s per log, 2 log reads per account at once, 300 evidence reads per account per day.</td><td>All are settings. Only the defaults change.</td></tr>
+<tr><td>D8</td><td>Where group details live</td><td>Inline in the Checks tab (main panel and pop-out), plus a scoped PR-list filter and a Focus card. No new window, no new rail section.</td><td>A pop-out <code>ci-group</code> window: new capabilities file, new entry point, more to keep in sync.</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="today">2. What exists today</h2>
+
+<table>
+<tr><th>Area</th><th>Facts</th><th>Consequence for this feature</th></tr>
+<tr><td>Poll</td><td><code>services/github/polling.ts</code> asks for every open PR's head-commit <code>statusCheckRollup</code>, with <code>databaseId</code>, <code>checkSuite.databaseId</code>, <code>workflowRun { event workflow { name } }</code>. <code>latestCheckContexts</code> keeps the newest context per name, workflow and event. <code>contextToCheckRunLite</code> (:485) maps them with <code>id: 0, htmlUrl: ''</code>. <code>aggregatePrWithChecks</code> keeps names and suite ids.</td><td>Failure observation is free: keep the ids we already download. Add <code>workflowRun { databaseId runNumber }</code> and <code>completedAt</code>.</td></tr>
+<tr><td>Check detail</td><td><code>usePrDetailData</code> calls <code>getCheckRunsForRef</code> only when a PR detail opens. <code>check-runs.ts</code> derives the workflow run id from the job URL.</td><td>Group detail cannot depend on detail fetches. It reads the CI store.</td></tr>
+<tr><td>Logs</td><td><code>first-failure.ts</code> → <code>getJobLog</code> → <code>client.getRaw</code> → webview <code>fetch</code> → <code>response.text()</code>. 10 s <code>AbortController</code> cleared at headers. <code>withAccountRequest</code> releases its slot at headers too. No byte cap. CSP <code>connect-src</code> lists <code>api.github.com</code> only, not the redirect target.</td><td>Move log reads to Rust (D6). Hold the budget slot for the whole download.</td></tr>
+<tr><td>Parser</td><td><code>services/log-parser.ts</code>: MSBuild, dotnet test, TypeScript, ESLint, Playwright, <code>##[error]</code> annotations, generic fallback. Only <code>first-failure.ts:42</code> calls it.</td><td>Port to Rust, extend with structured fields (test id, error class, expected/actual), delete the TS file.</td></tr>
+<tr><td>Checks UI</td><td><code>ChecksTab.tsx</code>: <code>grouped</code> only in the embedded panel (<code>PRDetailPanel.tsx:520</code>); the pop-out renders the flat list. <code>ChecksGrouped.tsx</code> shows suites, rerun and the excerpt.</td><td>The Related failures card goes above both layouts.</td></tr>
+<tr><td>PR list</td><td><code>PrFilter</code> is a single-value union. <code>PrList.tsx:227</code> resets any filter the control doesn't offer. Filter state is session-only.</td><td>A group filter is a separate field next to search, not a <code>PrFilter</code> value.</td></tr>
+<tr><td>Focus</td><td><code>DispatchFocusCard</code> is a self-contained card in <code>FocusList.tsx:465</code> that returns <code>null</code> when empty.</td><td><code>CiFailuresFocusCard</code> copies that shape.</td></tr>
+<tr><td>Launches</td><td><code>useClaudeActions.fixWithClaude</code> (Fix from ActionBar, ChecksTab, ChecksGrouped, PrContextMenu, FocusBoard, flyout events), <code>requestT3Thread</code>, Dispatch <code>startThread</code>/<code>startRun</code>. None checks for an existing agent. <code>launch_agent_session</code> returns a <code>wt.exe</code> pid the frontend drops.</td><td>Two guard points cover every PR launch: <code>fixWithClaude</code> and <code>requestT3Thread</code>. The flyout routes into <code>useClaudeActions</code> too.</td></tr>
+<tr><td>T3 launch core</td><td><code>startThread</code> and <code>startRun</code> in <code>services/dispatch/launch.ts</code> repeat the same steps: validate prompt, check slot, resolve host, <code>t3LaunchThread</code>, <code>scopedId</code>.</td><td>Extract <code>launchInSlot</code> before adding a third caller.</td></tr>
+<tr><td>Thread status</td><td><code>useDispatchStore.threads</code> has scoped ids and <code>ThreadStatus</code> for every host. <code>useT3SessionStore</code> has local sessions with a coarser status.</td><td>Owner liveness reads Dispatch first, local sessions second, then falls back to a lease.</td></tr>
+<tr><td>SQLite</td><td><code>cache/mod.rs</code>: rusqlite, lazy <code>Arc&lt;Mutex&lt;Option&lt;Connection&gt;&gt;&gt;</code>, <code>spawn_blocking</code>, no <code>user_version</code>, no migrations. <code>maintenance::clear_cache</code> deletes <code>prcache.db</code> outright. <code>fileindex.db</code> moves a corrupt file aside and retries.</td><td>A separate <code>ci-failures.db</code> with real migrations. Extract the lazy-connection helper and share it.</td></tr>
+<tr><td>Bindings</td><td>tauri-specta generates <code>src/generated/commands.ts</code>; <code>bun run bindings</code> updates it and <code>bindings:check</code> fails CI when stale.</td><td>Every new command and DTO goes through the generator, and new frontend code calls <code>commands.*</code> via <code>commandData()</code>.</td></tr>
+<tr><td>Required checks</td><td><code>review-readiness.ts</code> reads branch protection and rulesets for required contexts.</td><td>Occurrences show a <em>required</em> badge. Grouping never changes readiness.</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="experience">3. What you will see</h2>
+
+<h3>3.1 Checks tab: Related failures card</h3>
+<p>The card sits above the grouped view in the main panel and above the flat list in the pop-out. It lists the groups the PR's <em>current</em> failed jobs belong to. When none of them are shared, it shows one quiet line ("No related failures in 23 open PRs or on master"), so you learn that the check was done.</p>
+<pre><code>Related failures                                         2 of 3 failed jobs
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ● Same failure in 4 PRs and on master            High · since Mon 09:12 │
+│   e2e › checkout.spec.ts › pays with card                               │
+│   expect(received).toBe(expected)  Expected: 200  Received: 503         │
+│   Likely base branch: master run #4812 fails the same way               │
+│   Owner  T3 · "CI: checkout 503" · running · 2 h        [Open] [Release]│
+│   [Show 4 PRs]  [Details ▾]                                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ◐ Possibly related to 1 PR                       Medium · since 10:40   │
+│   build › TS2322 in src/api/client.ts                                    │
+│   Same error code and file, different message                            │
+│   Unowned   [Claim]  [Investigate…]  [Same cause]  [Not related]         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ○ lint · evidence unavailable (log expired)                              │
+└─────────────────────────────────────────────────────────────────────────┘</code></pre>
+<p><em>Details</em> expands in place:</p>
+<ul>
+  <li><strong>Occurrences.</strong> One row per job attempt: PR (or <code>master</code>), workflow and job, matrix values, attempt, tested SHA linked to the commit, when, conclusion, a <em>required</em> badge, and links to the job and the run. Older attempts stay as rows. A later pass shows as "passed on attempt 2", it doesn't remove the row.</li>
+  <li><strong>Why these match.</strong> The confidence reasons as sentences: "Same test", "Same assertion, Expected 200 / Received 503", "Same failed step <code>Run e2e</code>", "3 matrix values", "Different PR heads, no shared changed files".</li>
+  <li><strong>Evidence.</strong> The sanitized excerpt of one representative occurrence, with a picker for the others. Truncated logs say "read the last 2 MiB of 31 MiB".</li>
+  <li><strong>Hypothesis.</strong> A select with the computed hypothesis marked "suggested" and its reasons. Choosing one stores a human classification.</li>
+  <li><strong>History.</strong> First observed (worded "earliest seen by BorgDock", never "first occurrence"), claims, overrides, fix PR, merges and splits.</li>
+  <li><strong>Menu.</strong> Merge with another group, split an occurrence out, mark resolved, track on GitHub, copy a sanitized summary.</li>
+</ul>
+
+<h3>3.2 PR list</h3>
+<ul>
+  <li><em>Show 4 PRs</em> sets a group filter in the main window's PR list. A dismissible chip in the toolbar reads "Related failure: checkout 503 · 4 PRs ×". It combines with search and the segmented filter, and it is session state like the rest.</li>
+  <li>From the pop-out, the button emits to the main window (same route <code>showPr</code> uses), which switches to PRs and applies the filter.</li>
+  <li>Failing rows that belong to a confident shared group get a small "shared · 4" marker next to the check bar, with the group title in its tooltip. The row's primary chip does not change.</li>
+</ul>
+
+<h3>3.3 Focus card</h3>
+<p><code>CiFailuresFocusCard</code> sits next to the Dispatch card and hides when empty. It lists groups that affect at least one of your PRs and have no owner, owners that went stale, and fixes that merged with PRs still red. Each row has one primary action: <em>Investigate…</em>, <em>Still on it?</em> or <em>Rerun affected…</em>.</p>
+
+<h3>3.4 Launch guard</h3>
+<p>Fix, Open in T3 and Investigate all ask the guard first. If a failed job of this PR is in a group with an active owner:</p>
+<pre><code>Already being investigated
+  checkout 503 · 4 PRs · owner: T3 "CI: checkout 503" (running, 2 h)
+
+  [Open the owner]   [Send this PR to the owner]   [Launch anyway]   Cancel</code></pre>
+<p><em>Send this PR to the owner</em> posts a short message to the owning T3 thread with the PR, job link and excerpt. <em>Launch anyway</em> records an override in the group's history. If the group is shared but unowned, Fix offers "Investigate the group instead" next to "Fix in this PR only", because a fix in one branch is the wrong move for a broken master.</p>
+
+<h3>3.5 Settings, maintenance, notifications</h3>
+<ul>
+  <li><strong>GitHub → Related CI failures.</strong> Collect evidence, include default branch, cross-repo suggestions, retention days, log tail size, per-log timeout, daily evidence limit, owner lease hours. One usage line: "Today: 42 evidence reads, 18 MiB, 3 skipped by the limit."</li>
+  <li><strong>Notifications.</strong> A group reaches N PRs and is unowned (N defaults to 3), an owner goes stale, a fix merged and affected PRs are still red. All off for the first full read of every source, like Dispatch's <code>everySourceRead</code>.</li>
+  <li><strong>Maintenance.</strong> "Clear CI failure history" (keeps manual decisions, releases claims with an event) and "Manual decisions (N)" with remove. Clearing the PR cache leaves CI history alone.</li>
+</ul>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="model">4. Domain model and identity</h2>
+
+<table>
+<tr><th>Concept</th><th>Identity</th><th>Holds</th></tr>
+<tr><td><strong>Scope</strong></td><td><code>{apiHost}|{account}|{owner}/{repo}</code></td><td>The boundary nothing crosses unless a setting allows it. Cross-repo suggestions stay inside one account.</td></tr>
+<tr><td><strong>Occurrence</strong></td><td><code>{scope}#job:{jobId}</code>. GitHub gives each job attempt its own job id, so a rerun is a new occurrence, never an edit.</td><td>source (<code>pull_request</code> or <code>default_branch</code>), PR number, PR head at observation, <em>tested</em> SHA (the job's <code>head_sha</code>), head branch, event, workflow id/path/name, run id, attempt, run number, job id and name, matrix values, check suite id, app slug, conclusion, failed step name and number, runner name/group/labels, timestamps, evidence state and reason, bytes read, truncated.</td></tr>
+<tr><td><strong>Signal</strong></td><td><code>(occurrence, ordinal)</code>, at most 20 per occurrence, with a "+N more" count</td><td>kind (test, compile, lint, annotation, infra, check-output, generic), parser, test id, parameters, path, line, code, error class, expected/actual, sanitized message, sanitized excerpt (2 KiB at most), fingerprint and tier.</td></tr>
+<tr><td><strong>Outcome</strong></td><td>per occurrence</td><td><code>passed_on_retry</code> (same run, later attempt, same SHA), <code>passed_after_push</code> (new SHA), <code>superseded</code>. Annotates history without changing it.</td></tr>
+<tr><td><strong>Group</strong></td><td>UUID, created when a fingerprint first needs a group</td><td>title, owned fingerprints, hypothesis and reasons, human classification, status (<code>active</code>, <code>quiet</code>, <code>resolved</code>, <code>merged</code>), <code>merged_into</code>, earliest and latest observed, fix PR, tracking issue, revision.</td></tr>
+<tr><td><strong>Candidate</strong></td><td><code>(groupA, groupB)</code></td><td>A medium-tier link, shown as "possibly related", never merged until you say so.</td></tr>
+<tr><td><strong>Decision</strong></td><td>UUID</td><td><code>must_link</code> or <code>cannot_link</code> between two fingerprints in a scope. Decisions bind fingerprints, not groups, so they apply to future occurrences and survive re-clustering.</td></tr>
+<tr><td><strong>Claim</strong></td><td>UUID; at most one active per group (unique partial index)</td><td>owner kind (<code>me</code>, <code>t3</code>, <code>terminal</code>, <code>github_issue</code>), owner ref (scoped thread id, issue URL), label, host, claimed at, lease until, state, note, revision, plus an append-only event log.</td></tr>
+</table>
+
+<div class="callout">
+<strong>Two SHAs, always.</strong> For <code>pull_request</code> events the job's <code>head_sha</code> is the PR head while the run tested the synthetic merge commit. For <code>merge_group</code> it is the merge-group commit. The UI shows the tested SHA and marks an occurrence "outdated" once the PR head moves past it. Fingerprints never include SHAs.
+</div>
+
+<p><strong>Matrix values.</strong> The API has no structured matrix. The default job name suffix <code>build (18.x, ubuntu-latest)</code> is parsed into values when present, and the base name is the job identity. A custom <code>name:</code> without a suffix yields no values. This is a heuristic and the detail view labels it as such.</p>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="pipeline">5. Evidence pipeline</h2>
+
+<pre><code>poll (existing)            ci-failures-sync (new, main window only)                   Rust
+───────────────            ───────────────────────────────────────                    ────
+open PRs + rollup  ──►  diff failed job ids against the store ──► queue (priority, daily cap)
+default-branch runs ─►        │                                         │
+                              ▼                                         ▼
+                     job + run + annotations (TS client:         ci_read_job_log
+                     ETag, retries, rate limit, budget)  ──────► (bounded tail, extract,
+                              │                                   sanitize) ──► signals
+                              ▼
+                     fingerprint + assign (pure TS) ──► ci_record (one transaction) ──► event
+                                                                                 ci-failures-changed
+                                                       every window re-reads its store ◄──┘</code></pre>
+
+<h3>5.1 Observe</h3>
+<ul>
+  <li>Extend <code>CHECK_CONTEXT_FIELDS</code> with <code>completedAt</code> and <code>workflowRun { databaseId runNumber }</code>. In <code>mapNode</code>, put a compact <code>ciJobs</code> list on <code>PullRequestWithChecks</code>: for each latest Actions context, its job id, run id, name, workflow name, event, conclusion and completed time. Non-Actions failures keep their check run id or status context name.</li>
+  <li>The CI runtime subscribes to <em>accepted</em> poll results (the same point <code>dispatch-sync</code> uses), never to renders. A failed job id it hasn't seen becomes a pending occurrence. A known failed occurrence whose job name now passes in the same run becomes <code>passed_on_retry</code>. A pass on a new run becomes <code>passed_after_push</code>.</li>
+  <li>When the first sighting is attempt N &gt; 1 and earlier attempts are unknown, one call to <code>actions/runs/{id}/attempts/{n-1}/jobs</code> backfills them. Polls are a minute apart, so a fast rerun can hide an attempt otherwise.</li>
+  <li><strong>Default branch</strong> (D3). Every 5 minutes per repo, <code>actions/runs?branch={default}&amp;event=push&amp;per_page=20</code> with the client's ETag cache (a 304 doesn't count against the rate limit). New failed runs or attempts list their jobs once. The latest pass per workflow path is kept too, so "fixed on master" can be stated.</li>
+  <li><strong>First run.</strong> Current failures are recorded as observations, and their evidence is queued like any new failure. History is never backfilled at startup.</li>
+</ul>
+
+<h3>5.2 Queue and budget</h3>
+<ul>
+  <li>Priority: your PRs, then PRs that need your review, then the rest, then default-branch runs. Newest first inside each band.</li>
+  <li>Per account: at most 2 evidence reads at once, 300 a day (the <code>usage</code> table counts them, so the limit survives restarts). Skips are counted and shown, never silent.</li>
+  <li>Backoff on 403/429 with <code>Retry-After</code>. Pause the queue when the client's REST <code>remaining</code> drops below 10% of its limit.</li>
+  <li>Each read runs inside <code>withAccountRequest</code> and holds the slot until the Rust call returns, including the body. That closes today's early-release gap for this path.</li>
+  <li>Every queued item carries the runtime generation. A reply from a previous generation (account changed, repo removed) is dropped before it touches the store.</li>
+</ul>
+
+<h3>5.3 Acquire, per occurrence</h3>
+<table>
+<tr><th>Step</th><th>Call</th><th>Cost</th></tr>
+<tr><td>Job metadata</td><td><code>GET actions/jobs/{job_id}</code>: <code>run_attempt</code>, <code>head_sha</code>, <code>steps[]</code> (failed step), runner, labels</td><td>1</td></tr>
+<tr><td>Run metadata</td><td><code>GET actions/runs/{run_id}</code>: <code>path</code>, <code>workflow_id</code>, <code>event</code>. Cached per run in memory.</td><td>≤1</td></tr>
+<tr><td>Annotations</td><td><code>GET check-runs/{id}/annotations</code>: path, line, level, title, message</td><td>1</td></tr>
+<tr><td>Log tail</td><td>Rust <code>ci_read_job_log</code>: <code>GET actions/jobs/{id}/logs</code> with redirects off, then <code>GET {Location}</code> with <code>Range: bytes=-{maxBytes}</code>. On 206, the tail. On 200, stream <code>Response::chunk()</code> into a ring buffer that keeps the last <code>maxBytes</code>, stopping at a 64 MiB hard ceiling or the timeout.</td><td>1 API call, the blob download is not API quota</td></tr>
+<tr><td>Other apps' checks</td><td><code>GET check-runs/{id}</code>: <code>output.title/summary/text</code> (sanitized, 8 KiB cap) and annotations. Commit statuses only have a description: evidence state <code>limited</code>.</td><td>1 to 2</td></tr>
+</table>
+<p>About four requests per new failed job. A hundred failures a day costs about 400 of the 5,000 hourly REST quota. Evidence states are <code>pending</code>, <code>ready</code>, <code>limited</code>, <code>unavailable</code> (404, 410 expired, 403 no access) and <code>failed</code> (with a retry time). Each one renders as text. None renders as an empty card.</p>
+
+<h3>5.4 Extract (Rust)</h3>
+<ul>
+  <li>Port every parser in <code>log-parser.ts</code> with its tests as fixtures, and add structure the fingerprints need: test id and parameters, error class, expected/actual pairs, top application stack frames.</li>
+  <li>New parsers for what the configured repos run: Vitest/Jest (<code>FAIL file &gt; suite &gt; test</code>, <code>AssertionError</code>), xUnit/NUnit assertion blocks (<code>Assert.Equal() Failure</code>, Expected/Actual), <code>cargo test</code> (<code>---- name stdout ----</code>, <code>panicked at</code>), npm/bun install errors (<code>npm ERR! code E404</code>), Docker build steps. Add pytest and Go only if a configured repo needs them.</li>
+  <li>The failed step from job metadata narrows extraction: the section from that step's <code>##[group]</code> header to the end of the tail wins over earlier noise. When the header can't be found, the whole tail is used and the reason says so.</li>
+  <li>Playwright retries of the same test inside one job collapse into one signal with a retry count.</li>
+</ul>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="fingerprint">6. Fingerprints and confidence</h2>
+
+<p>Rust returns sanitized but <em>unnormalized</em> fields. Normalizing, fingerprinting, tiering and assignment are pure TypeScript in <code>services/ci-failures/</code>, in the style of the Dispatch engine. Stored signals keep the sanitized fields, so a new fingerprint version re-runs over the database without any log.</p>
+
+<h3>6.1 Normalization</h3>
+<table>
+<tr><th>Rule</th><th>Example</th></tr>
+<tr><td>Runner workspace roots become repo-relative</td><td><code>/home/runner/work/fsp/fsp/src/a.ts</code>, <code>D:\a\fsp\fsp\src\a.ts</code> → <code>src/a.ts</code></td></tr>
+<tr><td>Temp and home paths</td><td><code>/tmp/vitest-3fa9/</code>, <code>C:\Users\RUNNER~1\AppData\Local\Temp\x</code> → <code>&lt;tmp&gt;</code></td></tr>
+<tr><td>Durations, timestamps, dates</td><td><code>after 30012ms</code> → <code>after &lt;dur&gt;</code></td></tr>
+<tr><td>GUIDs, long hex ids, PIDs, ephemeral ports (≥ 32768)</td><td><code>127.0.0.1:54123</code> → <code>127.0.0.1:&lt;port&gt;</code>; <code>:5432</code> stays</td></tr>
+<tr><td>Stack frames</td><td>Drop <code>node_modules</code> and framework frames, keep the top 3 application frames without line numbers</td></tr>
+<tr><td>Expected and actual values stay</td><td><code>Expected: 200 Received: 503</code> is the point of the message. Stripping numbers would merge unrelated failures.</td></tr>
+<tr><td>Parameterized tests</td><td><code>Pays(card: "visa")</code> → test id <code>Pays</code>, parameters kept as a variant outside the fingerprint (the message still has to match)</td></tr>
+</table>
+
+<h3>6.2 Fingerprints (version 1)</h3>
+<pre><code>test:{parser}:{testId}|{errorClass}|{hash(normalized message, expected/actual)}
+compile:{code}:{path}|{hash(normalized message)}
+lint:{rule}:{path}
+annotation:{path}:{title}|{hash(normalized message)}
+infra:{catalogId}:{failedStep}:{workflowPath}
+check-output:{appSlug}:{checkName}|{hash(normalized title + summary)}
+generic:{failedStep}|{hash(normalized message)}</code></pre>
+
+<h3>6.3 Tiers</h3>
+<table>
+<tr><th>Tier</th><th>When</th><th>Effect</th></tr>
+<tr><td><span class="tag p2">High</span></td><td>Equal fingerprint of kind test, compile, lint, annotation, check-output. Equal infra fingerprint (catalog id, failed step and workflow path all match). A <code>must_link</code> decision.</td><td>Same group automatically.</td></tr>
+<tr><td><span class="tag p1">Medium</span></td><td>Same test id with a different message. Same error code and file with a different message. Same infra catalog id in a different step or workflow. Any cross-repo match.</td><td>Candidate. "Possibly related" with <em>Same cause</em> and <em>Not related</em> buttons.</td></tr>
+<tr><td><span class="tag">Low</span></td><td>Only generic text: timeout, <code>exit code 1</code>, <code>connection refused</code>, <code>command failed</code>, <code>Process completed with exit code</code>.</td><td>Never grouped, never suggested. The card says "No confident match".</td></tr>
+</table>
+<p>A <code>cannot_link</code> decision beats every tier. Medium links never chain: A~B and B~C don't make A~C.</p>
+
+<h3>6.4 Infrastructure catalog</h3>
+<p>A versioned table in <code>services/ci-failures/catalog.ts</code>. Each entry has an id, a pattern, a kind and the steps where it means infrastructure. Starting entries:</p>
+<table>
+<tr><th>Id</th><th>Pattern (abridged)</th></tr>
+<tr><td><code>runner-lost</code></td><td><code>The runner has received a shutdown signal</code>, <code>lost communication with the server</code></td></tr>
+<tr><td><code>not-acquired</code></td><td><code>The job was not acquired by Runner</code>, conclusion <code>startup_failure</code></td></tr>
+<tr><td><code>disk-full</code></td><td><code>No space left on device</code>, <code>ENOSPC</code></td></tr>
+<tr><td><code>dns</code></td><td><code>Could not resolve host</code>, <code>getaddrinfo ENOTFOUND</code>, <code>EAI_AGAIN</code></td></tr>
+<tr><td><code>network-reset</code></td><td><code>ECONNRESET</code>, <code>ETIMEDOUT</code>, <code>TLS handshake timeout</code> during install or checkout steps</td></tr>
+<tr><td><code>registry-limit</code></td><td><code>toomanyrequests</code>, <code>429 Too Many Requests</code> from npm, NuGet, Docker Hub</td></tr>
+<tr><td><code>registry-5xx</code></td><td><code>npm ERR! code E50x</code>, <code>Response status code does not indicate success: 50x</code></td></tr>
+<tr><td><code>oom-kill</code></td><td><code>exit code 137</code>, <code>Killed</code> after a memory warning</td></tr>
+<tr><td><code>actions-service</code></td><td><code>Internal server error occurred while resolving "actions/</code>, <code>Unable to download artifact</code></td></tr>
+</table>
+<p>A catalog hit replaces the volatile text in the fingerprint with the catalog id. A <code>dns</code> failure during <em>Install</em> and one during <em>e2e</em> stay separate, because the step is part of the fingerprint.</p>
+
+<h3>6.5 Assignment, merges and upgrades</h3>
+<ul>
+  <li>Groups own fingerprints (<code>group_fingerprints</code>). A new fingerprint gets a new group, unless a <code>must_link</code> decision ties it to an owned one.</li>
+  <li><em>Merge</em> moves the fingerprints to the older group and leaves <code>merged_into</code> on the other, so links and claims follow. When both groups have active claims, the merge asks which owner stays and releases the other with an event.</li>
+  <li><em>Split</em> writes a <code>cannot_link</code> and moves the fingerprint to a new group.</li>
+  <li>A fingerprint version bump re-fingerprints stored signals in one transaction. Each new fingerprint goes to the group that held most of its old members. Decisions are rewritten through the same mapping. A decision that maps ambiguously is kept and flagged in Maintenance, never dropped.</li>
+  <li>A group is shown as related when it spans 2 or more PRs, or 1 PR plus the default branch, or one job that failed on 2 or more attempts. Single-occurrence groups are stored and stay hidden.</li>
+</ul>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="hypotheses">7. Hypotheses and classification</h2>
+
+<p>A hypothesis is computed and shown as "suggested" with its reasons. A classification is what you chose. Many affected PRs alone never make something infrastructure.</p>
+
+<table>
+<tr><th>Hypothesis</th><th>Raised by</th><th>Example wording</th></tr>
+<tr><td>Infrastructure</td><td>Catalog hit; failure in a setup step before repository code runs; <code>startup_failure</code>; the same runner group failing in unrelated workflows within an hour</td><td>"Looks like infrastructure: runner lost communication. Not proven."</td></tr>
+<tr><td>Base branch</td><td>Same fingerprint on a default-branch push run; PR occurrences with different heads that share no changed files</td><td>"Also failing on master, run #4812."</td></tr>
+<tr><td>Flaky</td><td><code>passed_on_retry</code> at the same SHA, in this group, at least once</td><td>"Passed on retry in 2 of 3 runs."</td></tr>
+<tr><td>Branch-specific</td><td>One PR only, and the signal's path is in that PR's changed files (checked when its detail opens, from the cached Files data)</td><td>"Only in this PR, in a file it changes."</td></tr>
+<tr><td>Unknown</td><td>Nothing above</td><td>No line</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="ownership">8. Ownership and duplicate launches</h2>
+
+<h3>8.1 Claim states</h3>
+<table>
+<tr><th>State</th><th>Entered by</th><th>Leaves to</th></tr>
+<tr><td>none</td><td>default, release</td><td>active (claim)</td></tr>
+<tr><td>active</td><td>Claim, Investigate, Link existing thread, Track on GitHub</td><td>stale, released, resolved</td></tr>
+<tr><td>stale</td><td>T3 owner settled, failed or closed; T3 host unavailable for 30 min; lease expired for <code>me</code> and <code>terminal</code> owners (24 h default); tracking issue closed or unassigned</td><td>active (renew: "Still on it?"), released, resolved</td></tr>
+<tr><td>launch_failed</td><td>A launch failed after the claim and the rollback write failed too</td><td>released (shown in the Focus card until you act)</td></tr>
+<tr><td>released / resolved</td><td>Explicit, or a suggestion you confirmed</td><td>none</td></tr>
+</table>
+<p>A settled T3 owner doesn't release itself. The card asks "Investigation finished?" with <em>Resolved</em>, <em>Release</em> and <em>Keep</em>, and offers the thread's PR as the fix PR.</p>
+
+<h3>8.2 Atomic claims</h3>
+<ul>
+  <li><code>ci_claim(groupId, owner, expectedRevision)</code> runs in one SQLite transaction. The unique partial index on active and stale claims per group lets one claimant win. The loser gets <code>AlreadyClaimed { claim }</code> and sees the guard dialog. This covers two windows, or a double click.</li>
+  <li>The launch flow claims <em>before</em> launching, with owner ref <code>pending:{uuid}</code>. On success it swaps in the scoped thread id (compare-and-set on revision). On failure it releases with a <code>launch_failed</code> event. If the release also fails, the claim stays <code>launch_failed</code> and visible.</li>
+  <li>Only one BorgDock install writes a given database. Claims don't coordinate between machines unless a group is tracked on GitHub (D1). The claim card says "this machine" or "tracked in #123" so you know which guarantee applies.</li>
+</ul>
+
+<h3>8.3 Guard points</h3>
+<table>
+<tr><th>Seam</th><th>Change</th></tr>
+<tr><td><code>hooks/useClaudeActions.ts</code> <code>fixWithClaude</code></td><td>Calls <code>launchGuard.check</code> with the PR and its failed job ids before <code>getOrCreateWorktree</code>. Covers ActionBar, ChecksTab, ChecksGrouped, PrContextMenu, FocusBoard, flyout <code>flyout-fix-pr</code> and toast <code>fix-pr</code>.</td></tr>
+<tr><td><code>services/t3-thread.ts</code> <code>requestT3Thread</code></td><td>Same check before the worktree lookup.</td></tr>
+<tr><td>Investigate</td><td>Same check, then the claim (section 9).</td></tr>
+<tr><td>Resolve, Monitor, Dispatch item launches</td><td>Unchanged. They are not failure investigations.</td></tr>
+</table>
+<p>The guard returns a decision object (<code>proceed</code>, <code>proceed-and-claim</code>, <code>open-owner</code>, <code>send-to-owner</code>, <code>cancel</code>). A single <code>LaunchGuardDialog</code> built on <code>shared/ConfirmDialog</code> renders it, and every seam awaits the same promise. No seam draws its own dialog.</p>
+
+<h3>8.4 Better prompts on every Fix</h3>
+<p><code>buildFixPrompt</code> takes sanitized evidence instead of the unused <code>errors</code>/<code>rawLog</code> pair, so every caller stops passing empty arrays. When the failure is in a shared group the prompt adds: "This failure also appears in #12, #15 and on master. It is probably not caused by this branch. Confirm that before changing code here, and don't rerun or skip checks."</p>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="investigate">9. Investigations, fixes and reruns</h2>
+
+<h3>9.1 Investigate sheet (D2)</h3>
+<ul>
+  <li>Extract <code>launchInSlot({slot, model, effort, title, prompt})</code> from <code>startThread</code>/<code>startRun</code> in <code>dispatch/launch.ts</code>. All three callers use it.</li>
+  <li><code>InvestigateSheet</code> reuses <code>LaunchChoice</code> (slot and model picker). The slot defaults to the T3 project whose workspace matches the group's repository.</li>
+  <li><strong>Explicit evidence selection.</strong> A checklist of occurrences and excerpts that go into the first message, all sanitized, with a character count against the 20,000 prompt limit. Nothing goes in that you didn't see.</li>
+  <li>The prompt (<code>investigationPrompt</code>, editable) lists the occurrences with links, hypothesis and reasons, the required-check rule, and asks the agent to put <code>BorgDock-CI-Group: {shortId}</code> in any fix PR body.</li>
+  <li>The thread is linked to no work item (<code>linkThread(id, null)</code>, as runs are) and titled <code>CI: {group title}</code>. Its claim stores the scoped id.</li>
+  <li>Terminal fallback, when T3 isn't paired or you pick it: <code>launchAgentSession</code> with the same prompt, in the default-branch worktree or else the earliest affected PR's. Owner kind <code>terminal</code>, lease-based.</li>
+  <li><em>Link existing thread</em>: pick from Dispatch threads or local sessions on an affected branch.</li>
+</ul>
+
+<h3>9.2 Fix tracking</h3>
+<ul>
+  <li>A fix PR is linked by hand, suggested from the owner thread's <code>pullRequests</code>, or found by its <code>BorgDock-CI-Group</code> body line in the poll (the body is already in the hot query).</li>
+  <li>When the fix PR merges, the group shows "Fix merged" and the Focus card lists PRs still red in it.</li>
+  <li>New occurrences after the fix merged and reached the default branch reopen the group with "Seen again after the fix".</li>
+  <li>Seven days without a new occurrence moves a group to <code>quiet</code>. Only you resolve it.</li>
+</ul>
+
+<h3>9.3 Rerun affected (confirmed, never automatic)</h3>
+<p>The sheet lists each affected open PR, the workflow runs that would get <code>rerun-failed-jobs</code> (which reruns <em>every</em> failed job in that run, and the sheet says so) and required badges. Then you confirm. It calls the existing <code>rerunFailedChecks</code> one PR at a time inside the budget and reports per PR.</p>
+<div class="callout warn">
+A rerun reuses the original commit and ref. For a <code>pull_request</code> run that is the old merge commit, so <strong>a rerun never picks up a fix that landed on master</strong>. The sheet adapts to the classification. For infrastructure and flaky groups it offers the rerun. For base-branch groups it says the branch needs updating and links each PR, without updating anything itself.
+</div>
+
+<h3>9.4 Agent-assisted compare</h3>
+<p>On a candidate, <em>Ask an agent</em> sends the two sanitized excerpts and fingerprints through <code>run_headless_prompt</code> and expects <code>{"same": bool, "reason": string}</code>. The answer shows as a suggestion with <em>Accept</em> (writes <code>must_link</code>) and <em>Reject</em> (writes <code>cannot_link</code>). It never writes a decision itself. Before sending, the request shows exactly what goes out.</p>
+
+<h3>9.5 Shared ownership on GitHub (D1)</h3>
+<ul>
+  <li><em>Track on GitHub</em> opens a preview of the issue: title, sanitized summary, affected PRs as links, a <code>&lt;!-- borgdock:ci-group v1 {fingerprint hashes} --&gt;</code> marker (hashes only), label <code>borgdock-ci-failure</code>, assignee you. Nothing posts until you confirm.</li>
+  <li>Every 10 minutes, each repo's open issues with that label are listed (ETag cached). A marker that matches a local group links the issue and shows its assignee as owner, so another machine or a teammate sees the claim.</li>
+  <li><em>Update issue</em> (explicit) comments the new affected PRs. <em>Close issue</em> is offered when you resolve the group. BorgDock never writes to the issue on its own.</li>
+  <li>If the label can't be created (permissions), the issue is created without it and discovery falls back to searching the marker text.</li>
+</ul>
+
+<h3>9.6 Notifications and digest events</h3>
+<ul>
+  <li><code>services/ci-failures/events.ts</code> emits <code>CiFailureEvent</code> envelopes after each durable write: <code>group-formed</code>, <code>group-grew</code>, <code>owner-stale</code>, <code>fix-merged</code>, <code>seen-after-fix</code>, <code>resolved</code>. The id is <code>{groupId}:{kind}:{revision}</code>, so a replay never duplicates.</li>
+  <li>Notifications map a subset to the existing toast pipeline (<code>sendOsNotification</code>), each behind its own <code>NotificationSettings</code> toggle, quiet until every source has been read once.</li>
+  <li>#88 subscribes to the same envelopes when it lands. Nothing here waits for it.</li>
+</ul>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="storage">10. Storage, retention and account boundaries</h2>
+
+<p><code>%APPDATA%\BorgDock\ci-failures.db</code> (through <code>app_data::directory()</code>, so <code>BORGDOCK_DATA_DIR</code> works), WAL, foreign keys on, migrations by <code>PRAGMA user_version</code>. A file that fails to open or migrate is moved to <code>ci-failures.db.corrupt-{ts}</code>, as <code>fileindex.db</code> does. A database with a newer <code>user_version</code> than the app knows opens read-only, with a banner, and is never rewritten.</p>
+
+<pre><code>-- user_version 1
+CREATE TABLE occurrences (
+  id TEXT PRIMARY KEY, scope TEXT NOT NULL, source TEXT NOT NULL,
+  pr_number INTEGER, pr_head_sha TEXT, tested_sha TEXT NOT NULL, head_branch TEXT, event TEXT,
+  workflow_id INTEGER, workflow_path TEXT, workflow_name TEXT,
+  run_id INTEGER NOT NULL, run_attempt INTEGER NOT NULL, run_number INTEGER,
+  job_id INTEGER NOT NULL, job_name TEXT NOT NULL, matrix TEXT,
+  check_suite_id INTEGER, app_slug TEXT, conclusion TEXT NOT NULL,
+  failed_step TEXT, failed_step_number INTEGER, runner_name TEXT, runner_group TEXT, runner_labels TEXT,
+  started_at TEXT, completed_at TEXT, observed_at TEXT NOT NULL,
+  evidence_state TEXT NOT NULL, evidence_reason TEXT, bytes_read INTEGER, total_bytes INTEGER,
+  truncated INTEGER NOT NULL DEFAULT 0, extractor_version INTEGER, retry_at TEXT);
+CREATE INDEX occ_scope_time ON occurrences(scope, observed_at);
+CREATE INDEX occ_pr ON occurrences(scope, pr_number);
+
+CREATE TABLE signals (
+  occurrence_id TEXT NOT NULL REFERENCES occurrences(id) ON DELETE CASCADE, ordinal INTEGER NOT NULL,
+  kind TEXT NOT NULL, parser TEXT NOT NULL, test_id TEXT, params TEXT, path TEXT, line INTEGER,
+  code TEXT, error_class TEXT, expected TEXT, actual TEXT, message TEXT NOT NULL, excerpt TEXT,
+  fingerprint_version INTEGER NOT NULL, fingerprint TEXT NOT NULL, tier TEXT NOT NULL,
+  PRIMARY KEY (occurrence_id, ordinal));
+CREATE INDEX sig_fp ON signals(fingerprint_version, fingerprint);
+
+CREATE TABLE outcomes (occurrence_id TEXT PRIMARY KEY REFERENCES occurrences(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL, by_job_id INTEGER, observed_at TEXT NOT NULL);
+
+CREATE TABLE groups (id TEXT PRIMARY KEY, scope TEXT NOT NULL, title TEXT NOT NULL,
+  hypothesis TEXT, hypothesis_reasons TEXT, classification TEXT, classified_at TEXT,
+  status TEXT NOT NULL, merged_into TEXT, first_observed_at TEXT, last_observed_at TEXT,
+  fix_pr TEXT, fix_merged_at TEXT, tracking_issue TEXT, revision INTEGER NOT NULL,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE group_fingerprints (scope TEXT NOT NULL, fingerprint_version INTEGER NOT NULL,
+  fingerprint TEXT NOT NULL, group_id TEXT NOT NULL REFERENCES groups(id),
+  PRIMARY KEY (scope, fingerprint_version, fingerprint));
+CREATE TABLE candidates (group_a TEXT NOT NULL, group_b TEXT NOT NULL, reasons TEXT NOT NULL,
+  agent_verdict TEXT, PRIMARY KEY (group_a, group_b));
+CREATE TABLE decisions (id TEXT PRIMARY KEY, scope TEXT NOT NULL, kind TEXT NOT NULL,
+  fingerprint_version INTEGER NOT NULL, fingerprint_a TEXT NOT NULL, fingerprint_b TEXT NOT NULL,
+  note TEXT, ambiguous INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL);
+
+CREATE TABLE claims (id TEXT PRIMARY KEY, group_id TEXT NOT NULL REFERENCES groups(id),
+  owner_kind TEXT NOT NULL, owner_ref TEXT NOT NULL, owner_label TEXT, host_id TEXT,
+  claimed_at TEXT NOT NULL, lease_until TEXT, state TEXT NOT NULL, note TEXT, revision INTEGER NOT NULL);
+CREATE UNIQUE INDEX one_live_claim ON claims(group_id) WHERE state IN ('active','stale','launch_failed');
+CREATE TABLE claim_events (claim_id TEXT NOT NULL REFERENCES claims(id), at TEXT NOT NULL,
+  kind TEXT NOT NULL, detail TEXT);
+
+CREATE TABLE usage (day TEXT NOT NULL, account TEXT NOT NULL, reads INTEGER NOT NULL,
+  log_bytes INTEGER NOT NULL, skipped INTEGER NOT NULL, PRIMARY KEY (day, account));
+CREATE TABLE branch_watch (scope TEXT NOT NULL, workflow_path TEXT NOT NULL, last_failed_run INTEGER,
+  last_passed_run INTEGER, checked_at TEXT, PRIMARY KEY (scope, workflow_path));</code></pre>
+
+<h3>Retention</h3>
+<ul>
+  <li>Runs at startup and every 6 hours. Deletes occurrences older than <code>retentionDays</code>, then the oldest beyond 20,000 per scope.</li>
+  <li>Protected: the newest occurrence of each group with a live claim, a fix PR waiting to merge, or a tracking issue. Those groups show "older history expired" instead of disappearing.</li>
+  <li>Groups with no occurrences, no claim and no decision are deleted. Decisions stay until you remove them. Claim events go with their claim.</li>
+  <li>Raw logs are never stored. Excerpts are capped at 2 KiB per signal and 20 signals per occurrence.</li>
+</ul>
+
+<h3>Account and repository boundaries</h3>
+<ul>
+  <li>Every command takes a scope, and every query filters by it. A cross-repo suggestion compares scopes with the same host and account only.</li>
+  <li>A runtime restart (account or repo settings changed, see <code>application-runtime.ts:29-58</code>) bumps the generation. Queued work and late replies from the old generation are dropped.</li>
+  <li>A scope that leaves the settings is hidden at once and purged after 7 days, except protected groups, which show "repository no longer tracked".</li>
+  <li><code>maintenance::clear_cache</code> keeps deleting only <code>prcache.db</code>. <code>reset_all_settings</code> deletes <code>ci-failures.db</code> as well, since a reset means starting over.</li>
+</ul>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="privacy">11. Sanitization and privacy</h2>
+
+<p>Sanitization runs in Rust before anything leaves the extraction command, so caching, rendering, copying and prompts all see the same scrubbed text. It is best effort and the UI never calls it a guarantee.</p>
+<ul>
+  <li>GitHub tokens (<code>ghp_</code>, <code>gho_</code>, <code>ghu_</code>, <code>ghs_</code>, <code>ghr_</code>, <code>github_pat_</code>), JWTs, <code>Authorization:</code> and <code>Cookie:</code> headers, <code>Bearer</code> values.</li>
+  <li>Credential query parameters (<code>token</code>, <code>sig</code>, <code>se</code>, <code>X-Amz-Signature</code>, <code>X-Amz-Credential</code>, <code>code</code>, <code>password</code>, <code>secret</code>), SAS tokens, <code>user:pass@</code> in URLs.</li>
+  <li>Azure connection strings (<code>AccountKey=</code>, <code>SharedAccessKey=</code>), AWS key ids, PEM blocks, <code>.npmrc</code> <code>_authToken</code>.</li>
+  <li>Host paths: user home directories, runner temp roots.</li>
+  <li>GitHub's own <code>***</code> masking is preserved.</li>
+</ul>
+<p>The tokens BorgDock passes to <code>ci_read_job_log</code> are used for one request and never logged. A test asserts the Rust log output contains no token for a failing call. Content stays inside its scope. Copying a summary, sending evidence to an agent, or posting a tracking issue each show a preview first.</p>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="architecture">12. Module layout, commands and events</h2>
+
+<div class="grid">
+<div class="card">
+<h3>Rust: <code>src-tauri/src/ci_failures/</code></h3>
+<ul>
+  <li><code>store.rs</code>: migrations, queries, retention, claims compare-and-set</li>
+  <li><code>log.rs</code>: redirect, ranged tail, ring buffer, timeout, ceiling</li>
+  <li><code>extract/</code>: one file per parser, plus <code>mod.rs</code> picking the failed step section</li>
+  <li><code>sanitize.rs</code></li>
+  <li><code>commands.rs</code>: all <code>async</code>, <code>spawn_blocking</code> for SQLite, specta-annotated</li>
+  <li><code>/src-tauri/src/db.rs</code> (new): the lazy connection helper extracted from <code>cache/mod.rs</code>, used by <code>PrCache</code> and the CI store</li>
+</ul>
+</div>
+<div class="card">
+<h3>TypeScript</h3>
+<ul>
+  <li><code>services/ci-failures/</code>: <code>types.ts</code>, <code>identity.ts</code>, <code>normalize.ts</code>, <code>catalog.ts</code>, <code>fingerprint.ts</code>, <code>assign.ts</code>, <code>hypothesis.ts</code>, <code>ownership.ts</code> (lease, staleness), <code>launch-guard.ts</code>, <code>prompts.ts</code>, <code>events.ts</code>, <code>api.ts</code> (command wrappers)</li>
+  <li><code>services/github/actions.ts</code>: jobs, runs, attempts, annotations, check-run output, default-branch runs</li>
+  <li><code>runtime/ci-failures-sync.ts</code>: observe, queue, record (main window only)</li>
+  <li><code>stores/ci-failures-store.ts</code>: per-window read model, refreshed on events</li>
+  <li><code>components/ci-failures/</code>: <code>RelatedFailuresCard</code>, <code>GroupDetail</code>, <code>LaunchGuardDialog</code>, <code>InvestigateSheet</code>, <code>RerunAffectedSheet</code>, <code>CiFailuresFocusCard</code>, <code>TrackIssueSheet</code></li>
+</ul>
+</div>
+</div>
+
+<table>
+<tr><th>Command</th><th>Purpose</th></tr>
+<tr><td><code>ci_read_job_log(req)</code></td><td>Bounded tail, extract, sanitize. Returns signals, excerpt, bytes read, total bytes, truncated, rate-limit headers.</td></tr>
+<tr><td><code>ci_sanitize_text(text)</code></td><td>For check-run output and annotations read through the TS client.</td></tr>
+<tr><td><code>ci_record(batch)</code></td><td>Occurrences, signals, outcomes, group and fingerprint assignments, candidates. One transaction, bumps revisions, emits <code>ci-failures-changed</code>.</td></tr>
+<tr><td><code>ci_load_scope(scope, since)</code>, <code>ci_load_pr(scope, pr)</code>, <code>ci_load_group(id)</code></td><td>Read models for the runtime, the Checks card and group detail.</td></tr>
+<tr><td><code>ci_decide(decision)</code>, <code>ci_remove_decision(id)</code></td><td>Merge, split, same cause, not related.</td></tr>
+<tr><td><code>ci_claim</code>, <code>ci_update_claim</code>, <code>ci_release</code>, <code>ci_claim_event</code></td><td>Compare-and-set on revision; returns <code>AlreadyClaimed</code> with the live claim.</td></tr>
+<tr><td><code>ci_set_group(id, patch, expectedRevision)</code></td><td>Classification, title, status, fix PR, tracking issue.</td></tr>
+<tr><td><code>ci_usage(day)</code>, <code>ci_count_usage(...)</code></td><td>Daily limit and the Settings usage line.</td></tr>
+<tr><td><code>ci_retention(activeScopes, settings)</code>, <code>ci_clear(keepDecisions)</code>, <code>ci_refingerprint(batch)</code></td><td>Maintenance and version upgrades.</td></tr>
+</table>
+<p>Event <code>ci-failures-changed { scope, revision }</code> goes to every window. The main window's runtime is the only writer of observations. Any window may write decisions and claims, and Rust serializes them. Pop-outs need no capability change, because they use core IPC and events only.</p>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="sequence">13. Implementation sequence (12 PRs)</h2>
+
+<p>Each PR ships on its own and leaves master releasable. PRs 1 to 3 have no UI. Sizes: S under a day, M one to two days, L three or more.</p>
+
+<h3>PR 1 · Bounded log reading in Rust, one parser <span class="tag">L</span></h3>
+<ul class="checks">
+  <li>Prove first: in a packaged build, does today's excerpt load? Does the log blob answer <code>Range: bytes=-N</code> with 206? Record both in the PR.</li>
+  <li><code>ci_failures/log.rs</code> with redirect handling, ranged tail, streamed ring-buffer fallback, 64 MiB ceiling, timeout covering the body, cancellation on drop.</li>
+  <li>Port <code>log-parser.ts</code> to <code>ci_failures/extract/</code> with structured fields. Its tests become Rust tests over the same fixture logs. Add Vitest, xUnit/NUnit, cargo, npm/bun, Docker parsers.</li>
+  <li><code>sanitize.rs</code> with a table of positive and negative cases.</li>
+  <li><code>first-failure.ts</code> calls <code>ci_read_job_log</code> inside <code>withAccountRequest</code>. Delete <code>log-parser.ts</code> and <code>getJobLog</code>.</li>
+  <li>Done when a 40 MiB fixture log returns the tail with <code>truncated</code>, a slow body times out with a visible reason, 404/410/403 give <code>unavailable</code> with the reason, and the packaged build shows the excerpt.</li>
+</ul>
+
+<h3>PR 2 · Occurrence identity from the poll <span class="tag">M</span></h3>
+<ul class="checks">
+  <li>Prove first: <code>WorkflowRun.databaseId</code> and <code>runNumber</code> resolve in the rollup query, and the query cost per page stays the same (read <code>rateLimit.cost</code> before and after).</li>
+  <li>Extend the GraphQL fields. <code>ciJobs</code> on <code>PullRequestWithChecks</code>. REST fallback (<code>getCheckSummaryForRef</code>) fills the same field.</li>
+  <li><code>services/github/actions.ts</code>: jobs, runs (cached), attempts, annotations, check-run output, default-branch runs.</li>
+  <li><code>services/ci-failures/identity.ts</code>: occurrence ids, matrix parsing, tested versus head SHA, outdated flag.</li>
+  <li>Done when two attempts and two SHAs with identical job names stay distinct in tests, and an attempt-3 first sighting backfills attempt 2.</li>
+</ul>
+
+<h3>PR 3 · Durable store <span class="tag">L</span></h3>
+<ul class="checks">
+  <li>Extract <code>/src-tauri/src/db.rs</code> from <code>cache/mod.rs</code>. <code>PrCache</code> uses it unchanged.</li>
+  <li><code>ci_failures/store.rs</code>: schema v1, migration runner, corrupt and newer-version handling, retention, claims compare-and-set, commands, <code>bun run bindings</code>.</li>
+  <li>Hook <code>reset_all_settings</code>. Assert in a test that <code>clear_cache</code> leaves <code>ci-failures.db</code>.</li>
+  <li>Done when restart keeps decisions and claims, purge respects protected groups, a newer schema opens read-only, and two concurrent <code>ci_claim</code> calls produce one winner.</li>
+</ul>
+
+<h3>PR 4 · Fingerprints, tiers, assignment <span class="tag">L</span></h3>
+<ul class="checks">
+  <li><code>normalize.ts</code>, <code>catalog.ts</code>, <code>fingerprint.ts</code>, <code>assign.ts</code>, <code>hypothesis.ts</code>. All pure.</li>
+  <li>A fixture corpus of sanitized real failures from FSP and BorgDock CI as pairs labeled <em>same</em> or <em>different</em> (section 14).</li>
+  <li>Version upgrade path (<code>ci_refingerprint</code>) tested with a fake v2 rule.</li>
+  <li>Done when every labeled pair lands in the right tier and no generic pair groups.</li>
+</ul>
+
+<h3>PR 5 · Runtime, settings, usage <span class="tag">L</span></h3>
+<ul class="checks">
+  <li><code>runtime/ci-failures-sync.ts</code> started from <code>application-runtime.ts</code> next to Dispatch, stopped with GitHub sync. Queue, priorities, daily limit, backoff, generation checks, first-run behavior, outcomes, default-branch watcher.</li>
+  <li><code>stores/ci-failures-store.ts</code> in every window, refreshed on <code>ci-failures-changed</code>.</li>
+  <li>Settings in <code>types/settings.ts</code>, the store defaults and <code>settings/models.rs</code> with serde defaults. The settings card and search index entries.</li>
+  <li>Done when an integration test with a fake client drives poll → evidence → groups, a settings change mid-read drops the stale reply, and the limit survives a restart.</li>
+</ul>
+
+<h3>PR 6 · Checks card and group detail <span class="tag">L</span></h3>
+<ul class="checks">
+  <li><code>RelatedFailuresCard</code> and <code>GroupDetail</code> in both Checks layouts. The first-failure excerpt reads the store when collection is on, and on demand when it is off.</li>
+  <li>Same cause, Not related, Merge, Split, classification.</li>
+  <li>Stories for every state in section 14. Screenshots inspected in dark, light and the narrow docked width.</li>
+</ul>
+
+<h3>PR 7 · PR list filter, row marker, Focus card <span class="tag">M</span></h3>
+<ul class="checks">
+  <li><code>relatedFailureGroup</code> in <code>pr-store</code> beside search, the toolbar chip, the pop-out emit route, the row marker, <code>CiFailuresFocusCard</code>.</li>
+  <li>Done when the filter survives a poll, clears on ×, and works from the pop-out.</li>
+</ul>
+
+<h3>PR 8 · Ownership and the launch guard <span class="tag">L</span></h3>
+<ul class="checks">
+  <li><code>ownership.ts</code> (staleness from Dispatch threads, local sessions, leases), Claim, Release, Still on it, Link existing thread.</li>
+  <li><code>launch-guard.ts</code> and <code>LaunchGuardDialog</code>. Wire into <code>fixWithClaude</code> and <code>requestT3Thread</code>. <em>Send this PR to the owner</em> through the T3 message command Dispatch uses for answers.</li>
+  <li><code>buildFixPrompt</code> takes evidence. Remove the dead <code>errors</code>/<code>rawLog</code> parameters from every caller.</li>
+  <li>Done when every Fix entry point (ActionBar, ChecksTab, ChecksGrouped, PrContextMenu, FocusBoard, flyout, toast) shows the guard in an e2e or component test, and a launch that fails after claiming leaves no live claim.</li>
+</ul>
+
+<h3>PR 9 · Investigate, fix tracking, rerun affected <span class="tag">L</span></h3>
+<ul class="checks">
+  <li>Extract <code>launchInSlot</code>. <code>InvestigateSheet</code> with evidence selection, terminal fallback, claim-then-launch.</li>
+  <li>Fix PR linking (manual, owner thread, body line), Fix merged, Seen again after the fix, quiet status.</li>
+  <li><code>RerunAffectedSheet</code> with the classification-aware rerun or update-branch advice.</li>
+</ul>
+
+<h3>PR 10 · Notifications and digest events <span class="tag">S</span></h3>
+<ul class="checks">
+  <li><code>events.ts</code>, three notification toggles, first-read quiet gate, dedupe by event id.</li>
+</ul>
+
+<h3>PR 11 · Agent compare and cross-repo suggestions <span class="tag">M</span></h3>
+<ul class="checks">
+  <li><em>Ask an agent</em> on candidates through <code>run_headless_prompt</code>, strict JSON parse, preview of what is sent.</li>
+  <li>Cross-repo candidates inside one account, behind the setting, medium tier at most.</li>
+</ul>
+
+<h3>PR 12 · Track on GitHub <span class="tag">M</span></h3>
+<ul class="checks">
+  <li><code>TrackIssueSheet</code> with preview, label, marker, assignee. Discovery every 10 minutes. Update and close as explicit actions. Issue owners in the claim model.</li>
+</ul>
+
+<p>Docs land with the PRs that need them: a "Related CI failures" section in <code>/CLAUDE.md</code> (two SHAs, rerun semantics, the log host, decisions bind fingerprints), the spec at <code>/docs/superpowers/specs/2026-10-26-related-ci-failures.md</code> with the tier and catalog tables, and a <code>/CHANGELOG.md</code> entry with Storybook heroes when it ships.</p>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="verification">14. Verification</h2>
+
+<h3>Unit tests (Vitest, pure modules)</h3>
+<ul>
+  <li>Parameterized tests: same base, same message, different parameters group, with the variant listed.</li>
+  <li>Matrix: the same failure on node 18 and node 20 groups and lists both values. A different failure on each stays apart.</li>
+  <li>The same generic timeout with different causes stays apart. A catalog hit in different steps stays apart.</li>
+  <li>Retry attempts produce new occurrences. A pass on retry produces <code>passed_on_retry</code> and the flaky hypothesis.</li>
+  <li>Synthetic merge and <code>merge_group</code> SHAs: tested and head SHA tracked separately, outdated flag.</li>
+  <li>A changed assertion (Expected 200, Received 503 versus 404) produces two groups.</li>
+  <li>Normalization collisions: two different temp paths, the same test, an equal fingerprint. Two different well-known ports produce different fingerprints.</li>
+  <li>Fingerprint upgrade with majority mapping and ambiguous decisions. Manual merge and split, cannot-link beats high tier, medium links don't chain.</li>
+  <li>Ownership: lease expiry, staleness per owner kind, settled-thread prompt. The launch guard decision table.</li>
+</ul>
+
+<h3>Rust tests</h3>
+<ul>
+  <li><code>log.rs</code> against a local <code>tokio</code> test server: 302 then 206, 302 then 200 streamed past the cap, slow body timeout, 404, 410, 403, 429 with <code>Retry-After</code>, cancellation.</li>
+  <li>Parsers over the fixture logs ported from the TS tests, plus new fixtures per new parser.</li>
+  <li>Sanitizer table. A log-output test that no token appears.</li>
+  <li>Store: migration from empty, corrupt file moved aside, newer version read-only, retention protection, concurrent claims, account and scope purge.</li>
+  <li><code>bindings:check</code> passes.</li>
+</ul>
+
+<h3>Fixture corpus</h3>
+<p>Collect 40 or more real failed job logs from FSP and BorgDock CI and sanitize them by hand. Label the pairs <em>same cause</em> or <em>different cause</em>. The corpus lives in <code>src-tauri/src/ci_failures/fixtures/</code> and feeds the Rust extraction tests and the TS tier tests through a JSON export. A rule change that flips any labeled pair fails the build.</p>
+
+<h3>UI proof</h3>
+<ul>
+  <li>Stories: confident match, uncertain candidate, generic only, evidence unavailable, truncated log, owned by a running thread, stale owner, launch failed, flaky, base branch, fix merged with PRs still red, cross-repo suggestion, empty.</li>
+  <li>Guard dialog, Investigate sheet, Rerun sheet (infrastructure and base-branch variants), Focus card, toolbar chip, settings card.</li>
+  <li>Capture each in dark, light and the narrow docked width with <code>scripts/screenshot-stories.mjs</code>, read every image, and fix what looks off before the PR is called done. Floating parts (dialog, sheets, menus) use <code>--color-modal-bg</code>, never <code>--color-surface-raised</code>.</li>
+  <li>Accessibility: the card is a labeled region, confidence is text and not only color, details toggles carry <code>aria-expanded</code>, and the dialog traps focus and returns it.</li>
+</ul>
+
+<h3>End to end</h3>
+<ul>
+  <li><code>tests/e2e/ci-failures.spec.ts</code> with mocked GitHub responses: two PRs with the same failure form a group, the filter shows both, Fix on the second warns once the first is claimed, and <em>Launch anyway</em> records an override.</li>
+  <li>Run the existing <code>pr-checks-fallback</code>, <code>pr-detail</code> and Quick Review suites for rerun regressions. Stop any dev server on :1420 first.</li>
+</ul>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="risks">15. Risks and things to prove first</h2>
+
+<table>
+<tr><th>Risk</th><th>Plan</th></tr>
+<tr><td>The log blob may ignore <code>Range</code></td><td>The streamed ring buffer works either way, it just reads more bytes. PR 1 measures it.</td></tr>
+<tr><td>The excerpt may be broken in packaged builds today (CSP)</td><td>Checked first in PR 1. If confirmed, PR 1 is also a bug fix worth releasing early.</td></tr>
+<tr><td>Expired logs (90-day default, often shorter)</td><td>Annotations and job metadata still give a failed step and messages. Evidence state <code>limited</code>, never a fake match.</td></tr>
+<tr><td>Matrix values come from a naming convention</td><td>Labeled heuristic. Only explanations use them, never the fingerprint.</td></tr>
+<tr><td>Fingerprints too strict (missed groups) or too loose (false groups)</td><td>The labeled corpus is the referee. Medium tier and agent compare cover the strict side, cannot-link and Split cover the loose side.</td></tr>
+<tr><td>Owner status for remote T3 threads needs Dispatch sync</td><td>Dispatch threads first, local sessions next, lease as the floor. The claim card says which source it used.</td></tr>
+<tr><td>Rate use with many PRs</td><td>Identity is free, evidence is about 4 requests per failed job and capped per day. Usage is visible.</td></tr>
+<tr><td>Rerun misuse for base-branch failures</td><td>The sheet changes by classification and says why (section 9.3).</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="ac">16. Acceptance criteria mapping</h2>
+
+<table>
+<tr><th>Issue criterion</th><th>Where it is met</th><th>Proof</th></tr>
+<tr><td>Equivalent failures group across PRs while keeping each run, attempt and commit</td><td>Occurrence per job attempt, groups own fingerprints, the occurrences table in Details</td><td>PR 2 identity tests, PR 4 corpus, e2e two-PR group</td></tr>
+<tr><td>Unrelated failures with similar generic text stay apart</td><td>Low tier never groups, step is in infra fingerprints, cannot-link, Split</td><td>PR 4 generic and catalog pairs</td></tr>
+<tr><td>Ownership is explicit; duplicate launches warn first</td><td>Claims with one live claim per group, guard at <code>fixWithClaude</code>, <code>requestT3Thread</code> and Investigate</td><td>PR 3 concurrent claims, PR 8 entry-point tests, e2e</td></tr>
+<tr><td>Advisory only: no bypass, no automatic rerun</td><td>No code path changes check state, readiness or PRs. Rerun only from a confirmed sheet. Issue writes only from previews.</td><td>Review checklist on PRs 6 to 12, plus a test that the runtime makes no POST, PUT or PATCH</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2 id="out">17. Out of scope</h2>
+<ul>
+  <li>Automatic reruns, skipping or overriding required checks, editing or updating PR branches, suppressing failures.</li>
+  <li>Matching across GitHub accounts or hosts.</li>
+  <li>Downloading logs from other CI systems (Azure Pipelines, CircleCI). Their check-run output and annotations are the evidence.</li>
+  <li>Distributed locking between machines beyond the GitHub tracking issue.</li>
+  <li>Backfilling history older than what BorgDock observes.</li>
+</ul>
+
+</main>
+</body>
+</html>
