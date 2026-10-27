@@ -20,7 +20,14 @@ import type { AgentThread } from '@/services/dispatch/types';
 import { useActivityStore } from '@/stores/activity-store';
 import { ingestT3Host, t3HostFailed } from '../adapters/t3';
 import { deriveT3, type T3Observation, type T3ThreadFacts } from '../derive/t3';
-import { ingest, ingestIdle, resetActivityIngest, retryFailedCommits } from '../ingest';
+import {
+  type Deriver,
+  ingest,
+  ingestIdle,
+  resetActivityIngest,
+  retryFailedCommits,
+} from '../ingest';
+import { DETAIL_LIMIT, SUMMARY_LIMIT } from '../types';
 
 const LOCAL: DispatchHost = { id: 'local', label: 'This laptop' } as DispatchHost;
 const MINI: DispatchHost = {
@@ -190,6 +197,21 @@ describe('ingest', () => {
     );
     expect(journal.current.commits.at(-1)?.revision).toBe(11_001);
     expect(journal.current.commits.at(-1)?.enrichments[0]?.summary).toBe('W3 asks: A or B?');
+  });
+
+  it('clips what an enrichment writes to the limits a new entry has', async () => {
+    const long: Deriver<number, number> = (_ctx, _baseline, observed) => ({
+      baseline: observed,
+      entries: [],
+      enrichments: [{ id: 'x', summary: 's'.repeat(900), detail: 'd'.repeat(900) }],
+      resolutions: [],
+      seen: [],
+    });
+    await ingest(source(), { sequence: 10 }, long, 1);
+    await ingest(source(), { sequence: 11 }, long, 2);
+    const [enrichment] = journal.current.commits.at(-1)?.enrichments ?? [];
+    expect(enrichment?.summary).toHaveLength(SUMMARY_LIMIT);
+    expect(enrichment?.detail).toHaveLength(DETAIL_LIMIT);
   });
 
   it('keeps the baseline after a failed commit, so nothing is lost or doubled', async () => {

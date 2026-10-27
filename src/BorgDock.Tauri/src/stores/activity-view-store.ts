@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { foldOf } from '@/components/activity/rows';
 import type {
   ActivityReadState_Deserialize,
   ActivitySourceState_Serialize,
@@ -39,7 +40,7 @@ interface ActivityViewState {
   setSource: (sourceId: string | null) => void;
   setSearch: (search: string) => void;
   select: (id: string | null) => void;
-  /** Show one entry: every filter cleared, the page read again, the entry selected and open. */
+  /** Show one entry: every filter cleared, the page read again, its fold open, the entry selected and open. */
   reveal: (id: string) => Promise<void>;
   toggleExpanded: (id: string) => void;
   toggleGroup: (key: string) => void;
@@ -110,7 +111,12 @@ export const useActivityViewStore = create<ActivityViewState>()((set, get) => ({
   reveal: async (id) => {
     set({ filter: 'all', group: null, sourceId: null, search: '' });
     await get().refresh();
-    set({ selectedId: id, expandedId: id });
+    const entry = get().entries.find((candidate) => candidate.id === id);
+    set((state) => ({
+      selectedId: id,
+      expandedId: id,
+      openGroups: entry ? new Set(state.openGroups).add(foldOf(entry)) : state.openGroups,
+    }));
   },
   toggleExpanded: (id) =>
     set((state) => ({ expandedId: state.expandedId === id ? null : id, selectedId: id })),

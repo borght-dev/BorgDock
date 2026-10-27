@@ -2,6 +2,7 @@ import type { ActivityOutboxRequest } from '@/generated/commands';
 import { createLogger } from '@/services/logger';
 import { useActivityStore } from '@/stores/activity-store';
 import * as api from './api';
+import { clipDetail, summary } from './copy';
 import { channelsFor } from './policy';
 import { SourceQueue } from './sources';
 import type {
@@ -214,8 +215,8 @@ async function run<B, O>(
     entries: result.entries.map(api.toInput),
     enrichments: result.enrichments.map((enrichment) => ({
       id: enrichment.id,
-      ...(enrichment.summary !== undefined ? { summary: enrichment.summary } : {}),
-      ...(enrichment.detail !== undefined ? { detail: enrichment.detail } : {}),
+      ...(enrichment.summary !== undefined ? { summary: summary(enrichment.summary) } : {}),
+      ...(enrichment.detail !== undefined ? { detail: clipDetail(enrichment.detail) } : {}),
       ...(enrichment.action !== undefined ? { action: JSON.stringify(enrichment.action) } : {}),
     })),
     resolutions: result.resolutions,

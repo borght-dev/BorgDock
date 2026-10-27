@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   retired: false,
   opened: [] as string[],
   listed: [] as unknown[],
+  page: [] as unknown[],
 }));
 
 vi.mock('@/services/activity/api', async (importOriginal) => {
@@ -17,7 +18,7 @@ vi.mock('@/services/activity/api', async (importOriginal) => {
     mark: () => Promise.resolve({ previous: [], changed: 0, revision: 1 }),
     listEntries: (query: unknown) => {
       mocks.listed.push(query);
-      return Promise.resolve({ entries: [], total: 0, revision: 1 });
+      return Promise.resolve({ entries: mocks.page, total: mocks.page.length, revision: 1 });
     },
   };
 });
@@ -28,6 +29,7 @@ vi.mock('@tauri-apps/plugin-opener', () => ({
   },
 }));
 
+import { buildRows } from '@/components/activity/rows';
 import { useActivityViewStore } from '@/stores/activity-view-store';
 import { reachedEntry } from '../__fixtures__/entries';
 import { act } from '../actions';
@@ -36,6 +38,7 @@ beforeEach(() => {
   mocks.retired = false;
   mocks.opened = [];
   mocks.listed = [];
+  mocks.page = [];
 });
 
 describe('act', () => {
@@ -71,5 +74,15 @@ describe('reveal', () => {
       search: null,
     });
     expect([state.selectedId, state.expandedId]).toEqual(['e1', 'e1']);
+  });
+
+  it('opens the fold an older update of the same entity sits in', async () => {
+    const older = { ...reachedEntry, id: 'older', sourceAt: '2026-10-27T09:00:00.000Z' };
+    const newer = { ...reachedEntry, id: 'newer', sourceAt: '2026-10-27T10:00:00.000Z' };
+    mocks.page = [newer, older];
+    await useActivityViewStore.getState().reveal('older');
+    const { entries, openGroups } = useActivityViewStore.getState();
+    const drawn = buildRows(entries, openGroups, new Date('2026-10-27T12:00:00.000Z'));
+    expect(drawn.map((row) => row.key)).toContain('older');
   });
 });

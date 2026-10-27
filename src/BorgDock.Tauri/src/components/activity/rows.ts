@@ -24,6 +24,11 @@ function dayKey(iso: string): string {
   return `${time.getFullYear()}-${time.getMonth() + 1}-${time.getDate()}`;
 }
 
+/** The `<day>|<entity key>` fold an entry is drawn in. */
+export function foldOf(entry: Pick<ActivityEntry, 'sourceAt' | 'observedAt' | 'entity'>): string {
+  return `${dayKey(whenOf(entry))}|${entry.entity.key}`;
+}
+
 export function dayLabel(iso: string, now: Date): string {
   const time = new Date(iso);
   const today = dayKey(now.toISOString());

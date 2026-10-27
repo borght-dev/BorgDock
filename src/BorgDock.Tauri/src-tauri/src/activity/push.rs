@@ -18,6 +18,7 @@ pub const PUSH_SERVICE: &str = "borgdock:activity-push";
 /// More ready entries than this go out as one message.
 const BATCH_OVER: usize = 3;
 const BATCH_TAG: &str = "borgdock-batch";
+const BATCH_SHOWN: &str = "push_batch_shown";
 /// A push not sent by then is stale: the moment has passed.
 const EXPIRE_HOURS: i64 = 12;
 const SWEEP: Duration = Duration::from_secs(60);
@@ -46,11 +47,13 @@ pub struct ActivityPushTarget {
 }
 
 /// What one cycle decided: messages to send with the outbox rows they settle,
-/// and rows to settle without sending.
+/// rows to settle without sending, and which message puts the batch on the
+/// phone (`true`) or takes it off (`false`) once sent.
 #[derive(Debug, Default)]
 pub struct Plan {
     pub messages: Vec<(Value, Vec<(String, String)>)>,
     pub settle: Vec<ActivityOutboxAck>,
+    pub batch: Vec<(usize, bool)>,
 }
 
 #[derive(Debug, Clone)]
@@ -164,6 +167,16 @@ fn pushed_still_open(conn: &rusqlite::Connection) -> Result<bool, String> {
     .map_err(|e| format!("Activity store: {e}"))
 }
 
+/// The batch message stays on the phone until a clear for it was sent.
+fn batch_shown(conn: &rusqlite::Connection) -> Result<bool, String> {
+    conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM meta WHERE key = ?1 AND value = '1')",
+        [BATCH_SHOWN],
+        |row| row.get(0),
+    )
+    .map_err(|e| format!("Activity store: {e}"))
+}
+
 fn ack(item: &ActivityOutboxItem, outcome: ActivityOutboxOutcome) -> ActivityOutboxAck {
     ActivityOutboxAck {
         entry_id: item.entry.id.clone(),
@@ -186,17 +199,16 @@ fn older_than(created_at: &str, now: &str, hours: i64) -> bool {
 /// entries still unread and open, batched past three, dropped after 12 hours.
 pub fn plan(conn: &rusqlite::Connection, now: &str, options: &PushOptions) -> Result<Plan, String> {
     let mut plan = Plan::default();
-    let clears = queries::outbox_take(conn, "push-clear", 100, now)?;
-    let cleared = !clears.is_empty();
-    for item in clears {
+    for item in queries::outbox_take(conn, "push-clear", 100, now)? {
         plan.messages.push((
             json!({ "tag": item.entry.entity_key, "clear": true }),
             vec![(item.entry.id.clone(), item.channel.clone())],
         ));
     }
     // A batch names several entries under one tag: it goes once none of
-    // what was pushed still waits.
-    if cleared && !pushed_still_open(conn)? {
+    // what was pushed still waits, and is asked again until the clear is sent.
+    if batch_shown(conn)? && !pushed_still_open(conn)? {
+        plan.batch.push((plan.messages.len(), false));
         plan.messages
             .push((json!({ "tag": BATCH_TAG, "clear": true }), Vec::new()));
     }
@@ -215,6 +227,7 @@ pub fn plan(conn: &rusqlite::Connection, now: &str, options: &PushOptions) -> Re
     }
     if ready.len() > BATCH_OVER {
         let rows: Vec<&ActivityEntryRow> = ready.iter().map(|item| &item.entry).collect();
+        plan.batch.push((plan.messages.len(), true));
         plan.messages.push((
             batch_of(&rows, options),
             ready
@@ -250,6 +263,27 @@ pub fn acks_after(plan: &Plan, sent: &[bool]) -> Vec<ActivityOutboxAck> {
         }));
     }
     acks
+}
+
+/// Store what a cycle sent: each outbox row's outcome, and whether the
+/// batch is now on the phone.
+pub fn record(
+    tx: &rusqlite::Transaction,
+    plan: &Plan,
+    sent: &[bool],
+    now: &str,
+) -> Result<i64, String> {
+    for (index, shown) in &plan.batch {
+        if sent.get(*index) == Some(&true) {
+            tx.execute(
+                "INSERT INTO meta (key, value) VALUES (?1, ?2) \
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                [BATCH_SHOWN, if *shown { "1" } else { "0" }],
+            )
+            .map_err(|e| format!("Activity store: {e}"))?;
+        }
+    }
+    queries::outbox_ack(tx, &acks_after(plan, sent), now)
 }
 
 fn read_target() -> Result<Option<Target>, String> {
@@ -311,11 +345,10 @@ async fn cycle(app: &AppHandle) -> Result<(), String> {
         }
         sent.push(result.is_ok());
     }
-    let acks = acks_after(&plan, &sent);
     db.db
         .with_writer(move |conn| {
             queries::write(conn, |tx| {
-                Ok((queries::outbox_ack(tx, &acks, &queries::now())?, false))
+                Ok((record(tx, &plan, &sent, &queries::now())?, false))
             })
         })
         .await?;
@@ -568,15 +601,24 @@ mod tests {
     #[test]
     fn the_batch_is_withdrawn_once_every_entry_in_it_is_handled() {
         let mut conn = store();
-        let ids = ["a", "b", "c", "d"];
-        for id in ids {
+        for id in ["a", "b", "c", "d"] {
             add(&mut conn, id, "unread", "2026-10-27T11:59:00.000Z");
         }
-        let batch = plan(&conn, NOW, &AWAY).unwrap();
-        let acks = acks_after(&batch, &[true]);
+        let send = |conn: &mut rusqlite::Connection, now: &str, ok: bool| {
+            let here = PushOptions {
+                away: false,
+                hide_titles: false,
+            };
+            let plan = plan(conn, now, &here).unwrap();
+            let tx = conn.transaction().unwrap();
+            record(&tx, &plan, &vec![ok; plan.messages.len()], now).unwrap();
+            tx.commit().unwrap();
+            plan.messages
+                .iter()
+                .any(|(body, _)| *body == json!({ "tag": BATCH_TAG, "clear": true }))
+        };
         let read = |conn: &mut rusqlite::Connection, ids: &[&str]| {
             let tx = conn.transaction().unwrap();
-            queries::outbox_ack(&tx, &acks, NOW).unwrap();
             queries::mark(
                 &tx,
                 &ActivityMarkRequest {
@@ -591,29 +633,27 @@ mod tests {
             .unwrap();
             tx.commit().unwrap();
         };
-        let later = "2026-10-27T12:00:01.000Z";
-        let here = PushOptions {
-            away: false,
-            hide_titles: false,
-        };
-        read(&mut conn, &["a", "b"]);
-        let partly = plan(&conn, later, &here).unwrap();
-        assert!(!partly
-            .messages
-            .iter()
-            .any(|(body, _)| body["tag"] == BATCH_TAG));
-        let acks_partly = acks_after(&partly, &vec![true; partly.messages.len()]);
+        let batch = plan(&conn, NOW, &AWAY).unwrap();
         {
             let tx = conn.transaction().unwrap();
-            queries::outbox_ack(&tx, &acks_partly, later).unwrap();
+            record(&tx, &batch, &[true], NOW).unwrap();
             tx.commit().unwrap();
         }
+        read(&mut conn, &["a", "b"]);
+        assert!(
+            !send(&mut conn, "2026-10-27T12:00:01.000Z", true),
+            "c and d still wait"
+        );
         read(&mut conn, &["c", "d"]);
-        let all = plan(&conn, "2026-10-27T12:00:02.000Z", &here).unwrap();
-        assert!(all
-            .messages
-            .iter()
-            .any(|(body, _)| *body == json!({ "tag": BATCH_TAG, "clear": true })));
+        assert!(send(&mut conn, "2026-10-27T12:00:02.000Z", false));
+        assert!(
+            send(&mut conn, "2026-10-27T12:00:03.000Z", true),
+            "a clear that failed is asked again"
+        );
+        assert!(
+            !send(&mut conn, "2026-10-27T12:00:04.000Z", true),
+            "and once sent, done"
+        );
     }
 
     #[test]
