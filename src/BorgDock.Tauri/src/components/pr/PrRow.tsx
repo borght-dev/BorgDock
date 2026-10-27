@@ -3,17 +3,19 @@ import { type MouseEvent, memo, type ReactNode, useCallback, useMemo } from 'rea
 import { Button, ProgressButton } from '@/components/shared/primitives';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { useProgressAction } from '@/hooks/useProgressAction';
+import { showGroupPrs } from '@/services/ci-failures/actions';
+import { outsideCauseText } from '@/services/ci-failures/lens';
 import { staleAfterDaysOf } from '@/services/focus-bucket';
 import { showPr } from '@/services/navigation';
 import { workbenchPrimaryAction } from '@/services/pr-action-resolver';
 import { mergePrWithToast, reviewPr } from '@/services/pr-actions';
 import { openPrDetail } from '@/services/windows';
-import { useSharedFailureCount } from '@/stores/ci-failures-store';
+import { blockedOf, useCiFailuresStore, usePrCiLens } from '@/stores/ci-failures-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity, PullRequestWithChecks } from '@/types';
-import { PrRowCore } from './PrRowCore';
+import { PrRowCore, type SharedFailureMarker } from './PrRowCore';
 import { PrRowOverlays } from './PrRowOverlays';
 import { prRowKey, toPrCardData } from './pr-card-data';
 
@@ -26,14 +28,16 @@ const ICON = { size: 12, strokeWidth: 2.25, 'aria-hidden': true } as const;
  * The row's trailing action (plans/ui-overhaul-workbench.md, phase 4): only
  * for the two actions that make sense without opening the PR. `null` for
  * everything else (failing, own, closed, nothing to do). The Focus board's
- * cards use the same rule (`workbenchPrimaryAction`).
+ * cards use the same rule (`workbenchPrimaryAction`). A PR red only from
+ * failures that are not its doing (`notCaused`) still offers its review.
  */
 export function rowActionFor(
   prWithChecks: PullRequestWithChecks,
   username: string,
   teams: readonly string[] = [],
+  notCaused = false,
 ): 'review' | 'merge' | null {
-  return workbenchPrimaryAction(prWithChecks, username, teams);
+  return workbenchPrimaryAction(prWithChecks, username, teams, { failureNotCaused: notCaused });
 }
 
 /** Merge through the progress fill: "Merging", then "Merged"; the row updates from the store. */
@@ -135,15 +139,36 @@ export const PrRow = memo(function PrRow({
   const teams = usePrStore((s) => s.teams);
   const staleAfterDays = useSettingsStore((s) => s.settings.ui?.staleAfterDays);
   const actions = usePrCardActions(prWithChecks);
-  const actionKind = rowActionFor(prWithChecks, username, teams);
+  const lens = usePrCiLens(prWithChecks);
+  const actionKind = rowActionFor(prWithChecks, username, teams, !!lens?.outsideCause);
 
   const isMine = username !== '' && pr.authorLogin.toLowerCase() === username.toLowerCase();
   const cardData = useMemo(() => toPrCardData(prWithChecks, isMine), [prWithChecks, isMine]);
 
   const { repoOwner: owner, repoName: repo, number } = pr;
-  const shared = useSharedFailureCount(owner, repo, number);
-  // A group remembers every PR it ever saw; only a PR that fails now shares it.
-  const sharedFailure = prWithChecks.failedCheckNames.length > 0 ? shared : 0;
+  const sharedFailure = useMemo((): SharedFailureMarker | undefined => {
+    const group = lens?.groups[0];
+    if (!lens || !group) return undefined;
+    const base = pr.baseRef || 'the base branch';
+    return {
+      title: group.title,
+      prCount: lens.blockedCount,
+      alsoOn: group.defaultBranchRuns.length > 0 ? base : null,
+      notCausedBy: lens.outsideCause ? outsideCauseText(lens.outsideCause, base) : null,
+      onOpen: () => {
+        const blocked = blockedOf(
+          useCiFailuresStore.getState().groups,
+          usePrStore.getState().pullRequests,
+        ).byGroup.get(group.id);
+        void showGroupPrs({
+          groupId: group.id,
+          title: group.title,
+          scope: group.scope,
+          prNumbers: (blocked ?? []).map((p) => p.pullRequest.number),
+        });
+      },
+    };
+  }, [lens, pr.baseRef]);
 
   const openInline = useCallback(() => {
     void showPr(keepSection ? { owner, repo, number, keepSection } : { owner, repo, number });

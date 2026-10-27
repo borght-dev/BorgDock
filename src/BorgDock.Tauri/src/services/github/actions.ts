@@ -173,6 +173,94 @@ export async function listBranchPushRuns(
   return (response.workflow_runs ?? []).map(toRun);
 }
 
+/**
+ * The newest successful push run of a workflow on `branch`, created before
+ * `before` when given; null when GitHub has none.
+ */
+export async function lastPassingPushRun(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  workflowId: number,
+  branch: string,
+  before?: string,
+): Promise<WorkflowRun | null> {
+  const created = before ? `&created=${encodeURIComponent(`<${before}`)}` : '';
+  const response = await client.get<{ workflow_runs: RunDto[] }>(
+    `repos/${owner}/${repo}/actions/workflows/${workflowId}/runs?branch=${encodeURIComponent(branch)}&event=push&status=success&per_page=1${created}`,
+  );
+  const [run] = response.workflow_runs ?? [];
+  return run ? toRun(run) : null;
+}
+
+interface CompareDto {
+  total_commits?: number;
+  commits?: {
+    sha: string;
+    html_url?: string;
+    commit: { message: string; author?: { name?: string | null } | null };
+    author?: { login?: string | null } | null;
+    parents?: { sha: string }[];
+  }[];
+}
+
+export interface ComparedCommit {
+  sha: string;
+  /** The first line of the message. */
+  title: string;
+  message: string;
+  authorLogin: string | null;
+  htmlUrl: string | null;
+  parents: string[];
+}
+
+/**
+ * The commits `head` has that `base` hasn't, oldest first: the first page of
+ * up to 100, and how many there are in all (`total`), so a caller can tell
+ * the list is cut short.
+ */
+export async function compareCommits(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  base: string,
+  head: string,
+): Promise<{ commits: ComparedCommit[]; total: number }> {
+  const response = await client.get<CompareDto>(
+    `repos/${owner}/${repo}/compare/${base}...${head}?per_page=100`,
+  );
+  const commits = (response.commits ?? []).map((c) => ({
+    sha: c.sha,
+    title: c.commit.message.split('\n')[0] ?? '',
+    authorLogin: c.author?.login ?? c.commit.author?.name ?? null,
+    htmlUrl: c.html_url ?? null,
+    message: c.commit.message,
+    parents: (c.parents ?? []).map((p) => p.sha),
+  }));
+  return { commits, total: Math.max(response.total_commits ?? 0, commits.length) };
+}
+
+interface CommitPullDto {
+  number: number;
+  title: string;
+  merged_at?: string | null;
+  user?: { login?: string | null } | null;
+}
+
+/** The merged pull request a commit came from, or null for a direct push. */
+export async function pullOfCommit(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  sha: string,
+): Promise<{ number: number; title: string; authorLogin: string | null } | null> {
+  const pulls = await client.get<CommitPullDto[]>(`repos/${owner}/${repo}/commits/${sha}/pulls`);
+  const pull = pulls.find((p) => p.merged_at) ?? null;
+  return pull
+    ? { number: pull.number, title: pull.title, authorLogin: pull.user?.login ?? null }
+    : null;
+}
+
 interface AnnotationDto {
   path?: string | null;
   start_line?: number | null;

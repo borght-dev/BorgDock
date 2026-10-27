@@ -1594,6 +1594,11 @@ export type CiGroupSummary_Deserialize = {
 	prNumbers: number[],
 	/**  Run numbers (run ids when GitHub gave none) of default-branch failures. */
 	defaultBranchRuns: number[],
+	/**
+	 *  Job ids (check run ids) of the group's PR failures, so a PR's current
+	 *  failed checks can be matched to the groups that hold them.
+	 */
+	prJobIds: number[],
 	occurrenceCount: number,
 	runCount: number,
 	passedOnRetry: number,
@@ -1622,6 +1627,11 @@ export type CiGroupSummary_Serialize = {
 	prNumbers: number[],
 	/**  Run numbers (run ids when GitHub gave none) of default-branch failures. */
 	defaultBranchRuns: number[],
+	/**
+	 *  Job ids (check run ids) of the group's PR failures, so a PR's current
+	 *  failed checks can be matched to the groups that hold them.
+	 */
+	prJobIds: number[],
 	occurrenceCount: number,
 	runCount: number,
 	passedOnRetry: number,

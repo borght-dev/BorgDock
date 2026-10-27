@@ -32,6 +32,7 @@ export function makeGroup(overrides: Partial<CiGroupSummary> = {}): CiGroupSumma
     workflowNames: [],
     maxTier: 'high',
     candidateCount: 0,
+    prJobIds: [],
     claim: null,
     ...overrides,
   };

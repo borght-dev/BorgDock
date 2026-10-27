@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useBranchStory } from '@/hooks/useBranchStory';
 import type { PrCiFailures } from '@/hooks/usePrCiFailures';
 import {
   claimForMe,
@@ -11,15 +12,17 @@ import {
 } from '@/services/ci-failures/actions';
 import { HYPOTHESIS_LABEL, hypothesesOf } from '@/services/ci-failures/hypothesis';
 import { ownerLabel, ownerStatusOf } from '@/services/ci-failures/ownership';
+import { healModeOf } from '@/services/ci-failures/rerun';
 import { ciFailureSettings } from '@/services/ci-failures/settings';
 import type { CiGroupSummary } from '@/services/ci-failures/types';
-import { factsOf } from '@/stores/ci-failures-store';
+import { factsOf, useBlockedPrs } from '@/stores/ci-failures-store';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useT3SessionStore } from '@/stores/t3-session-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { parseError } from '@/utils/parse-error';
 import { formatAgo } from '@/utils/relative-time';
+import { BranchStoryLine } from './BranchStoryLine';
 import { confidenceOf, evidenceText, excerptOf, headlineOf } from './copy';
 import { GroupDetail } from './GroupDetail';
 import { type GroupRow, relatedView } from './related-rows';
@@ -147,6 +150,11 @@ function GroupRowView({
   const excerptAddsDetail = !!excerpt && excerpt.trim() !== group.title.trim();
   const seenAfterFix = !!group.fixMergedAt && group.lastObservedAt > group.fixMergedAt;
   const otherPrs = group.prNumbers.length;
+  const story = useBranchStory(group);
+  const blocked = useBlockedPrs().get(group.id);
+  // A pop-out window has no PR list; the group's PRs stand in for the blocked ones.
+  const blockedPrs = blocked ? blocked.map((p) => p.pullRequest.number) : group.prNumbers;
+  const heal = healModeOf(group, !!story?.recovered, branch);
   const detailsId = `bd-ci-detail-${group.id}`;
   return (
     <li className="bd-ci-group" data-group-id={group.id}>
@@ -189,6 +197,12 @@ function GroupRowView({
           </div>
         )
       )}
+      {story && <BranchStoryLine group={group} story={story} blockedPrs={blockedPrs} />}
+      {story?.recovered && (
+        <div className="bd-ci-group__line" data-tone="good">
+          Passing on {story.branch} again
+        </div>
+      )}
       {group.fixPr && (
         <div className="bd-ci-group__line" data-tone={seenAfterFix ? 'warn' : undefined}>
           Fix {group.fixPr.replace(/^.*\/pull\//, '#')}
@@ -218,14 +232,15 @@ function GroupRowView({
             </button>
           </>
         )}
-        {group.fixMergedAt && !resolved && (
+        {heal && (
           <button
             type="button"
             className="bd-ci-link"
             disabled={act.busy}
+            data-ci-heal={heal}
             onClick={() => act.run(() => openSheet({ kind: 'rerun', groupId: group.id }))}
           >
-            Rerun affected…
+            {heal === 'update' ? 'Update affected…' : 'Rerun affected…'}
           </button>
         )}
         {otherPrs >= 2 && (

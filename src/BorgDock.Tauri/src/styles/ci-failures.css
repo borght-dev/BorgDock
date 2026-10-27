@@ -121,6 +121,9 @@
   .bd-ci-group__line[data-tone="warn"] {
     color: var(--color-warning-badge-fg);
   }
+  .bd-ci-group__line[data-tone="good"] {
+    color: var(--color-success-badge-fg);
+  }
   .bd-ci-group__owner {
     display: flex;
     flex-wrap: wrap;
@@ -480,15 +483,196 @@
   .bd-ci-filter button:hover {
     background: var(--color-surface-hover);
   }
+  /* The row marker: names the shared failure and opens it. A PR red only
+   * from failures that are not its doing gets the warning tone. */
   .bd-ci-marker {
+    display: inline-flex;
     flex: none;
-    padding: 0 5px;
+    align-items: baseline;
+    gap: 4px;
+    max-width: 320px;
+    padding: 0 6px;
     border: 1px solid var(--color-status-red);
     border-radius: 999px;
+    background: none;
+    font: inherit;
     font-size: 10.5px;
     font-weight: 600;
     line-height: 15px;
     color: var(--color-status-red);
+    vertical-align: baseline;
     white-space: nowrap;
+    cursor: pointer;
+  }
+  .bd-ci-marker:hover {
+    background: var(--color-error-badge-bg);
+  }
+  .bd-ci-marker:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .bd-ci-marker[data-not-caused] {
+    border-color: var(--color-status-yellow);
+    color: var(--color-warning-badge-fg);
+  }
+  .bd-ci-marker[data-not-caused]:hover {
+    background: var(--color-warning-badge-bg);
+  }
+  .bd-ci-marker__lead {
+    flex: none;
+  }
+  .bd-ci-marker__lead::after {
+    content: " ·";
+  }
+  .bd-ci-marker__name {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 500;
+    text-overflow: ellipsis;
+  }
+  .bd-ci-marker__reach {
+    flex: none;
+  }
+  .bd-ci-marker__reach::before {
+    content: "· ";
+  }
+
+  /* ── Strip above the PR list ───────────────────────────── */
+  .bd-ci-strip {
+    display: grid;
+    gap: 6px;
+    margin: 0 12px 8px;
+  }
+  .bd-ci-strip__heading {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-status-red);
+  }
+  .bd-ci-strip__rows {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow: hidden;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+  .bd-ci-strip__rows > li + li {
+    border-top: 1px solid var(--color-subtle-border);
+  }
+  .bd-ci-strip__row {
+    display: grid;
+    gap: 3px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .bd-ci-strip__row[data-selected] {
+    box-shadow: inset 2px 0 0 var(--color-accent);
+  }
+  .bd-ci-strip__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .bd-ci-strip__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-ci-strip__meta {
+    flex: none;
+    font-size: 11.5px;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+  }
+  .bd-ci-strip__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    padding-left: 16px;
+  }
+  .bd-ci-strip__facts [data-tone="warn"] {
+    color: var(--color-warning-badge-fg);
+  }
+  .bd-ci-strip__facts [data-tone="good"] {
+    color: var(--color-success-badge-fg);
+  }
+  .bd-ci-strip__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 4px;
+    padding-left: 10px;
+  }
+  .bd-ci-strip__more {
+    justify-self: start;
+  }
+
+  /* ── Where a default-branch failure came from ──────────── */
+  .bd-ci-story {
+    display: grid;
+    gap: 4px;
+    padding-left: 16px;
+    font-size: 12px;
+  }
+  .bd-ci-story__line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 6px;
+    min-width: 0;
+  }
+  .bd-ci-story__text {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-ci-story__actions,
+  .bd-ci-story__suspects,
+  .bd-ci-story__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 4px;
+  }
+  .bd-ci-story__confirm {
+    display: grid;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: var(--radius-md);
+    background: var(--color-background);
+  }
+  .bd-ci-story__label {
+    margin: 0;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .bd-ci-story__message {
+    width: 100%;
+    min-height: 90px;
+    padding: 6px 8px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font: inherit;
+    font-size: 12px;
+    color: var(--color-text-primary);
+    resize: vertical;
+  }
+  .bd-ci-story__message:focus {
+    border-color: var(--color-accent);
+    outline: none;
+  }
+  .bd-ci-story__done {
+    color: var(--color-success-badge-fg);
   }
 }

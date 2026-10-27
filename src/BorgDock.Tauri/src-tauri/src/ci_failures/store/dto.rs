@@ -164,6 +164,9 @@ pub struct CiGroupSummary {
     pub pr_numbers: Vec<u32>,
     /// Run numbers (run ids when GitHub gave none) of default-branch failures.
     pub default_branch_runs: Vec<u64>,
+    /// Job ids (check run ids) of the group's PR failures, so a PR's current
+    /// failed checks can be matched to the groups that hold them.
+    pub pr_job_ids: Vec<u64>,
     pub occurrence_count: u32,
     pub run_count: u32,
     pub passed_on_retry: u32,

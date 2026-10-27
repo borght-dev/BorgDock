@@ -160,7 +160,7 @@ export const Investigate: StoryObj = {
   },
 };
 
-/** Rerun affected after an infrastructure fix: two PRs still red. */
+/** A fix merged: update the two PRs still red from the base branch. */
 export const RerunAffected: StoryObj = {
   render: () => {
     seed();
@@ -199,7 +199,7 @@ export const RerunAffected: StoryObj = {
   },
 };
 
-/** Rerun affected for a base-branch fault: update the branches instead. */
+/** A base-branch fault without a fix yet: nothing to run until the base branch passes. */
 export const RerunBaseBranch: StoryObj = {
   render: () => {
     seed();
@@ -214,6 +214,33 @@ export const RerunBaseBranch: StoryObj = {
           },
           ciJobs: [
             { id: 99, kind: 'actions', name: 'e2e (chromium)', runId: 990, conclusion: 'failure' },
+          ],
+        }),
+      ],
+    });
+    return <RerunAffectedSheet groupId="g-shared" onClose={() => {}} />;
+  },
+};
+
+/** An infrastructure fault: rerun the failed jobs, no fix needed. */
+export const RerunInfrastructure: StoryObj = {
+  render: () => {
+    seed();
+    getControl().invokeResponses.ci_load_group = {
+      ...DETAIL,
+      summary: { ...summary, defaultBranchRuns: [], catalogIds: ['runner-lost'] },
+    };
+    usePrStore.setState({
+      pullRequests: [
+        makePr({
+          pullRequest: {
+            number: 1184,
+            title: 'Group checks by suite',
+            repoOwner: 'borght-dev',
+            repoName: 'BorgDock',
+          },
+          ciJobs: [
+            { id: 11, kind: 'actions', name: 'e2e (chromium)', runId: 1100, conclusion: 'failure' },
           ],
         }),
       ],

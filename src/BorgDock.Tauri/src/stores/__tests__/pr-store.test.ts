@@ -63,6 +63,8 @@ describe('pr-store', () => {
       filter: 'all',
       searchQuery: '',
       sortBy: 'updated',
+      relatedFailure: null,
+      hideFailing: false,
       username: 'me',
       isPolling: false,
       lastPollTime: null,
@@ -157,6 +159,57 @@ describe('pr-store', () => {
       const result = usePrStore.getState().filteredPrs();
       expect(result).toHaveLength(1);
       expect(result[0]!.pullRequest.number).toBe(99);
+    });
+  });
+
+  describe('hide failing', () => {
+    const prs: PullRequestWithChecks[] = [
+      makePr({ number: 1, authorLogin: 'me', overallStatus: 'green', reviewStatus: 'approved' }),
+      makePr({ number: 2, authorLogin: 'me', overallStatus: 'red' }),
+      makePr({ number: 3, authorLogin: 'other', overallStatus: 'red' }),
+      makePr({ number: 4, authorLogin: 'other', overallStatus: 'yellow' }),
+    ];
+
+    beforeEach(() => {
+      usePrStore.getState().setPullRequests(prs);
+      usePrStore.getState().setUsername('me');
+    });
+
+    const numbers = () =>
+      usePrStore
+        .getState()
+        .filteredPrs()
+        .map((pr) => pr.pullRequest.number)
+        .sort();
+
+    it('leaves PRs with a failing check out of every filter', () => {
+      usePrStore.getState().setHideFailing(true);
+      expect(numbers()).toEqual([1, 4]);
+      usePrStore.getState().setFilter('mine');
+      expect(numbers()).toEqual([1]);
+    });
+
+    it('counts what each segment would show, and keeps the Failing count', () => {
+      expect(usePrStore.getState().counts().all).toBe(4);
+      usePrStore.getState().setHideFailing(true);
+      const counts = usePrStore.getState().counts();
+      expect(counts.all).toBe(2);
+      expect(counts.mine).toBe(1);
+      expect(counts.failing).toBe(2);
+    });
+
+    it('does not empty the Failing filter', () => {
+      usePrStore.getState().setHideFailing(true);
+      usePrStore.getState().setFilter('failing');
+      expect(numbers()).toEqual([2, 3]);
+    });
+
+    it('shows every PR again when turned off', () => {
+      usePrStore.getState().setHideFailing(true);
+      expect(numbers()).toEqual([1, 4]);
+      usePrStore.getState().setHideFailing(false);
+      expect(numbers()).toEqual([1, 2, 3, 4]);
+      expect(usePrStore.getState().counts().all).toBe(4);
     });
   });
 

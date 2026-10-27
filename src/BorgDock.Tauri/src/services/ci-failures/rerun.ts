@@ -1,8 +1,11 @@
 import { rerunFailedChecks } from '@/services/github/checks';
+import { GitHubApiError } from '@/services/github/client';
+import { updatePullRequestBranch } from '@/services/github/mutations';
 import { getClientForRepo } from '@/services/github/singleton';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
-import { parseMatrix, parseScope } from './identity';
-import type { CiGroupDetail } from './types';
+import { parseScope } from './identity';
+import { outsideCauseOf } from './lens';
+import type { CiGroupDetail, CiGroupSummary } from './types';
 
 /** A PR still red with this group's failure, and the checks a rerun would retry. */
 export interface RerunTarget {
@@ -16,9 +19,9 @@ export interface RerunTarget {
 const FAILED = new Set(['failure', 'timed_out', 'startup_failure']);
 
 /**
- * The open PRs a group affects right now, from the latest poll: those whose
- * head still has a failed check with a job name the group's occurrences
- * carry.
+ * The open PRs a group fails right now, from the latest poll: those whose
+ * head has a failed job the group holds (`prJobIds`). The strip and the row
+ * markers count the same PRs, so "Update 3 PRs" updates those three.
  */
 export function rerunTargets(
   detail: CiGroupDetail,
@@ -26,20 +29,13 @@ export function rerunTargets(
 ): RerunTarget[] {
   const parts = parseScope(detail.summary.scope);
   if (!parts) return [];
-  const names = new Set(detail.occurrences.map((o) => parseMatrix(o.occurrence.jobName).base));
-  const numbers = new Set(detail.summary.prNumbers);
+  const jobs = new Set(detail.summary.prJobIds);
   return prs.flatMap((pr) => {
     const p = pr.pullRequest;
-    if (!numbers.has(p.number)) return [];
     if (p.repoOwner.toLowerCase() !== parts.owner || p.repoName.toLowerCase() !== parts.repo)
       return [];
     const checks: CheckRun[] = (pr.ciJobs ?? [])
-      .filter(
-        (job) =>
-          job.kind !== 'status' &&
-          FAILED.has(job.conclusion) &&
-          names.has(parseMatrix(job.name).base),
-      )
+      .filter((job) => job.kind !== 'status' && FAILED.has(job.conclusion) && jobs.has(job.id))
       .map((job) => ({
         id: job.id,
         name: job.name,
@@ -89,4 +85,80 @@ export async function rerunAffected(targets: readonly RerunTarget[]): Promise<Re
     }
   }
   return outcomes;
+}
+
+export interface UpdateOutcome {
+  prNumber: number;
+  /** `updated`: the base branch was merged in and CI starts again; `rerun`: the branch had it already. */
+  action: 'updated' | 'rerun' | null;
+  error: string | null;
+}
+
+/** GitHub's answer when the branch already has every commit of its base. */
+function isUpToDate(error: unknown): boolean {
+  return (
+    error instanceof GitHubApiError && error.status === 422 && /no new commits/i.test(error.message)
+  );
+}
+
+/**
+ * Brings each target up to date with its base branch so its CI runs with the
+ * fix, one PR at a time. A branch that already has the base gets its failed
+ * jobs rerun instead: its last run predates nothing.
+ */
+export async function updateAffected(targets: readonly RerunTarget[]): Promise<UpdateOutcome[]> {
+  const outcomes: UpdateOutcome[] = [];
+  for (const target of targets) {
+    const p = target.pr.pullRequest;
+    const client = getClientForRepo(p.repoOwner, p.repoName);
+    if (!client) {
+      outcomes.push({
+        prNumber: p.number,
+        action: null,
+        error: 'No GitHub client for this repository',
+      });
+      continue;
+    }
+    try {
+      await updatePullRequestBranch(client, p.repoOwner, p.repoName, p.number, p.headSha);
+      outcomes.push({ prNumber: p.number, action: 'updated', error: null });
+    } catch (error) {
+      if (!isUpToDate(error)) {
+        outcomes.push({
+          prNumber: p.number,
+          action: null,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        continue;
+      }
+      try {
+        await rerunFailedChecks(client, p.repoOwner, p.repoName, target.checks);
+        outcomes.push({ prNumber: p.number, action: 'rerun', error: null });
+      } catch (rerunError) {
+        outcomes.push({
+          prNumber: p.number,
+          action: null,
+          error: rerunError instanceof Error ? rerunError.message : String(rerunError),
+        });
+      }
+    }
+  }
+  return outcomes;
+}
+
+/**
+ * What brings a group's PRs back: `update` their branches once a fix is on
+ * the base branch (a linked fix merged, or the default branch passes again),
+ * `rerun` when the cause was never the code (infrastructure, flaky). Null
+ * while neither holds.
+ */
+export function healModeOf(
+  group: CiGroupSummary,
+  recovered: boolean,
+  branch: string | null = null,
+): 'update' | 'rerun' | null {
+  if (group.status === 'resolved' || group.status === 'merged') return null;
+  if (group.fixMergedAt || recovered) return 'update';
+  const cause = outsideCauseOf(group, branch);
+  return cause === 'infrastructure' || cause === 'flaky' ? 'rerun' : null;
 }

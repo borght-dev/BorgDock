@@ -1,8 +1,14 @@
-import { GitPullRequest, X } from 'lucide-react';
+import { GitPullRequest } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { groupWorkbenchPrs, NEEDS_YOU_GROUP_KEY, type PrGroupBy } from '@/services/pr-grouping';
+import { CiFailureStrip } from '@/components/ci-failures/CiFailureStrip';
+import {
+  groupWorkbenchPrs,
+  isFailing,
+  NEEDS_YOU_GROUP_KEY,
+  type PrGroupBy,
+} from '@/services/pr-grouping';
 import { matchesSearch } from '@/services/pr-search';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
 import {
@@ -240,6 +246,20 @@ export function PrList() {
     [animateChange],
   );
 
+  const handleHideFailingChange = useCallback(
+    (hide: boolean) => {
+      const leaving = hide
+        ? usePrStore
+            .getState()
+            .filteredPrs()
+            .filter(isFailing)
+            .map((pr) => prRowKey(pr.pullRequest))
+        : [];
+      animateChange(() => usePrStore.getState().setHideFailing(hide), leaving);
+    },
+    [animateChange],
+  );
+
   const head = (
     <WorkbenchPrHead
       filter={requestedFilter ?? filter}
@@ -247,6 +267,7 @@ export function PrList() {
       onFilterChange={handleFilterChange}
       onGroupByChange={handleGroupByChange}
       onSortChange={handleSortChange}
+      onHideFailingChange={handleHideFailingChange}
     />
   );
 
@@ -266,20 +287,7 @@ export function PrList() {
   return (
     <div className="bd-wb-prs">
       {head}
-      {relatedFailure && (
-        <div className="bd-ci-filter" data-related-failure-filter="">
-          <span title={relatedFailure.title}>
-            Related failure: {relatedFailure.title} · {relatedFailure.prKeys.length} PRs
-          </span>
-          <button
-            type="button"
-            aria-label="Show all pull requests again"
-            onClick={() => usePrStore.getState().setRelatedFailure(null)}
-          >
-            <X size={12} strokeWidth={2.25} aria-hidden="true" />
-          </button>
-        </div>
-      )}
+      <CiFailureStrip />
       <div ref={listRef} className="bd-wb-list" data-density={density}>
         {prs.length === 0 && (
           <div className="bd-wb-empty">

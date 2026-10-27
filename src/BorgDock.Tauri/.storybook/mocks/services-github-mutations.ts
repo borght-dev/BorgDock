@@ -62,3 +62,31 @@ export async function bypassMergePullRequest(
 ): Promise<void> {
   getControl().invocations.push({ command: 'github.bypassMergePullRequest' });
 }
+
+export async function updatePullRequestBranch(
+  _client: unknown,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<void> {
+  getControl().invocations.push({
+    command: 'github.updatePullRequestBranch',
+    args: { owner, repo, prNumber },
+  });
+}
+
+export async function revertPullRequest(
+  _client: unknown,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<{ url: string; number: number }> {
+  getControl().invocations.push({
+    command: 'github.revertPullRequest',
+    args: { owner, repo, prNumber },
+  });
+  return {
+    url: `https://github.com/${owner}/${repo}/pull/${prNumber + 1000}`,
+    number: prNumber + 1000,
+  };
+}

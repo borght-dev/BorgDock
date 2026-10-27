@@ -229,3 +229,58 @@ export async function postComment(
     body,
   });
 }
+
+// --- Update a branch from its base ---
+
+/**
+ * Merges the base branch into the PR's branch, GitHub's "Update branch".
+ * The push starts the PR's CI again. Throws a 422 `GitHubApiError` when the
+ * branch already has every base commit, or the merge conflicts.
+ */
+export async function updatePullRequestBranch(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  expectedHeadSha?: string,
+): Promise<void> {
+  await client.put(
+    `repos/${owner}/${repo}/pulls/${prNumber}/update-branch`,
+    expectedHeadSha ? { expected_head_sha: expectedHeadSha } : {},
+  );
+}
+
+// --- Revert a merged pull request ---
+
+/** Opens a draft pull request that reverts a merged one; resolves its URL and number. */
+export async function revertPullRequest(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  body: string,
+): Promise<{ url: string; number: number }> {
+  const target = await client.graphql<{
+    repository: { pullRequest: { id: string; title: string } | null } | null;
+  }>(
+    `query RevertTarget($owner: String!, $repo: String!, $number: Int!) {
+      repository(owner: $owner, name: $repo) { pullRequest(number: $number) { id title } }
+    }`,
+    { owner, repo, number: prNumber },
+  );
+  const pull = target.repository?.pullRequest;
+  if (!pull) throw new Error(`#${prNumber} was not found in ${owner}/${repo}.`);
+  const result = await client.graphql<{
+    revertPullRequest: { revertPullRequest: { url: string; number: number } | null } | null;
+  }>(
+    `mutation RevertPullRequest($id: ID!, $title: String!, $body: String!) {
+      revertPullRequest(input: { pullRequestId: $id, title: $title, body: $body, draft: true }) {
+        revertPullRequest { url number }
+      }
+    }`,
+    { id: pull.id, title: `Revert "${pull.title}"`, body },
+  );
+  const revert = result.revertPullRequest?.revertPullRequest;
+  if (!revert) throw new Error(`GitHub did not open a revert for #${prNumber}.`);
+  return revert;
+}

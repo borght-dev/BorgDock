@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/shared/primitives';
-import { hypothesesOf } from '@/services/ci-failures/hypothesis';
-import { type RerunOutcome, rerunAffected, rerunTargets } from '@/services/ci-failures/rerun';
+import { useBranchStory } from '@/hooks/useBranchStory';
+import { outsideCauseOf } from '@/services/ci-failures/lens';
+import {
+  healModeOf,
+  type RerunOutcome,
+  rerunAffected,
+  rerunTargets,
+  type UpdateOutcome,
+  updateAffected,
+} from '@/services/ci-failures/rerun';
 import * as store from '@/services/ci-failures/store-api';
-import type { CiGroupDetail } from '@/services/ci-failures/types';
-import { showPr } from '@/services/navigation';
-import { factsOf, useCiBranch } from '@/stores/ci-failures-store';
+import type { CiGroupDetail, CiGroupSummary } from '@/services/ci-failures/types';
+import { useCiBranch } from '@/stores/ci-failures-store';
 import { usePrStore } from '@/stores/pr-store';
 import { parseError } from '@/utils/parse-error';
 
@@ -14,19 +21,39 @@ interface RerunAffectedSheetProps {
   onClose: () => void;
 }
 
+type Outcome = RerunOutcome | UpdateOutcome;
+
+function outcomeText(outcome: Outcome): string {
+  if (outcome.error) return ` · failed: ${outcome.error}`;
+  if (!('action' in outcome)) return ' · rerun requested';
+  return outcome.action === 'updated'
+    ? ' · branch updated, CI starts again'
+    : ' · already up to date, rerun requested';
+}
+
+/** Stands in for the group until its detail is read; it never failed on the default branch. */
+const NO_GROUP = {
+  id: '',
+  lastObservedAt: '',
+  defaultBranchRuns: [] as number[],
+} as unknown as CiGroupSummary;
+
 /**
- * RerunAffectedSheet — after a fix: the open PRs still red with the group's
- * failure, and what a rerun would retry. A rerun reuses each run's original
- * commit, so for a base-branch fault it says to update the branches instead
- * and offers no rerun. Nothing runs until you confirm.
+ * RerunAffectedSheet — the open PRs still red with the group's failure and
+ * what brings them back. Once a fix is on the base branch (a linked fix
+ * merged, or the base branch passes again) each branch is updated from the
+ * base, which starts its CI with the fix; a branch that already has it gets
+ * a rerun. For a cause that was never the code (infrastructure, flaky) the
+ * failed jobs are rerun. Nothing runs until you confirm.
  */
 export function RerunAffectedSheet({ groupId, onClose }: RerunAffectedSheetProps) {
   const prs = usePrStore((s) => s.pullRequests);
   const [detail, setDetail] = useState<CiGroupDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
-  const [outcomes, setOutcomes] = useState<RerunOutcome[] | null>(null);
+  const [outcomes, setOutcomes] = useState<Outcome[] | null>(null);
   const branch = useCiBranch(detail?.summary.scope ?? null) ?? 'the default branch';
+  const story = useBranchStory(detail?.summary ?? NO_GROUP);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,16 +78,18 @@ export function RerunAffectedSheet({ groupId, onClose }: RerunAffectedSheetProps
   }, [onClose]);
 
   const targets = useMemo(() => (detail ? rerunTargets(detail, prs) : []), [detail, prs]);
-  const baseBranch =
-    detail &&
-    (detail.summary.classification === 'base-branch' ||
-      (!detail.summary.classification &&
-        hypothesesOf(factsOf(detail.summary, branch))[0]?.kind === 'base-branch'));
+  // `wait`: the base branch has the failure and no fix yet; a rerun would only fail again.
+  const mode = !detail
+    ? 'rerun'
+    : (healModeOf(detail.summary, !!story?.recovered, branch) ??
+      (outsideCauseOf(detail.summary, branch) === 'base-branch' ? 'wait' : 'rerun'));
+  const update = mode === 'update';
   const runs = targets.reduce((sum, t) => sum + Math.max(1, t.workflowRunIds.length), 0);
+  const count = `${targets.length} ${targets.length === 1 ? 'PR' : 'PRs'}`;
 
   const confirm = () => {
     setRunning(true);
-    void rerunAffected(targets)
+    void (update ? updateAffected(targets) : rerunAffected(targets))
       .then(setOutcomes)
       .catch((err) => setError(parseError(err).message))
       .finally(() => setRunning(false));
@@ -76,11 +105,19 @@ export function RerunAffectedSheet({ groupId, onClose }: RerunAffectedSheetProps
         onClick={(e) => e.stopPropagation()}
       >
         <header className="bd-dp-sheet__head">
-          <h2 id="bd-ci-rerun-title">Rerun affected PRs</h2>
+          <h2 id="bd-ci-rerun-title">
+            {mode === 'update'
+              ? 'Update affected PRs'
+              : mode === 'wait'
+                ? 'Affected PRs'
+                : 'Rerun affected PRs'}
+          </h2>
           <p className="bd-dp-sheet__lede">
-            {baseBranch
-              ? `A rerun reuses each run's original merge commit, so it never picks up a fix that landed on ${branch}. These PRs need their branch updated instead.`
-              : `Reruns the failed jobs of ${runs} workflow ${runs === 1 ? 'run' : 'runs'}. GitHub retries every failed job in each run, not only the ones in this group.`}
+            {mode === 'update'
+              ? `Merges ${branch} into each branch, like GitHub's Update branch, so its CI runs again with the fix. This adds a merge commit to each PR. A branch that already has ${branch} gets its failed jobs rerun instead.`
+              : mode === 'wait'
+                ? `This failure is on ${branch} too, with no fix yet. A rerun reuses each run's original merge commit, so it would fail again. Once ${branch} passes, update these branches from it.`
+                : `Reruns the failed jobs of ${runs} workflow ${runs === 1 ? 'run' : 'runs'}. GitHub retries every failed job in each run, not only the ones in this group.`}
           </p>
         </header>
         <div className="bd-dp-sheet__body">
@@ -101,20 +138,8 @@ export function RerunAffectedSheet({ groupId, onClose }: RerunAffectedSheetProps
                     <em>#{p.number}</em>
                     <span>
                       {p.title} · {target.checks.map((c) => c.name).join(', ')}
-                      {outcome &&
-                        (outcome.error ? ` · failed: ${outcome.error}` : ' · rerun requested')}
+                      {outcome && outcomeText(outcome)}
                     </span>
-                    {baseBranch && (
-                      <button
-                        type="button"
-                        className="bd-ci-link"
-                        onClick={() =>
-                          void showPr({ owner: p.repoOwner, repo: p.repoName, number: p.number })
-                        }
-                      >
-                        Open
-                      </button>
-                    )}
                   </div>
                 );
               })}
@@ -123,9 +148,9 @@ export function RerunAffectedSheet({ groupId, onClose }: RerunAffectedSheetProps
         </div>
         <footer className="bd-dp-sheet__foot">
           <Button variant="ghost" size="sm" onClick={onClose}>
-            {outcomes || baseBranch ? 'Close' : 'Cancel'}
+            {outcomes || mode === 'wait' ? 'Close' : 'Cancel'}
           </Button>
-          {!baseBranch && !outcomes && (
+          {!outcomes && mode !== 'wait' && (
             <Button
               variant="primary"
               size="sm"
@@ -133,8 +158,10 @@ export function RerunAffectedSheet({ groupId, onClose }: RerunAffectedSheetProps
               onClick={confirm}
             >
               {running
-                ? 'Rerunning…'
-                : `Rerun ${targets.length} ${targets.length === 1 ? 'PR' : 'PRs'}`}
+                ? update
+                  ? 'Updating…'
+                  : 'Rerunning…'
+                : `${update ? 'Update' : 'Rerun'} ${count}`}
             </Button>
           )}
         </footer>

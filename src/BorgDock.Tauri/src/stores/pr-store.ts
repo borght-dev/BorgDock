@@ -25,7 +25,7 @@ import { computeTeamReviewLoad, type ReviewerLoad } from '@/services/team-review
 import { useSettingsStore } from '@/stores/settings-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { shareEntities } from '@/utils/structural-sharing';
-import { persistToTauriStore } from '@/utils/tauri-persist';
+import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
 const log = createLogger('pr-store');
 
@@ -73,6 +73,8 @@ export interface RelatedFailureFilter {
 
 /** Tauri-store key under which the PR sort order is remembered across launches. */
 export const PR_SORT_STORE_KEY = 'prSortBy';
+/** Tauri-store key under which "Hide failing" is remembered across launches. */
+export const PR_HIDE_FAILING_STORE_KEY = 'prHideFailing';
 
 interface RateLimit {
   remaining: number;
@@ -102,6 +104,7 @@ interface ViewDeps extends DataDeps {
   searchQuery: string;
   sortBy: SortBy;
   relatedFailure: RelatedFailureFilter | null;
+  hideFailing: boolean;
 }
 
 interface DerivedCache {
@@ -122,6 +125,11 @@ interface PrState extends DerivedCache {
   searchQuery: string;
   sortBy: SortBy;
   relatedFailure: RelatedFailureFilter | null;
+  /**
+   * Leave PRs with a failing check out of the list and its counts, next to
+   * any filter but Failing and Closed. Remembered across launches.
+   */
+  hideFailing: boolean;
   username: string;
   /** Effective team memberships (manual settings list ∪ auto-detected). */
   teams: string[];
@@ -161,6 +169,9 @@ interface PrState extends DerivedCache {
   setSearchQuery: (query: string) => void;
   setRelatedFailure: (filter: RelatedFailureFilter | null) => void;
   setSortBy: (sort: SortBy) => void;
+  setHideFailing: (hide: boolean) => void;
+  /** Reads the remembered "Hide failing" choice. */
+  restoreHideFailing: () => Promise<void>;
   setUsername: (username: string) => void;
   /** Team list typed in Settings → GitHub. */
   setManualTeams: (teams: string[]) => void;
@@ -218,6 +229,11 @@ export function matchesPrFilter(
     case 'closed':
       return false;
   }
+}
+
+/** "Hide failing" applies to every filter except the two that list failing or closed PRs. */
+export function hidesFailing(hideFailing: boolean, filter: PrFilter): boolean {
+  return hideFailing && filter !== 'failing' && filter !== 'closed';
 }
 
 function applyFilter(
@@ -303,7 +319,8 @@ function sameViewDeps(a: ViewDeps | null, b: ViewDeps): boolean {
     a.filter === b.filter &&
     a.searchQuery === b.searchQuery &&
     a.sortBy === b.sortBy &&
-    a.relatedFailure === b.relatedFailure
+    a.relatedFailure === b.relatedFailure &&
+    a.hideFailing === b.hideFailing
   );
 }
 
@@ -385,6 +402,7 @@ export const usePrStore = create<PrState>()((set, get) => ({
   searchQuery: '',
   sortBy: 'updated',
   relatedFailure: null,
+  hideFailing: false,
 
   // ── Computed selectors ──
   filteredPrs: () => {
@@ -396,11 +414,20 @@ export const usePrStore = create<PrState>()((set, get) => ({
       searchQuery: state.searchQuery,
       sortBy: state.sortBy,
       relatedFailure: state.relatedFailure,
+      hideFailing: state.hideFailing,
     };
     if (state._cachedFilteredPrs && sameViewDeps(state._viewDeps, deps)) {
       return state._cachedFilteredPrs;
     }
-    const filtered = applyFilter(deps.prs, deps.closed, deps.filter, deps.username, deps.teams);
+    const filtered = applyFilter(
+      hidesFailing(deps.hideFailing, deps.filter)
+        ? deps.prs.filter((pr) => !isFailing(pr))
+        : deps.prs,
+      deps.closed,
+      deps.filter,
+      deps.username,
+      deps.teams,
+    );
     const related = deps.relatedFailure ? new Set(deps.relatedFailure.prKeys) : null;
     const searched = filtered.filter(
       (pr) =>
@@ -417,11 +444,13 @@ export const usePrStore = create<PrState>()((set, get) => ({
     const state = get();
     const deps = ensureDataCache(state);
     if (state._cachedCounts) return state._cachedCounts;
-    const { prs, username, teams } = deps;
+    const { username, teams } = deps;
+    // Under "Hide failing" every segment counts what it would show; Failing keeps its own count.
+    const prs = state.hideFailing ? deps.prs.filter((pr) => !isFailing(pr)) : deps.prs;
     const counts = {
       all: prs.length,
       mine: prs.filter((pr) => isMyPr(pr, username)).length,
-      failing: prs.filter(isFailing).length,
+      failing: deps.prs.filter(isFailing).length,
       ready: prs.filter(isReady).length,
       reviewing: prs.filter(isReviewing).length,
       needsReview: prs.filter((pr) => isWaitingOnMe(pr, username, teams)).length,
@@ -518,6 +547,18 @@ export const usePrStore = create<PrState>()((set, get) => ({
   setFilter: (filter) => set({ filter }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setRelatedFailure: (relatedFailure) => set({ relatedFailure }),
+  setHideFailing: (hideFailing) => {
+    set({ hideFailing, _cachedCounts: null });
+    persistToTauriStore('ui-state.json', PR_HIDE_FAILING_STORE_KEY, hideFailing).catch((err) =>
+      log.debug('failed to persist hideFailing', { error: String(err) }),
+    );
+  },
+  restoreHideFailing: async () => {
+    const stored = await readFromTauriStore<boolean>('ui-state.json', PR_HIDE_FAILING_STORE_KEY);
+    if (typeof stored === 'boolean' && stored !== get().hideFailing) {
+      set({ hideFailing: stored, _cachedCounts: null });
+    }
+  },
   setSortBy: (sort) => {
     set({ sortBy: sort });
     persistToTauriStore('ui-state.json', PR_SORT_STORE_KEY, sort).catch((err) =>

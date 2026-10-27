@@ -23,6 +23,7 @@ import { useWorktreeMap } from '@/hooks/useWorktreeMap';
 import { createLogger } from '@/services/logger';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -155,6 +156,10 @@ export default function App() {
   // Restore persisted active section and onboarding state on mount
   useEffect(() => {
     useUiStore.getState().restorePersistedSection();
+    void usePrStore
+      .getState()
+      .restoreHideFailing()
+      .catch(() => {});
     useOnboardingStore.getState().restoreOnboardingState();
   }, []);
 
