@@ -118,7 +118,8 @@ describe('drainPopups', () => {
     const merged = unread(turnEntry, {
       id: 'merged',
       category: 'pr.merged',
-      action: { kind: 'open-pr', owner: 'acme', repo: 'app', number: 77 },
+      entity: { kind: 'pr', key: 'gh:acme/app#77', title: 'x', url: 'u' },
+      action: { kind: 'open-url', url: 'https://github.com/acme/app/pull/77' },
     });
     mocks.outbox = [item(merged)];
     await drainPopups(NOW, NOW - 60_000);

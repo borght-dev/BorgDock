@@ -17,6 +17,7 @@ use tauri::{AppHandle, Manager};
 pub const PUSH_SERVICE: &str = "borgdock:activity-push";
 /// More ready entries than this go out as one message.
 const BATCH_OVER: usize = 3;
+const BATCH_TAG: &str = "borgdock-batch";
 /// A push not sent by then is stale: the moment has passed.
 const EXPIRE_HOURS: i64 = 12;
 const SWEEP: Duration = Duration::from_secs(60);
@@ -137,7 +138,7 @@ fn batch_of(rows: &[&ActivityEntryRow], options: &PushOptions) -> Value {
         "title": format!("{} updates need you", rows.len()),
         "message": lines.join("\n"),
         "url": null,
-        "tag": "borgdock-batch",
+        "tag": BATCH_TAG,
         "group": "batch",
         "severity": severity,
     })
@@ -150,6 +151,17 @@ fn source_label(conn: &rusqlite::Connection, source_id: &str) -> String {
         |row| row.get::<_, String>(0),
     )
     .unwrap_or_else(|_| source_id.to_string())
+}
+
+/// Some entry that went to the phone is still unread and open.
+fn pushed_still_open(conn: &rusqlite::Connection) -> Result<bool, String> {
+    conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM outbox o JOIN entries e ON e.id = o.entry_id \
+         WHERE o.channel = 'push' AND o.state = 'sent' AND e.read = 'unread' AND e.status = 'open')",
+        [],
+        |row| row.get(0),
+    )
+    .map_err(|e| format!("Activity store: {e}"))
 }
 
 fn ack(item: &ActivityOutboxItem, outcome: ActivityOutboxOutcome) -> ActivityOutboxAck {
@@ -174,11 +186,19 @@ fn older_than(created_at: &str, now: &str, hours: i64) -> bool {
 /// entries still unread and open, batched past three, dropped after 12 hours.
 pub fn plan(conn: &rusqlite::Connection, now: &str, options: &PushOptions) -> Result<Plan, String> {
     let mut plan = Plan::default();
-    for item in queries::outbox_take(conn, "push-clear", 100, now)? {
+    let clears = queries::outbox_take(conn, "push-clear", 100, now)?;
+    let cleared = !clears.is_empty();
+    for item in clears {
         plan.messages.push((
             json!({ "tag": item.entry.entity_key, "clear": true }),
             vec![(item.entry.id.clone(), item.channel.clone())],
         ));
+    }
+    // A batch names several entries under one tag: it goes once none of
+    // what was pushed still waits.
+    if cleared && !pushed_still_open(conn)? {
+        plan.messages
+            .push((json!({ "tag": BATCH_TAG, "clear": true }), Vec::new()));
     }
     if !options.away {
         return Ok(plan);
@@ -535,11 +555,65 @@ mod tests {
             },
         )
         .unwrap();
-        assert_eq!(plan.messages.len(), 1);
         assert_eq!(
             plan.messages[0].0,
             json!({ "tag": "t3:local:thread:a", "clear": true })
         );
+        assert_eq!(
+            plan.messages[0].1,
+            vec![("a".to_string(), "push-clear".to_string())]
+        );
+    }
+
+    #[test]
+    fn the_batch_is_withdrawn_once_every_entry_in_it_is_handled() {
+        let mut conn = store();
+        let ids = ["a", "b", "c", "d"];
+        for id in ids {
+            add(&mut conn, id, "unread", "2026-10-27T11:59:00.000Z");
+        }
+        let batch = plan(&conn, NOW, &AWAY).unwrap();
+        let acks = acks_after(&batch, &[true]);
+        let read = |conn: &mut rusqlite::Connection, ids: &[&str]| {
+            let tx = conn.transaction().unwrap();
+            queries::outbox_ack(&tx, &acks, NOW).unwrap();
+            queries::mark(
+                &tx,
+                &ActivityMarkRequest {
+                    ids: ids.iter().map(|id| id.to_string()).collect(),
+                    entity_keys: vec![],
+                    before: None,
+                    read: "read".into(),
+                    reason: None,
+                },
+                NOW,
+            )
+            .unwrap();
+            tx.commit().unwrap();
+        };
+        let later = "2026-10-27T12:00:01.000Z";
+        let here = PushOptions {
+            away: false,
+            hide_titles: false,
+        };
+        read(&mut conn, &["a", "b"]);
+        let partly = plan(&conn, later, &here).unwrap();
+        assert!(!partly
+            .messages
+            .iter()
+            .any(|(body, _)| body["tag"] == BATCH_TAG));
+        let acks_partly = acks_after(&partly, &vec![true; partly.messages.len()]);
+        {
+            let tx = conn.transaction().unwrap();
+            queries::outbox_ack(&tx, &acks_partly, later).unwrap();
+            tx.commit().unwrap();
+        }
+        read(&mut conn, &["c", "d"]);
+        let all = plan(&conn, "2026-10-27T12:00:02.000Z", &here).unwrap();
+        assert!(all
+            .messages
+            .iter()
+            .any(|(body, _)| *body == json!({ "tag": BATCH_TAG, "clear": true })));
     }
 
     #[test]

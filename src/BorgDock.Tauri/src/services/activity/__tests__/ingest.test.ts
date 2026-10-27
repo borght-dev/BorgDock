@@ -137,6 +137,14 @@ describe('ingest', () => {
     expect(journal.current.commits).toHaveLength(1);
   });
 
+  it('rejects an older read that arrives after a newer one that changed nothing', async () => {
+    const timed = { ...source(), sourceId: 't3:timed' };
+    await ingest(timed, { time: 100 }, deriveT3, observation([facts(3)]));
+    expect(await ingest(timed, { time: 200 }, deriveT3, observation([facts(3)]))).toBe('unchanged');
+    expect(await ingest(timed, { time: 150 }, deriveT3, observation([facts(4)]))).toBe('stale');
+    expect(journal.current.entries.size).toBe(0);
+  });
+
   it('catches up from the stored baseline after a restart', async () => {
     await ingest(source(), { sequence: 10 }, deriveT3, observation([facts(3)]));
     resetActivityIngest();

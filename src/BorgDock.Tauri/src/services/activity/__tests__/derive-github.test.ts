@@ -84,6 +84,35 @@ describe('deriveGitHub', () => {
     expect(deriveGitHub(ctx(), first.baseline, observe([failing()])).entries).toEqual([]);
   });
 
+  it('fills in a failure on the same head once its evidence arrives', () => {
+    const first = deriveGitHub(ctx(), seeded(), observe([failing()]));
+    const later = pr({
+      checks: {
+        known: true,
+        overall: 'red',
+        failing: [
+          {
+            id: 7,
+            name: 'build',
+            completedAt: '2026-10-27T09:00:00Z',
+            signal: 'TS2322 in a.ts',
+            group: { scope: 'github.com||acme/app', id: 'g1', title: 'Type errors', owned: false },
+          },
+        ],
+      },
+    });
+    const enriched = deriveGitHub(ctx(), first.baseline, observe([later]));
+    expect(enriched.entries).toEqual([]);
+    expect(enriched.enrichments).toEqual([
+      expect.objectContaining({
+        id: `${SOURCE}|#412:checks:aaa:failed`,
+        detail: 'build: TS2322 in a.ts (shared failure: Type errors)',
+        action: { kind: 'open-ci-group', scope: 'github.com||acme/app', groupId: 'g1' },
+      }),
+    ]);
+    expect(deriveGitHub(ctx(), enriched.baseline, observe([later])).enrichments).toEqual([]);
+  });
+
   it('reports passing only after a failure entry, and resolves the failure', () => {
     expect(
       deriveGitHub(

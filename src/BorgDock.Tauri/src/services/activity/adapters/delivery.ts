@@ -67,7 +67,6 @@ export function ingestDeliveryHeads(
   prs: readonly PullRequestWithChecks[],
 ): Promise<unknown> {
   const heads = headsOf(prs, login);
-  if (heads.length === 0) return Promise.resolve();
   const source = deliverySource(owner, repo, login);
   return ingest(source, monotonicTime(source.sourceId), deriveDelivery, {
     owner,

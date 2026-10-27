@@ -39,6 +39,8 @@ interface ActivityViewState {
   setSource: (sourceId: string | null) => void;
   setSearch: (search: string) => void;
   select: (id: string | null) => void;
+  /** Show one entry: every filter cleared, the page read again, the entry selected and open. */
+  reveal: (id: string) => Promise<void>;
   toggleExpanded: (id: string) => void;
   toggleGroup: (key: string) => void;
   refresh: () => Promise<void>;
@@ -105,6 +107,11 @@ export const useActivityViewStore = create<ActivityViewState>()((set, get) => ({
     void get().refresh();
   },
   select: (selectedId) => set({ selectedId }),
+  reveal: async (id) => {
+    set({ filter: 'all', group: null, sourceId: null, search: '' });
+    await get().refresh();
+    set({ selectedId: id, expandedId: id });
+  },
   toggleExpanded: (id) =>
     set((state) => ({ expandedId: state.expandedId === id ? null : id, selectedId: id })),
   toggleGroup: (key) =>

@@ -100,8 +100,9 @@ export function SinceLastCheckedCard() {
                   type="button"
                   className="bd-dp-fcard__item"
                   onClick={() => {
-                    useActivityViewStore.getState().select(entry.id);
-                    void showSection('activity');
+                    void showSection('activity').then(() =>
+                      useActivityViewStore.getState().reveal(entry.id),
+                    );
                   }}
                 >
                   <span className="bd-dp-fcard__line">

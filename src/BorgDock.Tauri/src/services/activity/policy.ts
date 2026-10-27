@@ -98,6 +98,9 @@ export function channelsFor(
 
 // ── Popups ──────────────────────────────────────────────────
 
+/** `gh:<owner>/<repo>#<n>`, the entity key of a pull request. */
+const PR_KEY = /^gh:([^/]+)\/([^#]+)#(\d+)$/;
+
 /** More live entries than this in one drain become one summary popup. */
 const LIVE_LIMIT = 4;
 /** An outbox row older than this when BorgDock starts is folded into the summary. */
@@ -170,11 +173,11 @@ export async function drainPopups(
       const entry = item.entry;
       const ack = (outcome: ActivityOutboxAck['outcome']) =>
         acks.push({ entryId: entry.id, channel: 'popup', outcome });
-      const pr = entry.action && 'owner' in entry.action ? entry.action : null;
+      const pr = PR_KEY.exec(entry.entity.key);
       const mergedHere =
         entry.category === 'pr.merged' &&
         !!pr &&
-        wasMergedHere({ repoOwner: pr.owner, repoName: pr.repo, number: pr.number });
+        wasMergedHere({ repoOwner: pr[1]!, repoName: pr[2]!, number: Number(pr[3]) });
       if (entry.read !== 'unread' || entry.status !== 'open' || mergedHere) {
         ack('skipped');
         continue;

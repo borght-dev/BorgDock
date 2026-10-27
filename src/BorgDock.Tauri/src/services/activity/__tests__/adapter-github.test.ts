@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   login: 'koen' as string | null,
   lookups: [] as number[][],
   findings: [] as number[],
+  failFindings: false,
 }));
 
 vi.mock('@/services/activity/api', async (importOriginal) => {
@@ -65,6 +66,10 @@ vi.mock('@/services/github/pr-lookup', async (importOriginal) => {
 vi.mock('@/services/github/reviews', () => ({
   getBotReviewComments: (_c: unknown, _o: string, _r: string, number: number) => {
     mocks.findings.push(number);
+    if (mocks.failFindings) {
+      mocks.failFindings = false;
+      return Promise.reject(new Error('rate limited'));
+    }
     return Promise.resolve([]);
   },
 }));
@@ -103,6 +108,9 @@ async function poll(
   await ingestGitHubPoll({ repositories, results, startedAt, clientFor: () => client });
 }
 
+const gitHubCommits = () => mocks.journal.commits.filter((c) => c.sourceId.startsWith('gh:'));
+const gitHubSources = () => [...mocks.journal.sources.keys()].filter((id) => id.startsWith('gh:'));
+
 let clock = Date.parse('2026-10-27T10:00:00Z');
 const tick = () => (clock += 60_000);
 
@@ -119,16 +127,16 @@ describe('the GitHub adapter', () => {
   it('adds nothing for a repository the poll did not read fresh', async () => {
     await poll([pr(1)], [app], tick());
     await poll([pr(1, { mergeable: false })], [], tick());
-    expect(mocks.journal.commits).toHaveLength(1);
+    expect(gitHubCommits()).toHaveLength(1);
     expect(mocks.journal.entries.size).toBe(0);
   });
 
   it('keys the source by the login the client reads with, so a switch seeds quietly', async () => {
     await poll([pr(1)], [app], tick());
-    expect([...mocks.journal.sources.keys()]).toEqual(['gh:github.com|koen|acme/app']);
+    expect(gitHubSources()).toEqual(['gh:github.com|koen|acme/app']);
     mocks.login = 'koen-work';
     await poll([pr(1, { authorLogin: 'koen-work', mergeable: false })], [app], tick());
-    expect([...mocks.journal.sources.keys()]).toContain('gh:github.com|koen-work|acme/app');
+    expect(gitHubSources()).toContain('gh:github.com|koen-work|acme/app');
     expect(mocks.journal.entries.size).toBe(0);
   });
 
@@ -168,6 +176,42 @@ describe('the GitHub adapter', () => {
     expect(mocks.findings).toHaveLength(3);
     await poll(commented, [app], tick());
     expect(mocks.findings).toHaveLength(5);
+  });
+
+  it('reads findings again after a read that failed', async () => {
+    await poll([pr(1)], [app], tick());
+    const commented = pr(1, { commentCount: 2 });
+    mocks.failFindings = true;
+    await poll([commented], [app], tick());
+    await poll([commented], [app], tick());
+    expect(mocks.findings).toEqual([1, 1]);
+    await poll([commented], [app], tick());
+    expect(mocks.findings).toEqual([1, 1]);
+  });
+
+  it('seeds the deployments of a repository before it has any, so the first one counts', async () => {
+    await poll([pr(1, { createdAt: '2026-10-27T09:00:00Z' })], [app], tick());
+    expect(mocks.journal.sources.has('deploy:github.com|koen|acme/app')).toBe(true);
+    const deployed = {
+      ...pr(1, { createdAt: '2026-10-27T09:00:00Z' }),
+      headDeployments: [
+        {
+          id: 5,
+          environment: 'staging-1',
+          // After the seed, which the fake journal stamps with the real clock.
+          createdAt: new Date(Date.now() + 60_000).toISOString(),
+          status: {
+            id: 'S1',
+            state: 'success',
+            createdAt: new Date(Date.now() + 70_000).toISOString(),
+            logUrl: 'https://github.com/acme/app/actions/runs/5',
+            environmentUrl: null,
+          },
+        },
+      ],
+    };
+    await poll([deployed], [app], tick());
+    expect(mocks.journal.categories()).toContain('deploy.pr');
   });
 
   it('adds no review entries from a REST read', async () => {

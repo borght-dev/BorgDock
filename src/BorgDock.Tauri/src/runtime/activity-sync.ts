@@ -156,12 +156,8 @@ async function entryById(id: string): Promise<ActivityEntry | null> {
 /** Show an entry in Activity, selected and open. */
 export async function showActivityEntry(id: string): Promise<void> {
   await bringMainWindowForward();
-  if (id) {
-    const view = useActivityViewStore.getState();
-    view.select(id);
-    if (useActivityViewStore.getState().expandedId !== id) view.toggleExpanded(id);
-  }
   await showSection('activity');
+  if (id) await useActivityViewStore.getState().reveal(id);
 }
 
 /** A popup's or the tray's action: checked again here, where the stores are live. */

@@ -193,6 +193,13 @@ async function run<B, O>(
   const result = derive(ctx, state.baseline as B | null, observation);
   const baselineText = JSON.stringify(result.baseline);
   if (!seed && !hasNews(result) && baselineText === state.baselineText) {
+    // Nothing to write, but a read older than this one must not land after
+    // it. Within one sequence the sub-revisions are left for detail reads.
+    const sameSequence =
+      'sequence' in revision &&
+      state.revision !== null &&
+      Math.floor(state.revision / PER_SEQUENCE) === revision.sequence;
+    if (!sameSequence) state.revision = next;
     state.committedThisSession = true;
     state.failedSince = null;
     return 'unchanged';

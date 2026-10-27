@@ -256,11 +256,16 @@ export async function run(action: ActionTarget): Promise<void> {
  * Take an entry's action, or the fallback when it no longer applies, and
  * mark the entry read. Returns what ran, for the row to say.
  */
+async function isRetired(sourceId: string): Promise<boolean> {
+  const sources = await api.listSources().catch(() => []);
+  return !!sources.find((source) => source.sourceId === sourceId)?.retiredAt;
+}
+
 export async function act(
   entry: ActivityEntry,
-  retired = false,
+  retired?: boolean,
 ): Promise<{ ran: ActionTarget | null; reason: string | null }> {
-  const check = revalidate(entry, retired);
+  const check = revalidate(entry, retired ?? (await isRetired(entry.sourceId)));
   const target = check.ok ? check.action : check.fallback;
   if (target) await run(target);
   if (target && entry.read === 'unread') {

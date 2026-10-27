@@ -112,6 +112,8 @@ export async function getBotReviewComments(
   repo: string,
   prNumber: number,
   botUsername: string,
+  /** Fail instead of returning what one of the two reads found. */
+  strict = false,
 ): Promise<ClaudeReviewComment[]> {
   const comments: ClaudeReviewComment[] = [];
   const botLower = botUsername.toLowerCase();
@@ -138,6 +140,7 @@ export async function getBotReviewComments(
       });
     }
   } catch (err) {
+    if (strict) throw err;
     log.warn('failed to fetch bot PR review comments', {
       owner,
       repo,
@@ -174,6 +177,7 @@ export async function getBotReviewComments(
       }
     }
   } catch (err) {
+    if (strict) throw err;
     log.warn('failed to fetch bot issue comments', { owner, repo, prNumber, error: String(err) });
   }
 

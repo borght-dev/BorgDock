@@ -2,6 +2,7 @@ import { sentence } from '../copy';
 import { entityKey, entryId, normalizeTime } from '../sources';
 import type {
   ActionTarget,
+  ActivityEnrichment,
   ActivityEntity,
   ActivityResolution,
   DeriveContext,
@@ -11,6 +12,7 @@ import type {
 import {
   createdAfterSeed,
   emptyResult,
+  fingerprint,
   keepMissing,
   makeEntry,
   resolveCategories,
@@ -116,6 +118,8 @@ export interface PrBaseline {
   /** The head a failure entry was made for, until it passes or a newer head replaces it. */
   failedHead: string | null;
   failingIds: number[];
+  /** What the failure entry last said, so later evidence updates it. */
+  failingKey?: string | null;
   mergeable: boolean | null;
   readyHead: string | null;
   /** The Claude review state already accounted for. */
@@ -179,6 +183,7 @@ function baselineOf(
     requestedMe: pr.requestedMe,
     failedHead: before?.failedHead ?? null,
     failingIds: before?.failingIds ?? [],
+    failingKey: before?.failingKey ?? null,
     mergeable: pr.mergeable ?? before?.mergeable ?? null,
     readyHead: pr.ready ? pr.headSha : null,
     claudeKey: absorb ? pr.claudeKey : (before?.claudeKey ?? null),
@@ -228,7 +233,11 @@ function derivePr(
   pr: PrFacts,
   base: PrBaseline,
   next: PrBaseline,
-  out: { entries: NewActivityEntry[]; resolutions: ActivityResolution[] },
+  out: {
+    entries: NewActivityEntry[];
+    resolutions: ActivityResolution[];
+    enrichments: ActivityEnrichment[];
+  },
 ): void {
   const key = entityKey.pr(observation.owner, observation.repo, pr.number);
   const entity: ActivityEntity = { kind: 'pr', key, title: pr.title, url: pr.url };
@@ -295,6 +304,31 @@ function derivePr(
     const failingIds = pr.checks.failing.map((job) => job.id).sort((a, b) => a - b);
     if (pr.checks.overall === 'red' && pr.checks.failing.length > 0) {
       const nativeKey = native(`checks:${pr.headSha}:failed`);
+      const groups = pr.checks.failing.map((job) => job.group);
+      const shared = groups.every((group) => group !== null) ? groups : [];
+      const oneGroup =
+        shared.length > 0 && shared.every((group) => group?.id === shared[0]?.id)
+          ? shared[0]
+          : null;
+      const everyOwned = shared.length > 0 && shared.every((group) => group?.owned);
+      const summary = sentence.checksFailed(
+        pr.checks.failing.map((job) => job.name),
+        pr.number,
+        pr.title,
+      );
+      const detail = pr.checks.failing
+        .map((job) =>
+          [
+            job.name,
+            job.signal ? `: ${job.signal}` : '',
+            job.group ? ` (shared failure: ${job.group.title})` : '',
+          ].join(''),
+        )
+        .join('\n');
+      const action: ActionTarget = oneGroup
+        ? { kind: 'open-ci-group', scope: oneGroup.scope, groupId: oneGroup.id }
+        : { kind: 'fix-checks', owner, repo, number: pr.number, headSha: pr.headSha };
+      const failingKey = fingerprint(`${summary}\n${detail}\n${JSON.stringify(action)}`);
       if (base.failedHead !== pr.headSha) {
         if (base.failedHead) {
           out.resolutions.push(
@@ -306,13 +340,6 @@ function derivePr(
             ),
           );
         }
-        const groups = pr.checks.failing.map((job) => job.group);
-        const shared = groups.every((group) => group !== null) ? groups : [];
-        const oneGroup =
-          shared.length > 0 && shared.every((group) => group?.id === shared[0]?.id)
-            ? shared[0]
-            : null;
-        const everyOwned = shared.length > 0 && shared.every((group) => group?.owned);
         add({
           nativeKey,
           category: 'pr.checks-failed',
@@ -323,27 +350,21 @@ function derivePr(
             .filter((at): at is string => !!at)
             .sort()
             .at(-1),
-          summary: sentence.checksFailed(
-            pr.checks.failing.map((job) => job.name),
-            pr.number,
-            pr.title,
-          ),
-          detail: pr.checks.failing
-            .map((job) =>
-              [
-                job.name,
-                job.signal ? `: ${job.signal}` : '',
-                job.group ? ` (shared failure: ${job.group.title})` : '',
-              ].join(''),
-            )
-            .join('\n'),
-          action: oneGroup
-            ? { kind: 'open-ci-group', scope: oneGroup.scope, groupId: oneGroup.id }
-            : { kind: 'fix-checks', owner, repo, number: pr.number, headSha: pr.headSha },
+          summary,
+          detail,
+          action,
+        });
+      } else if (base.failingKey !== failingKey) {
+        out.enrichments.push({
+          id: entryId(ctx.sourceId, nativeKey),
+          summary,
+          detail,
+          action,
         });
       }
       next.failedHead = pr.headSha;
       next.failingIds = failingIds;
+      next.failingKey = failingKey;
     } else if (pr.checks.overall === 'green' && base.failedHead) {
       const nativeKey = native(`checks:${pr.headSha}:passed`);
       out.resolutions.push(resolveCategories(key, ['pr.checks-failed'], 'checks passed'));
@@ -358,6 +379,7 @@ function derivePr(
       });
       next.failedHead = null;
       next.failingIds = [];
+      next.failingKey = null;
     }
   }
 
@@ -435,7 +457,11 @@ export function deriveGitHub(
 ): DeriveResult<GitHubBaseline> {
   const previous = baseline?.prs ?? {};
   const prs: Record<string, PrBaseline> = {};
-  const out = { entries: [] as NewActivityEntry[], resolutions: [] as ActivityResolution[] };
+  const out = {
+    entries: [] as NewActivityEntry[],
+    resolutions: [] as ActivityResolution[],
+    enrichments: [] as ActivityEnrichment[],
+  };
 
   for (const pr of observation.prs) {
     const id = String(pr.number);
@@ -514,7 +540,12 @@ export function deriveGitHub(
     prs: { ...keepMissing(ctx, previous, present, true), ...prs },
   });
   if (ctx.seed) return result;
-  return { ...result, entries: out.entries, resolutions: out.resolutions };
+  return {
+    ...result,
+    entries: out.entries,
+    resolutions: out.resolutions,
+    enrichments: out.enrichments,
+  };
 }
 
 /** Numbers of PRs that left the open list since the baseline and need a verification read. */

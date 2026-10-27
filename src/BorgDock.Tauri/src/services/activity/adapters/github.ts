@@ -225,7 +225,7 @@ async function fetchFindings(
   const found: PrFindings[] = [];
   for (const { number, since } of wanted.slice(0, FINDINGS_PER_POLL)) {
     try {
-      const comments = (await getBotReviewComments(client, owner, repo, number, bot)).filter(
+      const comments = (await getBotReviewComments(client, owner, repo, number, bot, true)).filter(
         (comment) => !since || comment.createdAt > since,
       );
       const newest = [...comments].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
