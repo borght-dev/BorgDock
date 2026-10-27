@@ -109,7 +109,42 @@ fn apply_dev_overlay(settings: AppSettings) -> Result<AppSettings, String> {
 /// Current settings schema version. Bump together with a new arm in
 /// [`migrate`]. Migrations are one-off, in-memory rewrites that run on load
 /// and are written straight back so they never run twice.
-pub const CURRENT_SCHEMA_VERSION: u32 = 2;
+pub const CURRENT_SCHEMA_VERSION: u32 = 3;
+
+const AGENT_CATEGORIES: &[&str] = &[
+    "agent.question",
+    "agent.plan",
+    "agent.approval",
+    "agent.turn",
+    "agent.turns-missed",
+    "agent.failed",
+    "agent.interrupted",
+    "agent.limited",
+    "agent.report",
+];
+const WORKSTREAM_CATEGORIES: &[&str] = &[
+    "workstream.unblocked",
+    "workstream.invalidated",
+    "workstream.reopened",
+    "workstream.conflict",
+    "workstream.proposal",
+    "workstream.ready",
+];
+
+/// An old toggle that was off turns the popups of the categories that
+/// replaced it off. One that was on, or never set, leaves their defaults.
+fn seed_popups(
+    categories: &mut std::collections::BTreeMap<String, models::ActivityCategoryChannels>,
+    names: &[&str],
+    old: Option<bool>,
+) {
+    if old != Some(false) {
+        return;
+    }
+    for name in names {
+        categories.entry(name.to_string()).or_default().popup = Some(false);
+    }
+}
 
 /// Apply one-off migrations for settings written by older versions. Returns
 /// `true` when anything changed (the caller persists in that case).
@@ -137,6 +172,49 @@ pub fn migrate(settings: &mut AppSettings) -> bool {
                 let _ = entry.delete_credential();
             }
         }
+    }
+    if from < 3 {
+        // v3 (activity journal, #88): every popup comes from an activity
+        // entry. The old per-feature toggles seed the categories that replace
+        // them, then go; `skip_serializing` drops them on the next save.
+        let workstreams = settings
+            .workstreams
+            .as_mut()
+            .and_then(|w| w.notifications.take());
+        let dispatch = settings.agents.dispatch_notifications.take();
+        let n = &mut settings.notifications;
+        let categories = &mut n.activity.categories;
+        seed_popups(
+            categories,
+            &["pr.checks-failed", "pr.checks-passed"],
+            n.toast_on_check_status_change.take(),
+        );
+        seed_popups(
+            categories,
+            &["pr.review", "pr.review-request", "pr.findings"],
+            n.toast_on_review_update.take(),
+        );
+        seed_popups(categories, &["pr.ready"], n.toast_on_mergeable.take());
+        seed_popups(categories, AGENT_CATEGORIES, dispatch);
+        seed_popups(
+            categories,
+            &["ci.group-grew"],
+            n.ci_failure_group_grows.take(),
+        );
+        seed_popups(
+            categories,
+            &["ci.owner-stale"],
+            n.ci_failure_owner_stale.take(),
+        );
+        seed_popups(
+            categories,
+            &["ci.fix-merged", "ci.seen-after-fix"],
+            n.ci_failure_fix_merged.take(),
+        );
+        seed_popups(categories, WORKSTREAM_CATEGORIES, workstreams);
+        n.channels.tray = None;
+        n.channels.system = None;
+        n.channels.email_digest = None;
     }
     settings.schema_version = CURRENT_SCHEMA_VERSION;
     log::info!("settings: migrated schema {from} -> {CURRENT_SCHEMA_VERSION}");
@@ -196,6 +274,51 @@ pub async fn load_settings() -> Result<AppSettings, String> {
 mod tests {
     use super::merge_json;
     use serde_json::json;
+
+    #[test]
+    fn v3_seeds_activity_popups_from_the_old_toggles_and_drops_them() {
+        let mut settings: super::AppSettings = serde_json::from_value(json!({
+            "schemaVersion": 2,
+            "notifications": {
+                "toastOnCheckStatusChange": false,
+                "toastOnReviewUpdate": true,
+                "ciFailureOwnerStale": false,
+                "channels": { "tray": true, "system": false, "sound": false, "emailDigest": true }
+            },
+            "agents": { "dispatchNotifications": false },
+            "workstreams": { "notifications": false }
+        }))
+        .unwrap();
+        assert!(super::migrate(&mut settings));
+        let categories = &settings.notifications.activity.categories;
+        assert_eq!(categories["pr.checks-failed"].popup, Some(false));
+        assert_eq!(categories["pr.checks-passed"].popup, Some(false));
+        assert_eq!(categories["ci.owner-stale"].popup, Some(false));
+        assert_eq!(categories["agent.question"].popup, Some(false));
+        assert_eq!(categories["workstream.ready"].popup, Some(false));
+        assert!(
+            !categories.contains_key("pr.review"),
+            "a toggle that was on keeps the default"
+        );
+        assert!(
+            !categories.contains_key("ci.group-grew"),
+            "an unset toggle keeps the default"
+        );
+
+        let saved = serde_json::to_value(&settings).unwrap();
+        let notifications = &saved["notifications"];
+        for gone in [
+            "toastOnCheckStatusChange",
+            "toastOnReviewUpdate",
+            "ciFailureOwnerStale",
+        ] {
+            assert!(notifications.get(gone).is_none(), "{gone} is written back");
+        }
+        assert_eq!(notifications["channels"], json!({ "sound": false }));
+        assert!(saved["agents"].get("dispatchNotifications").is_none());
+        assert!(saved["workstreams"].get("notifications").is_none());
+        assert!(!super::migrate(&mut settings), "it runs once");
+    }
 
     #[test]
     fn merge_overrides_scalar_values() {

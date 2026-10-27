@@ -12,20 +12,17 @@ import { SetupWizard } from '@/components/wizard/SetupWizard';
 import { WorkstreamSheets } from '@/components/workstreams/WorkstreamSheets';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useDiskSpace } from '@/hooks/useDiskSpace';
-import { useExternalMergeCelebration } from '@/hooks/useExternalMergeCelebration';
 import { useFlyoutSync } from '@/hooks/useFlyoutSync';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
 import { useReviewNudges } from '@/hooks/useReviewNudges';
 import { useRunAtStartup } from '@/hooks/useRunAtStartup';
 import { useSettingsSync } from '@/hooks/useSettingsSync';
-import { useStateTransitions } from '@/hooks/useStateTransitions';
 import { useTheme } from '@/hooks/useTheme';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { useWorktreeMap } from '@/hooks/useWorktreeMap';
 import { createLogger } from '@/services/logger';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
-import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -130,19 +127,6 @@ export default function App() {
     }
     invoke('window_ready').catch((err) => log.warn('window_ready failed', err));
   }, [hasLoaded, needsSetup, startMinimizedToTray]);
-
-  // Defer polling until init completes — otherwise the first cycle runs
-  // before repos/auth are ready and idles for a full interval (~60s).
-  useExternalMergeCelebration();
-
-  // State transition detection for notifications
-  const { processTransitions } = useStateTransitions(settings);
-  const pullRequests = usePrStore((s) => s.pullRequests);
-  useEffect(() => {
-    if (pullRequests.length > 0) {
-      processTransitions(pullRequests);
-    }
-  }, [pullRequests, processTransitions]);
 
   // Review nudge notifications
   useReviewNudges(settings);

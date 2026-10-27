@@ -18,8 +18,10 @@
  *     same rendering path as production notifications.
  */
 
+import type { AgentThread } from '@/services/dispatch/types';
 import { pushView } from '@/services/navigation';
 import { sendOsNotification } from '@/services/notification';
+import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -29,6 +31,8 @@ import type { AppSettings, NotificationSeverity, PullRequestWithChecks, WorkItem
 
 export type TestSeedPayload = {
   prs?: PullRequestWithChecks[];
+  /** T3 threads as Dispatch holds them (Activity checks its actions against them). */
+  threads?: AgentThread[];
   workItems?: WorkItem[];
   settings?: Partial<AppSettings>;
 };
@@ -88,6 +92,9 @@ export function installTestSeed({ isDev }: { isDev: boolean }): void {
       // are invalidated. Re-seeding within a single page lifetime would
       // otherwise serve stale view data from the previous seed.
       usePrStore.getState().setPullRequests(payload.prs);
+    }
+    if (payload.threads) {
+      useDispatchStore.setState({ threads: payload.threads });
     }
     if (payload.workItems) {
       useWorkItemsStore.setState({ workItems: payload.workItems });

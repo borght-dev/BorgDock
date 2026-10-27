@@ -31,6 +31,8 @@ export interface PullRequest {
   commitCount: number;
   mergedAt?: string;
   closedAt?: string;
+  /** The commit a merge made, when the read carried it. */
+  mergeCommitSha?: string;
   /** Individual users still pending as requested reviewers (logins). */
   requestedReviewers: string[];
   /** Team slugs still pending as requested reviewers (e.g. `platform`). */
@@ -42,10 +44,28 @@ export interface PullRequest {
 export type PrReviewState = 'approved' | 'changesRequested' | 'commented' | 'dismissed' | 'pending';
 
 export interface PrReview {
+  /** GitHub's `databaseId` for the review, when the read carried it (GraphQL). */
+  id?: number;
   authorLogin: string;
   commitSha?: string;
   state: PrReviewState;
   submittedAt?: string;
+}
+
+/** A deployment of a PR's head commit and its latest status. */
+export interface HeadDeployment {
+  id: number;
+  environment: string;
+  createdAt: string;
+  status: {
+    /** GitHub's node id: GraphQL gives deployment statuses no number. */
+    id: string;
+    /** success, failure, error, inactive, in_progress, queued, pending, waiting. */
+    state: string;
+    createdAt: string;
+    logUrl: string | null;
+    environmentUrl: string | null;
+  } | null;
 }
 
 export interface PullRequestWithChecks {
@@ -57,6 +77,8 @@ export interface PullRequestWithChecks {
   failedCheckSuiteIds: number[];
   /** Completed checks of the head commit; absent when the source didn't carry them. */
   ciJobs?: CiJob[];
+  /** Deployments of the head commit (the GraphQL poll only). */
+  headDeployments?: HeadDeployment[];
   pendingCheckNames: string[];
   passedCount: number;
   skippedCount: number;

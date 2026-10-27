@@ -70,7 +70,19 @@ struct PullRequestLink {
 #[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase", default)]
 struct PendingRuntimeRequest {
+    id: String,
     kind: String,
+    created_at: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase", default)]
+struct LimitRecovery {
+    request_id: Option<String>,
+    run_id: String,
+    reset_at: String,
+    auto_resume: bool,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -100,6 +112,12 @@ struct ShellThread {
     latest_run_requested_at: Option<String>,
     latest_run_started_at: Option<String>,
     latest_run_completed_at: Option<String>,
+    latest_run_id: Option<String>,
+    latest_run_stop_requested: Option<bool>,
+    last_error: Option<String>,
+    last_error_class: Option<String>,
+    last_visited_at: Option<String>,
+    limit_recovery: Option<LimitRecovery>,
     activity_run_status: Option<String>,
     status: Option<String>,
     pending_runtime_request: Option<PendingRuntimeRequest>,
@@ -173,6 +191,50 @@ pub struct ThreadDto {
     pub pull_requests: Vec<PullRequestDto>,
     /// The top-level thread this subagent works for; `None` for every other thread.
     pub subagent_of: Option<String>,
+    /// What the activity journal compares between snapshots.
+    pub run: RunDto,
+}
+
+/// The thread's latest run as T3 reports it, before `status` folds it.
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct RunDto {
+    /// `run:thread:<id>:ordinal:<n>`.
+    pub id: Option<String>,
+    pub completed_at: Option<String>,
+    /// T3's raw status: `completed`, `failed`, `interrupted`, `cancelled`,
+    /// `queued`, `running`, `waiting` or `idle`.
+    pub status: Option<String>,
+    /// I stopped it; an interruption I asked for is not news.
+    pub stop_requested: bool,
+    pub last_error: Option<String>,
+    pub last_error_class: Option<String>,
+    pub pending_request: Option<PendingRequestDto>,
+    pub has_plan: bool,
+    pub limit_recovery: Option<LimitRecoveryDto>,
+    /// The last time a client showed the thread (desktop, web or phone via the desktop).
+    pub last_visited_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct PendingRequestDto {
+    pub id: String,
+    /// `user_input` for a question; anything else asks for approval.
+    pub kind: String,
+    pub created_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct LimitRecoveryDto {
+    pub request_id: Option<String>,
+    pub run_id: String,
+    pub reset_at: String,
+    pub auto_resume: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -448,8 +510,46 @@ fn effort_of(selection: &ModelSelection) -> Option<String> {
         .map(str::to_string)
 }
 
+fn run_of(thread: &ShellThread) -> RunDto {
+    RunDto {
+        id: thread.latest_run_id.clone(),
+        completed_at: thread.latest_run_completed_at.clone(),
+        status: thread.status.clone(),
+        stop_requested: thread.latest_run_stop_requested.unwrap_or(false),
+        last_error: thread.last_error.as_deref().map(clip_error),
+        last_error_class: thread.last_error_class.clone(),
+        pending_request: thread
+            .pending_runtime_request
+            .as_ref()
+            .filter(|request| !request.id.is_empty())
+            .map(|request| PendingRequestDto {
+                id: request.id.clone(),
+                kind: request.kind.clone(),
+                created_at: request.created_at.clone(),
+            }),
+        has_plan: thread.has_actionable_proposed_plan == Some(true),
+        limit_recovery: thread
+            .limit_recovery
+            .as_ref()
+            .filter(|limit| !limit.run_id.is_empty())
+            .map(|limit| LimitRecoveryDto {
+                request_id: limit.request_id.clone(),
+                run_id: limit.run_id.clone(),
+                reset_at: limit.reset_at.clone(),
+                auto_resume: limit.auto_resume,
+            }),
+        last_visited_at: thread.last_visited_at.clone(),
+    }
+}
+
+/// An error message can be long; the journal keeps its first line or so.
+fn clip_error(text: &str) -> String {
+    text.chars().take(600).collect()
+}
+
 fn to_thread(thread: ShellThread) -> ThreadDto {
     let status = status_of(&thread).to_string();
+    let run = run_of(&thread);
     let pull_requests = pull_requests_of(&thread);
     let subagent_of = thread.subagent_of();
     let last_activity_at = [
@@ -486,6 +586,7 @@ fn to_thread(thread: ShellThread) -> ThreadDto {
             .unwrap_or_else(|| "full-access".to_string()),
         pull_requests,
         subagent_of,
+        run,
     }
 }
 
@@ -854,6 +955,49 @@ mod tests {
     }
 
     #[test]
+    fn a_thread_reports_its_latest_run_for_the_activity_journal() {
+        let mut shell = shell();
+        shell["threads"].as_array_mut().unwrap().push(json!({
+            "id": "limited", "projectId": "p1", "title": "Hit a limit", "status": "interrupted",
+            "createdAt": "2026-10-10T08:00:00Z", "updatedAt": Utc::now().to_rfc3339(),
+            "latestRunId": "run:thread:limited:ordinal:4",
+            "latestRunCompletedAt": "2026-10-10T09:00:00Z",
+            "latestRunStopRequested": true,
+            "lastError": "Usage limit reached",
+            "lastErrorClass": "usage_limit",
+            "lastVisitedAt": "2026-10-10T09:01:00Z",
+            "limitRecovery": { "requestId": "limit-arm:1", "runId": "run:thread:limited:ordinal:4",
+                               "resetAt": "2026-10-10T12:00:00.000Z", "autoResume": true, "snooze": true },
+            "pendingRuntimeRequest": { "id": "req-9", "kind": "user_input", "createdAt": "2026-10-10T09:00:30Z" }
+        }));
+        let snapshot = read_snapshot(&shell);
+        let run = &snapshot
+            .threads
+            .iter()
+            .find(|t| t.id == "limited")
+            .unwrap()
+            .run;
+        assert_eq!(run.id.as_deref(), Some("run:thread:limited:ordinal:4"));
+        assert_eq!(run.status.as_deref(), Some("interrupted"));
+        assert!(run.stop_requested);
+        assert_eq!(run.last_error_class.as_deref(), Some("usage_limit"));
+        assert_eq!(run.last_visited_at.as_deref(), Some("2026-10-10T09:01:00Z"));
+        let limit = run.limit_recovery.as_ref().unwrap();
+        assert_eq!(limit.request_id.as_deref(), Some("limit-arm:1"));
+        assert!(limit.auto_resume);
+        let request = run.pending_request.as_ref().unwrap();
+        assert_eq!(
+            (request.id.as_str(), request.kind.as_str()),
+            ("req-9", "user_input")
+        );
+
+        let plain = &snapshot.threads[0].run;
+        assert!(plain.limit_recovery.is_none());
+        assert!(plain.pending_request.is_none());
+        assert!(!plain.stop_requested);
+    }
+
+    #[test]
     fn a_subagent_names_its_root_and_ages_out_like_a_settled_thread() {
         let mut shell = shell();
         let subagent = |id: &str, updated_at: &str| {
@@ -992,16 +1136,21 @@ mod tests {
 
     #[test]
     fn the_last_message_is_read_whole() {
-        let long = format!("{}
+        let long = format!(
+            "{}
 ```borgdock-proposal
 {{}}
-```", "x".repeat(5000));
+```",
+            "x".repeat(5000)
+        );
         let snapshot = json!({ "projection": { "messages": [
             { "role": "assistant", "text": long.clone() }
         ] } });
         assert_eq!(read_last_message(&snapshot).as_deref(), Some(long.as_str()));
         assert_eq!(
-            read_detail(&snapshot).last_agent_message.map(|m| m.chars().count()),
+            read_detail(&snapshot)
+                .last_agent_message
+                .map(|m| m.chars().count()),
             Some(AGENT_MESSAGE_LIMIT)
         );
     }

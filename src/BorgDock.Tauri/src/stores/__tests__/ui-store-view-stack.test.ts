@@ -86,7 +86,7 @@ describe('ui-store view stack', () => {
     expect(useUiStore.getState().activeSection).toBe('prs');
   });
 
-  it('lists the sections in rail order, Worktrees last', () => {
+  it('lists the sections in rail order, Activity last', () => {
     expect(SECTION_ORDER).toEqual([
       'focus',
       'dispatch',
@@ -94,6 +94,7 @@ describe('ui-store view stack', () => {
       'prs',
       'workitems',
       'worktrees',
+      'activity',
     ]);
   });
 

@@ -23,6 +23,14 @@ export interface RepoSettings {
   favoriteWorktreePaths?: string[];
   /** GitHub CLI login for this repo. Empty means the currently active account. */
   githubAccount?: string;
+  /** Deployments the activity journal follows for this repository. */
+  deployments?: RepoDeployments;
+}
+
+export interface RepoDeployments {
+  enabled: boolean;
+  /** Glob patterns such as `dev`, `*-a`, `acc*`, `prod*`. */
+  environments: string[];
 }
 
 /** A read-only repository whose worktrees are fetched over SSH. */
@@ -78,24 +86,46 @@ export type FocusLayout = 'list' | 'board';
 export type PrDensity = 'comfortable' | 'compact';
 
 export interface NotificationSettings {
-  toastOnCheckStatusChange: boolean;
   toastOnNewPR: boolean;
-  toastOnReviewUpdate: boolean;
-  toastOnMergeable: boolean;
   onlyMyPRs: boolean;
   playMergeSound: boolean;
   reviewNudgeEnabled: boolean;
   reviewNudgeIntervalMinutes: number;
   reviewNudgeEscalation: boolean;
   deduplicationWindowSeconds: number;
-  channels: { tray: boolean; system: boolean; sound: boolean; emailDigest: boolean };
+  /** Sound for merges; the other channels went with the activity journal. */
+  channels: { sound: boolean };
   lastTestFiredAt?: number;
-  /** A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner. */
-  ciFailureGroupGrows?: boolean;
-  /** The owner of a related CI failure went quiet. */
-  ciFailureOwnerStale?: boolean;
-  /** A related CI failure's fix merged while PRs are still red. */
-  ciFailureFixMerged?: boolean;
+  /** The activity journal: popups, push and read behaviour per category. */
+  activity?: ActivityNotificationSettings;
+}
+
+/** One category's channels. Absent: the category's default (`services/activity/policy.ts`). */
+export interface ActivityCategoryChannels {
+  popup?: boolean;
+  push?: boolean;
+}
+
+/** The phone channel. Its webhook URL and token live in the keychain, not here. */
+export interface ActivityPushSettings {
+  enabled: boolean;
+  preset: 'home-assistant';
+  /** Push once I have been away from the laptop this long. */
+  awayMinutes: number;
+  /** Send "W3 asks a question" without the item's title. */
+  hideTitles: boolean;
+}
+
+export interface ActivityNotificationSettings {
+  /** Category id (`agent.question`, `pr.review`, …) to its channels. */
+  categories: Partial<Record<string, ActivityCategoryChannels>>;
+  /** A visit to a thread in T3 marks its entries read. */
+  seenInT3: boolean;
+  /** Opening a PR, item, workstream or CI group marks its entries read. */
+  markReadOnOpen: boolean;
+  /** The needs-you count on the taskbar icon. */
+  taskbarBadge: boolean;
+  push: ActivityPushSettings;
 }
 
 /** Related CI failures: whether evidence is collected and within which limits. */
@@ -158,8 +188,6 @@ export interface AgentSettings {
   };
   /** When "Sync all" runs by itself. Runs while BorgDock is open. */
   dispatchSyncSchedule?: DispatchSyncSchedule;
-  /** Notify when an agent asks, proposes a plan, finishes or fails. Default on. */
-  dispatchNotifications?: boolean;
   /** T3 servers on other machines. The one on this machine is always followed. */
   t3Hosts?: T3HostSettings[];
 }
@@ -255,6 +283,4 @@ export interface WorkstreamSettings {
   folder?: string;
   /** What this machine is called in a workstream's log. Empty: the computer's name. */
   deviceLabel?: string;
-  /** Notify when a workstream is unblocked, invalidated or in conflict. Default on. */
-  notifications?: boolean;
 }

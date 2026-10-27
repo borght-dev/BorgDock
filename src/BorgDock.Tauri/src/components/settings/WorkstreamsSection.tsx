@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Field, Input, ToggleRow } from '@/components/shared/primitives';
+import { Button, Card, Field, Input } from '@/components/shared/primitives';
 import { commands } from '@/generated/commands';
 import { commandData } from '@/services/native-command';
 import type { WorkstreamSettings } from '@/types';
@@ -216,13 +216,6 @@ export function WorkstreamsSection({ workstreams, onChange }: Props) {
             onChange={(e) => onChange({ ...workstreams, deviceLabel: e.target.value || undefined })}
           />
         </Field>
-        <ToggleRow
-          label="Notify me"
-          hint="When a workstream is unblocked, stops holding, is changed on another machine as well, or an agent's review is in."
-          on={workstreams.notifications ?? true}
-          last
-          onChange={(notifications) => onChange({ ...workstreams, notifications })}
-        />
       </Card>
     </div>
   );

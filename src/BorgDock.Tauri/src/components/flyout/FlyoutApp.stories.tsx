@@ -1,8 +1,10 @@
 // src/components/flyout/FlyoutApp.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { expect, waitFor } from 'storybook/test';
+import { seedActivity } from '@/components/activity/__fixtures__/activity-data';
+import { FIXTURE_ENTRIES } from '@/services/activity/__fixtures__/entries';
 import { getControl } from '../../../.storybook/mocks/control';
 import {
   draftPrs,
@@ -39,6 +41,8 @@ interface FlyoutStoryParams {
   overflowToast?: ToastPayload;
   /** Simulate a hover on the toast queue so the auto-hide timer pauses. */
   hovered?: boolean;
+  /** Activity entries the journal answers with. */
+  activity?: boolean;
 }
 
 declare global {
@@ -48,6 +52,10 @@ declare global {
 }
 
 function FlyoutHarness({ params }: { params: FlyoutStoryParams }) {
+  useState(() => {
+    seedActivity({ entries: params.activity ? FIXTURE_ENTRIES : [] });
+    return null;
+  });
   useEffect(() => {
     const ctrl = getControl();
     let cancelled = false;
@@ -602,3 +610,9 @@ function themedGlance(theme: 'light' | 'dark'): Story {
 
 export const ThemeLight = themedGlance('light');
 export const ThemeDark = themedGlance('dark');
+
+/** The tray glance with the three newest updates that need you. */
+export const GlanceWithActivity: Story = story({
+  seed: { mode: 'glance', data: makeFlyoutData() },
+  activity: true,
+});

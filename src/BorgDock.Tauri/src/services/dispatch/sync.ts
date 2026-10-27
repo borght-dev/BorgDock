@@ -1,4 +1,6 @@
 import { toggleTrackedWorkItem } from '@/components/work-items/work-item-toggles';
+import { adoReadFailed, ingestAdoItems } from '@/services/activity/adapters/ado';
+import { ingestT3Host, retireT3HostsExcept, t3HostFailed } from '@/services/activity/adapters/t3';
 import type { AdoClient } from '@/services/ado/client';
 import { adoClient } from '@/services/ado/singleton';
 import {
@@ -21,7 +23,6 @@ import { forgetHostsExcept, rememberHost } from './host-memory';
 import { configuredHosts, type DispatchHost, hostRef, isRemote, rawId, scopedId } from './hosts';
 import { loadContextItems, loadDispatchItems } from './items';
 import { candidateRepositories, fetchFromGitHub, lookUpLinkedPullRequests } from './linked-prs';
-import { notifyNew } from './notifier';
 import {
   type AgentProject,
   type AgentThread,
@@ -75,6 +76,7 @@ export function toAgentThread(
     questionRequestId: asking ? (previous?.questionRequestId ?? null) : null,
     questions: asking ? (previous?.questions ?? []) : [],
     lastAgentMessage: stopped ? (previous?.lastAgentMessage ?? null) : null,
+    run: thread.run,
   };
 }
 
@@ -195,7 +197,6 @@ export function recomputeOverview(): void {
   });
   if (!sameOverview(dispatch.overview, overview)) {
     dispatch.setOverview(overview);
-    notifyNew(overview, !everySourceRead());
   }
   computedOverview = useDispatchStore.getState().overview;
   // An agent picked these up; the queue has done its job.
@@ -388,6 +389,7 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
       error: errorText(error),
       environmentId: state.environmentId,
     });
+    t3HostFailed(host);
     recomputeOverview();
     return;
   }
@@ -435,6 +437,9 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
 
   await readConversationReferences(host, state);
   await readDetails(host, state);
+  if (stillFollowed(host, state)) {
+    ingestT3Host(host, state.environmentId, state.sequence, threadsOf(host.id));
+  }
 }
 
 /**
@@ -477,6 +482,7 @@ export function followHostList(): void {
   const followed = hosts.map((host) => host.id);
   useDispatchStore.getState().retainHosts(followed);
   void forgetHostsExcept(followed);
+  void retireT3HostsExcept(followed);
   recomputeOverview();
   for (const host of hosts) void syncHost(host);
 }
@@ -531,6 +537,7 @@ function refreshLinkedPullRequests(): Promise<void> {
 
 async function loadItems(): Promise<void> {
   const generation = syncGeneration;
+  const startedAt = Date.now();
   const store = useDispatchStore.getState;
   const ado = useSettingsStore.getState().settings.azureDevOps;
   const client = adoClient(ado);
@@ -565,6 +572,7 @@ async function loadItems(): Promise<void> {
     if (generation !== syncGeneration) return;
     const at = new Date().toISOString();
     store().setItems(items, { ok: true, at, error: null });
+    ingestAdoItems(items, startedAt);
     // A failed read of the context items keeps the last ones, as of when they were read.
     if (context)
       store().setContextItems(context.items, context.missing, { ok: true, at, error: null });
@@ -573,6 +581,7 @@ async function loadItems(): Promise<void> {
   } catch (error) {
     if (generation !== syncGeneration) return;
     store().setAdoStatus({ ok: false, at: store().ado.at, error: errorText(error) });
+    adoReadFailed();
   }
   recomputeOverview();
 }

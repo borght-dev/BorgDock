@@ -12,7 +12,6 @@ vi.mock('@/services/dispatch/actions', () => ({
   runItemAction: vi.fn(),
   showDispatchItem: vi.fn(),
 }));
-vi.mock('@/services/dispatch/notifier', () => ({ notifyNew: vi.fn() }));
 vi.mock('@/services/dispatch/host-memory', () => ({
   recallHosts: vi.fn().mockResolvedValue(undefined),
 }));

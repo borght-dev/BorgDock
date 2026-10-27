@@ -1,13 +1,12 @@
-import {
-  Button,
-  Card,
-  Field,
-  SectionHeader,
-  Select,
-  ToggleRow,
-} from '@/components/shared/primitives';
+import { Fragment } from 'react';
+import { Button, Card, SectionHeader, Select, ToggleRow } from '@/components/shared/primitives';
+import { CATEGORY_LABEL } from '@/services/activity/labels';
+import { CATEGORY_DEFAULTS, type CategoryChannels } from '@/services/activity/policy';
+import { categoriesOf } from '@/services/activity/sources';
+import type { ActivityCategory, ActivityCategoryGroup } from '@/services/activity/types';
 import { sendOsNotification } from '@/services/notification';
-import type { NotificationSettings } from '@/types/settings';
+import type { ActivityNotificationSettings, NotificationSettings } from '@/types/settings';
+import { PhoneCard } from './PhoneCard';
 
 interface Props {
   notifications: NotificationSettings;
@@ -22,79 +21,162 @@ const NUDGE_OPTIONS = [
   { value: '240', label: '4 hours' },
 ];
 
+const GROUPS: readonly { group: ActivityCategoryGroup; label: string }[] = [
+  { group: 'agents', label: 'Agents' },
+  { group: 'pull-requests', label: 'Pull requests' },
+  { group: 'ci', label: 'CI failures' },
+  { group: 'workstreams', label: 'Workstreams' },
+  { group: 'deployments', label: 'Deployments' },
+  { group: 'work-items', label: 'Work items' },
+];
+
+export const DEFAULT_ACTIVITY: ActivityNotificationSettings = {
+  categories: {},
+  seenInT3: true,
+  markReadOnOpen: true,
+  taskbarBadge: true,
+  push: { enabled: false, preset: 'home-assistant', awayMinutes: 10, hideTitles: false },
+};
+
+function channelsOf(
+  activity: ActivityNotificationSettings,
+  category: ActivityCategory,
+): CategoryChannels {
+  return { ...CATEGORY_DEFAULTS[category], ...activity.categories[category] };
+}
+
 export function NotificationSection({ notifications, onChange }: Props) {
   const update = (partial: Partial<NotificationSettings>) =>
     onChange({ ...notifications, ...partial });
-
-  const toggleChannel = (key: keyof NotificationSettings['channels']) => (next: boolean) => {
-    update({ channels: { ...notifications.channels, [key]: next } });
-  };
+  const activity = notifications.activity ?? DEFAULT_ACTIVITY;
+  const updateActivity = (partial: Partial<ActivityNotificationSettings>) =>
+    update({ activity: { ...activity, ...partial } });
+  const setChannel = (category: ActivityCategory, channel: keyof CategoryChannels, on: boolean) =>
+    updateActivity({
+      categories: {
+        ...activity.categories,
+        [category]: { ...activity.categories[category], [channel]: on },
+      },
+    });
 
   return (
     <>
       <SectionHeader
         title="Notifications"
-        subtitle="What BorgDock pings you about, and how. Muted channels still appear in the in-app feed."
+        subtitle="Every popup comes from an entry in Activity, so a restart never repeats one and time away becomes one summary."
       />
 
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
-          What to notify me about
+        <h3 className="mb-1.5 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          What pops up
         </h3>
-        <div id="field-check-status">
+        <p className="mb-3 text-[11.5px] leading-relaxed text-[var(--color-text-tertiary)]">
+          Each kind of update can pop up on this laptop and go to your phone. Phone only sends
+          updates that need you, once you are away.
+        </p>
+        <div
+          id="field-activity-categories"
+          className="grid grid-cols-[1fr_64px_64px] items-center gap-x-3 gap-y-1.5 text-xs"
+          role="table"
+          aria-label="Activity notifications per kind of update"
+        >
+          <span role="columnheader" className="text-[11px] text-[var(--color-text-muted)]">
+            Update
+          </span>
+          <span
+            role="columnheader"
+            className="text-center text-[11px] text-[var(--color-text-muted)]"
+          >
+            Popup
+          </span>
+          <span
+            role="columnheader"
+            className="text-center text-[11px] text-[var(--color-text-muted)]"
+          >
+            Phone
+          </span>
+          {GROUPS.map(({ group, label }) => (
+            <Fragment key={group}>
+              <span className="col-span-3 mt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                {label}
+              </span>
+              {categoriesOf(group).map((category) => {
+                const channels = channelsOf(activity, category);
+                return (
+                  <Fragment key={category}>
+                    <span className="text-[var(--color-text-primary)]">
+                      {CATEGORY_LABEL[category]}
+                    </span>
+                    <span className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        className="bd-act-check"
+                        checked={channels.popup}
+                        aria-label={`Popup: ${CATEGORY_LABEL[category]}`}
+                        onChange={(e) => setChannel(category, 'popup', e.target.checked)}
+                      />
+                    </span>
+                    <span className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        className="bd-act-check"
+                        checked={channels.push}
+                        disabled={!activity.push.enabled}
+                        aria-label={`Phone: ${CATEGORY_LABEL[category]}`}
+                        onChange={(e) => setChannel(category, 'push', e.target.checked)}
+                      />
+                    </span>
+                  </Fragment>
+                );
+              })}
+            </Fragment>
+          ))}
+        </div>
+      </Card>
+
+      <Card variant="default" padding="md">
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Reading
+        </h3>
+        <div id="field-seen-in-t3">
           <ToggleRow
-            label="Check status changes"
-            hint="A required check went red or recovered."
-            on={notifications.toastOnCheckStatusChange}
-            onChange={(toastOnCheckStatusChange) => update({ toastOnCheckStatusChange })}
+            label="A visit in T3 marks a thread's updates read"
+            hint="Opening a thread in T3, on this laptop or your phone, reads what happened up to then. A T3 window left open on a thread counts too."
+            on={activity.seenInT3}
+            onChange={(seenInT3) => updateActivity({ seenInT3 })}
           />
         </div>
-        <div id="field-new-pull-requests">
+        <div id="field-read-on-open">
           <ToggleRow
-            label="New pull requests"
-            hint="A repo you watch got a new PR."
-            on={notifications.toastOnNewPR}
-            onChange={(toastOnNewPR) => update({ toastOnNewPR })}
+            label="Opening something marks its updates read"
+            hint="A PR's detail, an item in Dispatch, a workstream, a CI failure group."
+            on={activity.markReadOnOpen}
+            onChange={(markReadOnOpen) => updateActivity({ markReadOnOpen })}
           />
         </div>
-        <div id="field-review-updates">
+        <div id="field-taskbar-badge">
           <ToggleRow
-            label="Review updates"
-            hint="Someone submitted a review or comment."
-            on={notifications.toastOnReviewUpdate}
-            onChange={(toastOnReviewUpdate) => update({ toastOnReviewUpdate })}
+            label="Count on the taskbar icon"
+            hint="How many unread updates need you."
+            on={activity.taskbarBadge}
+            onChange={(taskbarBadge) => updateActivity({ taskbarBadge })}
+            last
           />
         </div>
-        <div id="field-pr-mergeable">
+      </Card>
+
+      <PhoneCard push={activity.push} onChange={(push) => updateActivity({ push })} />
+
+      <Card variant="default" padding="md">
+        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Sound
+        </h3>
+        <div id="field-sounds">
           <ToggleRow
-            label="PR becomes mergeable"
-            hint="All requirements satisfied, merge button is live."
-            on={notifications.toastOnMergeable}
-            onChange={(toastOnMergeable) => update({ toastOnMergeable })}
-          />
-        </div>
-        <div id="field-ci-failure-grows">
-          <ToggleRow
-            label="Shared CI failure without an owner"
-            hint="The same failure reached several PRs and nobody investigates it."
-            on={notifications.ciFailureGroupGrows !== false}
-            onChange={(ciFailureGroupGrows) => update({ ciFailureGroupGrows })}
-          />
-        </div>
-        <div id="field-ci-failure-owner-stale">
-          <ToggleRow
-            label="CI investigation went quiet"
-            hint="Its agent finished or stopped, or nobody checked in."
-            on={notifications.ciFailureOwnerStale !== false}
-            onChange={(ciFailureOwnerStale) => update({ ciFailureOwnerStale })}
-          />
-        </div>
-        <div id="field-ci-failure-fix-merged">
-          <ToggleRow
-            label="CI fix merged"
-            hint="A shared failure's fix merged while PRs are still red, or it came back."
-            on={notifications.ciFailureFixMerged !== false}
-            onChange={(ciFailureFixMerged) => update({ ciFailureFixMerged })}
+            label="Sounds"
+            hint="Off silences every sound BorgDock plays."
+            on={notifications.channels.sound}
+            onChange={(sound) => update({ channels: { ...notifications.channels, sound } })}
           />
         </div>
         <div id="field-sound-on-merge">
@@ -102,14 +184,6 @@ export function NotificationSection({ notifications, onChange }: Props) {
             label="Play sound on merge"
             on={notifications.playMergeSound}
             onChange={(playMergeSound) => update({ playMergeSound })}
-          />
-        </div>
-        <div id="field-only-my-prs">
-          <ToggleRow
-            label="Only notify for my PRs"
-            hint="Filter team-wide events to ones I'm directly involved in."
-            on={notifications.onlyMyPRs}
-            onChange={(onlyMyPRs) => update({ onlyMyPRs })}
             last
           />
         </div>
@@ -158,34 +232,7 @@ export function NotificationSection({ notifications, onChange }: Props) {
       </Card>
 
       <Card variant="default" padding="md">
-        <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
-          Channels
-        </h3>
-        <Field label="Send via" anchorId="channels">
-          <div className="flex flex-wrap gap-2">
-            <ChannelChip
-              label="Tray balloon"
-              on={notifications.channels.tray}
-              onChange={toggleChannel('tray')}
-            />
-            <ChannelChip
-              label="System (toast)"
-              on={notifications.channels.system}
-              onChange={toggleChannel('system')}
-            />
-            <ChannelChip
-              label="Sound"
-              on={notifications.channels.sound}
-              onChange={toggleChannel('sound')}
-            />
-            <ChannelChip
-              label="Email digest"
-              on={notifications.channels.emailDigest}
-              onChange={toggleChannel('emailDigest')}
-            />
-          </div>
-        </Field>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5" id="field-test-notification">
           <Button
             variant="secondary"
             size="sm"
@@ -246,32 +293,5 @@ export function NotificationSection({ notifications, onChange }: Props) {
         )}
       </Card>
     </>
-  );
-}
-
-function ChannelChip({
-  label,
-  on,
-  onChange,
-}: {
-  label: string;
-  on: boolean;
-  onChange: (b: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!on)}
-      aria-pressed={on}
-      className={[
-        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11.5px] font-medium cursor-pointer transition-colors',
-        on
-          ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)] text-[var(--color-accent)]'
-          : 'border-[var(--color-subtle-border)] text-[var(--color-text-tertiary)]',
-      ].join(' ')}
-    >
-      <span aria-hidden>{on ? '✓' : '+'}</span>
-      {label}
-    </button>
   );
 }

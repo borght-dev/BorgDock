@@ -4,6 +4,8 @@
  * what it needs from you.
  */
 
+import type { T3Run } from '@/services/t3/api';
+
 /** Where an item sits, most urgent first. */
 export type Bay = 'waiting' | 'drift' | 'working' | 'next' | 'idle' | 'paused' | 'handed';
 
@@ -119,6 +121,8 @@ export interface AgentThread {
   questionRequestId: string | null;
   questions: AgentQuestion[];
   lastAgentMessage: string | null;
+  /** The latest run as the shell reported it; the activity journal compares it. */
+  run?: T3Run;
 }
 
 /** A T3 project: a checkout an agent can run in. */
@@ -140,6 +144,8 @@ export interface ItemNote {
 
 /** The newest comment in an item's discussion, as plain text. */
 export interface ItemComment {
+  /** ADO's comment id. */
+  id?: number;
   /** Who wrote it: `Vera · plan` for a comment Vera signed, else the account that posted it. */
   author: string;
   at: string;
@@ -185,6 +191,12 @@ export interface DispatchItem {
   /** The item's children, as ADO's hierarchy links name them. */
   childIds?: number[];
   changedAt: string;
+  /** `System.Rev`: moves with every change, the activity journal keys state changes by it. */
+  rev?: number;
+  /** Who made the latest change (`System.ChangedBy`), as a display name. */
+  changedBy?: string | null;
+  /** The latest change was mine: the activity journal leaves it out. */
+  changedByMe?: boolean;
 }
 
 export interface CheckSummary {

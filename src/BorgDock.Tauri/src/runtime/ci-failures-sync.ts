@@ -1,5 +1,6 @@
 import { listen } from '@tauri-apps/api/event';
 import { bringMainWindowForward } from '@/hooks/useFlyoutSync';
+import { ingestCiGroups } from '@/services/activity/adapters/ci';
 import {
   OPEN_CI_SHEET_EVENT,
   SHOW_CI_GROUP_EVENT,
@@ -8,7 +9,6 @@ import {
 } from '@/services/ci-failures/actions';
 import { CiEventTracker } from '@/services/ci-failures/events';
 import { trackFixes } from '@/services/ci-failures/fixes';
-import { followCiNotifications } from '@/services/ci-failures/notify';
 import { ownerStatusOf } from '@/services/ci-failures/ownership';
 import { ciFailureSettings } from '@/services/ci-failures/settings';
 import * as store from '@/services/ci-failures/store-api';
@@ -104,16 +104,15 @@ export function startCiFailuresSync(): () => void {
       sessions: useT3SessionStore.getState().sessions,
       now: new Date(),
     }).stale;
-  const checkEvents = () =>
-    tracker.update(useCiFailuresStore.getState().groups, {
-      threshold: ciFailureSettings(settings()).notifyThreshold,
-      ownerStale,
-      now: new Date(),
-    });
+  const checkEvents = () => {
+    const { groups, revision, loaded } = useCiFailuresStore.getState();
+    const threshold = ciFailureSettings(settings()).notifyThreshold;
+    tracker.update(groups, { threshold, ownerStale, now: new Date() });
+    if (loaded) ingestCiGroups(groups, revision, enabledScopes(), { threshold, ownerStale });
+  };
   const unsubscribeGroups = useCiFailuresStore.subscribe((state, previous) => {
     if (state.groups !== previous.groups) checkEvents();
   });
-  const stopNotifications = followCiNotifications();
 
   const followUp = async () => {
     if (!ciFailureSettings(settings()).enabled) return;
@@ -184,7 +183,6 @@ export function startCiFailuresSync(): () => void {
     unsubscribePolls();
     unsubscribeSettings();
     unsubscribeGroups();
-    stopNotifications();
     stopFollowing();
     stopListening?.();
   };

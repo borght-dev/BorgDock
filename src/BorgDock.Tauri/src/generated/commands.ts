@@ -337,6 +337,39 @@ export const commands = {
 	listRootFiles: (root: string, limit: number | null) => typedError<ListFilesResult, string>(__TAURI_INVOKE("list_root_files", { root, limit })),
 	searchContent: (root: string, pattern: string, cancelToken: number) => typedError<ContentFileResult[], string>(__TAURI_INVOKE("search_content", { root, pattern, cancelToken })),
 	openFileViewerWindow: (path: string, baseline: string | null) => typedError<null, string>(__TAURI_INVOKE("open_file_viewer_window", { path, baseline })),
+	activityOpenSource: (source: ActivitySourceRequest) => typedError<ActivitySourceState_Serialize, string>(__TAURI_INVOKE("activity_open_source", { source })),
+	activitySources: () => typedError<ActivitySourceState_Serialize[], string>(__TAURI_INVOKE("activity_sources")),
+	/**  Settings dropped the source: its entries stay, with actions disabled. */
+	activityRetireSource: (sourceId: string) => typedError<boolean, string>(__TAURI_INVOKE("activity_retire_source", { sourceId })),
+	activityCommit: (commit: ActivityCommit_Deserialize) => typedError<ActivityCommitResult_Serialize, string>(__TAURI_INVOKE("activity_commit", { commit })),
+	activityList: (query: ActivityListQuery_Deserialize) => typedError<ActivityPage_Serialize, string>(__TAURI_INVOKE("activity_list", { query })),
+	activityCounts: () => typedError<ActivityCounts, string>(__TAURI_INVOKE("activity_counts")),
+	activityMark: (request: ActivityMarkRequest_Deserialize) => typedError<ActivityMarkResult_Serialize, string>(__TAURI_INVOKE("activity_mark", { request })),
+	/**  Undo: put back the states an `activity_mark` returned. */
+	activityRestore: (states: ActivityReadState_Deserialize[]) => typedError<number, string>(__TAURI_INVOKE("activity_restore", { states })),
+	/**
+	 *  Due outbox rows of one channel, oldest first. Taking changes nothing;
+	 *  `activity_outbox_ack` settles each row.
+	 */
+	activityOutboxTake: (channel: string, limit: number) => typedError<ActivityOutboxItem_Serialize[], string>(__TAURI_INVOKE("activity_outbox_take", { channel, limit })),
+	activityOutboxAck: (acks: ActivityOutboxAck[]) => typedError<number, string>(__TAURI_INVOKE("activity_outbox_ack", { acks })),
+	/**  Delete the entries of one source, or all of them. Baselines stay. */
+	activityClear: (sourceId: string | null) => typedError<number, string>(__TAURI_INVOKE("activity_clear", { sourceId })),
+	/**  Write every source and entry as JSON to `path`, chosen in a save dialog. */
+	activityExport: (path: string) => typedError<number, string>(__TAURI_INVOKE("activity_export", { path })),
+	/**  Retention: run at startup and once a day. */
+	activityPrune: () => typedError<number, string>(__TAURI_INVOKE("activity_prune")),
+	activityStoreInfo: () => typedError<ActivityStoreInfo_Serialize, string>(__TAURI_INVOKE("activity_store_info")),
+	activityPushTarget: () => typedError<ActivityPushTarget_Serialize, string>(__TAURI_INVOKE("activity_push_target")),
+	/**  Store the webhook; an empty URL removes it. A `None` token keeps the stored one. */
+	activityPushSave: (url: string, token: string | null) => typedError<null, string>(__TAURI_INVOKE("activity_push_save", { url, token })),
+	/**  Send a test push now, away or not. */
+	activityPushTest: () => typedError<null, string>(__TAURI_INVOKE("activity_push_test")),
+	/**
+	 *  Show `count` on the main window's taskbar icon; 0 clears it. Runs on the
+	 *  GUI thread with the shared timeout, like every window command.
+	 */
+	setTaskbarBadge: (count: number) => typedError<null, string>(__TAURI_INVOKE("set_taskbar_badge", { count })),
 	/**  The folder workstreams are kept in for `folder` (the sync folder, or none). */
 	workstreamsFolderPath: (folder: string | null) => typedError<string, string>(__TAURI_INVOKE("workstreams_folder_path", { folder })),
 	workstreamsList: (folder: string | null) => typedError<WorkstreamFile[], string>(__TAURI_INVOKE("workstreams_list", { folder })),
@@ -363,12 +396,615 @@ export const commands = {
 
 /** Events */
 export const events = {
+	activityChanged: makeEvent<ActivityChanged, ActivityChanged>("activity-changed"),
 	ciFailuresChanged: makeEvent<CiFailuresChanged, CiFailuresChanged>("ci-failures-changed"),
 	runtimeVisibility: makeEvent<RuntimeVisibility, RuntimeVisibility>("runtime-visibility"),
 	t3SessionsUpdated: makeEvent<T3SessionsUpdated_Serialize, T3SessionsUpdated_Deserialize>("t3-sessions-updated"),
 };
 
 /* Types */
+export type ActivityCapacity = "ok" |
+/**  Old unread entries that don't need you were folded into a roll-up. */
+"rolled-up" |
+/**  Entries that need you fill the journal; others are not added. */
+"full";
+
+/**  One category's channels. Absent: the category's default. */
+export type ActivityCategoryChannels = ActivityCategoryChannels_Serialize | ActivityCategoryChannels_Deserialize;
+
+/**  One category's channels. Absent: the category's default. */
+export type ActivityCategoryChannels_Deserialize = {
+	popup?: boolean | null,
+	push?: boolean | null,
+};
+
+/**  One category's channels. Absent: the category's default. */
+export type ActivityCategoryChannels_Serialize = {
+	popup?: boolean,
+	push?: boolean,
+};
+
+export type ActivityChanged = {
+	revision: number,
+	counts: ActivityCounts,
+};
+
+/**  One observation of one source, applied in one transaction. */
+export type ActivityCommit = ActivityCommit_Serialize | ActivityCommit_Deserialize;
+
+export type ActivityCommitResult = ActivityCommitResult_Serialize | ActivityCommitResult_Deserialize;
+
+export type ActivityCommitResult_Deserialize = {
+	accepted: boolean,
+	reason?: string | null,
+	/**  Ids this commit added; a replay adds none. */
+	inserted: string[],
+	/**  The store revision after the commit. */
+	revision: number,
+	capacity: ActivityCapacity,
+};
+
+export type ActivityCommitResult_Serialize = {
+	accepted: boolean,
+	reason: string | null,
+	/**  Ids this commit added; a replay adds none. */
+	inserted: string[],
+	/**  The store revision after the commit. */
+	revision: number,
+	capacity: ActivityCapacity,
+};
+
+/**  One observation of one source, applied in one transaction. */
+export type ActivityCommit_Deserialize = {
+	sourceId: string,
+	generation: number,
+	revision: number,
+	/**  Write the baseline and add no entries. */
+	seed: boolean,
+	baseline: string,
+	entries: ActivityEntryInput_Deserialize[],
+	enrichments: ActivityEnrichment_Deserialize[],
+	resolutions: ActivityResolution_Deserialize[],
+	seen: ActivitySeenMark[],
+	/**
+	 *  Only rows for entries this commit inserted, and that are still unread,
+	 *  are kept.
+	 */
+	outbox: ActivityOutboxRequest[],
+};
+
+/**  One observation of one source, applied in one transaction. */
+export type ActivityCommit_Serialize = {
+	sourceId: string,
+	generation: number,
+	revision: number,
+	/**  Write the baseline and add no entries. */
+	seed: boolean,
+	baseline: string,
+	entries: ActivityEntryInput_Serialize[],
+	enrichments: ActivityEnrichment_Serialize[],
+	resolutions: ActivityResolution_Serialize[],
+	seen: ActivitySeenMark[],
+	/**
+	 *  Only rows for entries this commit inserted, and that are still unread,
+	 *  are kept.
+	 */
+	outbox: ActivityOutboxRequest[],
+};
+
+export type ActivityCount = {
+	unread: number,
+	needsYou: number,
+};
+
+/**  `needsYou` counts unread, open entries that need you. */
+export type ActivityCounts = {
+	unread: number,
+	needsYou: number,
+	byCategory: { [key in string]: ActivityCount },
+	bySource: { [key in string]: ActivityCount },
+	revision: number,
+};
+
+/**  Where the previous page ended. */
+export type ActivityCursor = {
+	observedAt: string,
+	id: string,
+};
+
+/**
+ *  Later facts for an entry that exists. Absent fields stay; `detail: null`
+ *  clears the detail. `action` is the new action as JSON (`"null"` clears
+ *  it); it replaces the action inside the payload. Never touches read state.
+ */
+export type ActivityEnrichment = ActivityEnrichment_Serialize | ActivityEnrichment_Deserialize;
+
+/**
+ *  Later facts for an entry that exists. Absent fields stay; `detail: null`
+ *  clears the detail. `action` is the new action as JSON (`"null"` clears
+ *  it); it replaces the action inside the payload. Never touches read state.
+ */
+export type ActivityEnrichment_Deserialize = {
+	id: string,
+	summary?: string | null,
+	detail?: string | null,
+	action?: string | null,
+};
+
+/**
+ *  Later facts for an entry that exists. Absent fields stay; `detail: null`
+ *  clears the detail. `action` is the new action as JSON (`"null"` clears
+ *  it); it replaces the action inside the payload. Never touches read state.
+ */
+export type ActivityEnrichment_Serialize = {
+	id: string,
+	summary?: string | null,
+	detail?: string | null,
+	action?: string | null,
+};
+
+/**  An entry as derivation produces it. The store owns read state and version. */
+export type ActivityEntryInput = ActivityEntryInput_Serialize | ActivityEntryInput_Deserialize;
+
+/**  An entry as derivation produces it. The store owns read state and version. */
+export type ActivityEntryInput_Deserialize = {
+	id: string,
+	sourceId: string,
+	entityKey: string,
+	category: string,
+	/**  `info`, `success`, `warning` or `error`. */
+	severity: string,
+	needsYou: boolean,
+	/**  `open`, `resolved` or `superseded`. */
+	status: string,
+	resolvedBy?: string | null,
+	sourceAt?: string | null,
+	observedAt: string,
+	/**  `live` or `catch-up`. */
+	coverage: string,
+	summary: string,
+	detail?: string | null,
+	/**  JSON: `{ schema, entity, action, links }`. */
+	payload: string,
+};
+
+/**  An entry as derivation produces it. The store owns read state and version. */
+export type ActivityEntryInput_Serialize = {
+	id: string,
+	sourceId: string,
+	entityKey: string,
+	category: string,
+	/**  `info`, `success`, `warning` or `error`. */
+	severity: string,
+	needsYou: boolean,
+	/**  `open`, `resolved` or `superseded`. */
+	status: string,
+	resolvedBy: string | null,
+	sourceAt: string | null,
+	observedAt: string,
+	/**  `live` or `catch-up`. */
+	coverage: string,
+	summary: string,
+	detail: string | null,
+	/**  JSON: `{ schema, entity, action, links }`. */
+	payload: string,
+};
+
+export type ActivityEntryRow = ActivityEntryRow_Serialize | ActivityEntryRow_Deserialize;
+
+export type ActivityEntryRow_Deserialize = {
+	id: string,
+	sourceId: string,
+	entityKey: string,
+	category: string,
+	severity: string,
+	needsYou: boolean,
+	status: string,
+	resolvedBy?: string | null,
+	sourceAt?: string | null,
+	observedAt: string,
+	coverage: string,
+	summary: string,
+	detail?: string | null,
+	payload: string,
+	/**  `unread`, `read` or `dismissed`. */
+	read: string,
+	readReason?: string | null,
+	readAt?: string | null,
+	version: number,
+};
+
+export type ActivityEntryRow_Serialize = {
+	id: string,
+	sourceId: string,
+	entityKey: string,
+	category: string,
+	severity: string,
+	needsYou: boolean,
+	status: string,
+	resolvedBy: string | null,
+	sourceAt: string | null,
+	observedAt: string,
+	coverage: string,
+	summary: string,
+	detail: string | null,
+	payload: string,
+	/**  `unread`, `read` or `dismissed`. */
+	read: string,
+	readReason: string | null,
+	readAt: string | null,
+	version: number,
+};
+
+export type ActivityFilter =
+/**  Unread, needs you, and still open. */
+"needs-you" | "unread" | "all";
+
+/**  Empty lists don't filter. */
+export type ActivityListQuery = ActivityListQuery_Serialize | ActivityListQuery_Deserialize;
+
+/**  Empty lists don't filter. */
+export type ActivityListQuery_Deserialize = {
+	filter: ActivityFilter,
+	categories: string[],
+	sourceIds: string[],
+	entityKeys: string[],
+	/**  These entries only (a notification's entry); empty lists don't filter. */
+	ids?: string[],
+	/**  Matches summary and detail, case-insensitively. */
+	search?: string | null,
+	/**  Only for `all`; the other filters show unread entries. */
+	includeDismissed: boolean,
+	limit: number,
+	before?: ActivityCursor | null,
+};
+
+/**  Empty lists don't filter. */
+export type ActivityListQuery_Serialize = {
+	filter: ActivityFilter,
+	categories: string[],
+	sourceIds: string[],
+	entityKeys: string[],
+	/**  These entries only (a notification's entry); empty lists don't filter. */
+	ids: string[],
+	/**  Matches summary and detail, case-insensitively. */
+	search: string | null,
+	/**  Only for `all`; the other filters show unread entries. */
+	includeDismissed: boolean,
+	limit: number,
+	before: ActivityCursor | null,
+};
+
+/**
+ *  Sets read state. `ids` are set exactly; `entityKeys` change only their
+ *  unread entries that happened at or before `before` (any time when null).
+ */
+export type ActivityMarkRequest = ActivityMarkRequest_Serialize | ActivityMarkRequest_Deserialize;
+
+/**
+ *  Sets read state. `ids` are set exactly; `entityKeys` change only their
+ *  unread entries that happened at or before `before` (any time when null).
+ */
+export type ActivityMarkRequest_Deserialize = {
+	ids: string[],
+	entityKeys: string[],
+	before?: string | null,
+	/**  `unread`, `read` or `dismissed`. */
+	read: string,
+	/**  Defaults to `user`; ignored for `unread`. */
+	reason?: string | null,
+};
+
+/**
+ *  Sets read state. `ids` are set exactly; `entityKeys` change only their
+ *  unread entries that happened at or before `before` (any time when null).
+ */
+export type ActivityMarkRequest_Serialize = {
+	ids: string[],
+	entityKeys: string[],
+	before: string | null,
+	/**  `unread`, `read` or `dismissed`. */
+	read: string,
+	/**  Defaults to `user`; ignored for `unread`. */
+	reason: string | null,
+};
+
+export type ActivityMarkResult = ActivityMarkResult_Serialize | ActivityMarkResult_Deserialize;
+
+export type ActivityMarkResult_Deserialize = {
+	/**  The entries that changed, before the change: the undo for this mark. */
+	previous: ActivityReadState_Deserialize[],
+	changed: number,
+	revision: number,
+};
+
+export type ActivityMarkResult_Serialize = {
+	/**  The entries that changed, before the change: the undo for this mark. */
+	previous: ActivityReadState_Serialize[],
+	changed: number,
+	revision: number,
+};
+
+export type ActivityNotificationSettings = ActivityNotificationSettings_Serialize | ActivityNotificationSettings_Deserialize;
+
+export type ActivityNotificationSettings_Deserialize = {
+	/**  Category id (`agent.question`, `pr.review`, …) to its channels. */
+	categories?: { [key in string]: ActivityCategoryChannels_Deserialize },
+	/**  A visit to a thread in T3 marks its entries read. */
+	seenInT3?: boolean,
+	/**  Opening a PR, item, workstream or CI group marks its entries read. */
+	markReadOnOpen?: boolean,
+	/**  The needs-you count on the taskbar icon. */
+	taskbarBadge?: boolean,
+	push?: ActivityPushSettings_Deserialize,
+};
+
+export type ActivityNotificationSettings_Serialize = {
+	/**  Category id (`agent.question`, `pr.review`, …) to its channels. */
+	categories: { [key in string]: ActivityCategoryChannels_Serialize },
+	/**  A visit to a thread in T3 marks its entries read. */
+	seenInT3: boolean,
+	/**  Opening a PR, item, workstream or CI group marks its entries read. */
+	markReadOnOpen: boolean,
+	/**  The needs-you count on the taskbar icon. */
+	taskbarBadge: boolean,
+	push: ActivityPushSettings_Serialize,
+};
+
+export type ActivityOutboxAck = {
+	entryId: string,
+	channel: string,
+	outcome: ActivityOutboxOutcome,
+};
+
+export type ActivityOutboxItem = ActivityOutboxItem_Serialize | ActivityOutboxItem_Deserialize;
+
+export type ActivityOutboxItem_Deserialize = {
+	entry: ActivityEntryRow_Deserialize,
+	/**  `popup`, `push` or `push-clear`. */
+	channel: string,
+	attempts: number,
+	createdAt: string,
+};
+
+export type ActivityOutboxItem_Serialize = {
+	entry: ActivityEntryRow_Serialize,
+	/**  `popup`, `push` or `push-clear`. */
+	channel: string,
+	attempts: number,
+	createdAt: string,
+};
+
+export type ActivityOutboxOutcome = "sent" | "skipped" |
+/**  Try again later, with exponential backoff up to six hours. */
+"retry" | "dropped";
+
+export type ActivityOutboxRequest = {
+	entryId: string,
+	/**  `popup` or `push`. */
+	channel: string,
+};
+
+/**  Newest first, by `observedAt` then id. */
+export type ActivityPage = ActivityPage_Serialize | ActivityPage_Deserialize;
+
+/**  Newest first, by `observedAt` then id. */
+export type ActivityPage_Deserialize = {
+	entries: ActivityEntryRow_Deserialize[],
+	/**  Entries matching the query, ignoring `limit` and `before`. */
+	total: number,
+	revision: number,
+};
+
+/**  Newest first, by `observedAt` then id. */
+export type ActivityPage_Serialize = {
+	entries: ActivityEntryRow_Serialize[],
+	/**  Entries matching the query, ignoring `limit` and `before`. */
+	total: number,
+	revision: number,
+};
+
+/**
+ *  The phone channel. The webhook URL and token live in the keychain as
+ *  `borgdock:activity-push`, never here.
+ */
+export type ActivityPushSettings = ActivityPushSettings_Serialize | ActivityPushSettings_Deserialize;
+
+/**
+ *  The phone channel. The webhook URL and token live in the keychain as
+ *  `borgdock:activity-push`, never here.
+ */
+export type ActivityPushSettings_Deserialize = {
+	enabled?: boolean,
+	/**  `home-assistant`; later `ntfy`, `pushover`, `json`. */
+	preset?: string,
+	/**  Push once I have been away from the laptop this long. */
+	awayMinutes?: number,
+	/**  Send "W3 asks a question" without the item's title. */
+	hideTitles?: boolean,
+};
+
+/**
+ *  The phone channel. The webhook URL and token live in the keychain as
+ *  `borgdock:activity-push`, never here.
+ */
+export type ActivityPushSettings_Serialize = {
+	enabled: boolean,
+	/**  `home-assistant`; later `ntfy`, `pushover`, `json`. */
+	preset: string,
+	/**  Push once I have been away from the laptop this long. */
+	awayMinutes: number,
+	/**  Send "W3 asks a question" without the item's title. */
+	hideTitles: boolean,
+};
+
+/**  What Settings shows about the webhook; the token itself never leaves Rust. */
+export type ActivityPushTarget = ActivityPushTarget_Serialize | ActivityPushTarget_Deserialize;
+
+/**  What Settings shows about the webhook; the token itself never leaves Rust. */
+export type ActivityPushTarget_Deserialize = {
+	url?: string | null,
+	hasToken: boolean,
+};
+
+/**  What Settings shows about the webhook; the token itself never leaves Rust. */
+export type ActivityPushTarget_Serialize = {
+	url: string | null,
+	hasToken: boolean,
+};
+
+/**
+ *  An entry's read state, as `activity_mark` found it and `activity_restore`
+ *  puts it back.
+ */
+export type ActivityReadState = ActivityReadState_Serialize | ActivityReadState_Deserialize;
+
+/**
+ *  An entry's read state, as `activity_mark` found it and `activity_restore`
+ *  puts it back.
+ */
+export type ActivityReadState_Deserialize = {
+	id: string,
+	read: string,
+	readReason?: string | null,
+	readAt?: string | null,
+	version: number,
+};
+
+/**
+ *  An entry's read state, as `activity_mark` found it and `activity_restore`
+ *  puts it back.
+ */
+export type ActivityReadState_Serialize = {
+	id: string,
+	read: string,
+	readReason: string | null,
+	readAt: string | null,
+	version: number,
+};
+
+/**
+ *  Closes open entries that existed before the commit: those in `ids`, and
+ *  those of `entityKey` whose category is in `categories` (an empty list
+ *  matches none).
+ */
+export type ActivityResolution = ActivityResolution_Serialize | ActivityResolution_Deserialize;
+
+/**
+ *  Closes open entries that existed before the commit: those in `ids`, and
+ *  those of `entityKey` whose category is in `categories` (an empty list
+ *  matches none).
+ */
+export type ActivityResolution_Deserialize = {
+	ids: string[],
+	entityKey?: string | null,
+	categories: string[],
+	/**  `resolved` or `superseded`. */
+	status: string,
+	resolvedBy: string,
+};
+
+/**
+ *  Closes open entries that existed before the commit: those in `ids`, and
+ *  those of `entityKey` whose category is in `categories` (an empty list
+ *  matches none).
+ */
+export type ActivityResolution_Serialize = {
+	ids: string[],
+	entityKey: string | null,
+	categories: string[],
+	/**  `resolved` or `superseded`. */
+	status: string,
+	resolvedBy: string,
+};
+
+/**
+ *  Unread entries of an entity that happened at or before `before` become
+ *  read with `reason`.
+ */
+export type ActivitySeenMark = {
+	entityKey: string,
+	before: string,
+	reason: string,
+};
+
+/**
+ *  Asks for a source's generation. A new source starts at 1; a changed
+ *  config key or `reset` starts the next generation with no baseline.
+ */
+export type ActivitySourceRequest = {
+	sourceId: string,
+	/**  `t3`, `gh`, `deploy`, `ci`, `ado` or `workstreams`. */
+	kind: string,
+	label: string,
+	configKey: string,
+	reset: boolean,
+};
+
+export type ActivitySourceState = ActivitySourceState_Serialize | ActivitySourceState_Deserialize;
+
+export type ActivitySourceState_Deserialize = {
+	sourceId: string,
+	kind: string,
+	label: string,
+	configKey: string,
+	generation: number,
+	/**  The revision of the last accepted commit in this generation. */
+	revision?: number | null,
+	/**  Null until the generation's first commit. */
+	baseline?: string | null,
+	seededAt?: string | null,
+	committedAt?: string | null,
+	retiredAt?: string | null,
+};
+
+export type ActivitySourceState_Serialize = {
+	sourceId: string,
+	kind: string,
+	label: string,
+	configKey: string,
+	generation: number,
+	/**  The revision of the last accepted commit in this generation. */
+	revision: number | null,
+	/**  Null until the generation's first commit. */
+	baseline: string | null,
+	seededAt: string | null,
+	committedAt: string | null,
+	retiredAt: string | null,
+};
+
+export type ActivityStoreInfo = ActivityStoreInfo_Serialize | ActivityStoreInfo_Deserialize;
+
+export type ActivityStoreInfo_Deserialize = {
+	path: string,
+	/**  Written by a newer BorgDock: reads work, ingestion stops. */
+	readOnly: boolean,
+	/**  Where an unusable file was moved this session. */
+	recoveredFrom?: string | null,
+	schemaVersion: number,
+	entries: number,
+	unread: number,
+	needsYou: number,
+	capacity: ActivityCapacity,
+	/**  Unread entries the journal holds before it folds old ones. */
+	unreadCapacity: number,
+};
+
+export type ActivityStoreInfo_Serialize = {
+	path: string,
+	/**  Written by a newer BorgDock: reads work, ingestion stops. */
+	readOnly: boolean,
+	/**  Where an unusable file was moved this session. */
+	recoveredFrom: string | null,
+	schemaVersion: number,
+	entries: number,
+	unread: number,
+	needsYou: number,
+	capacity: ActivityCapacity,
+	/**  Unread entries the journal holds before it folds old ones. */
+	unreadCapacity: number,
+};
+
 /**
  *  Errors that `ado_resolve_auth_header` may surface to the UI.
  *  Serialized as a tagged enum so TS can discriminate.
@@ -455,7 +1091,10 @@ export type AgentSettings_Deserialize = {
 	dispatchPrompts?: DispatchPrompts_Deserialize | null,
 	/**  When Dispatch's "Sync all" runs by itself. Absent: never. */
 	dispatchSyncSchedule?: DispatchSyncSchedule_Deserialize | null,
-	/**  Notify when an agent asks, proposes a plan, finishes or fails. Absent: on. */
+	/**
+	 *  Read once by `settings::migrate` (v3), never written: the `agent.*`
+	 *  activity categories replaced it.
+	 */
 	dispatchNotifications?: boolean | null,
 	/**  T3 servers on other machines that Dispatch follows. */
 	t3Hosts?: T3HostSettings[],
@@ -480,8 +1119,6 @@ export type AgentSettings_Serialize = {
 	dispatchPrompts?: DispatchPrompts_Serialize,
 	/**  When Dispatch's "Sync all" runs by itself. Absent: never. */
 	dispatchSyncSchedule?: DispatchSyncSchedule_Serialize,
-	/**  Notify when an agent asks, proposes a plan, finishes or fails. Absent: on. */
-	dispatchNotifications?: boolean,
 	/**  T3 servers on other machines that Dispatch follows. */
 	t3Hosts?: T3HostSettings[],
 };
@@ -1634,6 +2271,22 @@ export type LaunchRequest_Serialize = {
 	prompt: string,
 };
 
+export type LimitRecoveryDto = LimitRecoveryDto_Serialize | LimitRecoveryDto_Deserialize;
+
+export type LimitRecoveryDto_Deserialize = {
+	requestId?: string | null,
+	runId: string,
+	resetAt: string,
+	autoResume: boolean,
+};
+
+export type LimitRecoveryDto_Serialize = {
+	requestId: string | null,
+	runId: string,
+	resetAt: string,
+	autoResume: boolean,
+};
+
 export type ListFilesResult = {
 	entries: FileEntry[],
 	truncated: boolean,
@@ -1664,25 +2317,24 @@ export type ModelOptionDto = {
 export type NotificationChannels = NotificationChannels_Serialize | NotificationChannels_Deserialize;
 
 export type NotificationChannels_Deserialize = {
-	tray?: boolean,
-	system?: boolean,
+	/**  Never read; dropped on the next save. */
+	tray?: boolean | null,
+	system?: boolean | null,
 	sound?: boolean,
-	emailDigest?: boolean,
+	emailDigest?: boolean | null,
 };
 
 export type NotificationChannels_Serialize = {
-	tray: boolean,
-	system: boolean,
 	sound: boolean,
-	emailDigest: boolean,
 };
 
 export type NotificationSettings = NotificationSettings_Serialize | NotificationSettings_Deserialize;
 
 export type NotificationSettings_Deserialize = {
-	toastOnCheckStatusChange?: boolean,
-	toastOnReviewUpdate?: boolean,
-	toastOnMergeable?: boolean,
+	/**  Read once by `settings::migrate` (v3), never written: activity categories replaced it. */
+	toastOnCheckStatusChange?: boolean | null,
+	toastOnReviewUpdate?: boolean | null,
+	toastOnMergeable?: boolean | null,
 	playMergeSound?: boolean,
 	reviewNudgeEnabled?: boolean,
 	reviewNudgeIntervalMinutes?: number,
@@ -1691,11 +2343,13 @@ export type NotificationSettings_Deserialize = {
 	channels?: NotificationChannels_Deserialize,
 	lastTestFiredAt?: number | null,
 	/**  A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner. */
-	ciFailureGroupGrows?: boolean,
+	ciFailureGroupGrows?: boolean | null,
 	/**  The owner of a related CI failure went quiet. */
-	ciFailureOwnerStale?: boolean,
+	ciFailureOwnerStale?: boolean | null,
 	/**  A related CI failure's fix merged while PRs are still red. */
-	ciFailureFixMerged?: boolean,
+	ciFailureFixMerged?: boolean | null,
+	/**  The activity journal: popups, push and read behaviour per category. */
+	activity?: ActivityNotificationSettings_Deserialize,
 } & ({
 	toastOnNewPR?: boolean,
 } & {
@@ -1707,10 +2361,7 @@ export type NotificationSettings_Deserialize = {
 });
 
 export type NotificationSettings_Serialize = {
-	toastOnCheckStatusChange: boolean,
 	toastOnNewPR: boolean,
-	toastOnReviewUpdate: boolean,
-	toastOnMergeable: boolean,
 	onlyMyPRs: boolean,
 	playMergeSound: boolean,
 	reviewNudgeEnabled: boolean,
@@ -1719,12 +2370,24 @@ export type NotificationSettings_Serialize = {
 	deduplicationWindowSeconds: number,
 	channels: NotificationChannels_Serialize,
 	lastTestFiredAt?: number,
-	/**  A related CI failure reaches `ciFailures.notifyThreshold` PRs with no owner. */
-	ciFailureGroupGrows: boolean,
-	/**  The owner of a related CI failure went quiet. */
-	ciFailureOwnerStale: boolean,
-	/**  A related CI failure's fix merged while PRs are still red. */
-	ciFailureFixMerged: boolean,
+	/**  The activity journal: popups, push and read behaviour per category. */
+	activity: ActivityNotificationSettings_Serialize,
+};
+
+export type PendingRequestDto = PendingRequestDto_Serialize | PendingRequestDto_Deserialize;
+
+export type PendingRequestDto_Deserialize = {
+	id: string,
+	/**  `user_input` for a question; anything else asks for approval. */
+	kind: string,
+	createdAt?: string | null,
+};
+
+export type PendingRequestDto_Serialize = {
+	id: string,
+	/**  `user_input` for a question; anything else asks for approval. */
+	kind: string,
+	createdAt: string | null,
 };
 
 export type PrDetailSettings = Record<string, never>;
@@ -1904,6 +2567,20 @@ export type RepoCandidate_Serialize = {
 	alreadyTracked: boolean,
 };
 
+export type RepoDeployments = RepoDeployments_Serialize | RepoDeployments_Deserialize;
+
+export type RepoDeployments_Deserialize = {
+	enabled?: boolean,
+	/**  Glob patterns such as `dev`, `*-a`, `acc*`, `prod*`. */
+	environments?: string[],
+};
+
+export type RepoDeployments_Serialize = {
+	enabled: boolean,
+	/**  Glob patterns such as `dev`, `*-a`, `acc*`, `prod*`. */
+	environments: string[],
+};
+
 export type RepoSettings = RepoSettings_Serialize | RepoSettings_Deserialize;
 
 export type RepoSettings_Deserialize = {
@@ -1919,6 +2596,8 @@ export type RepoSettings_Deserialize = {
 	 *  historic active-account behaviour.
 	 */
 	githubAccount?: string | null,
+	/**  Deployments the activity journal follows for this repository. */
+	deployments?: RepoDeployments_Deserialize | null,
 };
 
 export type RepoSettings_Serialize = {
@@ -1934,6 +2613,8 @@ export type RepoSettings_Serialize = {
 	 *  historic active-account behaviour.
 	 */
 	githubAccount?: string,
+	/**  Deployments the activity journal follows for this repository. */
+	deployments?: RepoDeployments_Serialize,
 };
 
 export type ResultSet = {
@@ -1941,6 +2622,51 @@ export type ResultSet = {
 	rows: ((string | null)[])[],
 	rowCount: number,
 	truncated: boolean,
+};
+
+/**  The thread's latest run as T3 reports it, before `status` folds it. */
+export type RunDto = RunDto_Serialize | RunDto_Deserialize;
+
+/**  The thread's latest run as T3 reports it, before `status` folds it. */
+export type RunDto_Deserialize = {
+	/**  `run:thread:<id>:ordinal:<n>`. */
+	id?: string | null,
+	completedAt?: string | null,
+	/**
+	 *  T3's raw status: `completed`, `failed`, `interrupted`, `cancelled`,
+	 *  `queued`, `running`, `waiting` or `idle`.
+	 */
+	status?: string | null,
+	/**  I stopped it; an interruption I asked for is not news. */
+	stopRequested: boolean,
+	lastError?: string | null,
+	lastErrorClass?: string | null,
+	pendingRequest?: PendingRequestDto_Deserialize | null,
+	hasPlan: boolean,
+	limitRecovery?: LimitRecoveryDto_Deserialize | null,
+	/**  The last time a client showed the thread (desktop, web or phone via the desktop). */
+	lastVisitedAt?: string | null,
+};
+
+/**  The thread's latest run as T3 reports it, before `status` folds it. */
+export type RunDto_Serialize = {
+	/**  `run:thread:<id>:ordinal:<n>`. */
+	id: string | null,
+	completedAt: string | null,
+	/**
+	 *  T3's raw status: `completed`, `failed`, `interrupted`, `cancelled`,
+	 *  `queued`, `running`, `waiting` or `idle`.
+	 */
+	status: string | null,
+	/**  I stopped it; an interruption I asked for is not news. */
+	stopRequested: boolean,
+	lastError: string | null,
+	lastErrorClass: string | null,
+	pendingRequest: PendingRequestDto_Serialize | null,
+	hasPlan: boolean,
+	limitRecovery: LimitRecoveryDto_Serialize | null,
+	/**  The last time a client showed the thread (desktop, web or phone via the desktop). */
+	lastVisitedAt: string | null,
 };
 
 export type RuntimeVisibility = boolean;
@@ -2261,6 +2987,8 @@ export type ThreadDto_Deserialize = {
 	pullRequests: PullRequestDto_Deserialize[],
 	/**  The top-level thread this subagent works for; `None` for every other thread. */
 	subagentOf?: string | null,
+	/**  What the activity journal compares between snapshots. */
+	run: RunDto_Deserialize,
 };
 
 export type ThreadDto_Serialize = {
@@ -2282,6 +3010,8 @@ export type ThreadDto_Serialize = {
 	pullRequests: PullRequestDto_Serialize[],
 	/**  The top-level thread this subagent works for; `None` for every other thread. */
 	subagentOf: string | null,
+	/**  What the activity journal compares between snapshots. */
+	run: RunDto_Serialize,
 };
 
 export type ToastAction = ToastAction_Serialize | ToastAction_Deserialize;
@@ -2482,7 +3212,10 @@ export type WorkstreamSettings_Deserialize = {
 	folder?: string | null,
 	/**  What this machine is called in a workstream's log. Absent: the computer's name. */
 	deviceLabel?: string | null,
-	/**  Notify when a workstream is unblocked, invalidated or in conflict. Absent: on. */
+	/**
+	 *  Read once by `settings::migrate` (v3), never written: the
+	 *  `workstream.*` activity categories replaced it.
+	 */
 	notifications?: boolean | null,
 };
 
@@ -2491,8 +3224,6 @@ export type WorkstreamSettings_Serialize = {
 	folder?: string,
 	/**  What this machine is called in a workstream's log. Absent: the computer's name. */
 	deviceLabel?: string,
-	/**  Notify when a workstream is unblocked, invalidated or in conflict. Absent: on. */
-	notifications?: boolean,
 };
 
 export type WorktreeChangeSet = WorktreeChangeSet_Serialize | WorktreeChangeSet_Deserialize;

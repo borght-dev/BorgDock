@@ -92,10 +92,7 @@ describe('WorkItemDetailApp invoke() cancellation', () => {
         runAtStartup: false,
       },
       notifications: {
-        toastOnCheckStatusChange: true,
         toastOnNewPR: false,
-        toastOnReviewUpdate: true,
-        toastOnMergeable: true,
         onlyMyPRs: false,
         playMergeSound: true,
         reviewNudgeEnabled: true,

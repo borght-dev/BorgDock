@@ -197,6 +197,42 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   sql_snippets_save: null,
   sql_snippets_delete: null,
   t3_environment: 'env-test',
+  // Activity journal: an empty one that accepts every commit. Specs that
+  // exercise the section override these with an in-page journal.
+  activity_open_source: (args: Record<string, unknown>) => {
+    const source = args.source as { sourceId: string; kind: string; label: string; configKey: string };
+    return {
+      ...source,
+      generation: 1,
+      revision: null,
+      baseline: null,
+      seededAt: null,
+      committedAt: null,
+      retiredAt: null,
+    };
+  },
+  activity_commit: { accepted: true, reason: null, inserted: [], revision: 1, capacity: 'ok' },
+  activity_list: { entries: [], total: 0, revision: 0 },
+  activity_counts: { unread: 0, needsYou: 0, byCategory: {}, bySource: {}, revision: 0 },
+  activity_sources: [],
+  activity_retire_source: false,
+  activity_mark: { previous: [], changed: 0, revision: 0 },
+  activity_restore: 0,
+  activity_outbox_take: [],
+  activity_outbox_ack: 0,
+  activity_prune: 0,
+  activity_store_info: {
+    path: 'activity.db',
+    readOnly: false,
+    recoveredFrom: null,
+    schemaVersion: 1,
+    entries: 0,
+    unread: 0,
+    needsYou: 0,
+    capacity: 'ok',
+    unreadCapacity: 5000,
+  },
+  set_taskbar_badge: null,
   // Workstreams: an in-page folder (window.__wsFiles) with the same revision
   // rule as the Rust storage, so specs can create, edit and reload them.
   workstreams_folder_path: 'memory',

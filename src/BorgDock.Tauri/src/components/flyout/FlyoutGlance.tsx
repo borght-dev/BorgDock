@@ -4,6 +4,7 @@ import { BorgDockLogo, RefreshIcon, SettingsIcon } from '@/components/shared/ico
 import { Dot, IconButton } from '@/components/shared/primitives';
 import { WindowLauncher } from '@/components/shared/WindowLauncher';
 import type { PrActionId } from '@/services/pr-action-resolver';
+import { FlyoutActivity } from './FlyoutActivity';
 import { FlyoutFrame } from './FlyoutFrame';
 import { FlyoutPrContextMenu } from './FlyoutPrContextMenu';
 import { FlyoutPrRow } from './FlyoutPrRow';
@@ -366,6 +367,8 @@ export function FlyoutGlance({
           {banner.title}
         </div>
       )}
+
+      <FlyoutActivity />
 
       {agents.length > 0 && (
         <section

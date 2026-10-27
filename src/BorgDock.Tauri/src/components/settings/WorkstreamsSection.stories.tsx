@@ -35,7 +35,7 @@ export const ThisMachine: Story = {
 export const SyncFolder: Story = {
   decorators: [withSettings(configuredSettings, { invokeResponses: responses })],
   args: {
-    workstreams: { folder: 'C:/Users/ada/OneDrive', deviceLabel: 'Laptop', notifications: true },
+    workstreams: { folder: 'C:/Users/ada/OneDrive', deviceLabel: 'Laptop' },
     onChange: () => {},
   },
 };

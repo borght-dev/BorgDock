@@ -1,3 +1,4 @@
+pub mod activity;
 pub mod ado;
 pub mod agents;
 mod app_data;
@@ -11,6 +12,7 @@ mod http;
 pub mod keychain;
 pub mod maintenance;
 mod runtime;
+mod sqlite_store;
 use tauri::{generate_handler, Emitter, Manager};
 pub mod platform;
 pub mod settings;
@@ -234,6 +236,25 @@ macro_rules! app_commands {
             file_palette::files::list_root_files,
             file_palette::content_search::search_content,
             file_palette::windows::open_file_viewer_window,
+            // Activity journal
+            activity::commands::activity_open_source,
+            activity::commands::activity_sources,
+            activity::commands::activity_retire_source,
+            activity::commands::activity_commit,
+            activity::commands::activity_list,
+            activity::commands::activity_counts,
+            activity::commands::activity_mark,
+            activity::commands::activity_restore,
+            activity::commands::activity_outbox_take,
+            activity::commands::activity_outbox_ack,
+            activity::commands::activity_clear,
+            activity::commands::activity_export,
+            activity::commands::activity_prune,
+            activity::commands::activity_store_info,
+            activity::push::activity_push_target,
+            activity::push::activity_push_save,
+            activity::push::activity_push_test,
+            platform::taskbar::set_taskbar_badge,
             // Workstreams
             workstreams::commands::workstreams_folder_path,
             workstreams::commands::workstreams_list,
@@ -348,6 +369,7 @@ pub fn run() {
         .manage(updater::PendingUpdate::<updater::DownloadedUpdate>::default())
         .manage(PrCache::default())
         .manage(ci_failures::store::CiStore::default())
+        .manage(activity::ActivityDb::default())
         .manage(sql::SqlQueries::default())
         .manage(t3::commands::T3Sessions::default())
         .manage(platform::flyout_cache::FlyoutCache {
@@ -372,6 +394,7 @@ pub fn run() {
                 platform::window::MAIN_THREAD_TIMEOUT,
             )?);
             platform::tray::setup_tray(app)?;
+            activity::push::start(app.handle().clone());
             platform::tray::start_initializing_animation(app.handle().clone());
 
             // Window geometry store: load once, register, spawn flusher,
@@ -469,7 +492,8 @@ fn command_bindings() -> tauri_specta::Builder<tauri::Wry> {
         .events(tauri_specta::collect_events![
             runtime::RuntimeVisibility,
             t3::commands::T3SessionsUpdated,
-            ci_failures::store::commands::CiFailuresChanged
+            ci_failures::store::commands::CiFailuresChanged,
+            activity::commands::ActivityChanged
         ])
         .commands(app_commands!(collect_commands))
 }

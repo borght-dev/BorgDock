@@ -145,16 +145,35 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
   { sectionId: 'appearance', anchorId: 'restore-last-selection', label: 'Restore last selection' },
 
   // Notifications
-  { sectionId: 'notif', anchorId: 'check-status', label: 'Check status changes' },
-  { sectionId: 'notif', anchorId: 'new-pull-requests', label: 'New pull requests' },
-  { sectionId: 'notif', anchorId: 'review-updates', label: 'Review updates' },
-  { sectionId: 'notif', anchorId: 'pr-mergeable', label: 'PR becomes mergeable' },
+  {
+    sectionId: 'notif',
+    anchorId: 'activity-categories',
+    label: 'What pops up',
+    keywords: ['popup', 'activity', 'checks', 'reviews', 'merge', 'deploy', 'agents', 'ci'],
+  },
+  {
+    sectionId: 'notif',
+    anchorId: 'seen-in-t3',
+    label: "A visit in T3 marks a thread's updates read",
+  },
+  {
+    sectionId: 'notif',
+    anchorId: 'read-on-open',
+    label: 'Opening something marks its updates read',
+  },
+  { sectionId: 'notif', anchorId: 'taskbar-badge', label: 'Count on the taskbar icon' },
+  {
+    sectionId: 'notif',
+    anchorId: 'phone-push',
+    label: 'Push to my phone',
+    keywords: ['home assistant', 'webhook', 'mobile', 'iphone'],
+  },
+  { sectionId: 'notif', anchorId: 'phone-webhook', label: 'Webhook address' },
+  { sectionId: 'notif', anchorId: 'sounds', label: 'Sounds' },
   { sectionId: 'notif', anchorId: 'sound-on-merge', label: 'Play sound on merge' },
-  { sectionId: 'notif', anchorId: 'only-my-prs', label: 'Only notify for my PRs' },
   { sectionId: 'notif', anchorId: 'nudge-pending', label: 'Nudge for pending reviews' },
   { sectionId: 'notif', anchorId: 'remind-every', label: 'Remind every' },
   { sectionId: 'notif', anchorId: 'escalate', label: 'Escalate urgency over time' },
-  { sectionId: 'notif', anchorId: 'channels', label: 'Channels' },
 
   // Agents and headless summaries
   {

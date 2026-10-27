@@ -92,10 +92,6 @@ vi.mock('@/hooks/useRunAtStartup', () => ({
   useRunAtStartup: vi.fn(),
 }));
 
-vi.mock('@/hooks/useStateTransitions', () => ({
-  useStateTransitions: vi.fn(() => ({ processTransitions: vi.fn() })),
-}));
-
 vi.mock('@/hooks/useTheme', () => ({
   useTheme: vi.fn(),
 }));
@@ -164,17 +160,14 @@ const fullSettings = {
     restoreLastSelection: true,
   },
   notifications: {
-    toastOnCheckStatusChange: true,
     toastOnNewPR: false,
-    toastOnReviewUpdate: true,
-    toastOnMergeable: true,
     onlyMyPRs: false,
     playMergeSound: true,
     reviewNudgeEnabled: true,
     reviewNudgeIntervalMinutes: 60,
     reviewNudgeEscalation: true,
     deduplicationWindowSeconds: 60,
-    channels: { tray: true, system: true, sound: true, emailDigest: false },
+    channels: { sound: true },
   },
   claudeReview: { botUsername: 'claude[bot]' },
   updates: { autoCheckEnabled: true, autoDownload: true },

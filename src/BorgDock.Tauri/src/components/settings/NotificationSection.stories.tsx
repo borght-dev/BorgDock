@@ -1,56 +1,50 @@
 // src/components/settings/NotificationSection.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { NotificationSection } from './NotificationSection';
-import {
-  configuredSettings,
-  SectionFrame,
-  withSettings,
-} from './__fixtures__/settings-data';
 import type { NotificationSettings } from '@/types/settings';
+import { getControl } from '../../../.storybook/mocks/control';
+import { configuredSettings, SectionFrame, withSettings } from './__fixtures__/settings-data';
+import { NotificationSection } from './NotificationSection';
 
 const meta: Meta<typeof NotificationSection> = {
   title: 'Settings/NotificationSection',
   component: NotificationSection,
-  decorators: [(Story) => <SectionFrame><Story /></SectionFrame>],
+  decorators: [
+    (Story) => (
+      <SectionFrame>
+        <Story />
+      </SectionFrame>
+    ),
+  ],
 };
 export default meta;
 type Story = StoryObj<typeof NotificationSection>;
 
 const allOn: NotificationSettings = {
   ...configuredSettings.notifications,
-  toastOnCheckStatusChange: true,
   toastOnNewPR: true,
-  toastOnReviewUpdate: true,
-  toastOnMergeable: true,
   onlyMyPRs: true,
   playMergeSound: true,
   reviewNudgeEnabled: true,
   reviewNudgeEscalation: true,
-  channels: { tray: true, system: true, sound: true, emailDigest: true },
+  channels: { sound: true },
 };
 
 const allOff: NotificationSettings = {
   ...configuredSettings.notifications,
-  toastOnCheckStatusChange: false,
   toastOnNewPR: false,
-  toastOnReviewUpdate: false,
-  toastOnMergeable: false,
   onlyMyPRs: false,
   playMergeSound: false,
   reviewNudgeEnabled: false,
   reviewNudgeEscalation: false,
-  channels: { tray: false, system: false, sound: false, emailDigest: false },
+  channels: { sound: false },
 };
 
 const mixed: NotificationSettings = {
   ...configuredSettings.notifications,
-  toastOnCheckStatusChange: true,
   toastOnNewPR: false,
-  toastOnReviewUpdate: true,
-  toastOnMergeable: false,
   onlyMyPRs: true,
-  channels: { tray: true, system: false, sound: true, emailDigest: false },
+  channels: { sound: true },
 };
 
 export const AllEnabled: Story = {
@@ -66,4 +60,32 @@ export const AllDisabled: Story = {
 export const Mixed: Story = {
   decorators: [withSettings(configuredSettings)],
   args: { notifications: mixed, onChange: () => {} },
+};
+
+/** Activity popups per kind of update, and the phone channel through Home Assistant. */
+export const PhonePush: Story = {
+  decorators: [
+    withSettings(configuredSettings),
+    (Story) => {
+      getControl().invokeResponses.activity_push_target = {
+        url: 'https://home.example.com/api/webhook/borgdock',
+        hasToken: false,
+      };
+      return <Story />;
+    },
+  ],
+  args: {
+    notifications: {
+      ...configuredSettings.notifications,
+      channels: { sound: true },
+      activity: {
+        categories: { 'agent.turn': { popup: false } },
+        seenInT3: true,
+        markReadOnOpen: true,
+        taskbarBadge: true,
+        push: { enabled: true, preset: 'home-assistant', awayMinutes: 10, hideTitles: false },
+      },
+    },
+    onChange: () => {},
+  },
 };

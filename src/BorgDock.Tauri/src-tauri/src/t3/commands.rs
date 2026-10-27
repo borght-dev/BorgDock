@@ -1036,6 +1036,29 @@ mod tests {
             raw["threads"].as_array().map_or(0, Vec::len),
         );
         assert!(!snapshot.projects.is_empty());
+        let runs =
+            |f: fn(&shell::RunDto) -> bool| snapshot.threads.iter().filter(|t| f(&t.run)).count();
+        println!(
+            "runs: with id={} completed_at={} raw_status={} stop_requested={} errors={} pending={} limits={} visited={} plans={}",
+            runs(|r| r.id.is_some()),
+            runs(|r| r.completed_at.is_some()),
+            runs(|r| r.status.is_some()),
+            runs(|r| r.stop_requested),
+            runs(|r| r.last_error_class.is_some()),
+            runs(|r| r.pending_request.is_some()),
+            runs(|r| r.limit_recovery.is_some()),
+            runs(|r| r.last_visited_at.is_some()),
+            runs(|r| r.has_plan),
+        );
+        if let Some(thread) = snapshot.threads.iter().find(|t| t.run.id.is_some()) {
+            println!("sample run: {:?}", thread.run);
+        }
+        // BORGDOCK_T3_DUMP=<file> keeps the snapshot for the activity replay
+        // (`LIVE_SHELL=<file> bunx vitest run src/services/activity/__tests__/live-t3.test.ts`).
+        if let Ok(path) = std::env::var("BORGDOCK_T3_DUMP") {
+            std::fs::write(&path, serde_json::to_string(&snapshot).unwrap()).unwrap();
+            println!("snapshot written to {path}");
+        }
 
         if let Some(thread) = snapshot.threads.iter().find(|t| t.status != "settled") {
             let detail =

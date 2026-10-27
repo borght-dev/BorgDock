@@ -41,6 +41,7 @@ interface GitHubPullRequestDto {
   updated_at: string;
   closed_at: string | null;
   merged_at: string | null;
+  merge_commit_sha?: string | null;
   draft: boolean;
   mergeable: boolean | null;
   auto_merge?: object | null;
@@ -401,6 +402,7 @@ function mapToPullRequest(dto: GitHubPullRequestDto, owner: string, repo: string
     commitCount: dto.commits,
     mergedAt: dto.merged_at ?? undefined,
     closedAt: dto.closed_at ?? undefined,
+    ...(dto.merged_at && dto.merge_commit_sha ? { mergeCommitSha: dto.merge_commit_sha } : {}),
     requestedReviewers: dto.requested_reviewers?.map((u) => u.login) ?? [],
     requestedTeams: dto.requested_teams?.map((t) => t.slug) ?? [],
   };

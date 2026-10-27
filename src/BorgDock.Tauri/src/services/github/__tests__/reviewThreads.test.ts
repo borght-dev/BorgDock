@@ -28,9 +28,7 @@ describe('buildSnippetFromPatch', () => {
 
   it('returns just the anchor line when the patch is unavailable', () => {
     const snippet = buildSnippetFromPatch(undefined, 42);
-    expect(snippet).toEqual([
-      { lineNumber: 42, marker: ' ', text: '', isAnchor: true },
-    ]);
+    expect(snippet).toEqual([{ lineNumber: 42, marker: ' ', text: '', isAnchor: true }]);
   });
 });
 
@@ -77,18 +75,9 @@ describe('getReviewThreads', () => {
       })),
     };
     const filePatches = new Map<string, string | undefined>([
-      [
-        'src/foo.ts',
-        '@@ -10,3 +10,3 @@\n line 10\n-line 11\n+line 12',
-      ],
+      ['src/foo.ts', '@@ -10,3 +10,3 @@\n line 10\n-line 11\n+line 12'],
     ]);
-    const threads = await getReviewThreads(
-      fakeClient as never,
-      'o',
-      'r',
-      1,
-      filePatches,
-    );
+    const threads = await getReviewThreads(fakeClient as never, 'o', 'r', 1, filePatches);
     expect(threads).toHaveLength(1);
     expect(threads[0]!.id).toBe('PRT_a');
     expect(threads[0]!.isResolved).toBe(true);

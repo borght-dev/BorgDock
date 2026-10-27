@@ -270,6 +270,12 @@ export function FlyoutApp() {
               await emitTo('main', 'dispatch-show-item', { itemId: Number(url) });
             }
             break;
+          case 'activity-open':
+            await emitTo('main', 'activity-show', { id: url ?? '' });
+            break;
+          case 'activity-act':
+            if (url) await emitTo('main', 'activity-act', { id: url });
+            break;
           case 'workstream-show':
             if (url) {
               await emitTo('main', 'workstreams-show', { id: url });

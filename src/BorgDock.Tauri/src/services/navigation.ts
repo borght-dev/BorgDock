@@ -1,4 +1,5 @@
 import { flushSync } from 'react-dom';
+import { viewed } from '@/services/activity/viewed';
 import { createLogger } from '@/services/logger';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import {
@@ -202,6 +203,7 @@ export async function showPr(target: ShowPrTarget): Promise<void> {
     return;
   }
 
+  viewed.pr(owner, repo, number);
   const ui = useUiStore.getState();
   const top = selectTopView(ui);
   ui.selectPrKey(`${owner}/${repo}#${number}`, number);
@@ -232,6 +234,7 @@ export async function showPr(target: ShowPrTarget): Promise<void> {
  * change, so Back returns to the list the item was opened from.
  */
 export async function showWorkItem(id: number): Promise<void> {
+  viewed.workItem(id);
   const ui = useUiStore.getState();
   ui.setWorkItemsSelectedId(id);
   const top = selectTopView(ui);
@@ -255,6 +258,7 @@ export async function showWorkItem(id: number): Promise<void> {
  * the tab moves.
  */
 export async function showWorkstream(id: string, tab?: WorkstreamTab): Promise<void> {
+  viewed.workstream(id);
   const ui = useUiStore.getState();
   const top = selectTopView(ui);
   const view: MainView = tab ? { kind: 'workstream', id, tab } : { kind: 'workstream', id };

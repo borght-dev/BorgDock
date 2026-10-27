@@ -1,10 +1,6 @@
-import type {
-  ReviewThread,
-  ReviewThreadComment,
-  ReviewThreadSnippetLine,
-} from '@/types';
-import { detectSeverity } from './reviews';
+import type { ReviewThread, ReviewThreadComment, ReviewThreadSnippetLine } from '@/types';
 import type { GitHubClient } from './client';
+import { detectSeverity } from './reviews';
 
 export const REVIEW_THREADS_QUERY = /* GraphQL */ `
   query ReviewThreads($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
@@ -99,8 +95,7 @@ export function buildSnippetFromPatch(
       if (m && m[1]) newLine = parseInt(m[1], 10) - 1;
       continue;
     }
-    const marker: '+' | '-' | ' ' =
-      raw.startsWith('+') ? '+' : raw.startsWith('-') ? '-' : ' ';
+    const marker: '+' | '-' | ' ' = raw.startsWith('+') ? '+' : raw.startsWith('-') ? '-' : ' ';
     const text = raw.slice(1);
     let lineNumber: number | null = null;
     if (marker === '+' || marker === ' ') {
@@ -168,15 +163,17 @@ export async function getReviewThreads(
         isResolved: node.isResolved,
         resolvedBy: node.resolvedBy?.login ?? undefined,
         snippet: buildSnippetFromPatch(patch, line),
-        comments: node.comments.nodes.map((c): ReviewThreadComment => ({
-          id: c.id,
-          databaseId: c.databaseId,
-          author: c.author?.login ?? '',
-          authorIsBot: isBotLogin(c.author),
-          body: c.body,
-          createdAt: c.createdAt,
-          severity: mapSeverity(c.body),
-        })),
+        comments: node.comments.nodes.map(
+          (c): ReviewThreadComment => ({
+            id: c.id,
+            databaseId: c.databaseId,
+            author: c.author?.login ?? '',
+            authorIsBot: isBotLogin(c.author),
+            body: c.body,
+            createdAt: c.createdAt,
+            severity: mapSeverity(c.body),
+          }),
+        ),
       });
     }
     cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
@@ -186,16 +183,10 @@ export async function getReviewThreads(
   return all;
 }
 
-export async function resolveReviewThread(
-  client: GitHubClient,
-  threadId: string,
-): Promise<void> {
+export async function resolveReviewThread(client: GitHubClient, threadId: string): Promise<void> {
   await client.graphql(RESOLVE_MUTATION, { threadId });
 }
 
-export async function unresolveReviewThread(
-  client: GitHubClient,
-  threadId: string,
-): Promise<void> {
+export async function unresolveReviewThread(client: GitHubClient, threadId: string): Promise<void> {
   await client.graphql(UNRESOLVE_MUTATION, { threadId });
 }

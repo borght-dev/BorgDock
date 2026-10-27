@@ -14,6 +14,7 @@ import {
 } from '@/components/shared/primitives';
 import type { RemoteWorktreeRepoSettings, RepoSettings } from '@/types/settings';
 import { RemoteWorktreeReposCard } from './RemoteWorktreeReposCard';
+import { RepoDeploymentsCard } from './RepoDeploymentsCard';
 import { RepoScanDialog } from './RepoScanDialog';
 
 interface Props {
@@ -169,6 +170,8 @@ export function RepoSection({
           ))}
         </div>
       </Card>
+
+      <RepoDeploymentsCard repos={repos} onChange={updateRepo} />
 
       <RemoteWorktreeReposCard repos={remoteWorktreeRepos} onChange={onRemoteWorktreeReposChange} />
 

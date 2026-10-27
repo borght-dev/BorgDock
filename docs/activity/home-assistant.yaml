@@ -1,0 +1,45 @@
+# BorgDock Activity → your phone, through Home Assistant.
+#
+# BorgDock posts JSON to a webhook trigger once you have been away from the
+# laptop for a while (Settings, Notifications, Phone):
+#
+#   { "title": "...", "message": "...", "url": "...", "tag": "...", "group": "...", "severity": "..." }
+#
+# and, once you read, resolve or dismiss a pushed entry on the laptop or in T3:
+#
+#   { "tag": "...", "clear": true }
+#
+# Add this automation (Settings, Automations, three dots, Edit in YAML),
+# replace `mobile_app_your_phone` with your phone's notify service, and set
+# BorgDock's webhook address to https://<your Home Assistant>/api/webhook/borgdock.
+# Keep the webhook id hard to guess: anyone who knows it can post to it.
+
+alias: BorgDock Activity to phone
+description: Forwards BorgDock's activity pushes and withdraws them once handled.
+mode: queued
+triggers:
+  - trigger: webhook
+    webhook_id: borgdock
+    allowed_methods: [POST]
+    local_only: false
+actions:
+  - choose:
+      - conditions: "{{ trigger.json.clear | default(false) }}"
+        sequence:
+          - action: notify.mobile_app_your_phone
+            data:
+              message: clear_notification
+              data:
+                tag: "{{ trigger.json.tag }}"
+    default:
+      - action: notify.mobile_app_your_phone
+        data:
+          title: "{{ trigger.json.title }}"
+          message: "{{ trigger.json.message }}"
+          data:
+            tag: "{{ trigger.json.tag }}"
+            group: "{{ trigger.json.group }}"
+            url: "{{ trigger.json.url or '' }}"
+            clickAction: "{{ trigger.json.url or '' }}"
+            push:
+              interruption-level: "{{ 'time-sensitive' if trigger.json.severity in ['error', 'warning'] else 'active' }}"

@@ -69,6 +69,7 @@ export function toItemComment(comment: WorkItemComment, me: string | null): Item
   const signed = SIGNED.exec(text);
   const poster = comment.createdBy.displayName;
   return {
+    id: comment.id,
     author: signed ? `${signed[1]} · ${signed[2]}` : poster,
     at: comment.createdDate,
     text: clip(signed ? text.slice(signed[0].length) : text, COMMENT_LIMIT),

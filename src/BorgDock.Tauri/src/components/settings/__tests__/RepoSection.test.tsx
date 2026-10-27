@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { RepoSettings } from '@/types/settings';
 import { RepoSection } from '../RepoSection';
@@ -29,8 +29,9 @@ describe('RepoSection', () => {
   it('renders one row per tracked repo', () => {
     const repos = [mkRepo(), mkRepo({ name: 'gizmo' })];
     render(<RepoSection repos={repos} onChange={() => {}} />);
-    expect(screen.getByText('acme/widget')).toBeInTheDocument();
-    expect(screen.getByText('acme/gizmo')).toBeInTheDocument();
+    const list = within(document.getElementById('field-tracked-repositories')!);
+    expect(list.getByText('acme/widget')).toBeInTheDocument();
+    expect(list.getByText('acme/gizmo')).toBeInTheDocument();
   });
 
   it('remove button removes the repo', () => {

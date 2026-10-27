@@ -9,7 +9,6 @@ import {
   buildPrMergedNotification,
   buildReviewNudgeNotification,
   buildReviewRequestedNotification,
-  detectStateTransitions,
   isReadyToMerge,
 } from '../notification';
 
@@ -57,101 +56,6 @@ function makePrWithChecks(
     ...rest,
   };
 }
-
-describe('detectStateTransitions', () => {
-  it('detects check failure transition (gray -> red)', () => {
-    const old = [makePrWithChecks({ overallStatus: 'gray' })];
-    const cur = [
-      makePrWithChecks({
-        overallStatus: 'red',
-        failedCheckNames: ['build'],
-      }),
-    ];
-
-    const transitions = detectStateTransitions(old, cur);
-
-    expect(transitions).toHaveLength(1);
-    expect(transitions[0]!.type).toBe('checkFailed');
-    expect(transitions[0]!.detail).toBe('build');
-  });
-
-  it('detects all checks passed (yellow -> green)', () => {
-    const old = [makePrWithChecks({ overallStatus: 'yellow' })];
-    const cur = [makePrWithChecks({ overallStatus: 'green' })];
-
-    const transitions = detectStateTransitions(old, cur);
-
-    expect(transitions).toHaveLength(1);
-    expect(transitions[0]!.type).toBe('allChecksPassed');
-  });
-
-  it('detects review changes requested transition', () => {
-    const old = [makePrWithChecks({ pr: { reviewStatus: 'none' } })];
-    const cur = [makePrWithChecks({ pr: { reviewStatus: 'changesRequested' } })];
-
-    const transitions = detectStateTransitions(old, cur);
-
-    expect(transitions).toHaveLength(1);
-    expect(transitions[0]!.type).toBe('reviewChangesRequested');
-  });
-
-  it('does not detect transitions for new PRs', () => {
-    const old: PullRequestWithChecks[] = [];
-    const cur = [
-      makePrWithChecks({
-        overallStatus: 'red',
-        failedCheckNames: ['build'],
-      }),
-    ];
-
-    const transitions = detectStateTransitions(old, cur);
-    expect(transitions).toHaveLength(0);
-  });
-
-  it('does not detect same-state transitions', () => {
-    const state = makePrWithChecks({ overallStatus: 'green' });
-    const transitions = detectStateTransitions([state], [state]);
-    expect(transitions).toHaveLength(0);
-  });
-
-  it('detects multiple new failed checks', () => {
-    const old = [makePrWithChecks({ overallStatus: 'green' })];
-    const cur = [
-      makePrWithChecks({
-        overallStatus: 'red',
-        failedCheckNames: ['build', 'test', 'lint'],
-      }),
-    ];
-
-    const transitions = detectStateTransitions(old, cur);
-
-    const checkFailed = transitions.filter((t) => t.type === 'checkFailed');
-    expect(checkFailed).toHaveLength(3);
-    expect(checkFailed.map((t) => t.detail)).toEqual(['build', 'test', 'lint']);
-  });
-
-  it('handles edge case: gray->red with previously known failures', () => {
-    const old = [
-      makePrWithChecks({
-        overallStatus: 'gray',
-        failedCheckNames: ['build'],
-      }),
-    ];
-    const cur = [
-      makePrWithChecks({
-        overallStatus: 'red',
-        failedCheckNames: ['build'],
-      }),
-    ];
-
-    const transitions = detectStateTransitions(old, cur);
-
-    // Should still notify about the first failure (edge case handling)
-    const checkFailed = transitions.filter((t) => t.type === 'checkFailed');
-    expect(checkFailed).toHaveLength(1);
-    expect(checkFailed[0]!.detail).toBe('build');
-  });
-});
 
 describe('notification builders', () => {
   const pr = makePr();
@@ -294,79 +198,6 @@ describe('isReadyToMerge', () => {
       pr: { isDraft: false, reviewStatus: 'approved' },
     });
     expect(isReadyToMerge(pr)).toBe(true);
-  });
-});
-
-describe('detectStateTransitions - additional cases', () => {
-  it('detects merged transition', () => {
-    const old = [makePrWithChecks({ pr: { mergedAt: undefined } })];
-    const cur = [makePrWithChecks({ pr: { mergedAt: '2025-01-17T10:00:00Z' } })];
-
-    const transitions = detectStateTransitions(old, cur);
-
-    expect(transitions).toHaveLength(1);
-    expect(transitions[0]!.type).toBe('merged');
-  });
-
-  it('detects became mergeable transition', () => {
-    const old = [
-      makePrWithChecks({
-        overallStatus: 'yellow',
-        pr: { isDraft: false, mergeable: true, reviewStatus: 'approved' },
-      }),
-    ];
-    const cur = [
-      makePrWithChecks({
-        overallStatus: 'green',
-        pr: { isDraft: false, mergeable: true, reviewStatus: 'approved' },
-      }),
-    ];
-
-    const transitions = detectStateTransitions(old, cur);
-
-    const mergeable = transitions.filter((t) => t.type === 'becameMergeable');
-    expect(mergeable).toHaveLength(1);
-  });
-
-  it('detects review requested transition', () => {
-    const old = [makePrWithChecks({ pr: { requestedReviewers: [] } })];
-    const cur = [makePrWithChecks({ pr: { requestedReviewers: ['alice'] } })];
-
-    const transitions = detectStateTransitions(old, cur, 'alice');
-
-    const reviewReq = transitions.filter((t) => t.type === 'reviewRequested');
-    expect(reviewReq).toHaveLength(1);
-    expect(reviewReq[0]!.detail).toBe('alice');
-  });
-
-  it('does not detect review requested when user was already a reviewer', () => {
-    const old = [makePrWithChecks({ pr: { requestedReviewers: ['alice'] } })];
-    const cur = [makePrWithChecks({ pr: { requestedReviewers: ['alice'] } })];
-
-    const transitions = detectStateTransitions(old, cur, 'alice');
-
-    const reviewReq = transitions.filter((t) => t.type === 'reviewRequested');
-    expect(reviewReq).toHaveLength(0);
-  });
-
-  it('review requested is case-insensitive', () => {
-    const old = [makePrWithChecks({ pr: { requestedReviewers: [] } })];
-    const cur = [makePrWithChecks({ pr: { requestedReviewers: ['Alice'] } })];
-
-    const transitions = detectStateTransitions(old, cur, 'alice');
-
-    const reviewReq = transitions.filter((t) => t.type === 'reviewRequested');
-    expect(reviewReq).toHaveLength(1);
-  });
-
-  it('does not detect review requested when no username provided', () => {
-    const old = [makePrWithChecks({ pr: { requestedReviewers: [] } })];
-    const cur = [makePrWithChecks({ pr: { requestedReviewers: ['alice'] } })];
-
-    const transitions = detectStateTransitions(old, cur);
-
-    const reviewReq = transitions.filter((t) => t.type === 'reviewRequested');
-    expect(reviewReq).toHaveLength(0);
   });
 });
 

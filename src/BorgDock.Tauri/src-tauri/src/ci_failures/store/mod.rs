@@ -12,35 +12,36 @@ mod schema;
 
 pub use connection::{close, db_path};
 
-use connection::Opened;
+use crate::sqlite_store::SqliteStore;
 use rusqlite::Connection;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 /// Managed state. The connection opens on first use, on a blocking thread,
 /// so no command does file I/O on the GUI thread (see CLAUDE.md "Tauri sync
 /// commands and main-thread operations").
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct CiStore {
-    slot: Arc<Mutex<Option<Opened>>>,
-    /// Tests point the store at a temporary file.
-    path: Option<Arc<PathBuf>>,
+    db: SqliteStore,
+}
+
+impl Default for CiStore {
+    fn default() -> Self {
+        Self {
+            db: SqliteStore::new(&connection::SPEC),
+        }
+    }
 }
 
 impl CiStore {
     #[cfg(test)]
     pub(crate) fn at(path: PathBuf) -> Self {
         Self {
-            slot: Arc::default(),
-            path: Some(Arc::new(path)),
+            db: SqliteStore::at(&connection::SPEC, path),
         }
     }
 
     pub fn path(&self) -> PathBuf {
-        match &self.path {
-            Some(path) => path.as_ref().clone(),
-            None => db_path(),
-        }
+        self.db.path()
     }
 }
 
@@ -50,7 +51,7 @@ where
     T: Send + 'static,
     F: FnOnce(&mut Connection) -> Result<T, String> + Send + 'static,
 {
-    run(store, false, move |conn, _| f(conn)).await
+    store.db.with_store(f).await
 }
 
 /// Like [`with_store`], but refuses a database a newer BorgDock wrote.
@@ -59,7 +60,7 @@ where
     T: Send + 'static,
     F: FnOnce(&mut Connection) -> Result<T, String> + Send + 'static,
 {
-    run(store, true, move |conn, _| f(conn)).await
+    store.db.with_writer(f).await
 }
 
 /// [`with_store`] that also tells `f` whether the file is read-only.
@@ -68,29 +69,7 @@ where
     T: Send + 'static,
     F: FnOnce(&mut Connection, bool) -> Result<T, String> + Send + 'static,
 {
-    run(store, false, f).await
-}
-
-async fn run<T, F>(store: &CiStore, write: bool, f: F) -> Result<T, String>
-where
-    T: Send + 'static,
-    F: FnOnce(&mut Connection, bool) -> Result<T, String> + Send + 'static,
-{
-    let slot = store.slot.clone();
-    let path = store.path();
-    tokio::task::spawn_blocking(move || {
-        let mut lock = slot.lock().unwrap_or_else(|p| p.into_inner());
-        if lock.is_none() {
-            *lock = Some(connection::open(&path)?);
-        }
-        let opened = lock.as_mut().expect("store opened");
-        if write && opened.read_only {
-            return Err(connection::READ_ONLY_MESSAGE.to_string());
-        }
-        f(&mut opened.conn, opened.read_only)
-    })
-    .await
-    .map_err(|e| format!("Task join error: {e}"))?
+    store.db.with_store_mode(f).await
 }
 
 #[cfg(test)]
