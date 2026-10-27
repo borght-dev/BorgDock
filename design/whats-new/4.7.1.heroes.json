@@ -1,0 +1,33 @@
+[
+  {
+    "slug": "activity",
+    "storyId": "activity-activity--unread",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 1500
+  },
+  {
+    "slug": "shared-failures",
+    "storyId": "ci-failures-pr-list--shared-failures",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 1500
+  },
+  {
+    "slug": "broke-after",
+    "storyId": "ci-failures-relatedfailurescard--broke-on-master",
+    "viewport": { "width": 1000, "height": 640 },
+    "selector": "div:has(> .bd-ci-related)",
+    "delay": 1500
+  },
+  {
+    "slug": "update-affected",
+    "storyId": "ci-failures-sheets--rerun-affected",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 1500
+  },
+  {
+    "slug": "hide-failing",
+    "storyId": "ci-failures-pr-list--hide-failing",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 1500
+  }
+]

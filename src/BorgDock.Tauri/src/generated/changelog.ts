@@ -4,6 +4,65 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.7.1",
+    "date": "2026-10-27",
+    "summary": "Everything that changed, in one place, One shared failure, one place to fix it, See which merge broke master, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Everything that changed, in one place",
+        "description": "The new Activity section shows what happened since you last looked: questions from your agents, plans waiting for your approval, failed checks, new reviews, and your merged work reaching an environment. Each row comes with the action that fits, and what needs you comes first. Focus opens with a Since you last checked card, and the tray and the taskbar icon show how much is waiting for you.",
+        "hero": {
+          "src": "/whats-new/4.7.1/activity.png",
+          "alt": "The Activity section with what changed since you last checked"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "One shared failure, one place to fix it",
+        "description": "When the same CI failure breaks several pull requests, it now gets its own row above your pull request list. The row names the failing test, says how many pull requests it blocks and who's on it, and offers the next step. Click the tag on any pull request to see only the ones that share its failure. A pull request that's red only because of a failure on master, a flaky test or the CI runners now says \"Not caused by this PR\" and keeps its Review button.",
+        "hero": {
+          "src": "/whats-new/4.7.1/shared-failures.png",
+          "alt": "Shared CI failures above the pull request list"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "See which merge broke master",
+        "description": "When a failure is also on master, BorgDock compares the last passing run with the first failing one and names the pull request merged in between. Ask its author in a comment you can edit before it posts, or open a draft revert.",
+        "hero": {
+          "src": "/whats-new/4.7.1/broke-after.png",
+          "alt": "A failure on master traced back to the pull request that caused it"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Bring every blocked pull request back at once",
+        "description": "Once the fix is on master, Update affected merges master into every pull request the failure blocked, so their checks run again with the fix. Flaky tests and runner hiccups get a plain rerun instead.",
+        "hero": {
+          "src": "/whats-new/4.7.1/update-affected.png",
+          "alt": "Updating every affected pull request from master"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Show only the pull requests that are ready to go",
+        "description": "Hide failing in the pull request list leaves out every pull request with a failing check, so what's left is green or still running. It works with every filter, and BorgDock remembers your choice.",
+        "hero": {
+          "src": "/whats-new/4.7.1/hide-failing.png",
+          "alt": "The pull request list with Hide failing turned on"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.7.0",
     "date": "2026-10-27",
     "summary": "Workstreams, See how the pieces fit, Let an agent review the workstream, and more.",

@@ -1,5 +1,18 @@
 # Changelog
 
+## 4.7.1 — 2026-10-27
+
+### New Features
+
+- **Everything that changed, in one place** — The new Activity section shows what happened since you last looked: questions from your agents, plans waiting for your approval, failed checks, new reviews, and your merged work reaching an environment. Each row comes with the action that fits, and what needs you comes first. Focus opens with a Since you last checked card, and the tray and the taskbar icon show how much is waiting for you. ![The Activity section with what changed since you last checked](whats-new/4.7.1/activity.png)
+- **One shared failure, one place to fix it** — When the same CI failure breaks several pull requests, it now gets its own row above your pull request list. The row names the failing test, says how many pull requests it blocks and who's on it, and offers the next step. Click the tag on any pull request to see only the ones that share its failure. A pull request that's red only because of a failure on master, a flaky test or the CI runners now says "Not caused by this PR" and keeps its Review button. ![Shared CI failures above the pull request list](whats-new/4.7.1/shared-failures.png)
+- **See which merge broke master** — When a failure is also on master, BorgDock compares the last passing run with the first failing one and names the pull request merged in between. Ask its author in a comment you can edit before it posts, or open a draft revert. ![A failure on master traced back to the pull request that caused it](whats-new/4.7.1/broke-after.png)
+- **Bring every blocked pull request back at once** — Once the fix is on master, Update affected merges master into every pull request the failure blocked, so their checks run again with the fix. Flaky tests and runner hiccups get a plain rerun instead. ![Updating every affected pull request from master](whats-new/4.7.1/update-affected.png)
+
+### Improvements
+
+- **Show only the pull requests that are ready to go** — Hide failing in the pull request list leaves out every pull request with a failing check, so what's left is green or still running. It works with every filter, and BorgDock remembers your choice. ![The pull request list with Hide failing turned on](whats-new/4.7.1/hide-failing.png)
+
 ## 4.7.0 — 2026-10-27
 
 ### New Features
