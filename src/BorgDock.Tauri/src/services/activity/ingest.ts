@@ -62,6 +62,8 @@ interface SourceState {
 /** Sub-revisions within one sequence (a detail read after the shell read). */
 const PER_SEQUENCE = 1000;
 const DEFAULT_INTERVAL_MS = 60_000;
+/** No read takes this long, so a time this far behind the stored one is a clock change. */
+const CLOCK_MOVED_MS = 30 * 60_000;
 
 const states = new Map<string, SourceState>();
 const queue = new SourceQueue();
@@ -121,8 +123,10 @@ async function stateFor(source: SourceDescriptor): Promise<SourceState> {
 
 function nextRevision(state: SourceState, revision: Revision): number | 'regressed' | 'stale' {
   if ('time' in revision) {
-    if (state.revision !== null && revision.time <= state.revision) return 'stale';
-    return revision.time;
+    if (state.revision === null || revision.time > state.revision) return revision.time;
+    // A read that started before the stored one answered late; one far
+    // behind means the clock moved back.
+    return state.revision - revision.time > CLOCK_MOVED_MS ? 'regressed' : 'stale';
   }
   const major = revision.sequence;
   if (state.revision === null) return major * PER_SEQUENCE;
@@ -328,4 +332,16 @@ export async function peekBaseline<B>(source: SourceDescriptor): Promise<B | nul
   } catch {
     return null;
   }
+}
+
+const lastTimes = new Map<string, number>();
+
+/**
+ * A time revision for observations made in this window without a read to
+ * wait for (workstream assessments): now, but always after the last one.
+ */
+export function monotonicTime(sourceId: string): Revision {
+  const time = Math.max(Date.now(), (lastTimes.get(sourceId) ?? 0) + 1);
+  lastTimes.set(sourceId, time);
+  return { time };
 }

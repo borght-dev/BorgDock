@@ -1,5 +1,6 @@
 import { listen } from '@tauri-apps/api/event';
 import { bringMainWindowForward } from '@/hooks/useFlyoutSync';
+import { ingestCiGroups } from '@/services/activity/adapters/ci';
 import {
   OPEN_CI_SHEET_EVENT,
   SHOW_CI_GROUP_EVENT,
@@ -104,12 +105,12 @@ export function startCiFailuresSync(): () => void {
       sessions: useT3SessionStore.getState().sessions,
       now: new Date(),
     }).stale;
-  const checkEvents = () =>
-    tracker.update(useCiFailuresStore.getState().groups, {
-      threshold: ciFailureSettings(settings()).notifyThreshold,
-      ownerStale,
-      now: new Date(),
-    });
+  const checkEvents = () => {
+    const { groups, revision, loaded } = useCiFailuresStore.getState();
+    const threshold = ciFailureSettings(settings()).notifyThreshold;
+    tracker.update(groups, { threshold, ownerStale, now: new Date() });
+    if (loaded) ingestCiGroups(groups, revision, enabledScopes(), { threshold, ownerStale });
+  };
   const unsubscribeGroups = useCiFailuresStore.subscribe((state, previous) => {
     if (state.groups !== previous.groups) checkEvents();
   });

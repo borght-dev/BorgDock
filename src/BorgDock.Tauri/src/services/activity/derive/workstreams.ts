@@ -25,6 +25,11 @@ export interface WorkstreamFacts {
 
 export interface WorkstreamsObservation {
   documents: WorkstreamFacts[];
+  /**
+   * A host just came back: attention moved because data came back, not
+   * because work did. What holds is recorded without entries or resolutions.
+   */
+  quiet?: boolean;
 }
 
 export interface WorkstreamsBaseline {
@@ -89,7 +94,9 @@ export function deriveWorkstreams(
   for (const document of observation.documents) {
     const before = baseline?.holding[document.id];
     const counting =
-      !ctx.seed && (before !== undefined || createdAfterSeed(ctx, document.createdAt));
+      !ctx.seed &&
+      !observation.quiet &&
+      (before !== undefined || createdAfterSeed(ctx, document.createdAt));
     const now: Record<string, number> = {};
     const reached = { ...(episodes[document.id] ?? {}) };
     for (const attention of document.attention) {
@@ -127,7 +134,7 @@ export function deriveWorkstreams(
     for (const [attentionId, episode] of Object.entries(before ?? {})) {
       if (now[attentionId] !== undefined) continue;
       const kind = kindOf(attentionId);
-      if (!ctx.seed && kind) {
+      if (!ctx.seed && !observation.quiet && kind) {
         resolutions.push(
           resolveIds(ctx, [nativeKey(document.id, attentionId, episode)], kind.resolvedBy),
         );

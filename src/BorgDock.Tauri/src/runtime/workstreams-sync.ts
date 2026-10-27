@@ -1,4 +1,5 @@
 import { bringMainWindowForward } from '@/hooks/useFlyoutSync';
+import { ingestWorkstreams } from '@/services/activity/adapters/workstreams';
 import { configuredHosts, rawId } from '@/services/dispatch/hosts';
 import {
   dispatchAdoClient,
@@ -288,10 +289,14 @@ function notify(assessments: Record<string, ReturnType<typeof assessWorkstream>>
   const cameBack = hosts.some((host) => host.ok && hostsOk.get(host.id) === false);
   hostsOk = new Map(hosts.map((host) => [host.id, host.ok]));
   const quiet = !notifiedOnce || !everySourceRead() || cameBack;
+  const firstPass = !notifiedOnce || !everySourceRead();
   notifiedOnce = true;
   const enabled = useSettingsStore.getState().settings.workstreams?.notifications ?? true;
   const documents = Object.values(store.entries).map((entry) => entry.document);
   notifyWorkstreams(workstreamNotices(documents, assessments), quiet, enabled);
+  // Until every source was read once the assessments are still filling up;
+  // the persisted baseline then catches up on the first full pass.
+  if (!firstPass) ingestWorkstreams(documents, assessments, cameBack);
 }
 
 /** Listen to the other windows: a pop-out adds records, a notification opens a workstream. */
