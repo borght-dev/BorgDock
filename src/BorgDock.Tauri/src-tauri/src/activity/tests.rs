@@ -41,7 +41,7 @@ fn entry(id: &str, needs_you: bool) -> ActivityEntryInput {
         coverage: "live".into(),
         summary: format!("Entry {id}"),
         detail: None,
-        payload: "{}".into(),
+        payload: r#"{"schema":1,"action":null,"links":{"itemIds":[1]}}"#.into(),
     }
 }
 
@@ -353,7 +353,7 @@ async fn enrichments_change_text_but_never_read_state() {
                 id: format!("{SOURCE}|q"),
                 summary: Some("W3 asks: which option?".into()),
                 detail: Some(Some("Option A or B".into())),
-                payload: Some("{\"action\":1}".into()),
+                action: Some("{\"kind\":\"open-item\",\"itemId\":7}".into()),
             }],
             ..empty_commit(1, 3)
         },
@@ -364,7 +364,12 @@ async fn enrichments_change_text_but_never_read_state() {
     let row = list(&store, all()).await.entries.remove(0);
     assert_eq!(row.summary, "W3 asks: which option?");
     assert_eq!(row.detail.as_deref(), Some("Option A or B"));
-    assert_eq!(row.payload, "{\"action\":1}");
+    let payload: serde_json::Value = serde_json::from_str(&row.payload).unwrap();
+    assert_eq!(payload["action"]["itemId"], 7);
+    assert_eq!(
+        payload["links"]["itemIds"][0], 1,
+        "the rest of the payload stays"
+    );
     assert_eq!(row.read, "read");
     assert_eq!(row.read_reason.as_deref(), Some("user"));
 

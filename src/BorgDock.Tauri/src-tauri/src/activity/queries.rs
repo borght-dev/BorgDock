@@ -400,8 +400,12 @@ fn enrich(
     source_id: &str,
     enrichment: &ActivityEnrichment,
 ) -> Result<bool, String> {
-    if enrichment.summary.is_none() && enrichment.detail.is_none() && enrichment.payload.is_none() {
+    if enrichment.summary.is_none() && enrichment.detail.is_none() && enrichment.action.is_none() {
         return Ok(false);
+    }
+    if let Some(action) = &enrichment.action {
+        serde_json::from_str::<serde_json::Value>(action)
+            .map_err(|e| format!("Activity store: the action is not JSON: {e}"))?;
     }
     let (set_detail, detail) = match &enrichment.detail {
         Some(detail) => (true, detail.clone()),
@@ -409,20 +413,14 @@ fn enrich(
     };
     let changed = tx
         .execute(
-            "UPDATE entries SET summary = COALESCE(?3, summary), \
-             detail = CASE WHEN ?4 THEN ?5 ELSE detail END, \
-             payload = COALESCE(?6, payload), version = version + 1 \
-             WHERE id = ?1 AND source_id = ?2 \
-             AND (summary IS NOT COALESCE(?3, summary) \
-                  OR detail IS NOT (CASE WHEN ?4 THEN ?5 ELSE detail END) \
-                  OR payload IS NOT COALESCE(?6, payload))",
+            "WITH next AS (SELECT COALESCE(?3, summary) AS summary,                     CASE WHEN ?4 THEN ?5 ELSE detail END AS detail,                     CASE WHEN ?6 IS NULL THEN payload ELSE json_set(payload, '$.action', json(?6)) END AS payload                   FROM entries WHERE id = ?1)              UPDATE entries SET summary = next.summary, detail = next.detail,              payload = next.payload, version = version + 1 FROM next              WHERE id = ?1 AND source_id = ?2              AND (entries.summary IS NOT next.summary OR entries.detail IS NOT next.detail                   OR json(entries.payload) IS NOT json(next.payload))",
             params![
                 enrichment.id,
                 source_id,
                 enrichment.summary,
                 set_detail,
                 detail,
-                enrichment.payload
+                enrichment.action
             ],
         )
         .map_err(db)?;

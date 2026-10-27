@@ -4,6 +4,8 @@
  * what it needs from you.
  */
 
+import type { T3Run } from '@/services/t3/api';
+
 /** Where an item sits, most urgent first. */
 export type Bay = 'waiting' | 'drift' | 'working' | 'next' | 'idle' | 'paused' | 'handed';
 
@@ -119,6 +121,8 @@ export interface AgentThread {
   questionRequestId: string | null;
   questions: AgentQuestion[];
   lastAgentMessage: string | null;
+  /** The latest run as the shell reported it; the activity journal compares it. */
+  run?: T3Run;
 }
 
 /** A T3 project: a checkout an agent can run in. */

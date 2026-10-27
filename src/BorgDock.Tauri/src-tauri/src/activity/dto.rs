@@ -66,8 +66,8 @@ pub struct ActivityEntryInput {
 }
 
 /// Later facts for an entry that exists. Absent fields stay; `detail: null`
-/// clears the detail. `payload` replaces the whole payload, which is how a
-/// new action arrives. Never touches read state.
+/// clears the detail. `action` is the new action as JSON (`"null"` clears
+/// it); it replaces the action inside the payload. Never touches read state.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -81,7 +81,7 @@ pub struct ActivityEnrichment {
     pub detail: Option<Option<String>>,
     #[serde(default)]
     #[cfg_attr(test, specta(optional))]
-    pub payload: Option<String>,
+    pub action: Option<String>,
 }
 
 /// Closes open entries that existed before the commit: those in `ids`, and

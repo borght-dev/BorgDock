@@ -1,4 +1,4 @@
-import { commands } from '@/generated/commands';
+import { commands, type RunDto_Serialize } from '@/generated/commands';
 import type {
   AgentQuestion,
   PullRequestState,
@@ -41,7 +41,12 @@ export interface T3Thread {
   pullRequests: ThreadPullRequest[];
   /** The top-level thread this subagent works for; null for every other thread. */
   subagentOf?: string | null;
+  /** The latest run as T3 reports it, for the activity journal. */
+  run?: T3Run;
 }
+
+/** The latest run before `status` folds it: ids, raw status, requests, limits, visits. */
+export type T3Run = RunDto_Serialize;
 
 export interface T3Snapshot {
   /** False when the host's sequence still equals `knownSequence`; the lists are then empty. */

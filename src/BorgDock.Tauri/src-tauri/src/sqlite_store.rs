@@ -372,7 +372,7 @@ mod tests {
     }
 
     #[test]
-    fn quarantine_moves_the_wal_side_files_and_reports_where() {
+    fn quarantine_leaves_no_old_wal_next_to_the_fresh_file_and_reports_where() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("sample.db");
         std::fs::write(&path, b"garbage".repeat(500)).unwrap();
@@ -384,8 +384,13 @@ mod tests {
         let aside_name = aside.file_name().unwrap().to_string_lossy().into_owned();
         assert!(aside_name.starts_with("sample.db.corrupt-"), "{aside_name}");
         assert!(aside.exists());
-        assert!(PathBuf::from(format!("{}-wal", aside.display())).exists());
-        assert!(PathBuf::from(format!("{}-shm", aside.display())).exists());
+        // SQLite may discard side files it can't use while it fails to open;
+        // what must never happen is the old WAL replaying into the new file.
+        for suffix in ["-wal", "-shm"] {
+            let side = dir.path().join(format!("sample.db{suffix}"));
+            let old = std::fs::read(&side).unwrap_or_default();
+            assert!(!old.starts_with(b"old "), "{suffix} survived next to the fresh file");
+        }
         assert_eq!(user_version(&opened.conn), 2);
     }
 

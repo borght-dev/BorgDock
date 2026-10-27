@@ -1036,6 +1036,23 @@ mod tests {
             raw["threads"].as_array().map_or(0, Vec::len),
         );
         assert!(!snapshot.projects.is_empty());
+        let runs =
+            |f: fn(&shell::RunDto) -> bool| snapshot.threads.iter().filter(|t| f(&t.run)).count();
+        println!(
+            "runs: with id={} completed_at={} raw_status={} stop_requested={} errors={} pending={} limits={} visited={} plans={}",
+            runs(|r| r.id.is_some()),
+            runs(|r| r.completed_at.is_some()),
+            runs(|r| r.status.is_some()),
+            runs(|r| r.stop_requested),
+            runs(|r| r.last_error_class.is_some()),
+            runs(|r| r.pending_request.is_some()),
+            runs(|r| r.limit_recovery.is_some()),
+            runs(|r| r.last_visited_at.is_some()),
+            runs(|r| r.has_plan),
+        );
+        if let Some(thread) = snapshot.threads.iter().find(|t| t.run.id.is_some()) {
+            println!("sample run: {:?}", thread.run);
+        }
 
         if let Some(thread) = snapshot.threads.iter().find(|t| t.status != "settled") {
             let detail =

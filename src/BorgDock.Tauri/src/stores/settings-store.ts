@@ -55,6 +55,13 @@ const defaultSettings: AppSettings = {
     ciFailureGroupGrows: true,
     ciFailureOwnerStale: true,
     ciFailureFixMerged: true,
+    activity: {
+      categories: {},
+      seenInT3: true,
+      markReadOnOpen: true,
+      taskbarBadge: true,
+      push: { enabled: false, preset: 'home-assistant', awayMinutes: 10, hideTitles: false },
+    },
   },
   agents: {
     defaultProvider: 'claude',

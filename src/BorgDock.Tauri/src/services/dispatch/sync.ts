@@ -1,4 +1,5 @@
 import { toggleTrackedWorkItem } from '@/components/work-items/work-item-toggles';
+import { ingestT3Host, retireT3HostsExcept, t3HostFailed } from '@/services/activity/adapters/t3';
 import type { AdoClient } from '@/services/ado/client';
 import { adoClient } from '@/services/ado/singleton';
 import {
@@ -75,6 +76,7 @@ export function toAgentThread(
     questionRequestId: asking ? (previous?.questionRequestId ?? null) : null,
     questions: asking ? (previous?.questions ?? []) : [],
     lastAgentMessage: stopped ? (previous?.lastAgentMessage ?? null) : null,
+    run: thread.run,
   };
 }
 
@@ -388,6 +390,7 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
       error: errorText(error),
       environmentId: state.environmentId,
     });
+    t3HostFailed(host);
     recomputeOverview();
     return;
   }
@@ -435,6 +438,9 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
 
   await readConversationReferences(host, state);
   await readDetails(host, state);
+  if (stillFollowed(host, state)) {
+    ingestT3Host(host, state.environmentId, state.sequence, threadsOf(host.id));
+  }
 }
 
 /**
@@ -477,6 +483,7 @@ export function followHostList(): void {
   const followed = hosts.map((host) => host.id);
   useDispatchStore.getState().retainHosts(followed);
   void forgetHostsExcept(followed);
+  void retireT3HostsExcept(followed);
   recomputeOverview();
   for (const host of hosts) void syncHost(host);
 }

@@ -122,6 +122,20 @@ pub struct RepoSettings {
     /// historic active-account behaviour.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub github_account: Option<String>,
+    /// Deployments the activity journal follows for this repository.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deployments: Option<RepoDeployments>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct RepoDeployments {
+    #[serde(default)]
+    pub enabled: bool,
+    /// Glob patterns such as `dev`, `*-a`, `acc*`, `prod*`.
+    #[serde(default)]
+    pub environments: Vec<String>,
 }
 
 /// A read-only repository whose worktree list is fetched over SSH.
@@ -303,6 +317,90 @@ pub struct NotificationSettings {
     /// A related CI failure's fix merged while PRs are still red.
     #[serde(default = "default_true")]
     pub ci_failure_fix_merged: bool,
+    /// The activity journal: popups, push and read behaviour per category.
+    #[serde(default)]
+    pub activity: ActivityNotificationSettings,
+}
+
+/// One category's channels. Absent: the category's default.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityCategoryChannels {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub popup: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub push: Option<bool>,
+}
+
+/// The phone channel. The webhook URL and token live in the keychain as
+/// `borgdock:activity-push`, never here.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityPushSettings {
+    #[serde(default)]
+    pub enabled: bool,
+    /// `home-assistant`; later `ntfy`, `pushover`, `json`.
+    #[serde(default = "default_push_preset")]
+    pub preset: String,
+    /// Push once I have been away from the laptop this long.
+    #[serde(default = "default_away_minutes")]
+    pub away_minutes: u32,
+    /// Send "W3 asks a question" without the item's title.
+    #[serde(default)]
+    pub hide_titles: bool,
+}
+
+fn default_push_preset() -> String {
+    "home-assistant".to_string()
+}
+
+fn default_away_minutes() -> u32 {
+    10
+}
+
+impl Default for ActivityPushSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            preset: default_push_preset(),
+            away_minutes: default_away_minutes(),
+            hide_titles: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityNotificationSettings {
+    /// Category id (`agent.question`, `pr.review`, …) to its channels.
+    #[serde(default)]
+    pub categories: std::collections::BTreeMap<String, ActivityCategoryChannels>,
+    /// A visit to a thread in T3 marks its entries read.
+    #[serde(default = "default_true")]
+    pub seen_in_t3: bool,
+    /// Opening a PR, item, workstream or CI group marks its entries read.
+    #[serde(default = "default_true")]
+    pub mark_read_on_open: bool,
+    /// The needs-you count on the taskbar icon.
+    #[serde(default = "default_true")]
+    pub taskbar_badge: bool,
+    #[serde(default)]
+    pub push: ActivityPushSettings,
+}
+
+impl Default for ActivityNotificationSettings {
+    fn default() -> Self {
+        Self {
+            categories: Default::default(),
+            seen_in_t3: true,
+            mark_read_on_open: true,
+            taskbar_badge: true,
+            push: ActivityPushSettings::default(),
+        }
+    }
 }
 
 fn default_nudge_interval() -> u32 {
@@ -331,6 +429,7 @@ impl Default for NotificationSettings {
             ci_failure_group_grows: true,
             ci_failure_owner_stale: true,
             ci_failure_fix_merged: true,
+            activity: ActivityNotificationSettings::default(),
         }
     }
 }

@@ -399,6 +399,21 @@ export type ActivityCapacity = "ok" |
 /**  Entries that need you fill the journal; others are not added. */
 "full";
 
+/**  One category's channels. Absent: the category's default. */
+export type ActivityCategoryChannels = ActivityCategoryChannels_Serialize | ActivityCategoryChannels_Deserialize;
+
+/**  One category's channels. Absent: the category's default. */
+export type ActivityCategoryChannels_Deserialize = {
+	popup?: boolean | null,
+	push?: boolean | null,
+};
+
+/**  One category's channels. Absent: the category's default. */
+export type ActivityCategoryChannels_Serialize = {
+	popup?: boolean,
+	push?: boolean,
+};
+
 export type ActivityChanged = {
 	revision: number,
 	counts: ActivityCounts,
@@ -489,33 +504,33 @@ export type ActivityCursor = {
 
 /**
  *  Later facts for an entry that exists. Absent fields stay; `detail: null`
- *  clears the detail. `payload` replaces the whole payload, which is how a
- *  new action arrives. Never touches read state.
+ *  clears the detail. `action` is the new action as JSON (`"null"` clears
+ *  it); it replaces the action inside the payload. Never touches read state.
  */
 export type ActivityEnrichment = ActivityEnrichment_Serialize | ActivityEnrichment_Deserialize;
 
 /**
  *  Later facts for an entry that exists. Absent fields stay; `detail: null`
- *  clears the detail. `payload` replaces the whole payload, which is how a
- *  new action arrives. Never touches read state.
+ *  clears the detail. `action` is the new action as JSON (`"null"` clears
+ *  it); it replaces the action inside the payload. Never touches read state.
  */
 export type ActivityEnrichment_Deserialize = {
 	id: string,
 	summary?: string | null,
 	detail?: string | null,
-	payload?: string | null,
+	action?: string | null,
 };
 
 /**
  *  Later facts for an entry that exists. Absent fields stay; `detail: null`
- *  clears the detail. `payload` replaces the whole payload, which is how a
- *  new action arrives. Never touches read state.
+ *  clears the detail. `action` is the new action as JSON (`"null"` clears
+ *  it); it replaces the action inside the payload. Never touches read state.
  */
 export type ActivityEnrichment_Serialize = {
 	id: string,
 	summary?: string | null,
 	detail?: string | null,
-	payload?: string | null,
+	action?: string | null,
 };
 
 /**  An entry as derivation produces it. The store owns read state and version. */
@@ -696,6 +711,32 @@ export type ActivityMarkResult_Serialize = {
 	revision: number,
 };
 
+export type ActivityNotificationSettings = ActivityNotificationSettings_Serialize | ActivityNotificationSettings_Deserialize;
+
+export type ActivityNotificationSettings_Deserialize = {
+	/**  Category id (`agent.question`, `pr.review`, …) to its channels. */
+	categories?: { [key in string]: ActivityCategoryChannels_Deserialize },
+	/**  A visit to a thread in T3 marks its entries read. */
+	seenInT3?: boolean,
+	/**  Opening a PR, item, workstream or CI group marks its entries read. */
+	markReadOnOpen?: boolean,
+	/**  The needs-you count on the taskbar icon. */
+	taskbarBadge?: boolean,
+	push?: ActivityPushSettings_Deserialize,
+};
+
+export type ActivityNotificationSettings_Serialize = {
+	/**  Category id (`agent.question`, `pr.review`, …) to its channels. */
+	categories: { [key in string]: ActivityCategoryChannels_Serialize },
+	/**  A visit to a thread in T3 marks its entries read. */
+	seenInT3: boolean,
+	/**  Opening a PR, item, workstream or CI group marks its entries read. */
+	markReadOnOpen: boolean,
+	/**  The needs-you count on the taskbar icon. */
+	taskbarBadge: boolean,
+	push: ActivityPushSettings_Serialize,
+};
+
 export type ActivityOutboxAck = {
 	entryId: string,
 	channel: string,
@@ -747,6 +788,40 @@ export type ActivityPage_Serialize = {
 	/**  Entries matching the query, ignoring `limit` and `before`. */
 	total: number,
 	revision: number,
+};
+
+/**
+ *  The phone channel. The webhook URL and token live in the keychain as
+ *  `borgdock:activity-push`, never here.
+ */
+export type ActivityPushSettings = ActivityPushSettings_Serialize | ActivityPushSettings_Deserialize;
+
+/**
+ *  The phone channel. The webhook URL and token live in the keychain as
+ *  `borgdock:activity-push`, never here.
+ */
+export type ActivityPushSettings_Deserialize = {
+	enabled?: boolean,
+	/**  `home-assistant`; later `ntfy`, `pushover`, `json`. */
+	preset?: string,
+	/**  Push once I have been away from the laptop this long. */
+	awayMinutes?: number,
+	/**  Send "W3 asks a question" without the item's title. */
+	hideTitles?: boolean,
+};
+
+/**
+ *  The phone channel. The webhook URL and token live in the keychain as
+ *  `borgdock:activity-push`, never here.
+ */
+export type ActivityPushSettings_Serialize = {
+	enabled: boolean,
+	/**  `home-assistant`; later `ntfy`, `pushover`, `json`. */
+	preset: string,
+	/**  Push once I have been away from the laptop this long. */
+	awayMinutes: number,
+	/**  Send "W3 asks a question" without the item's title. */
+	hideTitles: boolean,
 };
 
 /**
@@ -2166,6 +2241,22 @@ export type LaunchRequest_Serialize = {
 	prompt: string,
 };
 
+export type LimitRecoveryDto = LimitRecoveryDto_Serialize | LimitRecoveryDto_Deserialize;
+
+export type LimitRecoveryDto_Deserialize = {
+	requestId?: string | null,
+	runId: string,
+	resetAt: string,
+	autoResume: boolean,
+};
+
+export type LimitRecoveryDto_Serialize = {
+	requestId: string | null,
+	runId: string,
+	resetAt: string,
+	autoResume: boolean,
+};
+
 export type ListFilesResult = {
 	entries: FileEntry[],
 	truncated: boolean,
@@ -2228,6 +2319,8 @@ export type NotificationSettings_Deserialize = {
 	ciFailureOwnerStale?: boolean,
 	/**  A related CI failure's fix merged while PRs are still red. */
 	ciFailureFixMerged?: boolean,
+	/**  The activity journal: popups, push and read behaviour per category. */
+	activity?: ActivityNotificationSettings_Deserialize,
 } & ({
 	toastOnNewPR?: boolean,
 } & {
@@ -2257,6 +2350,24 @@ export type NotificationSettings_Serialize = {
 	ciFailureOwnerStale: boolean,
 	/**  A related CI failure's fix merged while PRs are still red. */
 	ciFailureFixMerged: boolean,
+	/**  The activity journal: popups, push and read behaviour per category. */
+	activity: ActivityNotificationSettings_Serialize,
+};
+
+export type PendingRequestDto = PendingRequestDto_Serialize | PendingRequestDto_Deserialize;
+
+export type PendingRequestDto_Deserialize = {
+	id: string,
+	/**  `user_input` for a question; anything else asks for approval. */
+	kind: string,
+	createdAt?: string | null,
+};
+
+export type PendingRequestDto_Serialize = {
+	id: string,
+	/**  `user_input` for a question; anything else asks for approval. */
+	kind: string,
+	createdAt: string | null,
 };
 
 export type PrDetailSettings = Record<string, never>;
@@ -2436,6 +2547,20 @@ export type RepoCandidate_Serialize = {
 	alreadyTracked: boolean,
 };
 
+export type RepoDeployments = RepoDeployments_Serialize | RepoDeployments_Deserialize;
+
+export type RepoDeployments_Deserialize = {
+	enabled?: boolean,
+	/**  Glob patterns such as `dev`, `*-a`, `acc*`, `prod*`. */
+	environments?: string[],
+};
+
+export type RepoDeployments_Serialize = {
+	enabled: boolean,
+	/**  Glob patterns such as `dev`, `*-a`, `acc*`, `prod*`. */
+	environments: string[],
+};
+
 export type RepoSettings = RepoSettings_Serialize | RepoSettings_Deserialize;
 
 export type RepoSettings_Deserialize = {
@@ -2451,6 +2576,8 @@ export type RepoSettings_Deserialize = {
 	 *  historic active-account behaviour.
 	 */
 	githubAccount?: string | null,
+	/**  Deployments the activity journal follows for this repository. */
+	deployments?: RepoDeployments_Deserialize | null,
 };
 
 export type RepoSettings_Serialize = {
@@ -2466,6 +2593,8 @@ export type RepoSettings_Serialize = {
 	 *  historic active-account behaviour.
 	 */
 	githubAccount?: string,
+	/**  Deployments the activity journal follows for this repository. */
+	deployments?: RepoDeployments_Serialize,
 };
 
 export type ResultSet = {
@@ -2473,6 +2602,51 @@ export type ResultSet = {
 	rows: ((string | null)[])[],
 	rowCount: number,
 	truncated: boolean,
+};
+
+/**  The thread's latest run as T3 reports it, before `status` folds it. */
+export type RunDto = RunDto_Serialize | RunDto_Deserialize;
+
+/**  The thread's latest run as T3 reports it, before `status` folds it. */
+export type RunDto_Deserialize = {
+	/**  `run:thread:<id>:ordinal:<n>`. */
+	id?: string | null,
+	completedAt?: string | null,
+	/**
+	 *  T3's raw status: `completed`, `failed`, `interrupted`, `cancelled`,
+	 *  `queued`, `running`, `waiting` or `idle`.
+	 */
+	status?: string | null,
+	/**  I stopped it; an interruption I asked for is not news. */
+	stopRequested: boolean,
+	lastError?: string | null,
+	lastErrorClass?: string | null,
+	pendingRequest?: PendingRequestDto_Deserialize | null,
+	hasPlan: boolean,
+	limitRecovery?: LimitRecoveryDto_Deserialize | null,
+	/**  The last time a client showed the thread (desktop, web or phone via the desktop). */
+	lastVisitedAt?: string | null,
+};
+
+/**  The thread's latest run as T3 reports it, before `status` folds it. */
+export type RunDto_Serialize = {
+	/**  `run:thread:<id>:ordinal:<n>`. */
+	id: string | null,
+	completedAt: string | null,
+	/**
+	 *  T3's raw status: `completed`, `failed`, `interrupted`, `cancelled`,
+	 *  `queued`, `running`, `waiting` or `idle`.
+	 */
+	status: string | null,
+	/**  I stopped it; an interruption I asked for is not news. */
+	stopRequested: boolean,
+	lastError: string | null,
+	lastErrorClass: string | null,
+	pendingRequest: PendingRequestDto_Serialize | null,
+	hasPlan: boolean,
+	limitRecovery: LimitRecoveryDto_Serialize | null,
+	/**  The last time a client showed the thread (desktop, web or phone via the desktop). */
+	lastVisitedAt: string | null,
 };
 
 export type RuntimeVisibility = boolean;
@@ -2793,6 +2967,8 @@ export type ThreadDto_Deserialize = {
 	pullRequests: PullRequestDto_Deserialize[],
 	/**  The top-level thread this subagent works for; `None` for every other thread. */
 	subagentOf?: string | null,
+	/**  What the activity journal compares between snapshots. */
+	run: RunDto_Deserialize,
 };
 
 export type ThreadDto_Serialize = {
@@ -2814,6 +2990,8 @@ export type ThreadDto_Serialize = {
 	pullRequests: PullRequestDto_Serialize[],
 	/**  The top-level thread this subagent works for; `None` for every other thread. */
 	subagentOf: string | null,
+	/**  What the activity journal compares between snapshots. */
+	run: RunDto_Serialize,
 };
 
 export type ToastAction = ToastAction_Serialize | ToastAction_Deserialize;
