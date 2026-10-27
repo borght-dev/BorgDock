@@ -16,6 +16,59 @@ import {
 
 const NO_CHECKS: NonNullable<PrCardData['checks']> = { ok: 0, fail: 0, run: 0, total: 0 };
 
+/** A PR row's marker for the related CI failure it shares. */
+export interface SharedFailureMarker {
+  /** What failed: the test, error or step the group is about. */
+  title: string;
+  /** Open PRs the failure fails, this one included. */
+  prCount: number;
+  /** The base branch, when the failure is also on it. */
+  alsoOn: string | null;
+  /**
+   * Why the PR's red checks are not its doing ("also fails on master"); set
+   * only when that holds for every failed check.
+   */
+  notCausedBy: string | null;
+  /** Narrows the list to the PRs this failure fails. */
+  onOpen: () => void;
+}
+
+function markerReach(marker: SharedFailureMarker): string {
+  if (marker.prCount > 1) return `${marker.prCount} PRs`;
+  return marker.alsoOn ? `also on ${marker.alsoOn}` : '';
+}
+
+/** "CI red, not caused by this PR: also fails on master" for the marker and the check bar. */
+function markerSummary(marker: SharedFailureMarker): string {
+  if (marker.notCausedBy) return `CI red, not caused by this PR: ${marker.notCausedBy}`;
+  return marker.prCount > 1
+    ? `Failure shared with ${marker.prCount - 1} other ${marker.prCount === 2 ? 'PR' : 'PRs'}`
+    : `Failure also on ${marker.alsoOn ?? 'the base branch'}`;
+}
+
+/** The marker in the meta line: names the failure and opens it, without opening the PR. */
+function FailureMarker({ marker }: { marker: SharedFailureMarker }) {
+  const reach = markerReach(marker);
+  return (
+    <button
+      type="button"
+      className="bd-ci-marker"
+      data-ci-marker=""
+      data-not-caused={marker.notCausedBy ? 'true' : undefined}
+      title={`${markerSummary(marker)}. ${marker.title}. Show the PRs it fails.`}
+      onClick={(e) => {
+        e.stopPropagation();
+        marker.onOpen();
+      }}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      {marker.notCausedBy && <span className="bd-ci-marker__lead">Not caused by this PR</span>}
+      <span className="bd-ci-marker__name">{marker.title}</span>
+      {reach && <span className="bd-ci-marker__reach">{reach}</span>}
+    </button>
+  );
+}
+
 export interface PrRowCoreProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
   pr: PrCardData;
   /** `comfortable` (42 px, title and meta line) or `compact` (32 px, title only). */
@@ -32,10 +85,10 @@ export interface PrRowCoreProps extends Omit<HTMLAttributes<HTMLDivElement>, 'ch
    */
   meta?: ReactNode;
   /**
-   * PRs that share this PR's failure (related CI failures), 0 for none. The
-   * meta line and the check bar's title say so; the row gains no column.
+   * The shared CI failure behind this PR's red checks, if any. The meta line
+   * names it in a marker that opens it; the row gains no column.
    */
-  sharedFailure?: number;
+  sharedFailure?: SharedFailureMarker;
   /**
    * Put `data-key` on the row (or on its wrapper, with an action slot) so
    * `flip()` follows it (default). Rows a virtualizer recycles pass `false`:
@@ -72,7 +125,7 @@ function MetaLine({
   pr: PrCardData;
   now: number;
   staleAfterDays: number;
-  sharedFailure: number;
+  sharedFailure: SharedFailureMarker | undefined;
 }) {
   const event = metaEvent(pr);
   const ago = event ? formatAgo(event.at, now) : '';
@@ -83,10 +136,10 @@ function MetaLine({
       <em>{pr.authorLogin}</em> in {pr.repoName}
       {event && ago && `, ${event.verb} ${ago}`}
       {stale && ', stale'}
-      {sharedFailure > 1 && (
+      {sharedFailure && (
         <>
           {' '}
-          <span className="bd-ci-marker">shared failure · {sharedFailure} PRs</span>
+          <FailureMarker marker={sharedFailure} />
         </>
       )}
     </span>
@@ -113,7 +166,7 @@ export function PrRowCore({
   now = Date.now(),
   staleAfterDays = STALE_AFTER_DAYS,
   meta,
-  sharedFailure = 0,
+  sharedFailure,
   animateKey = true,
   action,
   className,
@@ -125,8 +178,7 @@ export function PrRowCore({
   const chip = rowChipFor(pr);
   const checks = pr.checks ?? NO_CHECKS;
   const checkLabel =
-    checkBarSummary(checks).label +
-    (sharedFailure > 1 ? ` · failure shared with ${sharedFailure - 1} other PRs` : '');
+    checkBarSummary(checks).label + (sharedFailure ? ` · ${markerSummary(sharedFailure)}` : '');
   const interactive = onClick !== undefined;
 
   const withSlot = action !== undefined;

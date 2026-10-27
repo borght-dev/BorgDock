@@ -1,11 +1,17 @@
 import { create } from 'zustand';
 import { relatednessOf } from '@/services/ci-failures/hypothesis';
 import { GITHUB_HOST, parseScope, scopeOf } from '@/services/ci-failures/identity';
+import {
+  blockedPrsByGroup,
+  jobIndexOf,
+  type PrCiLens,
+  prCiLens,
+} from '@/services/ci-failures/lens';
 import * as store from '@/services/ci-failures/store-api';
 import type { CiGroupSummary } from '@/services/ci-failures/types';
 import { createLogger } from '@/services/logger';
 import { usePrStore } from '@/stores/pr-store';
-import type { RepoSettings } from '@/types';
+import type { PullRequestWithChecks, RepoSettings } from '@/types';
 
 const log = createLogger('ci-failures-store');
 
@@ -162,28 +168,62 @@ export function useCiBranch(scope: string | null): string | null {
   return branchOfScope(scope, prs);
 }
 
-let sharedCache: { groups: readonly CiGroupSummary[]; byPr: Map<string, number> } | null = null;
+let blockedCache: {
+  groups: readonly CiGroupSummary[];
+  prs: readonly PullRequestWithChecks[];
+  byGroup: Map<string, PullRequestWithChecks[]>;
+  counts: Map<string, number>;
+} | null = null;
 
-/** PRs per shared group by lower-case `owner/repo#number`, rebuilt only when the groups change. */
-function sharedCountsByPr(groups: readonly CiGroupSummary[]): Map<string, number> {
-  if (sharedCache?.groups === groups) return sharedCache.byPr;
-  const byPr = new Map<string, number>();
-  for (const group of groups) {
-    if (!isSharedGroup(group) || group.status === 'resolved') continue;
-    const parts = parseScope(group.scope);
-    if (!parts) continue;
-    for (const number of group.prNumbers) {
-      const key = `${parts.owner}/${parts.repo}#${number}`;
-      byPr.set(key, Math.max(byPr.get(key) ?? 0, group.prNumbers.length));
-    }
-  }
-  sharedCache = { groups, byPr };
-  return byPr;
+/** The open PRs each open shared group still fails, rebuilt only when the groups or the PRs change. */
+export function blockedOf(
+  groups: readonly CiGroupSummary[],
+  prs: readonly PullRequestWithChecks[],
+): { byGroup: Map<string, PullRequestWithChecks[]>; counts: Map<string, number> } {
+  if (blockedCache?.groups === groups && blockedCache.prs === prs) return blockedCache;
+  const byGroup = blockedPrsByGroup(groups, prs);
+  const counts = new Map([...byGroup].map(([id, list]) => [id, list.length]));
+  blockedCache = { groups, prs, byGroup, counts };
+  return blockedCache;
 }
 
-/** How many PRs share this PR's widest shared CI failure, 0 when none. */
-export function useSharedFailureCount(owner: string, repo: string, number: number): number {
-  return useCiFailuresStore(
-    (s) => sharedCountsByPr(s.groups).get(`${owner}/${repo}#${number}`.toLowerCase()) ?? 0,
+/** The open PRs each open shared group still fails, by group id. */
+export function useBlockedPrs(): Map<string, PullRequestWithChecks[]> {
+  const groups = useCiFailuresStore((s) => s.groups);
+  const prs = usePrStore((s) => s.pullRequests);
+  return blockedOf(groups, prs).byGroup;
+}
+
+/** The shared groups behind a PR's failed checks, and whether they are its doing. */
+export function usePrCiLens(pr: PullRequestWithChecks): PrCiLens | null {
+  const groups = useCiFailuresStore((s) => s.groups);
+  // A primitive, so a poll re-renders only the rows whose counts moved.
+  const counts = usePrStore((s) => blockedCountsOf(pr, groups, s.pullRequests));
+  if (pr.failedCheckNames.length === 0) return null;
+  const blocked = new Map(
+    counts
+      .split(',')
+      .filter(Boolean)
+      .map((entry) => {
+        const at = entry.lastIndexOf(':');
+        return [entry.slice(0, at), Number(entry.slice(at + 1))] as const;
+      }),
   );
+  return prCiLens(pr, jobIndexOf(groups), blocked);
+}
+
+/** `groupId:count,…` for the groups holding the PR's failed jobs; empty for a PR without one. */
+function blockedCountsOf(
+  pr: PullRequestWithChecks,
+  groups: readonly CiGroupSummary[],
+  prs: readonly PullRequestWithChecks[],
+): string {
+  if (pr.failedCheckNames.length === 0 || groups.length === 0) return '';
+  const index = jobIndexOf(groups);
+  const ids = new Set(
+    (pr.ciJobs ?? []).flatMap((job) => (index.get(job.id) ?? []).map((group) => group.id)),
+  );
+  if (ids.size === 0) return '';
+  const { counts } = blockedOf(groups, prs);
+  return [...ids].map((id) => `${id}:${counts.get(id) ?? 0}`).join(',');
 }

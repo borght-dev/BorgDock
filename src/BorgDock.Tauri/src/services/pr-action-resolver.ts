@@ -74,17 +74,20 @@ export function shapeFromPrWithChecks(
  * without opening the PR: Review or Merge, else nothing. `primaryFor`, with
  * one change: a review still requested from me wins over Merge, so a ready
  * PR that waits on my review asks for the review first, on the row and on
- * the card alike.
+ * the card alike. With `failureNotCaused` (every failed check is a shared
+ * failure that is not the PR's doing) the red checks don't hide the review.
  */
 export function workbenchPrimaryAction(
   prWithChecks: PullRequestWithChecks,
   username: string,
   teams: readonly string[] = [],
+  options: { failureNotCaused?: boolean } = {},
 ): 'review' | 'merge' | null {
   const pr = prWithChecks.pullRequest;
   if (pr.state !== 'open' || pr.mergedAt) return null;
   const reviewing = isWaitingOnMe(prWithChecks, username, teams);
   const shape = shapeFromPrWithChecks(prWithChecks, isMyPr(prWithChecks, username), reviewing);
+  if (options.failureNotCaused) shape.failing = false;
   const primary = primaryFor(shape);
   if (primary === 'merge' && reviewing) return 'review';
   return primary === 'review' || primary === 'merge' ? primary : null;

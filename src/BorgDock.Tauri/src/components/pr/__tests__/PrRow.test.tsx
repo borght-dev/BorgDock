@@ -1,10 +1,11 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { showPrMock, openPrDetailMock, mergeMock } = vi.hoisted(() => ({
+const { showPrMock, openPrDetailMock, mergeMock, showGroupPrsMock } = vi.hoisted(() => ({
   showPrMock: vi.fn().mockResolvedValue(undefined),
   openPrDetailMock: vi.fn().mockResolvedValue(undefined),
   mergeMock: vi.fn(),
+  showGroupPrsMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
@@ -31,11 +32,17 @@ vi.mock('@/services/pr-actions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/pr-actions')>()),
   mergePrWithToast: mergeMock,
 }));
+vi.mock('@/services/ci-failures/actions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/ci-failures/actions')>()),
+  showGroupPrs: showGroupPrsMock,
+}));
 vi.mock('@/services/windows', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/windows')>()),
   openPrDetail: openPrDetailMock,
 }));
 
+import { makeGroup } from '@/services/ci-failures/__fixtures__/store';
+import { useCiFailuresStore } from '@/stores/ci-failures-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -302,5 +309,96 @@ describe('PrRow action slot', () => {
     await act(async () => fireEvent.click(button));
     expect(button).toHaveAttribute('data-progress', 'idle');
     expect(button).toHaveTextContent('Merge');
+  });
+});
+
+describe('PrRow with a shared CI failure', () => {
+  const SCOPE = 'github.com||acme/app';
+  /** Red from one Actions job, waiting on my review. */
+  function redPr(number: number, jobId: number): PullRequestWithChecks {
+    const pr = listPr({
+      number,
+      title: `Red ${number}`,
+      repo: 'acme/app',
+      author: 'mira',
+      requestedReviewers: [FIXTURE_ME],
+      reviewStatus: 'pending',
+      checks: { total: 4, fail: 1 },
+    });
+    return {
+      ...pr,
+      failedCheckNames: ['e2e'],
+      ciJobs: [{ id: jobId, kind: 'actions', name: 'e2e', runId: 1, conclusion: 'failure' }],
+    };
+  }
+  const first = redPr(7, 701);
+  const second = redPr(8, 801);
+
+  function seed(defaultBranchRuns: number[]) {
+    usePrStore.setState({ pullRequests: [first, second], username: FIXTURE_ME, teams: [] });
+    useCiFailuresStore.setState({
+      loaded: true,
+      groups: [
+        makeGroup({
+          id: 'g-checkout',
+          scope: SCOPE,
+          title: 'checkout > pays with card',
+          prNumbers: [7, 8],
+          prJobIds: [701, 801],
+          defaultBranchRuns,
+          occurrenceCount: 2,
+        }),
+      ],
+    });
+  }
+
+  beforeEach(() => showGroupPrsMock.mockClear());
+  afterEach(() => {
+    cleanup();
+    useCiFailuresStore.setState({ groups: [] });
+  });
+
+  it('names the failure and how many open PRs it fails', () => {
+    seed([]);
+    render(<PrRow prWithChecks={first} />);
+    const marker = document.querySelector('[data-ci-marker]');
+    expect(marker).toHaveTextContent('checkout > pays with card');
+    expect(marker).toHaveTextContent('2 PRs');
+    expect(marker).not.toHaveAttribute('data-not-caused');
+    // Its failure may be its own: red still hides the review.
+    expect(rowActionFor(first, FIXTURE_ME)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Review #7' })).toBeNull();
+  });
+
+  it("says a failure that is also on the base branch is not the PR's, and keeps its review", () => {
+    seed([4812]);
+    render(<PrRow prWithChecks={first} />);
+    const marker = document.querySelector('[data-ci-marker]');
+    expect(marker).toHaveAttribute('data-not-caused', 'true');
+    expect(marker).toHaveTextContent('Not caused by this PR');
+    expect(marker?.getAttribute('title')).toContain(
+      'CI red, not caused by this PR: also fails on main',
+    );
+    expect(screen.getByRole('button', { name: 'Review #7' })).toBeInTheDocument();
+  });
+
+  it('narrows the list to the failure on a marker click without opening the PR', () => {
+    seed([]);
+    render(<PrRow prWithChecks={first} />);
+    fireEvent.click(document.querySelector('[data-ci-marker]')!);
+    expect(showGroupPrsMock).toHaveBeenCalledWith({
+      groupId: 'g-checkout',
+      title: 'checkout > pays with card',
+      scope: SCOPE,
+      prNumbers: [7, 8],
+    });
+    expect(showPrMock).not.toHaveBeenCalled();
+  });
+
+  it('shows no marker once the failed job passed on a new push', () => {
+    seed([]);
+    const pushed = { ...first, ciJobs: [{ ...first.ciJobs![0]!, id: 702 }] };
+    render(<PrRow prWithChecks={pushed} />);
+    expect(document.querySelector('[data-ci-marker]')).toBeNull();
   });
 });

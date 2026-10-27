@@ -1346,6 +1346,7 @@ fn summary_from_row(row: &Row) -> rusqlite::Result<CiGroupSummary> {
         revision: row.get(11)?,
         pr_numbers: Vec::new(),
         default_branch_runs: Vec::new(),
+        pr_job_ids: Vec::new(),
         occurrence_count: 0,
         run_count: 0,
         passed_on_retry: 0,
@@ -1390,6 +1391,7 @@ struct Member {
     pr_number: Option<u32>,
     run_id: Option<u64>,
     run_number: Option<u64>,
+    job_id: Option<u64>,
     failed_step: Option<String>,
     workflow_name: Option<String>,
     high: bool,
@@ -1400,6 +1402,7 @@ struct Member {
 struct Tally {
     pr_numbers: BTreeSet<u32>,
     default_branch_runs: BTreeSet<u64>,
+    pr_job_ids: BTreeSet<u64>,
     occurrences: u32,
     /// Run ids, or the occurrence id for an occurrence without a run.
     runs: HashSet<String>,
@@ -1414,7 +1417,10 @@ impl Tally {
     fn add(&mut self, member: Member) {
         self.occurrences += 1;
         match member.source.as_str() {
-            "pull_request" => self.pr_numbers.extend(member.pr_number),
+            "pull_request" => {
+                self.pr_numbers.extend(member.pr_number);
+                self.pr_job_ids.extend(member.job_id);
+            }
             "default_branch" => self
                 .default_branch_runs
                 .extend(member.run_number.or(member.run_id)),
@@ -1435,6 +1441,7 @@ impl Tally {
     fn apply(self, summary: &mut CiGroupSummary) {
         summary.pr_numbers = self.pr_numbers.into_iter().collect();
         summary.default_branch_runs = self.default_branch_runs.into_iter().collect();
+        summary.pr_job_ids = self.pr_job_ids.into_iter().collect();
         summary.occurrence_count = self.occurrences;
         summary.run_count = self.runs.len() as u32;
         summary.passed_on_retry = self.passed_on_retry;
@@ -1473,8 +1480,8 @@ fn summaries(conn: &Connection, selection: Selection) -> Result<Vec<CiGroupSumma
     let members = rows(
         conn,
         &format!(
-            "SELECT f.group_id, o.id, o.source, o.pr_number, o.run_id, o.run_number, o.failed_step, \
-               o.workflow_name, MAX(s.tier = 'high'), oc.kind \
+            "SELECT f.group_id, o.id, o.source, o.pr_number, o.run_id, o.run_number, o.job_id, \
+               o.failed_step, o.workflow_name, MAX(s.tier = 'high'), oc.kind \
              FROM groups g JOIN fingerprints f ON f.group_id = g.id {MEMBERS} \
              LEFT JOIN outcomes oc ON oc.occurrence_id = o.id \
              WHERE {filter} GROUP BY f.group_id, o.id"
@@ -1488,10 +1495,11 @@ fn summaries(conn: &Connection, selection: Selection) -> Result<Vec<CiGroupSumma
                 pr_number: row.get(3)?,
                 run_id: row.get(4)?,
                 run_number: row.get(5)?,
-                failed_step: row.get(6)?,
-                workflow_name: row.get(7)?,
-                high: row.get(8)?,
-                outcome: row.get(9)?,
+                job_id: row.get(6)?,
+                failed_step: row.get(7)?,
+                workflow_name: row.get(8)?,
+                high: row.get(9)?,
+                outcome: row.get(10)?,
             })
         },
     )?;

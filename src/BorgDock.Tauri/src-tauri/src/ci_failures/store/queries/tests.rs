@@ -222,6 +222,8 @@ fn a_summary_aggregates_the_groups_occurrences() {
     assert_eq!(group.id, "g1");
     assert_eq!(group.pr_numbers, vec![12, 15]);
     assert_eq!(group.default_branch_runs, vec![41]);
+    // Only PR failures: the default branch's job is not a PR's check.
+    assert_eq!(group.pr_job_ids, vec![1001, 2001, 2002]);
     assert_eq!(group.occurrence_count, 4);
     assert_eq!(group.run_count, 3);
     assert_eq!(group.passed_on_retry, 1);

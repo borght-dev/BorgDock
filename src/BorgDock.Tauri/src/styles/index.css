@@ -5168,6 +5168,44 @@ body.sql-resizing-v .sql-resize-handle {
     outline: 2px solid var(--color-accent);
     outline-offset: 1px;
   }
+  /* "Hide failing": a toggle beside the segmented filter. */
+  .bd-wb-head__toggle {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 5px;
+    height: 28px;
+    padding: 0 9px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: 7px;
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      color var(--motion-fast) var(--ease-std),
+      background-color var(--motion-fast) var(--ease-std),
+      border-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-wb-head__toggle:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+  }
+  .bd-wb-head__toggle[aria-pressed='true'] {
+    border-color: var(--color-status-green);
+    background: var(--color-success-badge-bg);
+    color: var(--color-success-badge-fg);
+  }
+  .bd-wb-head__toggle:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .bd-wb-head__toggle:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
 
   /* Segmented filter (SlidingHighlight, fill variant). */
   .bd-filter {

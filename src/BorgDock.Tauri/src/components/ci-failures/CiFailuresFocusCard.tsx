@@ -125,7 +125,7 @@ export function CiFailuresFocusCard() {
                 className="bd-ci-link"
                 onClick={() => run(() => openSheet({ kind: 'rerun', groupId: group.id }))}
               >
-                Rerun affected…
+                Update affected…
               </button>
             )}
           </li>

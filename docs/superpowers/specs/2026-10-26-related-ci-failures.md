@@ -53,6 +53,26 @@ Many affected PRs alone never raise a hypothesis.
 
 - A group is **shared** with 2+ PRs, or 1 PR plus the default branch; **repeated** with 2+ occurrences in one PR; otherwise **single** and hidden.
 - PR rows and Focus show shared, high-tier, unresolved groups only.
+- A group **blocks** an open PR while one of the PR's current failed jobs is in it (`prJobIds`, matched by job id). A pushed PR whose new job passed no longer counts, whatever `prNumbers` remembers.
+- The **strip above the PR list** shows each group that blocks 2+ open PRs, or 1 open PR and fails on the default branch, widest first. The row marker names the group's failure and narrows the list to the PRs it blocks.
+
+## Not caused by the PR
+
+A PR's red checks are **not caused by it** when every failed check is in a blocking group whose cause is outside the PR: the classification you picked (base branch, infrastructure, flaky), else the first such hypothesis. A failed commit status, a check in no group or a group without such a cause keeps the PR's own red. Such a PR's row marker says "Not caused by this PR", and its Review stays on the row (Merge never does: the checks are still red).
+
+"Hide failing" in the PR list head leaves every PR with a failing check out of the list and the segment counts, under every filter but Failing and Closed. It is remembered across launches.
+
+## Default branch story
+
+For a group with default-branch failures, read on demand and cached for ten minutes (`culprit.ts`): the oldest default-branch run of the group, the newest passing push run of the same workflow created before it, the commits between their head SHAs, and the PRs those commits name (`Title (#12)`, `Merge pull request #12`), looked up per commit only for up to three unnamed commits. One PR: "Broke after #12 by author", with Ask (a comment you edit before it posts) and Revert (a draft revert PR). Several: "Broke in one of N PRs". No commits: likely flaky. **Recovered**: a passing run of the same workflow newer than the group's newest default-branch failure.
+
+## Bringing PRs back
+
+| State | Action |
+|---|---|
+| A linked fix merged, or the default branch recovered | **Update**: merge the base into each blocked PR (`update-branch`, guarded by the head SHA); a branch already up to date gets its failed jobs rerun |
+| Cause infrastructure or flaky, no fix | **Rerun** the failed jobs |
+| Base-branch cause, no fix | Nothing to run: a rerun reuses the old merge commit |
 
 ## Ownership
 

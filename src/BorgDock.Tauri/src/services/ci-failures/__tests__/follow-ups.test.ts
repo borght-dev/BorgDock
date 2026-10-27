@@ -172,9 +172,10 @@ describe('compare', () => {
 });
 
 describe('rerunTargets', () => {
-  it('names the open PRs still red with the group’s jobs and their workflow runs', () => {
+  it('names the open PRs whose failed jobs the group holds, and their workflow runs', () => {
     const detail = {
-      summary: makeGroup({ prNumbers: [1, 2, 3] }),
+      // Job 9 is a failure of PR 9's own: same job name, not in the group.
+      summary: makeGroup({ prNumbers: [1, 2, 3], prJobIds: [7, 8] }),
       occurrences: [makeDetail({ jobName: 'e2e (chromium)' })],
       candidates: [],
       decisions: [],

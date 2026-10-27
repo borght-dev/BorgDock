@@ -1,4 +1,4 @@
-import { Check, ListFilter, Search } from 'lucide-react';
+import { Check, CircleCheck, ListFilter, Search } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Kbd } from '@/components/shared/primitives';
@@ -215,11 +215,50 @@ interface WorkbenchPrHeadProps {
   onFilterChange: (filter: WorkbenchFilter) => void;
   onGroupByChange: (groupBy: PrGroupBy) => void;
   onSortChange: (sortBy: SortBy) => void;
+  /** "Hide failing" on or off; goes through the list so it can FLIP its rows. */
+  onHideFailingChange: (hide: boolean) => void;
+}
+
+/**
+ * "Hide failing": a toggle that leaves PRs with a failing check out, so only
+ * green and pending ones remain. Disabled under the Failing and Closed
+ * filters, which it would empty.
+ */
+function HideFailingToggle({
+  filter,
+  onChange,
+}: {
+  filter: PrFilter;
+  onChange: (hide: boolean) => void;
+}) {
+  const hideFailing = usePrStore((s) => s.hideFailing);
+  const failing = usePrStore((s) => s.counts().failing);
+  const applies = filter !== 'failing' && filter !== 'closed';
+  return (
+    <button
+      type="button"
+      className="bd-wb-head__toggle"
+      aria-pressed={hideFailing}
+      disabled={!applies}
+      data-hide-failing=""
+      title={
+        !applies
+          ? 'Hide failing does not apply to this filter'
+          : hideFailing
+            ? `Show the ${failing} PRs with failing checks again`
+            : `Hide the ${failing} PRs with failing checks`
+      }
+      onClick={() => onChange(!hideFailing)}
+    >
+      <CircleCheck size={13} strokeWidth={2} aria-hidden="true" />
+      Hide failing
+    </button>
+  );
 }
 
 /**
  * WorkbenchPrHead — the Pull requests list's head row: the "Pull requests"
- * title, the segmented filter, the search box (debounced into `pr-store`;
+ * title, the segmented filter, "Hide failing", the search box (debounced into `pr-store`;
  * `/` and Ctrl+K focus it, Esc clears it) and the "Group and sort" menu.
  */
 export function WorkbenchPrHead({
@@ -228,6 +267,7 @@ export function WorkbenchPrHead({
   onFilterChange,
   onGroupByChange,
   onSortChange,
+  onHideFailingChange,
 }: WorkbenchPrHeadProps) {
   const sortBy = usePrStore((s) => s.sortBy);
   const groupBy = useUiStore((s) => s.prGroupBy);
@@ -237,6 +277,7 @@ export function WorkbenchPrHead({
     <header className="bd-wb-head">
       <h1 className="bd-wb-head__title">Pull requests</h1>
       <PrFilterControl value={filter} counts={counts} onChange={onFilterChange} />
+      <HideFailingToggle filter={filter} onChange={onHideFailingChange} />
       <label className="bd-wb-head__search">
         <Search size={13} strokeWidth={2} aria-hidden="true" className="bd-wb-head__search-icon" />
         <input

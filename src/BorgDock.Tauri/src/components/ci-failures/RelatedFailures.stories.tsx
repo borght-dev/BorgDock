@@ -4,6 +4,7 @@ import { makePr, PanelFrame } from '@/components/pr-detail/__fixtures__/pr-detai
 import { CiFailuresCard } from '@/components/settings/CiFailuresCard';
 import { makeSignal } from '@/services/ci-failures/__fixtures__/evidence';
 import { makeClaim, makeDetail, makeGroup } from '@/services/ci-failures/__fixtures__/store';
+import { __seedBranchStory } from '@/services/ci-failures/culprit';
 import { DEFAULT_CI_FAILURE_SETTINGS } from '@/services/ci-failures/settings';
 import type {
   CiGroupSummary,
@@ -287,6 +288,44 @@ export const FixMerged: Story = {
         },
       ],
     ),
+  },
+};
+
+const masterGroup: CiGroupSummary = { ...sharedGroup, id: 'g-master' };
+
+/**
+ * Also failing on master, where it broke after one PR: ask its author or
+ * open a draft revert. Master passes again, so the affected PRs can be
+ * updated from it.
+ */
+export const BrokeOnMaster: Story = {
+  decorators: [
+    (Story) => {
+      __seedBranchStory(masterGroup, {
+        branch: 'master',
+        firstRed: { runId: 4812, runNumber: 4812, sha: 'f00d', url: null },
+        lastGreen: { runId: 4811, runNumber: 4811, sha: 'beef', url: null },
+        commits: [],
+        suspects: [
+          {
+            number: 466,
+            title: 'Bump Playwright to 1.49',
+            authorLogin: 'sasha',
+            url: 'https://github.com/borght-dev/BorgDock/pull/466',
+          },
+        ],
+        unresolved: [],
+        commitCount: 0,
+        newestRed: { runId: 4812, workflow: '.github/workflows/ci.yml' },
+        recovered: { runId: 4820, runNumber: null, sha: '', url: null },
+      });
+      return <Story />;
+    },
+  ],
+  args: {
+    pr,
+    checks: CHECKS,
+    failures: failures([occurrence(7001, 'e2e (chromium)', 'g-master')], [masterGroup]),
   },
 };
 
