@@ -308,13 +308,22 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** What `launchInSlot` starts: a titled thread with its first message, in a free slot. */
+export interface SlotLaunch {
+  slot: Slot;
+  model: LaunchModel;
+  effort: string | null;
+  title: string;
+  prompt: string;
+}
+
 /**
- * Start an agent on `item` in `slot`: launch the thread, link it to the item,
- * then do the ADO steps that were asked for. The thread runs by then, so an
- * ADO step that fails is reported, not rolled back.
+ * Start a thread in a free slot and resolve with its scoped id. Every T3
+ * launch goes through here: Dispatch's item threads and runs, and related CI
+ * failure investigations.
  */
-export async function startThread(request: StartRequest): Promise<StartResult> {
-  const { item, slot, model } = request;
+export async function launchInSlot(request: SlotLaunch): Promise<string> {
+  const { slot, model } = request;
   const written = request.prompt.trim();
   if (!written) throw new Error('The first message is empty.');
   if (written.length > PROMPT_LIMIT) {
@@ -324,17 +333,39 @@ export async function startThread(request: StartRequest): Promise<StartResult> {
   if (slot.state !== 'free') {
     throw new Error(`${slot.name} already has an open thread. Settle it or pick another slot.`);
   }
+  const settings = useSettingsStore.getState().settings;
+  const host = configuredHosts(settings).find((h) => h.id === slot.hostId);
+  const rawThreadId = await t3LaunchThread(
+    { id: slot.hostId, baseUrl: host?.baseUrl },
+    {
+      projectId: rawId(slot.hostId, slot.id),
+      title: request.title.slice(0, TITLE_LIMIT),
+      modelSelection: model.selection(model.efforts.length > 0 ? request.effort : null),
+      prompt: written,
+    },
+  );
+  return scopedId(slot.hostId, rawThreadId);
+}
 
+/**
+ * Start an agent on `item` in `slot`: launch the thread, link it to the item,
+ * then do the ADO steps that were asked for. The thread runs by then, so an
+ * ADO step that fails is reported, not rolled back.
+ */
+export async function startThread(request: StartRequest): Promise<StartResult> {
+  const { item, slot, model } = request;
+  const written = request.prompt.trim();
+  const threadId = await launchInSlot({
+    slot,
+    model,
+    effort: request.effort,
+    title: `AB#${item.id} ${item.title}`,
+    prompt: request.mode === 'plan' && written ? withPlanFirst(written) : written,
+  });
   const settings = useSettingsStore.getState().settings;
   const host = configuredHosts(settings).find((h) => h.id === slot.hostId);
   const hostRef = { id: slot.hostId, baseUrl: host?.baseUrl };
-  const rawThreadId = await t3LaunchThread(hostRef, {
-    projectId: rawId(slot.hostId, slot.id),
-    title: `AB#${item.id} ${item.title}`.slice(0, TITLE_LIMIT),
-    modelSelection: model.selection(model.efforts.length > 0 ? request.effort : null),
-    prompt: request.mode === 'plan' ? withPlanFirst(written) : written,
-  });
-  const threadId = scopedId(slot.hostId, rawThreadId);
+  const rawThreadId = rawId(slot.hostId, threadId);
   const store = useDispatchStore.getState();
   store.linkThread(threadId, item.id);
   store.rememberLaunch(model.id, request.effort, request.mode);
@@ -400,26 +431,13 @@ export interface RunRequest {
  */
 export async function startRun(request: RunRequest): Promise<string> {
   const { slot, model } = request;
-  const written = request.prompt.trim();
-  if (!written) throw new Error('The first message is empty.');
-  if (written.length > PROMPT_LIMIT) {
-    throw new Error('The first message is longer than 20,000 characters.');
-  }
-  if (!slot.available) throw new Error(`${slot.hostLabel} is offline.`);
-  if (slot.state !== 'free') {
-    throw new Error(`${slot.name} already has an open thread. Settle it or pick another slot.`);
-  }
-
-  const settings = useSettingsStore.getState().settings;
-  const host = configuredHosts(settings).find((h) => h.id === slot.hostId);
-  const hostRef = { id: slot.hostId, baseUrl: host?.baseUrl };
-  const rawThreadId = await t3LaunchThread(hostRef, {
-    projectId: rawId(slot.hostId, slot.id),
-    title: `Dispatch: ${request.label}`.slice(0, TITLE_LIMIT),
-    modelSelection: model.selection(model.efforts.length > 0 ? request.effort : null),
-    prompt: written,
+  const threadId = await launchInSlot({
+    slot,
+    model,
+    effort: request.effort,
+    title: `Dispatch: ${request.label}`,
+    prompt: request.prompt,
   });
-  const threadId = scopedId(slot.hostId, rawThreadId);
   const store = useDispatchStore.getState();
   const fromStates = Object.fromEntries(
     (store.overview?.items ?? [])
@@ -439,7 +457,13 @@ export async function startRun(request: RunRequest): Promise<string> {
   });
   store.rememberRunChoice({ slotId: slot.id, model: model.id, effort: request.effort });
   if (request.openInT3) {
-    await t3ShowThread(hostRef, rawThreadId, settings.agents?.t3Path).catch(() => {});
+    const settings = useSettingsStore.getState().settings;
+    const host = configuredHosts(settings).find((h) => h.id === slot.hostId);
+    await t3ShowThread(
+      { id: slot.hostId, baseUrl: host?.baseUrl },
+      rawId(slot.hostId, threadId),
+      settings.agents?.t3Path,
+    ).catch(() => {});
   }
   syncAll(true);
   return threadId;

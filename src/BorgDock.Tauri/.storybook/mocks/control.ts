@@ -3,6 +3,7 @@
 // Singleton control surface used by the Tauri mocks and by story decorators.
 // Lives on window so dynamic-imported mocks and the React tree can both reach it.
 
+import type { JobLogEvidence } from '../../src/services/ci-failures/types';
 import type { CheckRun } from '../../src/types/check-run';
 import type { ClaudeReviewComment } from '../../src/types/claude-review';
 import type {
@@ -110,8 +111,10 @@ export type GithubResponses = {
   getCheckRunsForRef?:
     | CheckRun[]
     | ((args: { ref: string }) => CheckRun[] | Promise<CheckRun[]> | Promise<never>);
-  /** Raw job log for the Checks tab's first-failure excerpt. */
-  getJobLog?: string | ((args: { jobId: number }) => string | Promise<string>);
+  /** Job log evidence for the Checks tab's first-failure excerpt. */
+  readJobEvidence?:
+    | JobLogEvidence
+    | ((args: { jobId: number }) => JobLogEvidence | Promise<JobLogEvidence>);
   pollOpenPrsAggregate?:
     | PullRequestWithChecks[]
     | ((args: {

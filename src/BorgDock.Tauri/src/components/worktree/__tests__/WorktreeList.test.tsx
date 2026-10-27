@@ -24,6 +24,7 @@ vi.mock('@tauri-apps/api/event', () => ({
 
 const openT3Thread = vi.fn((..._args: unknown[]) => Promise.resolve({ tier: 2 }));
 vi.mock('@/services/t3-thread', () => ({
+  guardT3Launch: () => Promise.resolve('proceed'),
   openT3Thread: (...args: unknown[]) => openT3Thread(...args),
 }));
 

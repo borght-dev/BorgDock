@@ -30,6 +30,15 @@ const repoSettings: RepoSettings = {
   worktreeSubfolder: '.worktrees',
 };
 
+const mockGuardLaunch = vi.fn();
+const mockFixEvidence = vi.fn();
+vi.mock('@/services/ci-failures/launch-guard', () => ({
+  guardLaunch: (...args: unknown[]) => mockGuardLaunch(...args),
+}));
+vi.mock('@/services/ci-failures/prompts', () => ({
+  fixEvidence: (...args: unknown[]) => mockFixEvidence(...args),
+}));
+
 vi.mock('@/stores/settings-store', () => ({
   useSettingsStore: (selector: (s: Record<string, unknown>) => unknown) =>
     selector({
@@ -90,6 +99,8 @@ describe('useClaudeActions', () => {
     mockWritePromptFile.mockResolvedValue('/tmp/prompt.md');
     mockLaunchClaude.mockResolvedValue(undefined);
     mockBuildFixPrompt.mockReturnValue('fix prompt');
+    mockGuardLaunch.mockResolvedValue('proceed');
+    mockFixEvidence.mockResolvedValue({ failures: [], shared: [] });
     mockBuildConflictPrompt.mockReturnValue('conflict prompt');
     mockBuildMonitorPrompt.mockReturnValue('monitor prompt');
   });
@@ -104,24 +115,19 @@ describe('useClaudeActions', () => {
 
       const { result } = renderHook(() => useClaudeActions());
 
-      await result.current.fixWithClaude(
-        makePr(),
-        ['build'],
-        [
-          {
-            filePath: 'src/app.ts',
-            message: 'error',
-            errorCode: 'TS001',
-            category: 'error',
-            isIntroducedByPr: true,
-          },
-        ],
-        ['src/app.ts'],
-        'raw log text',
-      );
+      await result.current.fixWithClaude(makePr(), ['build']);
 
       expect(mockInvoke).toHaveBeenCalledWith('list_worktrees_bare', { basePath: '/path/to/repo' });
-      expect(mockBuildFixPrompt).toHaveBeenCalled();
+      expect(mockGuardLaunch).toHaveBeenCalledWith(
+        { owner: 'test', repo: 'repo', prNumber: 1, checkNames: ['build'] },
+        'Fix',
+      );
+      expect(mockBuildFixPrompt).toHaveBeenCalledWith(
+        expect.anything(),
+        ['build'],
+        { failures: [], shared: [] },
+        repoSettings,
+      );
       expect(mockWritePromptFile).toHaveBeenCalledWith('fix prompt');
       expect(mockLaunchClaude).toHaveBeenCalledWith(
         '/worktree/feature-branch',
@@ -137,7 +143,7 @@ describe('useClaudeActions', () => {
 
       const { result } = renderHook(() => useClaudeActions());
 
-      await result.current.fixWithClaude(makePr({ headRef: 'new-branch' }), ['lint'], [], [], '');
+      await result.current.fixWithClaude(makePr({ headRef: 'new-branch' }), ['lint']);
 
       expect(mockInvoke).toHaveBeenCalledWith('create_worktree', {
         basePath: '/path/to/repo',
@@ -150,13 +156,9 @@ describe('useClaudeActions', () => {
       const { result } = renderHook(() => useClaudeActions());
 
       await expect(
-        result.current.fixWithClaude(
-          makePr({ repoOwner: 'unknown', repoName: 'unknown' }),
-          ['build'],
-          [],
-          [],
-          '',
-        ),
+        result.current.fixWithClaude(makePr({ repoOwner: 'unknown', repoName: 'unknown' }), [
+          'build',
+        ]),
       ).rejects.toThrow('not found in settings');
     });
 
@@ -167,7 +169,7 @@ describe('useClaudeActions', () => {
 
       const { result } = renderHook(() => useClaudeActions());
 
-      await expect(result.current.fixWithClaude(makePr(), ['build'], [], [], '')).rejects.toThrow(
+      await expect(result.current.fixWithClaude(makePr(), ['build'])).rejects.toThrow(
         'No worktree base path',
       );
 
@@ -181,13 +183,23 @@ describe('useClaudeActions', () => {
 
       const { result } = renderHook(() => useClaudeActions());
 
-      await result.current.fixWithClaude(makePr(), ['build', 'lint', 'test'], [], [], '');
+      await result.current.fixWithClaude(makePr(), ['build', 'lint', 'test']);
 
       expect(mockLaunchClaude).toHaveBeenCalledWith(
         '/worktree/feature-branch',
         '/tmp/prompt.md',
         'Fix 3 failing checks',
       );
+    });
+  });
+
+  describe('fixWithClaude launch guard', () => {
+    it('launches nothing when the guard cancels', async () => {
+      mockGuardLaunch.mockResolvedValueOnce('cancel');
+      const { result } = renderHook(() => useClaudeActions());
+      await result.current.fixWithClaude(makePr(), ['build']);
+      expect(mockInvoke).not.toHaveBeenCalled();
+      expect(mockLaunchClaude).not.toHaveBeenCalled();
     });
   });
 

@@ -32,6 +32,11 @@ export interface PrRowCoreProps extends Omit<HTMLAttributes<HTMLDivElement>, 'ch
    */
   meta?: ReactNode;
   /**
+   * PRs that share this PR's failure (related CI failures), 0 for none. The
+   * meta line and the check bar's title say so; the row gains no column.
+   */
+  sharedFailure?: number;
+  /**
    * Put `data-key` on the row (or on its wrapper, with an action slot) so
    * `flip()` follows it (default). Rows a virtualizer recycles pass `false`:
    * animating them would move the wrong PR.
@@ -62,10 +67,12 @@ function MetaLine({
   pr,
   now,
   staleAfterDays,
+  sharedFailure,
 }: {
   pr: PrCardData;
   now: number;
   staleAfterDays: number;
+  sharedFailure: number;
 }) {
   const event = metaEvent(pr);
   const ago = event ? formatAgo(event.at, now) : '';
@@ -76,6 +83,12 @@ function MetaLine({
       <em>{pr.authorLogin}</em> in {pr.repoName}
       {event && ago && `, ${event.verb} ${ago}`}
       {stale && ', stale'}
+      {sharedFailure > 1 && (
+        <>
+          {' '}
+          <span className="bd-ci-marker">shared failure · {sharedFailure} PRs</span>
+        </>
+      )}
     </span>
   );
 }
@@ -100,6 +113,7 @@ export function PrRowCore({
   now = Date.now(),
   staleAfterDays = STALE_AFTER_DAYS,
   meta,
+  sharedFailure = 0,
   animateKey = true,
   action,
   className,
@@ -110,7 +124,9 @@ export function PrRowCore({
 }: PrRowCoreProps) {
   const chip = rowChipFor(pr);
   const checks = pr.checks ?? NO_CHECKS;
-  const checkLabel = checkBarSummary(checks).label;
+  const checkLabel =
+    checkBarSummary(checks).label +
+    (sharedFailure > 1 ? ` · failure shared with ${sharedFailure - 1} other PRs` : '');
   const interactive = onClick !== undefined;
 
   const withSlot = action !== undefined;
@@ -164,7 +180,12 @@ export function PrRowCore({
           (meta !== undefined ? (
             <span className="bd-wb-row__meta">{meta}</span>
           ) : (
-            <MetaLine pr={pr} now={now} staleAfterDays={staleAfterDays} />
+            <MetaLine
+              pr={pr}
+              now={now}
+              staleAfterDays={staleAfterDays}
+              sharedFailure={sharedFailure}
+            />
           ))}
       </span>
       <CheckBar

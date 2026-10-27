@@ -471,7 +471,7 @@ export function useFlyoutSync() {
             );
           if (pr) {
             fixRef
-              .current(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown'], [], [], '')
+              .current(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown'])
               .catch(console.error);
           }
         });

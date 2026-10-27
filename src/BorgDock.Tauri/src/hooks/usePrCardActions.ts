@@ -67,9 +67,6 @@ export function usePrCardActions(prWithChecks: PullRequestWithChecks) {
       fixWithClaude(
         prWithChecks,
         failedCheckNames.length > 0 ? failedCheckNames : ['unknown'],
-        [],
-        [],
-        '',
       ).catch((err) => showError('Fix with Claude failed', err));
     },
     [prWithChecks, failedCheckNames, fixWithClaude, showError],

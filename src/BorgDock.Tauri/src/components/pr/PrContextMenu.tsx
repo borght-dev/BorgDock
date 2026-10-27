@@ -176,13 +176,7 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   }, 'Failed to re-run checks');
 
   const handleFixWithClaude = handleAction(async () => {
-    await fixWithClaude(
-      pr,
-      failedCheckNames.length > 0 ? failedCheckNames : ['unknown'],
-      [],
-      [],
-      '',
-    );
+    await fixWithClaude(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown']);
   }, 'Fix with Claude failed');
 
   const handleMonitorWithClaude = handleAction(async () => {

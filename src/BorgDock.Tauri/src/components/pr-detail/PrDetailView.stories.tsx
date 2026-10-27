@@ -7,6 +7,7 @@
 
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
+import { makeEvidence, makeSignal } from '@/services/ci-failures/__fixtures__/evidence';
 import { usePrStore } from '@/stores/pr-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { makePr, withPrDetail } from './__fixtures__/pr-detail-data';
@@ -53,12 +54,23 @@ const FAILING_CHECKS: CheckRun[] = [
   ...inWorkflow('Release', [run(8, 'notes', 'skipped', 0, 9302)]),
 ];
 
-const FAILING_LOG = [
-  '2026-09-25T08:02:11.0000000Z ##[group]Run bun run test',
-  'src/components/pr-detail/__tests__/ChecksGrouped.test.tsx(88,5): error TS2345: Argument of type string is not assignable to parameter of type number.',
-  'src/services/first-failure.ts(41,9): error TS2322: Type null is not assignable to type string[].',
-  '##[error]Process completed with exit code 1.',
-].join('\n');
+const FAILING_EVIDENCE = makeEvidence({
+  stepFound: true,
+  signals: [
+    makeSignal({
+      path: 'src/components/pr-detail/__tests__/ChecksGrouped.test.tsx',
+      line: 88,
+      code: 'TS2345',
+      message: 'Argument of type string is not assignable to parameter of type number.',
+    }),
+    makeSignal({
+      path: 'src/services/first-failure.ts',
+      line: 41,
+      code: 'TS2322',
+      message: 'Type null is not assignable to type string[].',
+    }),
+  ],
+});
 
 const failingPr = makePr({
   pullRequest: {
@@ -207,7 +219,7 @@ export const Failing: Story = {
   decorators: [
     inList(failingPr),
     withPrDetail(failingPr, {
-      githubResponses: { getCheckRunsForRef: FAILING_CHECKS, getJobLog: FAILING_LOG },
+      githubResponses: { getCheckRunsForRef: FAILING_CHECKS, readJobEvidence: FAILING_EVIDENCE },
     }),
   ],
   args: { ...target(failingPr), initialTab: 'checks' },
@@ -218,7 +230,7 @@ export const FailingOverview: Story = {
   decorators: [
     inList(failingPr),
     withPrDetail(failingPr, {
-      githubResponses: { getCheckRunsForRef: FAILING_CHECKS, getJobLog: FAILING_LOG },
+      githubResponses: { getCheckRunsForRef: FAILING_CHECKS, readJobEvidence: FAILING_EVIDENCE },
     }),
   ],
   args: target(failingPr),

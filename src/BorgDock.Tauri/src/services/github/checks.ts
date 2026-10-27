@@ -1,7 +1,8 @@
+import type { JobLogEvidence } from '@/services/ci-failures/types';
 import { createLogger } from '@/services/logger';
 import type { CheckRun, CheckSuite } from '@/types';
 import { isActionsJob, planRerun, type RerunPlan } from './check-runs';
-import type { GitHubClient } from './client';
+import type { GitHubClient, JobLogOptions } from './client';
 
 const log = createLogger('github-checks');
 
@@ -230,13 +231,15 @@ async function addWorkflowNames(
   }
 }
 
-export async function getJobLog(
+/** The failure signals in a GitHub Actions job's log, read with a byte cap and a deadline. */
+export function readJobEvidence(
   client: GitHubClient,
   owner: string,
   repo: string,
   jobId: number,
-): Promise<string> {
-  return client.getRaw(`repos/${owner}/${repo}/actions/jobs/${jobId}/logs`);
+  options?: JobLogOptions,
+): Promise<JobLogEvidence> {
+  return client.readJobLog(owner, repo, jobId, options);
 }
 
 /**

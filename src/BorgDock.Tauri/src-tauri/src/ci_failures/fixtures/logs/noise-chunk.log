@@ -1,0 +1,30 @@
+2026-10-20T09:14:01.0000000Z bun install v1.1.38 (bf2f153f)
+2026-10-20T09:14:01.0073000Z  + @tauri-apps/api@2.1.1
+2026-10-20T09:14:01.0146000Z  + react@19.0.0
+2026-10-20T09:14:01.0219000Z  + zustand@5.0.1
+2026-10-20T09:14:01.0292000Z Resolved, downloaded and extracted [1204]
+2026-10-20T09:14:01.0365000Z Saved lockfile
+2026-10-20T09:14:01.0438000Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it.
+2026-10-20T09:14:01.0511000Z Failed to load optional dependency @rollup/rollup-win32-x64-msvc, skipping
+2026-10-20T09:14:01.0584000Z [36mvite v6.0.3 [32mbuilding for production...[39m
+2026-10-20T09:14:01.0657000Z transforming...
+2026-10-20T09:14:01.0730000Z [32m✓[39m 2104 modules transformed.
+2026-10-20T09:14:01.0803000Z rendering chunks...
+2026-10-20T09:14:01.0876000Z computing gzip size...
+2026-10-20T09:14:01.0949000Z [2mdist/[22m[32mindex.html                 [39m[1m[2m    0.82 kB[22m[1m[22m[2m │ gzip:   0.44 kB[22m
+2026-10-20T09:14:01.1022000Z [2mdist/[22m[35massets/index-BX2f9c1a.css  [39m[1m[2m   84.12 kB[22m[1m[22m[2m │ gzip:  13.90 kB[22m
+2026-10-20T09:14:01.1095000Z [2mdist/[22m[36massets/index-C1a2b3c4.js   [39m[1m[33m1,204.51 kB[39m[22m[2m │ gzip: 361.02 kB[22m
+2026-10-20T09:14:01.1168000Z (!) Some chunks are larger than 500 kB after minification.
+2026-10-20T09:14:01.1241000Z  ✓ src/services/__tests__/error-handling.test.ts (8 tests) 6ms
+2026-10-20T09:14:01.1314000Z  ✓ src/utils/__tests__/retry.test.ts (14 tests) 11ms
+2026-10-20T09:14:01.1387000Z test git::tests::parses_branch ... ok
+2026-10-20T09:14:01.1460000Z test sql::tests::reports_unsupported_columns ... ok
+2026-10-20T09:14:01.1533000Z   Passed Fsp.Orders.Tests.PricingTests.Rounds_totals [1 ms]
+2026-10-20T09:14:01.1606000Z src/services/legacy.ts(3,1): warning TS6133: 'x' is declared but its value is never read.
+2026-10-20T09:14:01.1679000Z warning: unused import: `std::fmt`
+2026-10-20T09:14:01.1752000Z  --> src/lib.rs:3:5
+2026-10-20T09:14:01.1825000Z #9 [build 5/7] COPY . .
+2026-10-20T09:14:01.1898000Z #9 DONE 0.4s
+2026-10-20T09:14:01.1971000Z     0 Error(s)
+2026-10-20T09:14:01.2044000Z     2 Warning(s)
+2026-10-20T09:14:01.2117000Z [command]/usr/bin/git log -1 --format=%H

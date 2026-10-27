@@ -1,3 +1,5 @@
+import type { CiJob } from './check-run';
+
 export type ReviewStatus = 'none' | 'pending' | 'commented' | 'approved' | 'changesRequested';
 
 export type OverallStatus = 'red' | 'yellow' | 'green' | 'gray';
@@ -53,6 +55,8 @@ export interface PullRequestWithChecks {
   failedCheckNames: string[];
   /** Check-suite ids parallel to failedCheckNames (suite-less entries dropped) — used for rerun actions. */
   failedCheckSuiteIds: number[];
+  /** Completed checks of the head commit; absent when the source didn't carry them. */
+  ciJobs?: CiJob[];
   pendingCheckNames: string[];
   passedCount: number;
   skippedCount: number;

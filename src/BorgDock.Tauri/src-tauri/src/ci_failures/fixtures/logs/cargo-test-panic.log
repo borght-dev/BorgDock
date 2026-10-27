@@ -1,0 +1,152 @@
+2026-10-20T09:14:01.0000000Z Current runner version: '2.320.0'
+2026-10-20T09:14:01.0073000Z ##[group]Operating System
+2026-10-20T09:14:01.0146000Z Ubuntu
+2026-10-20T09:14:01.0219000Z 24.04.1
+2026-10-20T09:14:01.0292000Z LTS
+2026-10-20T09:14:01.0365000Z ##[endgroup]
+2026-10-20T09:14:01.0438000Z ##[group]Runner Image
+2026-10-20T09:14:01.0511000Z Image: ubuntu-24.04
+2026-10-20T09:14:01.0584000Z Version: 20241020.1.0
+2026-10-20T09:14:01.0657000Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20241020.1/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-20T09:14:01.0730000Z ##[endgroup]
+2026-10-20T09:14:01.0803000Z ##[group]GITHUB_TOKEN Permissions
+2026-10-20T09:14:01.0876000Z Contents: read
+2026-10-20T09:14:01.0949000Z Metadata: read
+2026-10-20T09:14:01.1022000Z PullRequests: read
+2026-10-20T09:14:01.1095000Z ##[endgroup]
+2026-10-20T09:14:01.1168000Z Secret source: Actions
+2026-10-20T09:14:01.1241000Z Prepare workflow directory
+2026-10-20T09:14:01.1314000Z Prepare all required actions
+2026-10-20T09:14:01.1387000Z Getting action download info
+2026-10-20T09:14:01.1460000Z Download action repository 'actions/checkout@v4' (SHA:11bd71901bbe5b1630ceea73d27597364c9af683)
+2026-10-20T09:14:01.1533000Z Download action repository 'dtolnay/rust-toolchain@stable' (SHA:315e265cd78dad1e1dcf3a5074f6d6c47029d5aa)
+2026-10-20T09:14:01.1606000Z Complete job name: rust
+2026-10-20T09:14:01.1679000Z ##[group]Run actions/checkout@v4
+2026-10-20T09:14:01.1752000Z with:
+2026-10-20T09:14:01.1825000Z   repository: borght-dev/BorgDock
+2026-10-20T09:14:01.1898000Z   token: ***
+2026-10-20T09:14:01.1971000Z   ssh-strict: true
+2026-10-20T09:14:01.2044000Z   ssh-user: git
+2026-10-20T09:14:01.2117000Z   persist-credentials: true
+2026-10-20T09:14:01.2190000Z   clean: true
+2026-10-20T09:14:01.2263000Z   sparse-checkout-cone-mode: true
+2026-10-20T09:14:01.2336000Z   fetch-depth: 1
+2026-10-20T09:14:01.2409000Z   fetch-tags: false
+2026-10-20T09:14:01.2482000Z   show-progress: true
+2026-10-20T09:14:01.2555000Z   lfs: false
+2026-10-20T09:14:01.2628000Z   submodules: false
+2026-10-20T09:14:01.2701000Z   set-safe-directory: true
+2026-10-20T09:14:01.2774000Z ##[endgroup]
+2026-10-20T09:14:01.2847000Z Syncing repository: borght-dev/BorgDock
+2026-10-20T09:14:01.2920000Z ##[group]Getting Git version info
+2026-10-20T09:14:01.2993000Z Working directory is '/home/runner/work/BorgDock/BorgDock'
+2026-10-20T09:14:01.3066000Z [command]/usr/bin/git version
+2026-10-20T09:14:01.3139000Z git version 2.47.0
+2026-10-20T09:14:01.3212000Z ##[endgroup]
+2026-10-20T09:14:01.3285000Z Temporarily overriding HOME='/home/runner/work/_temp/9c1d4f0e-5b8a-4f7e-a3c2-6d1e2f3a4b5c' before making global git config changes
+2026-10-20T09:14:01.3358000Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-20T09:14:01.3431000Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/BorgDock/BorgDock
+2026-10-20T09:14:01.3504000Z Deleting the contents of '/home/runner/work/BorgDock/BorgDock'
+2026-10-20T09:14:01.3577000Z ##[group]Initializing the repository
+2026-10-20T09:14:01.3650000Z [command]/usr/bin/git init /home/runner/work/BorgDock/BorgDock
+2026-10-20T09:14:01.3723000Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-20T09:14:01.3796000Z hint: is subject to change. To configure the initial branch name to use in all
+2026-10-20T09:14:01.3869000Z hint: of your new repositories, which will suppress this warning, call:
+2026-10-20T09:14:01.3942000Z Initialized empty Git repository in /home/runner/work/BorgDock/BorgDock/.git/
+2026-10-20T09:14:01.4015000Z [command]/usr/bin/git remote add origin https://github.com/borght-dev/BorgDock
+2026-10-20T09:14:01.4088000Z ##[endgroup]
+2026-10-20T09:14:01.4161000Z ##[group]Fetching the repository
+2026-10-20T09:14:01.4234000Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +3f0964d2a1b4c5d6e7f8091a2b3c4d5e6f708192:refs/remotes/pull/123/merge
+2026-10-20T09:14:01.4307000Z From https://github.com/borght-dev/BorgDock
+2026-10-20T09:14:01.4380000Z  * [new ref]         3f0964d2a1b4c5d6e7f8091a2b3c4d5e6f708192 -> pull/123/merge
+2026-10-20T09:14:01.4453000Z ##[endgroup]
+2026-10-20T09:14:01.4526000Z ##[group]Checking out the ref
+2026-10-20T09:14:01.4599000Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/123/merge
+2026-10-20T09:14:01.4672000Z Note: switching to 'refs/remotes/pull/123/merge'.
+2026-10-20T09:14:01.4745000Z HEAD is now at 3f0964d Merge 72da1978 into 4601d631
+2026-10-20T09:14:01.4818000Z ##[endgroup]
+2026-10-20T09:14:01.4891000Z [command]/usr/bin/git log -1 --format=%H
+2026-10-20T09:14:01.4964000Z 3f0964d2a1b4c5d6e7f8091a2b3c4d5e6f708192
+2026-10-20T09:14:01.5037000Z ##[group]Run dtolnay/rust-toolchain@stable
+2026-10-20T09:14:01.5110000Z with:
+2026-10-20T09:14:01.5183000Z   toolchain: stable
+2026-10-20T09:14:01.5256000Z ##[endgroup]
+2026-10-20T09:14:01.5329000Z ##[group]Run : parse toolchain version
+2026-10-20T09:14:01.5402000Z [36;1m: parse toolchain version[0m
+2026-10-20T09:14:01.5475000Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-20T09:14:01.5548000Z ##[endgroup]
+2026-10-20T09:14:01.5621000Z info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+2026-10-20T09:14:01.5694000Z info: latest update on 2026-10-16, rust version 1.94.0 (4a4ef493e 2026-03-02)
+2026-10-20T09:14:01.5767000Z ##[group]Run cargo test --lib
+2026-10-20T09:14:01.5840000Z [36;1mcargo test --lib[0m
+2026-10-20T09:14:01.5913000Z shell: /usr/bin/bash -e {0}
+2026-10-20T09:14:01.5986000Z env:
+2026-10-20T09:14:01.6059000Z   CARGO_TERM_COLOR: always
+2026-10-20T09:14:01.6132000Z ##[endgroup]
+2026-10-20T09:14:01.6205000Z [1m[92m   Compiling[0m borgdock v4.6.0 (/home/runner/work/BorgDock/BorgDock/src/BorgDock.Tauri/src-tauri)
+2026-10-20T09:14:01.6278000Z [1m[93mwarning[0m[1m: unused variable: `stale`[0m
+2026-10-20T09:14:01.6351000Z [1m[94m   --> [0msrc/cache/mod.rs:212:13
+2026-10-20T09:14:01.6424000Z [1m[94m    |[0m
+2026-10-20T09:14:01.6497000Z [1m[94m212[0m [1m[94m|[0m         let stale = entry.is_stale();
+2026-10-20T09:14:01.6570000Z [1m[94m    |[0m             [1m[93m^^^^^[0m [1m[93mhelp: if this is intentional, prefix it with an underscore: `_stale`[0m
+2026-10-20T09:14:01.6643000Z 
+2026-10-20T09:14:01.6716000Z [1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 1m 12s
+2026-10-20T09:14:01.6789000Z [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/borgdock_lib-5f0c1e2d3a4b6c7d)
+2026-10-20T09:14:01.6862000Z 
+2026-10-20T09:14:01.6935000Z running 214 tests
+2026-10-20T09:14:01.7008000Z test agents::tests::parses_agent_list ... ok
+2026-10-20T09:14:01.7081000Z test ci_failures::extract::tests::caps_signals ... [31mFAILED[0m
+2026-10-20T09:14:01.7154000Z test settings::tests::loads_defaults ... [31mFAILED[0m
+2026-10-20T09:14:01.7227000Z test t3::references::tests::reads_ids ... [32mok[0m
+2026-10-20T09:14:01.7300000Z 
+2026-10-20T09:14:01.7373000Z failures:
+2026-10-20T09:14:01.7446000Z 
+2026-10-20T09:14:01.7519000Z ---- ci_failures::extract::tests::caps_signals stdout ----
+2026-10-20T09:14:01.7592000Z 
+2026-10-20T09:14:01.7665000Z thread 'ci_failures::extract::tests::caps_signals' (18342) panicked at src/ci_failures/extract/tests.rs:118:9:
+2026-10-20T09:14:01.7738000Z assertion `left == right` failed: one summary first
+2026-10-20T09:14:01.7811000Z   left: 21
+2026-10-20T09:14:01.7884000Z  right: 20
+2026-10-20T09:14:01.7957000Z note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+2026-10-20T09:14:01.8030000Z 
+2026-10-20T09:14:01.8103000Z ---- settings::tests::loads_defaults stdout ----
+2026-10-20T09:14:01.8176000Z 
+2026-10-20T09:14:01.8249000Z thread 'settings::tests::loads_defaults' (18345) panicked at src/settings/mod.rs:301:52:
+2026-10-20T09:14:01.8322000Z called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+2026-10-20T09:14:01.8395000Z stack backtrace:
+2026-10-20T09:14:01.8468000Z    0: rust_begin_unwind
+2026-10-20T09:14:01.8541000Z              at /rustc/4a4ef493e3b1e6b7b2f7a8f1c7b1e7c3d3b0a1c2/library/std/src/panicking.rs:665:5
+2026-10-20T09:14:01.8614000Z    1: core::panicking::panic_fmt
+2026-10-20T09:14:01.8687000Z              at /rustc/4a4ef493e3b1e6b7b2f7a8f1c7b1e7c3d3b0a1c2/library/core/src/panicking.rs:74:14
+2026-10-20T09:14:01.8760000Z    2: core::result::unwrap_failed
+2026-10-20T09:14:01.8833000Z              at /rustc/4a4ef493e3b1e6b7b2f7a8f1c7b1e7c3d3b0a1c2/library/core/src/result.rs:1700:5
+2026-10-20T09:14:01.8906000Z    3: borgdock_lib::settings::load
+2026-10-20T09:14:01.8979000Z              at ./src/settings/mod.rs:301:52
+2026-10-20T09:14:01.9052000Z    4: borgdock_lib::settings::tests::loads_defaults
+2026-10-20T09:14:01.9125000Z              at ./src/settings/mod.rs:420:20
+2026-10-20T09:14:01.9198000Z    5: core::ops::function::FnOnce::call_once
+2026-10-20T09:14:01.9271000Z              at /rustc/4a4ef493e3b1e6b7b2f7a8f1c7b1e7c3d3b0a1c2/library/core/src/ops/function.rs:250:5
+2026-10-20T09:14:01.9344000Z note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+2026-10-20T09:14:01.9417000Z 
+2026-10-20T09:14:01.9490000Z 
+2026-10-20T09:14:01.9563000Z failures:
+2026-10-20T09:14:01.9636000Z     ci_failures::extract::tests::caps_signals
+2026-10-20T09:14:01.9709000Z     settings::tests::loads_defaults
+2026-10-20T09:14:01.9782000Z 
+2026-10-20T09:14:01.9855000Z test result: [31mFAILED[0m. 212 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.41s
+2026-10-20T09:14:01.9928000Z 
+2026-10-20T09:14:02.0001000Z [1m[91merror[0m[1m:[0m test failed, to rerun pass `--lib`
+2026-10-20T09:14:02.0074000Z ##[error]Process completed with exit code 101.
+2026-10-20T09:14:02.0147000Z Post job cleanup.
+2026-10-20T09:14:02.0220000Z [command]/usr/bin/git version
+2026-10-20T09:14:02.0293000Z git version 2.47.0
+2026-10-20T09:14:02.0366000Z Temporarily overriding HOME='/home/runner/work/_temp/2a7e5f1c-0d3b-4c6a-8e9f-1b2c3d4e5f60' before making global git config changes
+2026-10-20T09:14:02.0439000Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-20T09:14:02.0512000Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/BorgDock/BorgDock
+2026-10-20T09:14:02.0585000Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-20T09:14:02.0658000Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-20T09:14:02.0731000Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-20T09:14:02.0804000Z http.https://github.com/.extraheader
+2026-10-20T09:14:02.0877000Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-20T09:14:02.0950000Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-20T09:14:02.1023000Z Cleaning up orphan processes

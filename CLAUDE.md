@@ -230,6 +230,19 @@ A workstream is a goal you curate: ADO items, T3 threads, GitHub pull requests a
 - **Rows in the PR list are virtualized at a fixed height.** Anything a row shows extra (workstream chips) goes on an existing line (`TitleWithChips`), never on a new one.
 - e2e: `tests/e2e/helpers/mock-tauri.ts` answers every `workstreams_*` command from an in-page folder; an unmocked command throws.
 
+## Related CI failures
+
+Groups the same failure across PRs and the default branch so one investigation covers them. Plan: `docs/superpowers/plans/2026-10-26-related-ci-failures-plan.html`; rules: `docs/superpowers/specs/2026-10-26-related-ci-failures.md`.
+
+- **Raw logs never enter the webview.** `ci_read_job_log` (Rust, `src-tauri/src/ci_failures/`) follows the log redirect by hand, reads only the tail (`Range: bytes=-N`, ring buffer if storage ignores it), sanitizes, extracts signals and returns those. `GitHubClient.readJobLog` holds the account's request slot for the whole read. The CSP's `connect-src` doesn't allow the storage host, so a webview `fetch` of a job log fails in packaged builds.
+- **Normalizing and fingerprinting are TypeScript** (`services/ci-failures/`), over the sanitized signals the store keeps. Raise `FINGERPRINT_VERSION` (catalog version included) when a rule changes what matches.
+- **One occurrence per job attempt.** GitHub gives a rerun new job ids; history is never edited. A job tests a different SHA than the PR head for `pull_request` (merge commit) and `merge_group` events.
+- **Groups own fingerprints; decisions bind fingerprints, not groups**, so a merge or split survives re-clustering and retention. Medium links are candidates and never merge on their own; low-tier (generic) text never groups.
+- **A group's dates are failure times, not read times.** `first_observed_at`/`last_observed_at` follow each job's `completed_at` (`FAILED_AT` in `store/queries.rs`), falling back to when BorgDock saw it. With read times, the first backfill made two-day-old failures say "first seen 24 min ago" and a failure from before a fix "seen again after the fix".
+- **A rerun reuses the original commit.** A fix on the base branch never reaches a rerun; the Rerun sheet says to update the branch instead.
+- **`ci-failures.db` is separate from `prcache.db`.** Clear cache leaves it alone; Maintenance has its own clear. Only the main window's runtime records observations; every window reads, and decisions/claims go through Rust compare-and-set (one live claim per group, unique partial index).
+- **Launch seams:** `useClaudeActions.fixWithClaude` calls `guardLaunch`, and every Open in T3 path calls `guardT3Launch` (`services/t3-thread.ts`) first. The guard counts only failures of the PR's current head that haven't passed since. The dialog (`LaunchGuardDialog`, mounted in the main window, the PR pop-out and the worktree palette) opens owners, messages them or opens the Investigate sheet itself and only answers proceed/cancel; in a window without it, `ask()` proceeds instead of hanging. Sheets need Dispatch's slots, so other windows ask the main window (`OPEN_CI_SHEET_EVENT`).
+
 ## Floating surfaces need an opaque token
 
 In the light theme `--color-surface-raised` is a 3% ink tint (`rgba(23,24,28,0.03)`), not a surface; only the dark theme makes it opaque. Anything that floats over content (toasts, menus, popovers) must use `--color-modal-bg` or `--color-toast-bg`, or it renders see-through in light mode and its text lands on whatever is underneath. The Dispatch "started" toast and the state menu both had this bug. The window background (`--color-background`) is white in light mode: grey read as disabled.

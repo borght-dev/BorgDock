@@ -1,11 +1,23 @@
+import { commands } from '@/generated/commands';
+import type { JobLogEvidence } from '@/services/ci-failures/types';
 import { invalidateGitHubTokenCache } from '@/services/github/auth';
 import { createLogger } from '@/services/logger';
+import { commandData } from '@/services/native-command';
 import { withAccountRequest } from './request-budget';
 
 export interface RateLimit {
   remaining: number;
   total: number;
   reset: Date | null;
+}
+
+export interface JobLogOptions {
+  /** The step GitHub reports as failed; extraction keeps to its section. */
+  failedStep?: string;
+  /** Tail bytes read; Rust defaults to 2 MiB. */
+  maxBytes?: number;
+  /** Deadline for the whole read; Rust defaults to 15 s. */
+  timeoutMs?: number;
 }
 
 interface ETagEntry {
@@ -177,22 +189,30 @@ export class GitHubClient {
     return body as T;
   }
 
-  async getRaw(path: string): Promise<string> {
-    const url = `https://api.github.com/${path}`;
-    const response = await this.fetchWithRetry(url, {
-      accept: 'application/vnd.github.v3.raw',
-    });
-
-    this.checkResponseForAuthErrors(response, 'GET_RAW', path);
-
-    if (!response.ok) {
-      throw new GitHubApiError(
-        `GitHub API error: ${response.status} ${response.statusText}`,
-        response.status,
-      );
-    }
-
-    return response.text();
+  /**
+   * The failure signals in a GitHub Actions job's log. Rust reads the tail
+   * with a byte cap and a deadline that covers the body, so this holds the
+   * account's request slot until the whole read is done.
+   */
+  readJobLog(
+    owner: string,
+    repo: string,
+    jobId: number,
+    options: JobLogOptions = {},
+  ): Promise<JobLogEvidence> {
+    return withAccountRequest(this.account, async () =>
+      commandData(
+        commands.ciReadJobLog({
+          token: await this.getToken(),
+          owner,
+          repo,
+          jobId,
+          failedStep: options.failedStep ?? null,
+          maxBytes: options.maxBytes ?? null,
+          timeoutMs: options.timeoutMs ?? null,
+        }),
+      ),
+    );
   }
 
   async post<T>(path: string, body: unknown): Promise<T> {

@@ -8,6 +8,9 @@ const logSpies = vi.hoisted(() => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+const { ciReadJobLog } = vi.hoisted(() => ({ ciReadJobLog: vi.fn() }));
+vi.mock('@/generated/commands', () => ({ commands: { ciReadJobLog } }));
+
 vi.mock('@/services/logger', () => ({
   createLogger: () => ({
     ...logSpies,
@@ -238,23 +241,32 @@ describe('GitHubClient', () => {
     });
   });
 
-  describe('getRaw', () => {
-    it('makes a GET request with raw accept header', async () => {
-      const client = createClient();
-      fetchSpy.mockResolvedValueOnce(mockResponse(200, 'raw content'));
+  describe('readJobLog', () => {
+    it('hands the token and limits to the Rust log reader, never to fetch', async () => {
+      const client = createClient('job-token');
+      const evidence = { state: 'ready', signals: [] };
+      ciReadJobLog.mockResolvedValueOnce({ status: 'ok', data: evidence });
 
-      const result = await client.getRaw('repos/owner/repo/contents/file.txt');
+      const result = await client.readJobLog('owner', 'repo', 42, { failedStep: 'Run e2e' });
 
-      expect(result).toBe('raw content');
-      const headers = fetchSpy.mock.calls[0]![1].headers;
-      expect(headers.Accept).toBe('application/vnd.github.v3.raw');
+      expect(result).toBe(evidence);
+      expect(ciReadJobLog).toHaveBeenCalledWith({
+        token: 'job-token',
+        owner: 'owner',
+        repo: 'repo',
+        jobId: 42,
+        failedStep: 'Run e2e',
+        maxBytes: null,
+        timeoutMs: null,
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it('throws GitHubApiError on non-OK status', async () => {
-      const client = createClient();
-      fetchSpy.mockResolvedValueOnce(mockResponse(404));
-
-      await expect(client.getRaw('repos/test')).rejects.toThrow(GitHubApiError);
+    it('rejects with the command error', async () => {
+      ciReadJobLog.mockResolvedValueOnce({ status: 'error', error: 'Invalid repository name' });
+      await expect(createClient().readJobLog('../x', 'repo', 1)).rejects.toBe(
+        'Invalid repository name',
+      );
     });
   });
 

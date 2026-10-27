@@ -1,8 +1,35 @@
-import type { CheckRun, OverallStatus, PullRequest, PullRequestWithChecks } from '@/types';
+import type { CheckRun, CiJob, OverallStatus, PullRequest, PullRequestWithChecks } from '@/types';
+import { workflowRunIdOf } from './check-runs';
+
+/**
+ * The completed checks among REST check runs, as `CiJob`s. Commit statuses
+ * arrive with negative ids from `getCheckSummaryForRef`; runs without an id
+ * (polling lites) are left out.
+ */
+export function ciJobsOf(checks: readonly CheckRun[]): CiJob[] {
+  return checks.flatMap((check): CiJob[] => {
+    if (check.id === 0 || check.status !== 'completed' || !check.conclusion) return [];
+    const runId = workflowRunIdOf(check);
+    return [
+      {
+        id: check.id < 0 ? 0 : check.id,
+        kind: check.id < 0 ? 'status' : runId !== null ? 'actions' : 'check',
+        name: check.name,
+        ...(check.workflowName ? { workflowName: check.workflowName } : {}),
+        ...(check.workflowEvent ? { workflowEvent: check.workflowEvent } : {}),
+        ...(runId !== null ? { runId } : {}),
+        ...(check.checkSuiteId > 0 ? { checkSuiteId: check.checkSuiteId } : {}),
+        conclusion: check.conclusion,
+        ...(check.completedAt ? { completedAt: check.completedAt } : {}),
+      },
+    ];
+  });
+}
 
 export function aggregatePrWithChecks(
   pr: PullRequest,
   checks: CheckRun[] | undefined,
+  ciJobs: CiJob[] | undefined = checks ? ciJobsOf(checks) : undefined,
 ): PullRequestWithChecks {
   const checkRuns = checks ?? [];
   const overallStatus = computeOverallStatus(checkRuns);
@@ -31,6 +58,7 @@ export function aggregatePrWithChecks(
     overallStatus,
     failedCheckNames,
     failedCheckSuiteIds,
+    ...(ciJobs && ciJobs.length > 0 ? { ciJobs } : {}),
     pendingCheckNames,
     passedCount,
     skippedCount,

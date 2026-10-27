@@ -1,9 +1,9 @@
+import type { Signal } from '@/services/ci-failures/types';
 import { isActionsJob } from '@/services/github/check-runs';
-import { getJobLog } from '@/services/github/checks';
+import { readJobEvidence } from '@/services/github/checks';
 import { getClientForRepo } from '@/services/github/singleton';
-import { parseLogForErrors } from '@/services/log-parser';
 import { createLogger } from '@/services/logger';
-import type { CheckRun, ParsedError } from '@/types';
+import type { CheckRun } from '@/types';
 
 const log = createLogger('first-failure');
 
@@ -18,15 +18,13 @@ export interface FirstFailure {
 /** Lines of the excerpt at most, and characters per line. */
 const MAX_LINES = 12;
 const MAX_LINE_LENGTH = 240;
-/** Parsed errors the excerpt draws from. */
-const MAX_ERRORS = 3;
+/** Signals the excerpt draws from. */
+const MAX_SIGNALS = 3;
 
-function linesOf(error: ParsedError): string[] {
-  const location = error.filePath
-    ? `${error.filePath}${error.lineNumber ? `:${error.lineNumber}` : ''}`
-    : '';
-  const head = [location, error.errorCode].filter(Boolean).join(' ');
-  const message = error.message
+function linesOf(signal: Signal): string[] {
+  const location = signal.path ? `${signal.path}${signal.line ? `:${signal.line}` : ''}` : '';
+  const head = [location || signal.testId, signal.code].filter(Boolean).join(' ');
+  const message = signal.message
     .split('\n')
     .map((l) => l.trimEnd())
     .filter((l) => l.trim() !== '');
@@ -34,14 +32,14 @@ function linesOf(error: ParsedError): string[] {
 }
 
 /**
- * The excerpt for a job log: the first errors the log parser finds (its
- * summary line left out), a dozen lines at most. Empty when the parser finds
+ * The excerpt for a job's signals: the first failures the log reader found
+ * (its test-run totals left out), a dozen lines at most. Empty when it found
  * nothing.
  */
-export function excerptFromLog(logText: string): string[] {
-  const errors = parseLogForErrors(logText).filter((e) => e.category !== 'PlaywrightSummary');
-  return errors
-    .slice(0, MAX_ERRORS)
+export function excerptFromSignals(signals: readonly Signal[]): string[] {
+  return signals
+    .filter((s) => s.kind !== 'summary')
+    .slice(0, MAX_SIGNALS)
     .flatMap(linesOf)
     .slice(0, MAX_LINES)
     .map((line) =>
@@ -53,9 +51,8 @@ const cache = new Map<string, Promise<FirstFailure | null>>();
 
 /**
  * The first failure's log excerpt for a PR's failed check runs: the first
- * failed GitHub Actions job's log, fetched once per job and parsed with the
- * existing log parser. Resolves null when there is no such job, no client,
- * the fetch fails or the parser finds nothing.
+ * failed GitHub Actions job's log, read once per job. Resolves null when
+ * there is no such job, no client, the read fails or nothing was found.
  */
 export function loadFirstFailure(
   owner: string,
@@ -70,14 +67,19 @@ export function loadFirstFailure(
 
   const client = getClientForRepo(owner, repo);
   if (!client) return Promise.resolve(null);
-  const pending = getJobLog(client, owner, repo, run.id)
-    .then((text) => {
-      const lines = excerptFromLog(text);
+  const pending = readJobEvidence(client, owner, repo, run.id)
+    .then((evidence) => {
+      if (evidence.state === 'failed') {
+        // A failed read may succeed later (rate limit, network).
+        cache.delete(key);
+        log.debug('job log read failed', { reason: evidence.reason, owner, repo, job: run.id });
+        return null;
+      }
+      const lines = excerptFromSignals(evidence.signals);
       return lines.length > 0 ? { checkName: run.name, lines } : null;
     })
     .catch((err) => {
-      log.debug('job log fetch failed', { error: String(err), owner, repo, job: run.id });
-      // A failed fetch may succeed later (rate limit, network).
+      log.debug('job log read failed', { error: String(err), owner, repo, job: run.id });
       cache.delete(key);
       return null;
     });

@@ -20,3 +20,25 @@ export async function findWorktreeForBranch(
     }) ?? null
   );
 }
+
+/**
+ * The worktree for `branch` under the repo's worktree base: the one already
+ * checked out, or a new one in `subfolder`.
+ */
+export async function ensureWorktree(
+  repo: { worktreeBasePath?: string; worktreeSubfolder?: string; owner: string; name: string },
+  branch: string,
+): Promise<string> {
+  if (!repo.worktreeBasePath) {
+    throw new Error(
+      `No worktree base path configured for ${repo.owner}/${repo.name}. Configure it in Settings → Repos.`,
+    );
+  }
+  const existing = await findWorktreeForBranch(repo.worktreeBasePath, branch);
+  if (existing) return existing.path;
+  return invoke<string>('create_worktree', {
+    basePath: repo.worktreeBasePath,
+    subfolder: repo.worktreeSubfolder || '.worktrees',
+    branchName: branch,
+  });
+}

@@ -1,5 +1,6 @@
-import { invoke } from '@tauri-apps/api/core';
 import { useCallback } from 'react';
+import { guardLaunch } from '@/services/ci-failures/launch-guard';
+import { fixEvidence } from '@/services/ci-failures/prompts';
 import {
   buildConflictPrompt,
   buildFixPrompt,
@@ -9,9 +10,9 @@ import {
 } from '@/services/claude-launcher';
 import { sendOsNotification } from '@/services/notification';
 import { findRepoConfig } from '@/services/repo-lookup';
-import { findWorktreeForBranch } from '@/services/worktree-lookup';
+import { ensureWorktree } from '@/services/worktree-lookup';
 import { useSettingsStore } from '@/stores/settings-store';
-import type { ParsedError, PullRequestWithChecks } from '@/types';
+import type { PullRequestWithChecks } from '@/types';
 import type { AgentProvider } from '@/types/settings';
 
 const log = (step: string, detail?: string) =>
@@ -61,51 +62,39 @@ export function useClaudeActions() {
   const getOrCreateWorktree = useCallback(
     async (owner: string, name: string, branch: string): Promise<string> => {
       const repo = findRepoSettings(owner, name);
-      if (!repo?.worktreeBasePath) {
-        throw new Error(
-          `No worktree base path configured for ${owner}/${name}. Configure it in Settings → Repos.`,
-        );
-      }
-
-      log('list_worktrees_bare', repo.worktreeBasePath);
-      const existing = await findWorktreeForBranch(repo.worktreeBasePath, branch);
-      if (existing) {
-        log('reusing worktree', existing.path);
-        return existing.path;
-      }
-
-      log('create_worktree', `branch=${branch}`);
-      const result = await invoke<string>('create_worktree', {
-        basePath: repo.worktreeBasePath,
-        subfolder: repo.worktreeSubfolder || '.worktrees',
-        branchName: branch,
-      });
-      log('create_worktree done', result);
-
-      return result;
+      if (!repo) throw new Error(`Repo ${owner}/${name} not found in settings`);
+      log('ensure worktree', `branch=${branch}`);
+      const path = await ensureWorktree(repo, branch);
+      log('worktree ready', path);
+      return path;
     },
     [findRepoSettings],
   );
 
   const fixWithClaude = useCallback(
-    async (
-      pr: PullRequestWithChecks,
-      failedCheckNames: string[],
-      errors: ParsedError[],
-      changedFiles: string[],
-      rawLog: string,
-      provider?: AgentProvider,
-    ) => {
+    async (pr: PullRequestWithChecks, failedCheckNames: string[], provider?: AgentProvider) => {
       const p = pr.pullRequest;
       log('fixWithClaude', `PR #${p.number} checks=${failedCheckNames.join(', ')}`);
 
       const repo = findRepoSettings(p.repoOwner, p.repoName);
       if (!repo) throw new Error(`Repo ${p.repoOwner}/${p.repoName} not found in settings`);
 
+      const target = {
+        owner: p.repoOwner,
+        repo: p.repoName,
+        prNumber: p.number,
+        checkNames: failedCheckNames.filter((name) => name !== 'unknown'),
+        headSha: p.headSha,
+      };
+      if ((await guardLaunch(target, 'Fix')) === 'cancel') return;
+
       notifyLaunching(p.number, p.headRef);
-      const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
+      const [worktreePath, evidence] = await Promise.all([
+        getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef),
+        fixEvidence(p.repoOwner, p.repoName, p.number, target.checkNames).catch(() => null),
+      ]);
       log('building fix prompt');
-      const prompt = buildFixPrompt(pr, failedCheckNames, errors, changedFiles, rawLog, repo);
+      const prompt = buildFixPrompt(pr, failedCheckNames, evidence, repo);
       log('writing prompt file');
       const promptFile = await writePromptFile(prompt);
       log('prompt written', promptFile);
@@ -172,7 +161,7 @@ export function useClaudeActions() {
       const p = pr.pullRequest;
       const repo = findRepoSettings(p.repoOwner, p.repoName);
       if (!repo) return null;
-      return buildFixPrompt(pr, failedCheckNames, [], [], '', repo);
+      return buildFixPrompt(pr, failedCheckNames, null, repo);
     },
     [findRepoSettings],
   );

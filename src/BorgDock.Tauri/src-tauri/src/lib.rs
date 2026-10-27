@@ -3,6 +3,7 @@ pub mod agents;
 mod app_data;
 pub mod auth;
 pub mod cache;
+pub mod ci_failures;
 pub mod file_palette;
 pub mod flyout;
 pub mod git;
@@ -203,6 +204,29 @@ macro_rules! app_commands {
             t3::commands::t3_settle,
             t3::commands::t3_open_thread,
             t3::commands::t3_list_sessions,
+            // Related CI failures
+            ci_failures::commands::ci_read_job_log,
+            ci_failures::commands::ci_sanitize_texts,
+            ci_failures::store::commands::ci_record,
+            ci_failures::store::commands::ci_known_occurrences,
+            ci_failures::store::commands::ci_load_scope,
+            ci_failures::store::commands::ci_load_pr,
+            ci_failures::store::commands::ci_load_group,
+            ci_failures::store::commands::ci_merge_groups,
+            ci_failures::store::commands::ci_split_fingerprint,
+            ci_failures::store::commands::ci_dismiss_candidate,
+            ci_failures::store::commands::ci_set_candidate_verdict,
+            ci_failures::store::commands::ci_set_group,
+            ci_failures::store::commands::ci_claim,
+            ci_failures::store::commands::ci_update_claim,
+            ci_failures::store::commands::ci_claim_event,
+            ci_failures::store::commands::ci_usage,
+            ci_failures::store::commands::ci_count_usage,
+            ci_failures::store::commands::ci_branch_watch,
+            ci_failures::store::commands::ci_set_branch_watch,
+            ci_failures::store::commands::ci_retention,
+            ci_failures::store::commands::ci_clear,
+            ci_failures::store::commands::ci_store_info,
             // Azure DevOps HTTP proxy (CORS bypass)
             ado::ado_fetch,
             // File palette
@@ -323,6 +347,7 @@ pub fn run() {
         .manage(ProcessState::default())
         .manage(updater::PendingUpdate::<updater::DownloadedUpdate>::default())
         .manage(PrCache::default())
+        .manage(ci_failures::store::CiStore::default())
         .manage(sql::SqlQueries::default())
         .manage(t3::commands::T3Sessions::default())
         .manage(platform::flyout_cache::FlyoutCache {
@@ -443,7 +468,8 @@ fn command_bindings() -> tauri_specta::Builder<tauri::Wry> {
         .dangerously_cast_bigints_to_number()
         .events(tauri_specta::collect_events![
             runtime::RuntimeVisibility,
-            t3::commands::T3SessionsUpdated
+            t3::commands::T3SessionsUpdated,
+            ci_failures::store::commands::CiFailuresChanged
         ])
         .commands(app_commands!(collect_commands))
 }

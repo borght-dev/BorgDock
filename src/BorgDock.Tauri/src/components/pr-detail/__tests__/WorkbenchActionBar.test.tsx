@@ -214,7 +214,7 @@ describe('WorkbenchActionBar', () => {
     await act(async () => {
       fireEvent.keyDown(window, { key: 'f' });
     });
-    expect(fixWithClaude).toHaveBeenCalledWith(FAILING, ['CI / unit'], [], [], '');
+    expect(fixWithClaude).toHaveBeenCalledWith(FAILING, ['CI / unit']);
     expect(button('fix')).toHaveTextContent('Claude is on it');
   });
 

@@ -241,9 +241,12 @@ describe('WorktreesSection', () => {
     await act(async () => {
       press('t');
     });
-    expect(invoke).toHaveBeenCalledWith(
-      't3_open_thread',
-      expect.objectContaining({ workspaceRoot: PATH_B, branch: 'feature/482', prNumber: 482 }),
+    // The launch guard reads the CI failure store first.
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(
+        't3_open_thread',
+        expect.objectContaining({ workspaceRoot: PATH_B, branch: 'feature/482', prNumber: 482 }),
+      ),
     );
 
     await act(async () => {

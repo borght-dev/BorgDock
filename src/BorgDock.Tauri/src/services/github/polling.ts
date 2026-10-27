@@ -1,5 +1,5 @@
 import { createLogger } from '@/services/logger';
-import type { CheckRun, PrReview, PullRequest, PullRequestWithChecks } from '@/types';
+import type { CheckRun, CiJob, PrReview, PullRequest, PullRequestWithChecks } from '@/types';
 import { aggregatePrWithChecks } from './aggregate';
 import type { GitHubClient } from './client';
 import { aggregateReviewStatus, mapReviewState } from './pulls';
@@ -16,9 +16,13 @@ const CHECK_CONTEXT_FIELDS = /* GraphQL */ `
       status
       conclusion
       startedAt
+      completedAt
       checkSuite {
         databaseId
+        app { slug }
         workflowRun {
+          databaseId
+          runNumber
           event
           workflow { name }
         }
@@ -28,6 +32,7 @@ const CHECK_CONTEXT_FIELDS = /* GraphQL */ `
       context
       state
       createdAt
+      description
     }
   }
 `;
@@ -176,9 +181,16 @@ interface GqlCheckRunContext {
   status: string;
   conclusion: string | null;
   startedAt?: string | null;
+  completedAt?: string | null;
   checkSuite: {
     databaseId: number | null;
-    workflowRun?: { event: string; workflow: { name: string } | null } | null;
+    app?: { slug: string } | null;
+    workflowRun?: {
+      databaseId?: number | null;
+      runNumber?: number | null;
+      event: string;
+      workflow: { name: string } | null;
+    } | null;
   } | null;
 }
 
@@ -187,6 +199,7 @@ interface GqlStatusContext {
   context: string;
   state: string;
   createdAt?: string;
+  description?: string | null;
 }
 
 type GqlContext = GqlCheckRunContext | GqlStatusContext;
@@ -397,7 +410,8 @@ function latestCheckContexts(contexts: GqlContext[]): GqlContext[] {
 
 function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithChecks {
   const rollup = node.commits.nodes[0]?.commit.statusCheckRollup ?? null;
-  const checkRuns = latestCheckContexts(rollup?.contexts.nodes ?? []).map(contextToCheckRunLite);
+  const latest = latestCheckContexts(rollup?.contexts.nodes ?? []);
+  const checkRuns = latest.map(contextToCheckRunLite);
 
   // Users and teams are kept apart: a team request is matched against the
   // viewer's team memberships by the scorer, never against the login.
@@ -465,7 +479,43 @@ function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithC
     latestReviews,
   };
 
-  return aggregatePrWithChecks(pr, checkRuns);
+  return aggregatePrWithChecks(pr, checkRuns, latest.flatMap(ciJobOf));
+}
+
+/** A completed rollup context as a `CiJob`; pending ones are left out. */
+function ciJobOf(ctx: GqlContext): CiJob[] {
+  if (ctx.__typename === 'StatusContext') {
+    const state = ctx.state.toUpperCase();
+    if (state === 'PENDING' || state === 'EXPECTED') return [];
+    return [
+      {
+        id: 0,
+        kind: 'status',
+        name: ctx.context,
+        conclusion: state === 'SUCCESS' ? 'success' : 'failure',
+        ...(ctx.createdAt ? { completedAt: ctx.createdAt } : {}),
+        ...(ctx.description ? { description: ctx.description } : {}),
+      },
+    ];
+  }
+  if (!ctx.conclusion || ctx.databaseId == null) return [];
+  const suite = ctx.checkSuite;
+  const run = suite?.workflowRun;
+  return [
+    {
+      id: ctx.databaseId,
+      kind: run ? 'actions' : 'check',
+      name: ctx.name,
+      ...(run?.workflow?.name ? { workflowName: run.workflow.name } : {}),
+      ...(run?.event ? { workflowEvent: run.event } : {}),
+      ...(run?.databaseId ? { runId: run.databaseId } : {}),
+      ...(run?.runNumber ? { runNumber: run.runNumber } : {}),
+      ...(suite?.databaseId ? { checkSuiteId: suite.databaseId } : {}),
+      ...(suite?.app?.slug ? { appSlug: suite.app.slug } : {}),
+      conclusion: ctx.conclusion.toLowerCase(),
+      ...(ctx.completedAt ? { completedAt: ctx.completedAt } : {}),
+    },
+  ];
 }
 
 function mapMergeable(state: GqlMergeable): boolean | undefined {

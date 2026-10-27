@@ -66,8 +66,8 @@ async function bootPrList(page: Page) {
 }
 
 /**
- * Check runs for #14 (one failing suite, one passing) and the failing job's
- * log, answered in place of the blanket GitHub mock `bootApp` installs. Like
+ * Check runs for #14 (one failing suite, one passing) and the stored evidence of
+ * the failing job's log, answered in place of the blanket mocks `bootApp` installs. Like
  * GitHub Actions, the runs are named by job alone ("build", "links"); the
  * workflow runs for the head commit give their suites the names CI and Docs.
  */
@@ -110,17 +110,87 @@ async function routeChecks(page: Page) {
       }),
     }),
   );
-  await page.route(/api\.github\.com\/repos\/test-org\/borgdock\/actions\/jobs\/1002\/logs/, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'text/plain',
-      body: [
-        '2026-05-08T09:01:00.0000000Z ##[group]Run bun run typecheck',
-        'src/app.ts(12,5): error TS2322: Type string is not assignable to type number.',
-        '##[error]Process completed with exit code 2.',
-      ].join('\n'),
-    }),
-  );
+  // The CI failure store's record of the failed job: what Rust read from its log.
+  const id = 'github.com||test-org/borgdock#job:1002';
+  const failures = {
+    occurrences: [
+      {
+        occurrence: {
+          id,
+          scope: 'github.com||test-org/borgdock',
+          source: 'pull_request',
+          prNumber: 14,
+          prHeadSha: 'sha14',
+          testedSha: 'sha14',
+          headBranch: null,
+          event: 'pull_request',
+          workflowId: null,
+          workflowPath: null,
+          workflowName: 'CI',
+          runId: 500,
+          runAttempt: 1,
+          runNumber: null,
+          jobId: 1002,
+          jobName: 'test',
+          matrix: [],
+          checkSuiteId: 1,
+          appSlug: 'github-actions',
+          htmlUrl: null,
+          conclusion: 'failure',
+          failedStep: 'Run bun run typecheck',
+          failedStepNumber: null,
+          runnerName: null,
+          runnerGroup: null,
+          runnerLabels: [],
+          startedAt: null,
+          completedAt: '2026-05-08T09:01:05Z',
+          observedAt: '2026-05-08T09:02:00Z',
+          evidenceState: 'ready',
+          evidenceReason: null,
+          bytesRead: 180,
+          totalBytes: 180,
+          truncated: false,
+          evidenceAttempts: 1,
+          retryAt: null,
+        },
+        signals: [
+          {
+            occurrenceId: id,
+            ordinal: 0,
+            signal: {
+              kind: 'compile',
+              parser: 'typescript',
+              testId: null,
+              params: null,
+              path: 'src/app.ts',
+              line: 12,
+              column: 5,
+              code: 'TS2322',
+              errorClass: null,
+              expected: null,
+              actual: null,
+              message: 'Type string is not assignable to type number.',
+              excerpt: [],
+              frames: [],
+              repeats: 1,
+            },
+            fingerprintVersion: 201,
+            fingerprint: 'compile:TS2322:src/app.ts|x',
+            tier: 'high',
+            groupId: null,
+          },
+        ],
+        outcome: null,
+      },
+    ],
+    groups: [],
+  };
+  await page.evaluate((answer) => {
+    const mock = (
+      window as unknown as { __mockTauri: { addHandler: (cmd: string, h: () => unknown) => void } }
+    ).__mockTauri;
+    mock.addHandler('ci_load_pr', () => answer);
+  }, failures);
 }
 
 /** Push and pop run a view transition; wait for it before the next click. */
@@ -189,7 +259,7 @@ test('tabs switch by click and with J / K; Checks groups by suite', async ({ pag
     'failed',
   );
   await expect(detail(page).getByRole('button', { name: 'Fix with Claude' })).toHaveCount(2);
-  // The first failure's log excerpt, from the job log.
+  // The first failure's excerpt, from the evidence the CI failure store keeps.
   await expect(detail(page).getByRole('region', { name: 'First failure' })).toContainText(
     'Type string is not assignable to type number.',
   );

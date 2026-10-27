@@ -73,6 +73,30 @@ export function NotificationSection({ notifications, onChange }: Props) {
             onChange={(toastOnMergeable) => update({ toastOnMergeable })}
           />
         </div>
+        <div id="field-ci-failure-grows">
+          <ToggleRow
+            label="Shared CI failure without an owner"
+            hint="The same failure reached several PRs and nobody investigates it."
+            on={notifications.ciFailureGroupGrows !== false}
+            onChange={(ciFailureGroupGrows) => update({ ciFailureGroupGrows })}
+          />
+        </div>
+        <div id="field-ci-failure-owner-stale">
+          <ToggleRow
+            label="CI investigation went quiet"
+            hint="Its agent finished or stopped, or nobody checked in."
+            on={notifications.ciFailureOwnerStale !== false}
+            onChange={(ciFailureOwnerStale) => update({ ciFailureOwnerStale })}
+          />
+        </div>
+        <div id="field-ci-failure-fix-merged">
+          <ToggleRow
+            label="CI fix merged"
+            hint="A shared failure's fix merged while PRs are still red, or it came back."
+            on={notifications.ciFailureFixMerged !== false}
+            onChange={(ciFailureFixMerged) => update({ ciFailureFixMerged })}
+          />
+        </div>
         <div id="field-sound-on-merge">
           <ToggleRow
             label="Play sound on merge"

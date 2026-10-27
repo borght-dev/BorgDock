@@ -1,7 +1,7 @@
 export type {
   CheckRun,
   CheckSuite,
-  ParsedError,
+  CiJob,
   WorkflowJob,
 } from './check-run';
 export type {
@@ -48,6 +48,7 @@ export type {
   AppSettings,
   AuthMethod,
   AzureDevOpsSettings,
+  CiFailureSettings,
   ClaudeReviewSettings,
   DispatchSyncSchedule,
   FocusLayout,

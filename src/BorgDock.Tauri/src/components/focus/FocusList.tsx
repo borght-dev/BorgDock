@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
+import { CiFailuresFocusCard } from '@/components/ci-failures/CiFailuresFocusCard';
 import { DispatchFocusCard } from '@/components/dispatch/DispatchFocusCard';
 import { PrRow } from '@/components/pr/PrRow';
 import { prRowKey } from '@/components/pr/pr-card-data';
@@ -465,6 +466,7 @@ export function FocusList() {
       </div>
       <DispatchFocusCard />
       <WorkstreamsFocusCard />
+      <CiFailuresFocusCard />
       <div className="bd-focus-body">
         {outgoing !== null && (
           <div

@@ -8,6 +8,7 @@ import { showPr } from '@/services/navigation';
 import { workbenchPrimaryAction } from '@/services/pr-action-resolver';
 import { mergePrWithToast, reviewPr } from '@/services/pr-actions';
 import { openPrDetail } from '@/services/windows';
+import { useSharedFailureCount } from '@/stores/ci-failures-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -140,6 +141,9 @@ export const PrRow = memo(function PrRow({
   const cardData = useMemo(() => toPrCardData(prWithChecks, isMine), [prWithChecks, isMine]);
 
   const { repoOwner: owner, repoName: repo, number } = pr;
+  const shared = useSharedFailureCount(owner, repo, number);
+  // A group remembers every PR it ever saw; only a PR that fails now shares it.
+  const sharedFailure = prWithChecks.failedCheckNames.length > 0 ? shared : 0;
 
   const openInline = useCallback(() => {
     void showPr(keepSection ? { owner, repo, number, keepSection } : { owner, repo, number });
@@ -179,6 +183,7 @@ export const PrRow = memo(function PrRow({
         now={now}
         staleAfterDays={staleAfterDaysOf(staleAfterDays)}
         meta={meta}
+        sharedFailure={sharedFailure}
         animateKey={animateKey}
         onClick={handleClick}
         onAuxClick={handleAuxClick}

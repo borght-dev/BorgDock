@@ -61,6 +61,16 @@ export type PrFilter =
   | 'closed';
 export type SortBy = 'updated' | 'created' | 'title';
 
+/**
+ * A related CI failure group the list is narrowed to, next to the filter and
+ * search. Session state like them; `prKeys` are `owner/repo#number`.
+ */
+export interface RelatedFailureFilter {
+  groupId: string;
+  title: string;
+  prKeys: readonly string[];
+}
+
 /** Tauri-store key under which the PR sort order is remembered across launches. */
 export const PR_SORT_STORE_KEY = 'prSortBy';
 
@@ -91,6 +101,7 @@ interface ViewDeps extends DataDeps {
   filter: PrFilter;
   searchQuery: string;
   sortBy: SortBy;
+  relatedFailure: RelatedFailureFilter | null;
 }
 
 interface DerivedCache {
@@ -110,6 +121,7 @@ interface PrState extends DerivedCache {
   filter: PrFilter;
   searchQuery: string;
   sortBy: SortBy;
+  relatedFailure: RelatedFailureFilter | null;
   username: string;
   /** Effective team memberships (manual settings list ∪ auto-detected). */
   teams: string[];
@@ -147,6 +159,7 @@ interface PrState extends DerivedCache {
   setClosedPullRequests: (prs: PullRequestWithChecks[]) => void;
   setFilter: (filter: PrFilter) => void;
   setSearchQuery: (query: string) => void;
+  setRelatedFailure: (filter: RelatedFailureFilter | null) => void;
   setSortBy: (sort: SortBy) => void;
   setUsername: (username: string) => void;
   /** Team list typed in Settings → GitHub. */
@@ -289,7 +302,8 @@ function sameViewDeps(a: ViewDeps | null, b: ViewDeps): boolean {
     a.closed === b.closed &&
     a.filter === b.filter &&
     a.searchQuery === b.searchQuery &&
-    a.sortBy === b.sortBy
+    a.sortBy === b.sortBy &&
+    a.relatedFailure === b.relatedFailure
   );
 }
 
@@ -370,6 +384,7 @@ export const usePrStore = create<PrState>()((set, get) => ({
   filter: 'all',
   searchQuery: '',
   sortBy: 'updated',
+  relatedFailure: null,
 
   // ── Computed selectors ──
   filteredPrs: () => {
@@ -380,12 +395,18 @@ export const usePrStore = create<PrState>()((set, get) => ({
       filter: state.filter,
       searchQuery: state.searchQuery,
       sortBy: state.sortBy,
+      relatedFailure: state.relatedFailure,
     };
     if (state._cachedFilteredPrs && sameViewDeps(state._viewDeps, deps)) {
       return state._cachedFilteredPrs;
     }
     const filtered = applyFilter(deps.prs, deps.closed, deps.filter, deps.username, deps.teams);
-    const searched = filtered.filter((pr) => matchesSearch(pr, deps.searchQuery));
+    const related = deps.relatedFailure ? new Set(deps.relatedFailure.prKeys) : null;
+    const searched = filtered.filter(
+      (pr) =>
+        matchesSearch(pr, deps.searchQuery) &&
+        (!related || related.has(prScoreKey(pr.pullRequest))),
+    );
     const result = sortPrs(searched, deps.sortBy, deps.username);
     state._cachedFilteredPrs = result;
     state._viewDeps = deps;
@@ -496,6 +517,7 @@ export const usePrStore = create<PrState>()((set, get) => ({
   },
   setFilter: (filter) => set({ filter }),
   setSearchQuery: (query) => set({ searchQuery: query }),
+  setRelatedFailure: (relatedFailure) => set({ relatedFailure }),
   setSortBy: (sort) => {
     set({ sortBy: sort });
     persistToTauriStore('ui-state.json', PR_SORT_STORE_KEY, sort).catch((err) =>

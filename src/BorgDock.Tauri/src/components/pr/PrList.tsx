@@ -1,4 +1,4 @@
-import { GitPullRequest } from 'lucide-react';
+import { GitPullRequest, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
@@ -103,6 +103,7 @@ export function PrList() {
     })),
   );
   const prs = usePrStore((s) => s.filteredPrs());
+  const relatedFailure = usePrStore((s) => s.relatedFailure);
   const counts = usePrStore((s) => s.counts());
   const needsMyReview = usePrStore((s) => s.needsMyReview());
   const groupBy = useUiStore((s) => s.prGroupBy);
@@ -258,12 +259,27 @@ export function PrList() {
     );
   }
 
-  const showClosed = filter !== 'closed' && closed.length > 0;
-  const showReviewLoad = filter !== 'closed' && reviewers.length > 0;
+  // A related-failure filter asks about a handful of PRs; the team-wide groups would bury them.
+  const showClosed = filter !== 'closed' && !relatedFailure && closed.length > 0;
+  const showReviewLoad = filter !== 'closed' && !relatedFailure && reviewers.length > 0;
 
   return (
     <div className="bd-wb-prs">
       {head}
+      {relatedFailure && (
+        <div className="bd-ci-filter" data-related-failure-filter="">
+          <span title={relatedFailure.title}>
+            Related failure: {relatedFailure.title} · {relatedFailure.prKeys.length} PRs
+          </span>
+          <button
+            type="button"
+            aria-label="Show all pull requests again"
+            onClick={() => usePrStore.getState().setRelatedFailure(null)}
+          >
+            <X size={12} strokeWidth={2.25} aria-hidden="true" />
+          </button>
+        </div>
+      )}
       <div ref={listRef} className="bd-wb-list" data-density={density}>
         {prs.length === 0 && (
           <div className="bd-wb-empty">
