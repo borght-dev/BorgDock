@@ -104,6 +104,9 @@ export function deriveAdo(
       });
     }
 
+    // An Up next item of someone else is listed, but its changes are theirs.
+    if (!item.assignedToMe) continue;
+
     if (before && item.rev !== before.rev && item.state !== before.state && !item.changedByMe) {
       const from = item.states.indexOf(before.state);
       const to = item.states.indexOf(item.state);

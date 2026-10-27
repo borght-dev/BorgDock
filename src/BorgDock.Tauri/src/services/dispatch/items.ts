@@ -158,6 +158,8 @@ export function toDispatchItem(
     parentId: parentOf(item),
     childIds: childrenOf(item),
     changedAt: getField(item, 'System.ChangedDate'),
+    rev: item.rev,
+    changedBy: getField(item, 'System.ChangedBy') || null,
   };
 }
 
@@ -255,6 +257,7 @@ async function withLastComments(client: AdoClient, items: DispatchItem[]): Promi
   return items.map((item) => ({
     ...item,
     lastComment: commentCache.get(item.id)?.comment ?? null,
+    changedByMe: me !== null && item.changedBy === me,
   }));
 }
 

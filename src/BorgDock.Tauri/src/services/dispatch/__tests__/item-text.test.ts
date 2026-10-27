@@ -72,6 +72,7 @@ describe('toItemComment', () => {
       'Koen van der Borght',
     );
     expect(result).toEqual({
+      id: 1,
       author: 'Vera · implement',
       at: '2026-10-12T16:11:00Z',
       text: '66 pre-existing E2E errors block step 6.',

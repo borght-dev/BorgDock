@@ -1,4 +1,5 @@
 import { toggleTrackedWorkItem } from '@/components/work-items/work-item-toggles';
+import { adoReadFailed, ingestAdoItems } from '@/services/activity/adapters/ado';
 import { ingestT3Host, retireT3HostsExcept, t3HostFailed } from '@/services/activity/adapters/t3';
 import type { AdoClient } from '@/services/ado/client';
 import { adoClient } from '@/services/ado/singleton';
@@ -538,6 +539,7 @@ function refreshLinkedPullRequests(): Promise<void> {
 
 async function loadItems(): Promise<void> {
   const generation = syncGeneration;
+  const startedAt = Date.now();
   const store = useDispatchStore.getState;
   const ado = useSettingsStore.getState().settings.azureDevOps;
   const client = adoClient(ado);
@@ -572,6 +574,7 @@ async function loadItems(): Promise<void> {
     if (generation !== syncGeneration) return;
     const at = new Date().toISOString();
     store().setItems(items, { ok: true, at, error: null });
+    ingestAdoItems(items, startedAt);
     // A failed read of the context items keeps the last ones, as of when they were read.
     if (context)
       store().setContextItems(context.items, context.missing, { ok: true, at, error: null });
@@ -580,6 +583,7 @@ async function loadItems(): Promise<void> {
   } catch (error) {
     if (generation !== syncGeneration) return;
     store().setAdoStatus({ ok: false, at: store().ado.at, error: errorText(error) });
+    adoReadFailed();
   }
   recomputeOverview();
 }
