@@ -117,6 +117,7 @@ const PR_FIELDS = /* GraphQL */ `
           }
           latestReviews(first: 25) {
             nodes {
+              databaseId
               state
               commit { oid }
               submittedAt
@@ -168,6 +169,7 @@ interface GqlRequestedReviewer {
 }
 
 interface GqlReview {
+  databaseId?: number | null;
   state: string;
   commit?: { oid: string } | null;
   submittedAt?: string | null;
@@ -440,6 +442,7 @@ function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithC
     const state = mapReviewState(r.state);
     if (!r.author || !state) continue;
     latestReviews.push({
+      ...(r.databaseId ? { id: r.databaseId } : {}),
       authorLogin: r.author.login,
       state,
       submittedAt: r.submittedAt ?? undefined,

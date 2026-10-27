@@ -315,3 +315,17 @@ export async function retireSourcesExcept(
     log.warn('could not retire activity sources', { kind, error: String(error) });
   }
 }
+
+/**
+ * The baseline the next observation of `source` is compared with, for
+ * adapters that decide what to read (which PRs to verify, whose findings to
+ * fetch) before they observe.
+ */
+export async function peekBaseline<B>(source: SourceDescriptor): Promise<B | null> {
+  if (readOnly) return null;
+  try {
+    return ((await stateFor(source)).baseline as B | null) ?? null;
+  } catch {
+    return null;
+  }
+}

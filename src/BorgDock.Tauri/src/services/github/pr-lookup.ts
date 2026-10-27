@@ -33,6 +33,10 @@ export interface LookedUpPullRequest {
   repositoryId: string;
   /** `owner/name` as GitHub answers it now; differs from what was asked after a rename. */
   nameWithOwner: string;
+  authorLogin?: string | null;
+  mergedBy?: string | null;
+  /** The commit the merge made; delivery compares it with what deployed. */
+  mergeCommitSha?: string | null;
 }
 
 export type LookupResult =
@@ -82,7 +86,7 @@ export function isDue(result: LookupResult | undefined, now: number): boolean {
 }
 
 const FIELDS = `number url title state isDraft mergedAt closedAt headRefName baseRefName headRefOid
-  reviewDecision mergeable
+  reviewDecision mergeable author { login } mergedBy { login } mergeCommit { oid }
   commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }`;
 
 interface GraphPullRequest {
@@ -98,6 +102,9 @@ interface GraphPullRequest {
   headRefOid: string | null;
   reviewDecision: string | null;
   mergeable: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN' | null;
+  author?: { login: string } | null;
+  mergedBy?: { login: string } | null;
+  mergeCommit?: { oid: string } | null;
   commits?: { nodes?: { commit?: { statusCheckRollup?: { state?: string } | null } }[] };
 }
 
@@ -136,6 +143,9 @@ function toLookedUp(
     checks: checksOf(pr),
     repositoryId,
     nameWithOwner,
+    authorLogin: pr.author?.login ?? null,
+    mergedBy: pr.mergedBy?.login ?? null,
+    mergeCommitSha: pr.mergeCommit?.oid ?? null,
   };
 }
 

@@ -1,3 +1,8 @@
+import {
+  type FreshRepository,
+  gitHubRepositoryFailed,
+  ingestGitHubPoll,
+} from '@/services/activity/adapters/github';
 import { saveCachedEtags, saveCachedPRs } from '@/services/cache';
 import { aggregatePrWithChecks } from '@/services/github/aggregate';
 import { getGitHubToken } from '@/services/github/auth';
@@ -55,6 +60,11 @@ export function createGitHubSync(getSettings: () => AppSettings) {
 
       /** The repositories the last poll read, as `owner/name` in lower case. */
       let polledRepos: string[] = [];
+      /** The same, with how each was read, for the activity journal. */
+      let freshRead: { repositories: FreshRepository[]; startedAt: number } = {
+        repositories: [],
+        startedAt: 0,
+      };
 
       // The poll function reads from the ref so it always uses current repos
       const pollFn = async (): Promise<PullRequestWithChecks[]> => {
@@ -79,8 +89,19 @@ export function createGitHubSync(getSettings: () => AppSettings) {
         }
 
         const pollStart = performance.now();
+        const startedAt = Date.now();
         let successfulRepos = 0;
         const freshRepos: string[] = [];
+        const freshRepositories: FreshRepository[] = [];
+        const fresh = (repo: (typeof enabledRepos)[number], path: FreshRepository['path']) => {
+          freshRepos.push(`${repo.owner}/${repo.name}`.toLowerCase());
+          freshRepositories.push({
+            owner: repo.owner,
+            name: repo.name,
+            account: repo.githubAccount?.trim() ?? '',
+            path,
+          });
+        };
         log.info('poll cycle start', { repoCount: enabledRepos.length });
         const perRepo = await Promise.all(
           enabledRepos.map(async (repo) => {
@@ -91,7 +112,7 @@ export function createGitHubSync(getSettings: () => AppSettings) {
               const repoStart = performance.now();
               const prs = await pollOpenPrsAggregate(repoClient, repo.owner, repo.name);
               successfulRepos++;
-              freshRepos.push(repoLabel.toLowerCase());
+              fresh(repo, 'graphql');
 
               log.debug('poll: repo fetched', {
                 repo: repoLabel,
@@ -161,12 +182,13 @@ export function createGitHubSync(getSettings: () => AppSettings) {
                   prs: reconciled.length,
                 });
                 successfulRepos++;
-                freshRepos.push(repoLabel.toLowerCase());
+                fresh(repo, 'rest');
                 return reconciled;
               } catch (restError) {
                 log.error('poll: both APIs failed — keeping last-known PRs', restError, {
                   repo: repoLabel,
                 });
+                void gitHubRepositoryFailed(repo.owner, repo.name, repoClient);
                 return [...priorByKey.values()].filter((prior) => {
                   const p = prior.pullRequest;
                   return p.repoOwner === repo.owner && p.repoName === repo.name;
@@ -177,6 +199,7 @@ export function createGitHubSync(getSettings: () => AppSettings) {
         );
         if (successfulRepos === 0) throw new Error('Unable to refresh any GitHub repository');
         polledRepos = freshRepos;
+        freshRead = { repositories: freshRepositories, startedAt };
         const allPrs = perRepo.flat();
 
         log.info('poll cycle done', {
@@ -201,6 +224,11 @@ export function createGitHubSync(getSettings: () => AppSettings) {
         usePrStore.getState().setPullRequests(results);
         usePrStore.getState().markReposPolled(polledRepos, Date.now());
         usePrStore.getState().setPollingState(false, new Date());
+        void ingestGitHubPoll({
+          ...freshRead,
+          results,
+          clientFor: (owner, name) => getClientForRepo(owner, name) ?? null,
+        });
 
         // REST and GraphQL are separate pools — surface whichever is tighter
         // (polling spends GraphQL points; cold paths still spend REST).

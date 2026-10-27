@@ -42,6 +42,8 @@ export interface PullRequest {
 export type PrReviewState = 'approved' | 'changesRequested' | 'commented' | 'dismissed' | 'pending';
 
 export interface PrReview {
+  /** GitHub's `databaseId` for the review, when the read carried it (GraphQL). */
+  id?: number;
   authorLogin: string;
   commitSha?: string;
   state: PrReviewState;
