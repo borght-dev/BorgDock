@@ -1,5 +1,26 @@
 # Changelog
 
+## 4.7.0 — 2026-10-27
+
+### New Features
+
+- **Workstreams** — Some goals take more than one work item, a couple of agent threads and a handful of pull requests. A workstream keeps them together under one goal, with the outcomes that goal needs and a next action you set yourself. BorgDock checks each outcome against the real records: when the pull request merges or the item reaches Done, the outcome turns green, and if the item is reopened later you hear about it. Find it in the new Workstreams section, right after Dispatch. ![A workstream with its goal, outcomes and next action](whats-new/4.7.0/workstreams-overview.png)
+- **See how the pieces fit** — The map shows which pull request blocks which outcome, which one replaced an earlier attempt, and the decisions still open between two approaches. Record the decision with its reason, and the option you didn't take stays visible, greyed out, so nobody picks it up again by accident. ![The relation map of a workstream](whats-new/4.7.0/workstreams-map.png)
+- **Let an agent review the workstream** — Review with agent sends everything the workstream links to a T3 thread. The agent reads the items, pull requests and conversations and comes back with proposals: a missing pull request, a duplicate to drop, the next action. You accept or reject each one, and nothing changes without you. Work next action starts a thread on the next action itself. ![An agent's proposals for a workstream](whats-new/4.7.0/workstreams-review.png)
+- **Workstreams on every machine** — Point Settings → Workstreams at a folder that OneDrive, Dropbox or iCloud syncs, and your laptop and desktop share the same workstreams. When both changed the same thing, BorgDock shows both versions and lets you pick, instead of overwriting one. ![The sync folder setting](whats-new/4.7.0/workstreams-sync.png)
+- **Know when a failing check isn't just yours** — When a check fails, the Checks tab now shows whether the same failure is also breaking other pull requests or the default branch. Each match comes with how sure BorgDock is, the likely cause (a flaky test, the CI runners, a break on the base branch) and who is already working on it. Claim it, investigate it, or open every affected pull request in one click. ![The Related failures card above a pull request's checks](whats-new/4.7.0/related-failures.png)
+- **No more fixing the same failure twice** — Fix with Claude and Open in T3 now check first. If someone already owns that failure, BorgDock offers to open their thread or send them a note before you start a second fix. ![BorgDock asking before starting a second fix for a failure someone already owns](whats-new/4.7.0/launch-guard.png)
+- **Investigate once, rerun everywhere** — Investigate hands an agent the failure, the evidence from every affected pull request and what is still unknown. Once the fix is in, Rerun affected reruns the failed checks on every pull request that hit it, and tells you which ones need to update their branch first. ![The Investigate sheet for a failure shared by several pull requests](whats-new/4.7.0/investigate.png)
+
+### Improvements
+
+- **Workstreams wherever you look** — Pull requests and Dispatch rows show which workstream they belong to, and the details of a pull request or work item have Add to workstream. The Focus tab shows the workstreams that need you. ![Dispatch rows with their workstream chips](whats-new/4.7.0/workstreams-chips.png)
+- **Shared failures in Focus and your pull request list** — Failing pull requests that share their failure carry a small tag, and Focus lists the shared failures nobody owns yet. Collection, limits and notifications live in Settings → GitHub. ![Focus listing shared CI failures that need you](whats-new/4.7.0/focus-shared-failures.png)
+
+### Bug Fixes
+
+- A work item deleted between two reads no longer stops the rest of your work items from loading.
+
 ## 4.6.0 — 2026-10-26
 
 ### New Features

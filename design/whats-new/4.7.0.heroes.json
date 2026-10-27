@@ -1,0 +1,59 @@
+[
+  {
+    "slug": "related-failures",
+    "storyId": "ci-failures-relatedfailurescard--shared-and-owned",
+    "viewport": { "width": 1000, "height": 640 },
+    "selector": "div:has(> .bd-ci-related)",
+    "delay": 1500
+  },
+  {
+    "slug": "launch-guard",
+    "storyId": "ci-failures-relatedfailurescard--guard-owned",
+    "viewport": { "width": 1000, "height": 640 },
+    "selector": ".bd-ci-dialog",
+    "delay": 1500
+  },
+  {
+    "slug": "investigate",
+    "storyId": "ci-failures-sheets--investigate",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 1500
+  },
+  {
+    "slug": "focus-shared-failures",
+    "storyId": "ci-failures-relatedfailurescard--focus-card",
+    "viewport": { "width": 800, "height": 500 },
+    "selector": "div:has(> .bd-ci-fcard)",
+    "delay": 1500
+  },
+  {
+    "slug": "workstreams-overview",
+    "storyId": "workstreams-workstreams--overview",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 1500
+  },
+  {
+    "slug": "workstreams-map",
+    "storyId": "workstreams-workstreams--relation-map",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 1500
+  },
+  {
+    "slug": "workstreams-review",
+    "storyId": "workstreams-workstreams--review-with-agent",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 1500
+  },
+  {
+    "slug": "workstreams-sync",
+    "storyId": "settings-workstreamssection--sync-folder",
+    "viewport": { "width": 1000, "height": 700 },
+    "delay": 1000
+  },
+  {
+    "slug": "workstreams-chips",
+    "storyId": "workstreams-workstreams--dispatch-chips",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 1500
+  }
+]
