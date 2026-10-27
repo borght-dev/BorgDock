@@ -26,6 +26,7 @@ export type {
   NotificationSeverity,
 } from './notification';
 export type {
+  HeadDeployment,
   OverallStatus,
   PrReview,
   PrReviewState,

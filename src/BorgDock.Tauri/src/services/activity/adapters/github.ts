@@ -31,6 +31,7 @@ import {
 } from '../derive/github';
 import { ingest, markSourceFailed, peekBaseline, type SourceDescriptor } from '../ingest';
 import { sourceId } from '../sources';
+import { ingestDeliveryHeads } from './delivery';
 
 const log = createLogger('activity:github');
 
@@ -275,6 +276,7 @@ async function verify(
       mergedAt: pr.mergedAt,
       mergedBy: pr.mergedBy ?? null,
       closedAt: pr.closedAt,
+      mergeCommitSha: pr.mergeCommitSha ?? null,
     });
   }
   return verified;
@@ -294,6 +296,7 @@ function addToClosed(owner: string, repo: string, verified: readonly VerifiedPr[
           state: pr.state,
           mergedAt: pr.mergedAt ?? undefined,
           closedAt: pr.closedAt ?? undefined,
+          ...(pr.mergeCommitSha ? { mergeCommitSha: pr.mergeCommitSha } : {}),
         },
       },
     ];
@@ -361,6 +364,7 @@ async function observeRepository(poll: GitHubPoll, repository: FreshRepository):
     findings,
   };
   await ingest(source, { time: poll.startedAt }, deriveGitHub, observation);
+  await ingestDeliveryHeads(owner, name, login, prs);
 }
 
 /**

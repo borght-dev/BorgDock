@@ -21,6 +21,7 @@ vi.mock('../ci-failures-sync', () => ({ startCiFailuresSync: () => () => {} }));
 vi.mock('../visibility', () => ({ startVisibilityTracking: () => () => {} }));
 vi.mock('../t3-sessions', () => ({ followT3Sessions: () => () => {} }));
 vi.mock('../workstreams-sync', () => ({ startWorkstreamsSync: () => () => {} }));
+vi.mock('../activity-sync', () => ({ startActivitySync: () => () => {} }));
 
 const original = useSettingsStore.getState().settings;
 let stop: (() => void) | undefined;

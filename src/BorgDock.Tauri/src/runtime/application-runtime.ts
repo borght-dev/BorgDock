@@ -3,6 +3,7 @@ import { resetClient } from '@/services/github/singleton';
 import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import { useInitStore } from '@/stores/initStore';
 import { useSettingsStore } from '@/stores/settings-store';
+import { startActivitySync } from './activity-sync';
 import { startAdoSync } from './ado-sync';
 import { startCiFailuresSync } from './ci-failures-sync';
 import { startDispatchSync } from './dispatch-sync';
@@ -29,6 +30,7 @@ export function startApplicationRuntime(): () => void {
   let unlisten: (() => void) | undefined;
   const stopVisibility = startVisibilityTracking();
   const stopSessions = followT3Sessions();
+  const stopActivity = startActivitySync();
   const stopWorkstreams = WORKSTREAMS_ENABLED ? startWorkstreamsSync() : undefined;
   const getSettings = () => useSettingsStore.getState().settings;
   const reconcile = (restart = false) => {
@@ -125,6 +127,7 @@ export function startApplicationRuntime(): () => void {
     stopCiFailures?.();
     stopVisibility();
     stopSessions();
+    stopActivity();
     stopWorkstreams?.();
     document.removeEventListener('borgdock-refresh', refresh);
   };

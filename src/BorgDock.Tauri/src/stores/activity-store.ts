@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { ActivityCapacity, ActivityCounts } from '@/generated/commands';
+import { type ActivityCapacity, type ActivityCounts, events } from '@/generated/commands';
+import * as api from '@/services/activity/api';
 
 /**
  * The read side of the activity journal in this window: the counts Rust
@@ -51,3 +52,30 @@ export const useActivityStore = create<ActivityState>()((set) => ({
 /** Unread entries that need me: the rail, tray and taskbar count. */
 export const selectNeedsYou = (state: ActivityState) => state.counts?.needsYou ?? 0;
 export const selectUnread = (state: ActivityState) => state.counts?.unread ?? 0;
+
+/**
+ * Keep this window's counts current: read them once, then take the ones
+ * Rust sends with every change. Any window can follow; only the main
+ * window's runtime writes.
+ */
+export function followActivityCounts(): () => void {
+  let stopped = false;
+  let unlisten: (() => void) | undefined;
+  void api
+    .counts()
+    .then((counts) => {
+      if (!stopped) useActivityStore.getState().setCounts(counts);
+    })
+    .catch(() => {});
+  void events.activityChanged
+    .listen((event) => useActivityStore.getState().setCounts(event.payload.counts))
+    .then((stop) => {
+      if (stopped) stop();
+      else unlisten = stop;
+    })
+    .catch(() => {});
+  return () => {
+    stopped = true;
+    unlisten?.();
+  };
+}

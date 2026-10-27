@@ -10,7 +10,8 @@ import type {
 import { createdAfterSeed, emptyResult, makeEntry, resolveIds } from './shared';
 
 export interface DeploymentStatusFacts {
-  id: number;
+  /** REST's number as text, or GraphQL's node id for head deployments. */
+  id: string;
   /** GitHub's status: success, failure, error, in_progress, queued, inactive, pending. */
   state: string;
   createdAt: string;
@@ -90,7 +91,7 @@ export function deriveDelivery(
   for (const head of observation.heads) {
     const status = head.status;
     if (!status || !TERMINAL.has(status.state)) continue;
-    const fact = String(status.id);
+    const fact = status.id;
     if (seen.has(fact)) continue;
     seen.add(fact);
     const pair = `head:${pairOf(head.prNumber, head.environment)}`;

@@ -1,5 +1,12 @@
 import { createLogger } from '@/services/logger';
-import type { CheckRun, CiJob, PrReview, PullRequest, PullRequestWithChecks } from '@/types';
+import type {
+  CheckRun,
+  CiJob,
+  HeadDeployment,
+  PrReview,
+  PullRequest,
+  PullRequestWithChecks,
+} from '@/types';
 import { aggregatePrWithChecks } from './aggregate';
 import type { GitHubClient } from './client';
 import { aggregateReviewStatus, mapReviewState } from './pulls';
@@ -112,6 +119,14 @@ const PR_FIELDS = /* GraphQL */ `
                   state
                   contexts(first: 100) { ${CHECK_CONTEXT_FIELDS} }
                 }
+                deployments(last: 10) {
+                  nodes {
+                    databaseId
+                    environment
+                    createdAt
+                    latestStatus { id state createdAt logUrl environmentUrl }
+                  }
+                }
               }
             }
           }
@@ -174,6 +189,43 @@ interface GqlReview {
   commit?: { oid: string } | null;
   submittedAt?: string | null;
   author: { login: string } | null;
+}
+
+interface GqlDeployment {
+  databaseId: number | null;
+  environment: string | null;
+  createdAt: string;
+  latestStatus: {
+    id: string;
+    state: string;
+    createdAt: string;
+    logUrl: string | null;
+    environmentUrl: string | null;
+  } | null;
+}
+
+/** Deployments of the head commit, newest last, as the activity journal reads them. */
+function headDeploymentsOf(node: GqlPrNode): HeadDeployment[] {
+  return (node.commits.nodes[0]?.commit.deployments?.nodes ?? []).flatMap((deployment) =>
+    deployment.databaseId && deployment.environment
+      ? [
+          {
+            id: deployment.databaseId,
+            environment: deployment.environment,
+            createdAt: deployment.createdAt,
+            status: deployment.latestStatus
+              ? {
+                  id: deployment.latestStatus.id,
+                  state: deployment.latestStatus.state.toLowerCase(),
+                  createdAt: deployment.latestStatus.createdAt,
+                  logUrl: deployment.latestStatus.logUrl,
+                  environmentUrl: deployment.latestStatus.environmentUrl,
+                }
+              : null,
+          },
+        ]
+      : [],
+  );
 }
 
 interface GqlCheckRunContext {
@@ -239,7 +291,12 @@ interface GqlPrNode {
   reviewRequests: { nodes: Array<{ requestedReviewer: GqlRequestedReviewer | null }> } | null;
   commits: {
     totalCount: number;
-    nodes: Array<{ commit: { statusCheckRollup: GqlStatusCheckRollup | null } }>;
+    nodes: Array<{
+      commit: {
+        statusCheckRollup: GqlStatusCheckRollup | null;
+        deployments?: { nodes: GqlDeployment[] } | null;
+      };
+    }>;
   };
   latestReviews: { nodes: GqlReview[] } | null;
   comments: { totalCount: number };
@@ -482,7 +539,10 @@ function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithC
     latestReviews,
   };
 
-  return aggregatePrWithChecks(pr, checkRuns, latest.flatMap(ciJobOf));
+  return {
+    ...aggregatePrWithChecks(pr, checkRuns, latest.flatMap(ciJobOf)),
+    headDeployments: headDeploymentsOf(node),
+  };
 }
 
 /** A completed rollup context as a `CiJob`; pending ones are left out. */

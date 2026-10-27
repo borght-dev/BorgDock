@@ -278,7 +278,7 @@ function delivery(overrides: Partial<DeliveryObservation> = {}): DeliveryObserva
   return { owner: 'acme', repo: 'app', heads: [], inclusions: [], ...overrides };
 }
 const status = (id: number, state: string) => ({
-  id,
+  id: String(id),
   state,
   createdAt: '2026-10-27T09:30:00Z',
   logUrl: `https://github.com/acme/app/actions/runs/${id}`,

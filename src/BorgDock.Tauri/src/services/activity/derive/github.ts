@@ -76,6 +76,8 @@ export interface VerifiedPr {
   mergedAt: string | null;
   mergedBy: string | null;
   closedAt: string | null;
+  /** For delivery: the commit to look for in what deployed. */
+  mergeCommitSha?: string | null;
 }
 
 export interface FindingItem {
