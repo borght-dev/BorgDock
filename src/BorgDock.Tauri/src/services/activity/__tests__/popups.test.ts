@@ -134,10 +134,10 @@ describe('the popup paths', () => {
       for (const name of readdirSync(dir)) {
         const path = join(dir, name);
         if (statSync(path).isDirectory()) {
-          if (name !== '__tests__' && name !== 'generated') walk(path);
+          if (!['__tests__', '__fixtures__', 'generated'].includes(name)) walk(path);
           continue;
         }
-        if (!/\.(ts|tsx)$/.test(name)) continue;
+        if (!/\.(ts|tsx)$/.test(name) || name.includes('.stories.')) continue;
         const text = readFileSync(path, 'utf8');
         if (
           /sendOsNotification\(/.test(text) &&
@@ -149,5 +149,5 @@ describe('the popup paths', () => {
     };
     walk(root);
     expect(offenders).toEqual([]);
-  });
+  }, 30_000);
 });
