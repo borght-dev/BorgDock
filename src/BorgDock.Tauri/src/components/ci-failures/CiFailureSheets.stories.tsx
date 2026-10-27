@@ -68,6 +68,8 @@ const summary = makeGroup({
   firstObservedAt: ago(26),
   lastObservedAt: ago(1),
   candidateCount: 1,
+  // The PR jobs the sheet stories fail with: #1184 and #1190 (number × 10), then 99 and 11.
+  prJobIds: [11840, 11900, 99, 11],
 });
 
 const DETAIL: CiGroupDetail = {

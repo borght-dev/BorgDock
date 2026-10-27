@@ -89,7 +89,7 @@ const cartGroup = makeGroup({
 });
 
 const brokeAfter: BranchStory = {
-  branch: 'master',
+  branch: 'main',
   firstRed: { runId: 4812, runNumber: 4812, sha: 'f00d', url: null },
   lastGreen: { runId: 4811, runNumber: 4811, sha: 'beef', url: null },
   commits: [
