@@ -194,25 +194,11 @@ pub fn write_if<T>(
 }
 
 fn bump_revision(tx: &Transaction) -> Result<i64, String> {
-    tx.query_row(
-        "INSERT INTO meta (key, value) VALUES ('revision', '1') \
-         ON CONFLICT(key) DO UPDATE SET value = CAST(value AS INTEGER) + 1 \
-         RETURNING CAST(value AS INTEGER)",
-        [],
-        |row| row.get(0),
-    )
-    .map_err(db)
+    crate::sqlite_store::bump_revision(tx).map_err(db)
 }
 
 pub fn revision(conn: &Connection) -> Result<i64, String> {
-    conn.query_row(
-        "SELECT CAST(value AS INTEGER) FROM meta WHERE key = 'revision'",
-        [],
-        |row| row.get(0),
-    )
-    .optional()
-    .map(Option::unwrap_or_default)
-    .map_err(db)
+    crate::sqlite_store::revision(conn).map_err(db)
 }
 
 /// Persist a batch from the runtime. Returns the scopes it touched.

@@ -288,7 +288,7 @@ pub struct CiRecordBatch {
 
 /// Keeps "absent" and "null" apart in a patch: absent leaves the field
 /// alone, null clears it.
-fn present<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+pub(crate) fn present<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de>,
