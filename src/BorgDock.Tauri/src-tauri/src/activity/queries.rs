@@ -679,6 +679,7 @@ pub fn list(conn: &Connection, query: &ActivityListQuery) -> Result<ActivityPage
     push_in(&mut clauses, &mut values, "category", &query.categories);
     push_in(&mut clauses, &mut values, "source_id", &query.source_ids);
     push_in(&mut clauses, &mut values, "entity_key", &query.entity_keys);
+    push_in(&mut clauses, &mut values, "id", &query.ids);
     if let Some(search) = query
         .search
         .as_deref()

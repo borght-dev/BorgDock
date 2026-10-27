@@ -25,6 +25,10 @@ import type {
  * runtime commits observations.
  */
 
+/** Another window asks the main window to open an entry, or to take its action after checking it again. */
+export const SHOW_ACTIVITY_EVENT = 'activity-show';
+export const ACT_ACTIVITY_EVENT = 'activity-act';
+
 interface Payload {
   schema: 1;
   entity: ActivityEntity | null;

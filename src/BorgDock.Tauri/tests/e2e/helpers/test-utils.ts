@@ -163,6 +163,7 @@ export async function seedMainWindow(
   payload: {
     prs?: unknown[];
     workItems?: unknown[];
+    threads?: unknown[];
     settings?: Record<string, unknown>;
   },
 ): Promise<void> {

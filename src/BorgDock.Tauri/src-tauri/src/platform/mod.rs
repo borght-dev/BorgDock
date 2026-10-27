@@ -5,6 +5,7 @@ pub mod deferred_actions;
 pub mod flyout_cache;
 pub mod hotkey;
 pub mod logs;
+pub mod taskbar;
 pub mod theme;
 pub mod tray;
 pub mod window;

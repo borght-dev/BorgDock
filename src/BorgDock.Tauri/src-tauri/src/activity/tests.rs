@@ -126,6 +126,7 @@ fn all() -> ActivityListQuery {
         categories: vec![],
         source_ids: vec![],
         entity_keys: vec![],
+        ids: vec![],
         search: None,
         include_dismissed: false,
         limit: 1000,

@@ -191,6 +191,9 @@ pub struct ActivityListQuery {
     pub categories: Vec<String>,
     pub source_ids: Vec<String>,
     pub entity_keys: Vec<String>,
+    /// These entries only (a notification's entry); empty lists don't filter.
+    #[serde(default)]
+    pub ids: Vec<String>,
     /// Matches summary and detail, case-insensitively.
     pub search: Option<String>,
     /// Only for `all`; the other filters show unread entries.

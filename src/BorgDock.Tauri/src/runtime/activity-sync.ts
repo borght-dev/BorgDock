@@ -1,13 +1,20 @@
+import { commands } from '@/generated/commands';
+import { bringMainWindowForward } from '@/hooks/useFlyoutSync';
+import { act } from '@/services/activity/actions';
 import { DELIVERY_MS, pollDeliveries } from '@/services/activity/adapters/delivery';
 import * as api from '@/services/activity/api';
 import { retireSourcesExcept } from '@/services/activity/ingest';
 import { sourceId } from '@/services/activity/sources';
+import type { ActivityEntry } from '@/services/activity/types';
 import { parseScope } from '@/services/github/scope';
 import { getClientForRepo } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
+import { showSection } from '@/services/navigation';
 import { PollingManager } from '@/services/polling';
-import { followActivityCounts, useActivityStore } from '@/stores/activity-store';
+import { followActivityCounts, selectNeedsYou, useActivityStore } from '@/stores/activity-store';
+import { useActivityViewStore } from '@/stores/activity-view-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { showToast } from '@/stores/toast-store';
 import { trackPolling } from './visibility';
 
 const log = createLogger('activity-runtime');
@@ -78,11 +85,97 @@ export function startActivitySync(): () => void {
     void retireSourcesExcept('ado', adoSourceIds());
   });
 
+  const stopBadge = followTaskbarBadge();
+
+  let stopListening: (() => void) | undefined;
+  let stopped = false;
+  void listenToOtherWindows().then((stop) => {
+    if (stopped) stop();
+    else stopListening = stop;
+  });
+
   return () => {
+    stopped = true;
     stopCounts();
     clearInterval(pruneTimer);
     deliveries.stop();
     untrackDeliveries();
     unsubscribeSettings();
+    stopBadge();
+    stopListening?.();
   };
+}
+
+/** The taskbar icon shows how many unread entries need me, unless settings say no. */
+function followTaskbarBadge(): () => void {
+  let shown = -1;
+  const update = () => {
+    const enabled =
+      useSettingsStore.getState().settings.notifications.activity?.taskbarBadge !== false;
+    const count = enabled ? selectNeedsYou(useActivityStore.getState()) : 0;
+    if (count === shown) return;
+    shown = count;
+    void commands.setTaskbarBadge(count).catch(() => {});
+  };
+  update();
+  const stopActivity = useActivityStore.subscribe(update);
+  const stopSettings = useSettingsStore.subscribe(update);
+  return () => {
+    stopActivity();
+    stopSettings();
+  };
+}
+
+async function entryById(id: string): Promise<ActivityEntry | null> {
+  const page = await api.listEntries({
+    filter: 'all',
+    categories: [],
+    sourceIds: [],
+    entityKeys: [],
+    ids: [id],
+    search: null,
+    includeDismissed: true,
+    limit: 1,
+    before: null,
+  });
+  return page.entries[0] ?? null;
+}
+
+/** Show an entry in Activity, selected and open. */
+export async function showActivityEntry(id: string): Promise<void> {
+  await bringMainWindowForward();
+  const view = useActivityViewStore.getState();
+  view.select(id);
+  if (useActivityViewStore.getState().expandedId !== id) view.toggleExpanded(id);
+  await showSection('activity');
+}
+
+/** A popup's or the tray's action: checked again here, where the stores are live. */
+export async function actOnActivityEntry(id: string): Promise<void> {
+  const entry = await entryById(id);
+  if (!entry) return;
+  await bringMainWindowForward();
+  const { reason } = await act(entry);
+  if (reason) showToast({ message: `${reason}. Opened it instead.` });
+}
+
+async function listenToOtherWindows(): Promise<() => void> {
+  try {
+    const { listen } = await import('@tauri-apps/api/event');
+    const stops = await Promise.all([
+      listen<{ id: string }>(
+        api.SHOW_ACTIVITY_EVENT,
+        (event) => void showActivityEntry(event.payload.id),
+      ),
+      listen<{ id: string }>(
+        api.ACT_ACTIVITY_EVENT,
+        (event) => void actOnActivityEntry(event.payload.id),
+      ),
+    ]);
+    return () => {
+      for (const stop of stops) stop();
+    };
+  } catch {
+    return () => {};
+  }
 }

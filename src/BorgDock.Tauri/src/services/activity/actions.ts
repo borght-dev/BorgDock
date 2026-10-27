@@ -10,7 +10,10 @@ import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import type { PullRequestWithChecks } from '@/types';
 import * as api from './api';
+import { actionLabel } from './labels';
 import type { ActionTarget, ActivityEntry } from './types';
+
+export { actionLabel };
 
 /**
  * What an entry's action does, checked against the stores right before it
@@ -68,37 +71,6 @@ function prOf(
 function hostOffline(hostId: string, world: World): string | null {
   const host = world.hosts.find((h) => h.id === hostId);
   return host && !host.ok ? `${host.label} is offline` : null;
-}
-
-export function actionLabel(action: ActionTarget): string {
-  switch (action.kind) {
-    case 'answer':
-      return action.option ? `Answer: ${action.option}` : 'Answer';
-    case 'approve-plan':
-      return 'Approve plan';
-    case 'open-thread':
-      return 'Open thread';
-    case 'open-item':
-      return 'Open item';
-    case 'open-pr':
-      return action.tab === 'checks'
-        ? 'Open checks'
-        : action.tab === 'reviews'
-          ? 'Open reviews'
-          : 'Open PR';
-    case 'review-pr':
-      return 'Review';
-    case 'fix-checks':
-      return 'Fix checks';
-    case 'merge':
-      return 'Merge';
-    case 'open-ci-group':
-      return 'Open failure group';
-    case 'open-workstream':
-      return 'Open workstream';
-    case 'open-url':
-      return /\/actions\/runs\//.test(action.url) ? 'Open run log' : 'Open';
-  }
 }
 
 /** Whether `entry`'s action may still run, and what to offer when not. */

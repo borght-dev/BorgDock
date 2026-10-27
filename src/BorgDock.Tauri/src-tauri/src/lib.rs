@@ -251,6 +251,7 @@ macro_rules! app_commands {
             activity::commands::activity_export,
             activity::commands::activity_prune,
             activity::commands::activity_store_info,
+            platform::taskbar::set_taskbar_badge,
             // Workstreams
             workstreams::commands::workstreams_folder_path,
             workstreams::commands::workstreams_list,

@@ -1,3 +1,4 @@
+import { viewed } from '@/services/activity/viewed';
 import { configuredHosts, rawId, scopedId } from '@/services/dispatch/hosts';
 import type { AgentThread } from '@/services/dispatch/types';
 import { isMainWindow, MAIN_WINDOW_LABEL, showSection } from '@/services/navigation';
@@ -39,6 +40,7 @@ export async function showGroupPrs(request: ShowGroupRequest): Promise<void> {
     await emitTo(MAIN_WINDOW_LABEL, SHOW_CI_GROUP_EVENT, request);
     return;
   }
+  viewed.ciGroup(request.groupId);
   const parts = parseScope(request.scope);
   const numbers = new Set(request.prNumbers);
   const prKeys = usePrStore

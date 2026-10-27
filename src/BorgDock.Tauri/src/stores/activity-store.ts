@@ -67,8 +67,12 @@ export function followActivityCounts(): () => void {
       if (!stopped) useActivityStore.getState().setCounts(counts);
     })
     .catch(() => {});
-  void events.activityChanged
-    .listen((event) => useActivityStore.getState().setCounts(event.payload.counts))
+  void Promise.resolve()
+    .then(() =>
+      events.activityChanged.listen((event) =>
+        useActivityStore.getState().setCounts(event.payload.counts),
+      ),
+    )
     .then((stop) => {
       if (stopped) stop();
       else unlisten = stop;

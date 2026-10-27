@@ -360,6 +360,11 @@ export const commands = {
 	/**  Retention: run at startup and once a day. */
 	activityPrune: () => typedError<number, string>(__TAURI_INVOKE("activity_prune")),
 	activityStoreInfo: () => typedError<ActivityStoreInfo_Serialize, string>(__TAURI_INVOKE("activity_store_info")),
+	/**
+	 *  Show `count` on the main window's taskbar icon; 0 clears it. Runs on the
+	 *  GUI thread with the shared timeout, like every window command.
+	 */
+	setTaskbarBadge: (count: number) => typedError<null, string>(__TAURI_INVOKE("set_taskbar_badge", { count })),
 	/**  The folder workstreams are kept in for `folder` (the sync folder, or none). */
 	workstreamsFolderPath: (folder: string | null) => typedError<string, string>(__TAURI_INVOKE("workstreams_folder_path", { folder })),
 	workstreamsList: (folder: string | null) => typedError<WorkstreamFile[], string>(__TAURI_INVOKE("workstreams_list", { folder })),
@@ -639,6 +644,8 @@ export type ActivityListQuery_Deserialize = {
 	categories: string[],
 	sourceIds: string[],
 	entityKeys: string[],
+	/**  These entries only (a notification's entry); empty lists don't filter. */
+	ids?: string[],
 	/**  Matches summary and detail, case-insensitively. */
 	search?: string | null,
 	/**  Only for `all`; the other filters show unread entries. */
@@ -653,6 +660,8 @@ export type ActivityListQuery_Serialize = {
 	categories: string[],
 	sourceIds: string[],
 	entityKeys: string[],
+	/**  These entries only (a notification's entry); empty lists don't filter. */
+	ids: string[],
 	/**  Matches summary and detail, case-insensitively. */
 	search: string | null,
 	/**  Only for `all`; the other filters show unread entries. */

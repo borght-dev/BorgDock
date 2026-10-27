@@ -317,7 +317,7 @@ export function ActivitySection() {
         <div
           ref={parent}
           className="bd-wb-virtual bd-act-list"
-          role="listbox"
+          role="list"
           aria-label="Activity"
           data-virtual=""
         >

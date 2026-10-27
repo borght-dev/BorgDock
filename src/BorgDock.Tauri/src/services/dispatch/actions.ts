@@ -1,5 +1,6 @@
 import { type DispatchActions, unitActions } from '@/components/dispatch/unit-actions';
 import { toggleTrackedWorkItem } from '@/components/work-items/work-item-toggles';
+import { viewed } from '@/services/activity/viewed';
 import { showPr, showSection } from '@/services/navigation';
 import {
   type T3HostRef,
@@ -79,6 +80,7 @@ function setQueued(item: DispatchItem, queued: boolean): void {
 
 /** Show an item in Dispatch, from any section. */
 export function showDispatchItem(itemId: number): void {
+  viewed.workItem(itemId);
   useDispatchStore.getState().selectItem(itemId);
   void showSection('dispatch');
 }

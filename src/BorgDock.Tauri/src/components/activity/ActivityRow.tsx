@@ -130,8 +130,8 @@ export function ActivityRow({
       )}
       data-activity-id={entry.id}
       data-severity={entry.severity}
-      aria-selected={selected}
-      role="option"
+      aria-current={selected || undefined}
+      role="listitem"
       tabIndex={-1}
       onClick={() => view().toggleExpanded(entry.id)}
     >
