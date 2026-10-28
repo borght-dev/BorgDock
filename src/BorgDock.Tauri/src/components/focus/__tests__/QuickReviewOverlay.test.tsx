@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 
 import { prRowKey } from '@/components/pr/pr-card-data';
 import { enableAutoMerge, submitReview } from '@/services/github/mutations';
 import { getPRFiles, getPRReviewDetails } from '@/services/github/pulls';
+import { getAllComments, getReviews } from '@/services/github/reviews';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useToastStore } from '@/stores/toast-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -128,8 +129,21 @@ function press(key: string) {
 function currentFile() {
   return document.querySelector('.qr-file[aria-current]')?.getAttribute('title');
 }
+/** Back from the walk to the card: Finish is gone, Esc does it. */
 function finishWalk() {
-  fireEvent.click(screen.getByRole('button', { name: 'Finish review' }));
+  press('Escape');
+}
+/** Runs out the approval's Undo toast, which posts the review. */
+function sendHeldApproval() {
+  const toast = useToastStore.getState().toasts.find((t) => t.actionLabel === 'Undo');
+  if (!toast) throw new Error('No approval is waiting for Undo');
+  act(() => {
+    useToastStore.getState().dismiss(toast.id);
+    toast.onExpire?.();
+  });
+}
+function treeProgress() {
+  return document.querySelector('[data-quick-review-progress]')?.textContent;
 }
 async function addDraft(side: 'old' | 'new' = 'new') {
   openFiles();
@@ -156,6 +170,8 @@ describe('Quick review card', () => {
       'A ArrowRight',
     );
     press('a');
+    expect(submitReview).not.toHaveBeenCalled();
+    sendHeldApproval();
     await waitFor(() => expect(enableAutoMerge).toHaveBeenCalledTimes(1));
     expect(submitReview).toHaveBeenCalledTimes(1);
   });
@@ -167,6 +183,7 @@ describe('Quick review card', () => {
     expect(screen.queryByRole('button', { name: 'Approve & auto merge' })).not.toBeInTheDocument();
     expect(approveButton()).toHaveAttribute('aria-keyshortcuts', 'A ArrowRight');
     press('a');
+    sendHeldApproval();
     await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
     expect(enableAutoMerge).not.toHaveBeenCalled();
   });
@@ -175,6 +192,7 @@ describe('Quick review card', () => {
     await start();
     reviewEverything();
     fireEvent.click(approveButton());
+    sendHeldApproval();
     await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
     expect(enableAutoMerge).not.toHaveBeenCalled();
   });
@@ -184,8 +202,9 @@ describe('Quick review card', () => {
     await start();
     reviewEverything();
     press('a');
-    await waitFor(() => expect(useQuickReviewStore.getState().currentIndex).toBe(1));
-    expect(enableAutoMerge).toHaveBeenCalledTimes(1);
+    expect(useQuickReviewStore.getState().currentIndex).toBe(1);
+    sendHeldApproval();
+    await waitFor(() => expect(enableAutoMerge).toHaveBeenCalledTimes(1));
   });
 
   it('toasts when auto merge fails after the card moved on', async () => {
@@ -193,6 +212,7 @@ describe('Quick review card', () => {
     await start();
     reviewEverything();
     press('a');
+    sendHeldApproval();
     await waitFor(() =>
       expect(useToastStore.getState().toasts.map((t) => t.message)).toEqual([
         'Approved; auto merge not enabled: Merge conflict',
@@ -209,6 +229,7 @@ describe('Quick review card', () => {
     const loads = readsOfThisPr();
     reviewEverything();
     press('a');
+    sendHeldApproval();
     await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
     expect(readsOfThisPr()).toBe(loads);
   });
@@ -250,7 +271,8 @@ describe('Quick review card', () => {
     fireEvent.click(screen.getByRole('button', { name: /ServiceTests\.cs/ }));
     press('v');
     press('v');
-    expect(screen.getByRole('button', { name: 'Skip generated' })).toBeInTheDocument();
+    // Only the generated lockfile is left: the footer is already the decision bar.
+    expect(screen.getByRole('button', { name: 'Approve & auto-merge' })).toBeInTheDocument();
     finishWalk();
     expectApproveOpen();
     expect(filesButton()).toHaveTextContent('Review files again');
@@ -265,6 +287,7 @@ describe('Quick review card', () => {
     await start();
     reviewEverything();
     press('ArrowRight');
+    sendHeldApproval();
     await waitFor(() =>
       expect(submitReview).toHaveBeenCalledWith(
         expect.anything(),
@@ -289,6 +312,7 @@ describe('Quick review card', () => {
     press('Escape');
     reviewEverything();
     press('A');
+    sendHeldApproval();
     await waitFor(() =>
       expect(submitReview).toHaveBeenCalledWith(
         expect.anything(),
@@ -346,11 +370,11 @@ describe('Quick review file walk', () => {
     const names = [...tree.querySelectorAll('.qr-file')].map((b) => b.getAttribute('title'));
     expect(names).toEqual(WALK);
     expect(currentFile()).toBe('src/Service.cs');
-    expect(screen.getByText('File 1 of 4')).toBeInTheDocument();
-    expect(screen.getByText('0 of 4 reviewed, 3 to go')).toBeInTheDocument();
+    expect(screen.getByText('1 of 4')).toBeInTheDocument();
+    expect(treeProgress()).toBe('0 of 4 reviewed3 left');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Mark reviewed and next' }));
-    expect(screen.getByText('1 of 4 reviewed, 2 to go')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark reviewed & next' }));
+    expect(treeProgress()).toBe('1 of 4 reviewed2 left');
     expect(currentFile()).toBe('bun.lock');
     const done = within(tree).getByRole('button', { name: /Service\.cs/, current: false });
     expect(done).toHaveAttribute('data-done', 'true');
@@ -386,37 +410,37 @@ describe('Quick review file walk', () => {
     const doc = Object.values(useQuickReviewStore.getState().documents)[0];
     expect(doc?.reviewed).toEqual(['bun.lock']);
     expect(screen.queryByRole('button', { name: 'Skip generated' })).toBeNull();
-    expect(screen.getByText('1 of 4 reviewed, 3 to go')).toBeInTheDocument();
+    expect(treeProgress()).toBe('1 of 4 reviewed3 left');
   });
 
-  it('mark and next skips files already reviewed; Finish review turns primary when nothing is left', async () => {
+  it('mark and next skips files already reviewed; the last mark turns the footer into the decision bar', async () => {
     await start();
     openFiles();
     fireEvent.click(screen.getByRole('button', { name: 'Skip generated' }));
     press('v');
     // bun.lock is already reviewed: the next open file is the first test.
     expect(currentFile()).toBe('App.Tests/ServiceTests.cs');
-    const finish = screen.getByRole('button', { name: 'Finish review' });
-    expect(finish).not.toHaveClass('bd-btn--primary');
+    expect(screen.getByRole('button', { name: 'Approve · 2 left' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.queryByRole('button', { name: 'Finish review' })).toBeNull();
     press('v');
     press('v');
-    expect(screen.getByText('4 of 4 reviewed, 0 to go')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Finish review' })).toHaveClass('bd-btn--primary');
-    press('f');
-    expect(screen.queryByRole('navigation', { name: 'Review path' })).toBeNull();
-    expectApproveOpen();
+    expect(treeProgress()).toBe('4 of 4 revieweddone');
+    expect(screen.getByText('That was the last file')).toBeVisible();
+    const go = screen.getByRole('button', { name: 'Approve & auto-merge' });
+    expect(document.activeElement).toBe(go);
+    expect(screen.queryByRole('button', { name: 'Mark reviewed & next' })).toBeNull();
+    expect(screen.getByRole('navigation', { name: 'Review path' })).toBeInTheDocument();
   });
 
-  it('moves focus into the tree on open and back to Review files on Esc or Finish', async () => {
+  it('moves focus into the tree on open and back to Review files on Esc', async () => {
     await start();
     openFiles();
     expect(document.activeElement).toHaveAttribute('title', 'src/Service.cs');
     expect(document.activeElement).toHaveAttribute('aria-current', 'step');
     press('Escape');
-    expect(document.activeElement).toBe(filesButton());
-    openFiles();
-    expect(document.activeElement).toHaveClass('qr-file');
-    finishWalk();
     expect(document.activeElement).toBe(filesButton());
   });
 
@@ -448,14 +472,14 @@ describe('Quick review file walk', () => {
     const box = screen.getByRole('checkbox', { name: 'Reviewed' });
     expect(box).toBeChecked();
     fireEvent.click(box);
-    expect(screen.getByRole('checkbox', { name: 'Not reviewed' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Mark reviewed' })).not.toBeChecked();
   });
 
   it('keeps reviewed progress on reopen, also for documents saved before the walk existed', async () => {
     const view = await start();
     openFiles();
     press('v');
-    expect(screen.getByText('1 of 4 reviewed, 2 to go')).toBeInTheDocument();
+    expect(treeProgress()).toBe('1 of 4 reviewed2 left');
     view.unmount();
     // Drop the new field, as an older build would have saved it.
     const [key, doc] = Object.entries(useQuickReviewStore.getState().documents)[0]!;
@@ -466,15 +490,14 @@ describe('Quick review file walk', () => {
     expect(filesButton()).toHaveTextContent('Review files');
   });
 
-  it('returns from comments to the same file and draft without changing progress', async () => {
+  it('shows the comments beside the diff without leaving the file, draft or progress', async () => {
     await start();
     await addDraft();
-    fireEvent.click(screen.getByRole('button', { name: 'Comments' }));
+    fireEvent.click(screen.getByRole('tab', { name: /Comments/ }));
     await screen.findByText('No comments yet.');
-    fireEvent.click(screen.getByRole('button', { name: 'Back to diff' }));
-    expect(screen.getByText('File 1 of 4')).toBeVisible();
+    expect(screen.getByText('1 of 4')).toBeVisible();
     expect(screen.getByText('Please handle failure.')).toBeVisible();
-    expect(screen.getByText('0 of 4 reviewed, 3 to go')).toBeVisible();
+    expect(treeProgress()).toBe('0 of 4 reviewed3 left');
   });
 });
 
@@ -601,7 +624,9 @@ describe('Quick review composer', () => {
     reviewEverything();
     vi.mocked(submitReview).mockRejectedValueOnce(new Error('Offline'));
     press('ArrowRight');
+    sendHeldApproval();
     await screen.findByRole('alert');
+    expect(useQuickReviewStore.getState().currentIndex).toBe(0);
     const doc = Object.values(useQuickReviewStore.getState().documents)[0];
     expect(doc?.event).toBe('COMMENT');
   });
@@ -627,6 +652,7 @@ describe('Quick review composer', () => {
     const submit = screen.getByRole('button', { name: 'Submit approval' });
     expect(submit).toBeEnabled();
     fireEvent.click(submit);
+    sendHeldApproval();
     await waitFor(() => expect(submitReview).toHaveBeenCalledOnce());
   });
 });
@@ -648,5 +674,211 @@ describe('Quick review next PR', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Review next PR' }));
     expect(useQuickReviewStore.getState().currentPr()).toBe(passing);
     await waitFor(() => expect(filesButton()).toBeEnabled());
+  });
+});
+
+describe('Quick review walk (v2)', () => {
+  /** Marks every file from the walk and stays there: the footer is the decision bar. */
+  function reviewEverythingInWalk() {
+    openFiles();
+    fireEvent.click(screen.getByRole('button', { name: 'Skip generated' }));
+    for (let i = 0; i < 3; i++) press('v');
+  }
+  function walk() {
+    return screen.getByRole('region', { name: 'File walk' });
+  }
+
+  it('shows the PR above the walk: title, labels, excerpt, and the full description with D', async () => {
+    pr.pullRequest.labels = ['bug', 'payroll'];
+    pr.pullRequest.labelColors = { bug: 'd73a4a', payroll: 'not-a-colour' };
+    await start();
+    openFiles();
+    const head = within(walk());
+    expect(head.getByRole('heading', { name: pr.pullRequest.title })).toBeInTheDocument();
+    const labels = head.getByRole('list', { name: 'Labels' });
+    expect(within(labels).getByText('bug').getAttribute('style')).toContain('--label: #d73a4a');
+    expect(within(labels).getByText('payroll').getAttribute('style')).toBeNull();
+    expect(head.getByText('All details are visible.')).toHaveClass('qr-prhead__excerpt');
+    press('d');
+    expect(head.getByRole('button', { name: 'Less' })).toHaveAttribute('aria-expanded', 'true');
+    expect(head.getByRole('heading', { name: 'Full description' })).toBeInTheDocument();
+  });
+
+  it('approves from the walk with Enter, opens the next PR in the walk, and Z takes it back', async () => {
+    await start();
+    reviewEverythingInWalk();
+    expect(screen.getByText('All 3 files reviewed')).toBeInTheDocument();
+    press('Enter');
+    expect(useQuickReviewStore.getState().currentIndex).toBe(1);
+    expect(useToastStore.getState().toasts.map((t) => t.message)).toEqual([
+      `Approved #${pr.pullRequest.number}, auto-merge on`,
+    ]);
+    await waitFor(() => expect(screen.getByRole('region', { name: 'File walk' })).toBeVisible());
+    press('z');
+    expect(useQuickReviewStore.getState().currentIndex).toBe(0);
+    expect(useQuickReviewStore.getState().decisions.size).toBe(0);
+    expect(useToastStore.getState().toasts).toEqual([]);
+    expect(submitReview).not.toHaveBeenCalled();
+    // The draft survived Undo: every file is still marked.
+    await waitFor(() => expect(screen.getByText('All 3 files reviewed')).toBeInTheDocument());
+  });
+
+  it('A approves without auto merge from the decision bar', async () => {
+    await start();
+    reviewEverythingInWalk();
+    press('a');
+    sendHeldApproval();
+    await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
+    expect(enableAutoMerge).not.toHaveBeenCalled();
+  });
+
+  it('asks for an overall comment before requesting changes, then posts it', async () => {
+    await start();
+    reviewEverythingInWalk();
+    press('r');
+    const body = screen.getByRole('textbox', { name: 'Overall comment' });
+    expect(document.activeElement).toBe(body);
+    expect(screen.getByText('Add an overall comment before requesting changes.')).toBeVisible();
+    expect(submitReview).not.toHaveBeenCalled();
+    fireEvent.change(body, { target: { value: 'Handle the failure case.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Request changes' }));
+    await waitFor(() =>
+      expect(submitReview).toHaveBeenCalledWith(
+        expect.anything(),
+        'owner',
+        'repo',
+        pr.pullRequest.number,
+        'REQUEST_CHANGES',
+        'Handle the failure case.',
+        { commit_id: pr.pullRequest.headSha, comments: [] },
+      ),
+    );
+  });
+
+  it('folds the context panel into a rail with ], remembers it, and opens a tab with 1–4', async () => {
+    localStorage.removeItem('borgdock-quick-review-context-open');
+    onTestFinished(() => localStorage.removeItem('borgdock-quick-review-context-open'));
+    await start();
+    openFiles();
+    expect(within(walk()).getByRole('tab', { name: /Proof/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    press(']');
+    expect(within(walk()).getByRole('button', { name: 'Show context panel' })).toBeVisible();
+    expect(localStorage.getItem('borgdock-quick-review-context-open')).toBe('false');
+    press('4');
+    expect(within(walk()).getByRole('tab', { name: /Comments/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('shows proof from the comments, marked against the head commit', async () => {
+    onTestFinished(() => {
+      vi.mocked(getAllComments).mockResolvedValue([]);
+    });
+    vi.mocked(getAllComments).mockResolvedValue([
+      {
+        id: 'proof',
+        author: 'vera',
+        body: `<h2>Proof</h2><p>The flow passed.</p><img src="https://example.com/shot.png" alt="Passing flow">`,
+        sourceBody: `## Proof\n\nHead SHA: ${pr.pullRequest.headSha}`,
+        createdAt: '2025-01-02T00:00:00Z',
+        severity: 'unknown',
+        htmlUrl: pr.pullRequest.htmlUrl,
+      },
+    ]);
+    await start();
+    openFiles();
+    const proof = await within(walk()).findByRole('article', {
+      name: 'Proof from the comment by vera',
+    });
+    expect(within(proof).getByText(/Matches the head commit/)).toBeInTheDocument();
+    expect(within(proof).getByText('The flow passed.')).toBeInTheDocument();
+    expect(
+      within(proof).getByRole('button', { name: 'Preview image: Passing flow' }),
+    ).toBeVisible();
+  });
+
+  it('on a re-review lists only the files changed since my last review and keeps the rest reviewed', async () => {
+    onTestFinished(() => {
+      vi.mocked(getReviews).mockResolvedValue([]);
+    });
+    vi.mocked(getReviews).mockResolvedValue([
+      {
+        id: 9,
+        state: 'CHANGES_REQUESTED',
+        body: 'Handle the failure case.',
+        submitted_at: '2025-01-01T12:00:00Z',
+        user: { login: 'Reviewer' },
+        commit_id: 'old0123',
+      },
+    ]);
+    mockClient.get.mockImplementation(async (path: string) => {
+      if (!path.includes('/compare/old0123...')) throw new Error('Unavailable');
+      return {
+        status: 'ahead',
+        ahead_by: 2,
+        commits: [{ commit: { message: 'Handle failure\n\ndetails' } }],
+        files: [
+          {
+            filename: 'src/Service.cs',
+            status: 'modified',
+            additions: 1,
+            deletions: 0,
+            patch: '@@ -11,1 +11,2 @@\n first();\n+handled();',
+          },
+          { filename: 'outside/the/pr.txt', status: 'added', additions: 1, deletions: 0 },
+        ],
+      };
+    });
+    onTestFinished(() => {
+      mockClient.get.mockRejectedValue(new Error('Unavailable'));
+    });
+    await start();
+    openFiles();
+    await screen.findByText(/2 commits/);
+    const tree = screen.getByRole('navigation', { name: 'Review path' });
+    expect([...tree.querySelectorAll('.qr-file')].map((b) => b.getAttribute('title'))).toEqual([
+      'src/Service.cs',
+    ]);
+    expect(treeProgress()).toBe('0 of 1 changed files1 left');
+    expect(within(tree).getByRole('button', { name: /3 unchanged files, reviewed/ })).toBeVisible();
+    expect(screen.getByText(/Handle failure/)).toBeInTheDocument();
+    expect(screen.getByText('handled();')).toBeInTheDocument();
+    const doc = Object.values(useQuickReviewStore.getState().documents)[0];
+    expect(doc?.reviewed).toEqual(
+      expect.arrayContaining(['bun.lock', 'App.Tests/ServiceTests.cs', 'src/service.test.ts']),
+    );
+    // The interdiff numbers lines of the reviewed commit: no line comments on it.
+    expect(screen.queryByRole('button', { name: /^Comment on/ })).toBeNull();
+    press('s');
+    expect(tree.querySelectorAll('.qr-file')).toHaveLength(4);
+    expect(screen.getByRole('button', { name: 'Comment on new line 10' })).toBeInTheDocument();
+  });
+
+  it('N from inside a diff without line comments (split) still changes files', async () => {
+    onTestFinished(() => {
+      localStorage.removeItem('borgdock-quick-review-split-diff');
+    });
+    await start();
+    openFiles();
+    fireEvent.click(screen.getByRole('button', { name: 'Split' }));
+    fireEvent.keyDown(document.querySelector<HTMLElement>('[data-diff-file]')!, { key: 'n' });
+    expect(currentFile()).toBe('bun.lock');
+  });
+
+  it('approving a PR again while its approval waits sends one review', async () => {
+    await start();
+    reviewEverythingInWalk();
+    press('Enter');
+    expect(useQuickReviewStore.getState().currentIndex).toBe(1);
+    act(() => useQuickReviewStore.getState().goBack());
+    await waitFor(() => expect(screen.getByText('All 3 files reviewed')).toBeInTheDocument());
+    press('Enter');
+    expect(useToastStore.getState().toasts.filter((t) => t.actionLabel === 'Undo')).toHaveLength(1);
+    sendHeldApproval();
+    await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
   });
 });

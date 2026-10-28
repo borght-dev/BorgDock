@@ -35,6 +35,8 @@ interface GitHubReviewDto {
   body_html?: string;
   submitted_at: string;
   user: { login: string } | null;
+  /** The head commit the review was given on. */
+  commit_id?: string;
 }
 
 // --- Public API ---

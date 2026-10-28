@@ -63,6 +63,8 @@ async function mockChanges(page: Page) {
 test('detail file navigator groups readable names and launches a single PR review in its own window', async ({
   page,
 }) => {
+  // Quick Review is a lazy chunk: on a cold dev server its first compile takes a while.
+  test.slow();
   await bootApp(page, 'pr-detail.html?owner=test-org&repo=borgdock&number=42', 'happy-path', {
     cache_load_prs: [pendingPr],
   });
@@ -108,7 +110,9 @@ test('detail file navigator groups readable names and launches a single PR revie
       .filter({ has: page.getByText(filenames[3]!, { exact: true }) }),
   ).toBeInViewport();
   await page.getByRole('button', { name: 'Review', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Quick Review', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Quick Review', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
   await expect(page.getByText('PR 1 / 1', { exact: true })).toBeVisible();
   // Quick Review opens on the PR's card; its files are one click away.
   await expect(page.getByRole('button', { name: 'Review files', exact: true })).toBeEnabled();

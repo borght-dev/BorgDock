@@ -13,9 +13,14 @@
 import type { PullRequest, PullRequestCommit, PullRequestFileChange } from '../../src/types';
 import { getControl } from './control';
 
-export async function getPRReviewDetails() {
+export async function getPRReviewDetails(
+  _client: unknown,
+  _owner: string,
+  _repo: string,
+  prNumber: number,
+) {
   const response = getControl().githubResponses.getPRReviewDetails;
-  if (typeof response === 'function') return response();
+  if (typeof response === 'function') return response({ prNumber });
   if (!response) throw new Error('No PR review fixture supplied');
   return response;
 }
@@ -35,10 +40,10 @@ export async function getPRFiles(
   _client: unknown,
   _owner: string,
   _repo: string,
-  _prNumber: number,
+  prNumber: number,
 ): Promise<PullRequestFileChange[]> {
   const r = getControl().githubResponses.getPRFiles;
-  if (typeof r === 'function') return r();
+  if (typeof r === 'function') return r({ prNumber });
   return r ?? [];
 }
 

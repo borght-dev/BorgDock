@@ -261,6 +261,8 @@ What changed since I last checked, kept until I read or dismiss it (#88). Plan: 
 
 In the light theme `--color-surface-raised` is a 3% ink tint (`rgba(23,24,28,0.03)`), not a surface; only the dark theme makes it opaque. Anything that floats over content (toasts, menus, popovers) must use `--color-modal-bg` or `--color-toast-bg`, or it renders see-through in light mode and its text lands on whatever is underneath. The Dispatch "started" toast and the state menu both had this bug. The window background (`--color-background`) is white in light mode: grey read as disabled.
 
+The marketing site keeps a copy of the app's tokens. After adding or changing one in `src/styles/index.css`, run `bun scripts/site-tokens-check.ts --write` from the repo root, or CI's site build fails with "tokens.css has drifted".
+
 Storybook ignores `src-tauri/**` in its watcher (`.storybook/main.ts`). Without that, a `cargo build` running at the same time crashes it with `EBUSY` on a locked file in `target/`.
 
 ## Diagnosing a hung / frozen BorgDock (AppHang)
@@ -308,7 +310,13 @@ Capturing from Storybook in a fresh worktree: `src/BorgDock.Tauri/public/whats-n
 
 ## Vitest: a hook that returns a function
 
-`beforeEach(() => someMock.mockReset())` returns the mock, and Vitest runs a function returned from `beforeEach` as that test's teardown. A mock that later rejects then fails the test with its own error after every assertion passed. Give hooks a block body: `beforeEach(() => { someMock.mockReset(); })`.
+`beforeEach(() => someMock.mockReset())` returns the mock, and Vitest runs a function returned from `beforeEach` as that test's teardown. A mock that later rejects then fails the test with its own error after every assertion passed. Give hooks a block body: `beforeEach(() => { someMock.mockReset(); })`. The same goes for `onTestFinished`.
+
+## Quick Review approvals wait for Undo
+
+Approve (card, walk, composer) moves the deck on at once and posts the review only when its Undo toast runs out (`components/focus/quick-review-approval.ts`, `APPROVAL_UNDO_MS`); GitHub cannot take a review back. A test that expects `submitReview` after an approval must run the toast out first (`sendHeldApproval()` in `QuickReviewOverlay.test.tsx`), and e2e specs `expect.poll` the posted review with a timeout above 5 s. A refused approval brings the PR back with the error (`reopen`). Request changes and Comment still post immediately.
+
+The walk's design reference is `design/quick-review-v2/mockups.html`; the stories `WalkWithProof`, `AllFilesReviewed` and `ReReviewSinceLastReview` render its three frames.
 
 ## Self-Improvement
 

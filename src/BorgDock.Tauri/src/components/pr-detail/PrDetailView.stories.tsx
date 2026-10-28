@@ -121,6 +121,8 @@ const readyPr = makePr({
     headRef: 'feat/self-host-fonts',
     reviewStatus: 'approved',
     body: 'Bundles the fonts under `public/fonts/` so the first run needs no network.',
+    labels: ['enhancement', 'design'],
+    labelColors: { enhancement: 'a2eeef', design: 'd876e3' },
   },
   overallStatus: 'green',
   pendingCheckNames: [],

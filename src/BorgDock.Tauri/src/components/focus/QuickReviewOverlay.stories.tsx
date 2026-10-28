@@ -1,5 +1,6 @@
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { ToastViewport } from '@/components/shared/Toast';
 import { useLinkStore } from '@/stores/link-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
@@ -9,11 +10,27 @@ import beforeDispatch from '../../../../../docs/whats-new/4.0.0/dispatch.png?inl
 import afterDispatch from '../../../../../docs/whats-new/4.0.1/dispatch-width.png?inline';
 import { getControl } from '../../../.storybook/mocks/control';
 import { LARGE_PR_BODY, LARGE_PR_FILES, LARGE_PR_TITLE } from './__fixtures__/quick-review-large';
+import {
+  PLANBOARD_BODY,
+  PLANBOARD_FILES,
+  PLANBOARD_HEAD,
+  TIMESHEET_BODY,
+  TIMESHEET_COMPARE,
+  TIMESHEET_FILES,
+  TIMESHEET_HEAD,
+  TIMESHEET_REVIEWED,
+} from './__fixtures__/quick-review-v2';
 import { makePr } from './__tests__/helpers';
 import { QuickReviewOverlay } from './QuickReviewOverlay';
 
 function resetReviewDisplayPreferences() {
-  for (const preference of ['fullscreen', 'wrap-lines', 'rich-diff']) {
+  for (const preference of [
+    'fullscreen',
+    'wrap-lines',
+    'rich-diff',
+    'split-diff',
+    'context-open',
+  ]) {
     localStorage.removeItem(`borgdock-quick-review-${preference}`);
   }
 }
@@ -389,7 +406,7 @@ export const InlineDraft: Story = {
 export const ScreenshotComments: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await openFiles(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Comments' }));
+    await userEvent.click(await canvas.findByRole('tab', { name: /Comments/ }));
     await userEvent.click(await canvas.findByRole('button', { name: /PR author/ }));
     await waitFor(() => expect(canvas.getByAltText('Browser verification')).toBeVisible());
   },
@@ -516,5 +533,250 @@ export const ReviewNextPassingFirst: Story = {
     await expect(canvas.getByRole('region', { name: 'Next review' })).toHaveTextContent(
       'Flyout: remember the last scroll position',
     );
+  },
+};
+
+const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+const HOUR = 3_600_000;
+const shot = (path: string) => `${window.location.origin}/whats-new/${path}`;
+
+/** The planboard PR of design/quick-review-v2 frames A and B. */
+const planboard = {
+  ...makePr({
+    number: 4812,
+    repoOwner: 'gomocha',
+    repoName: 'FSP',
+    title: 'Planboard: show saved-search filters that the organisation layout hides',
+    headSha: PLANBOARD_HEAD,
+    headRef: 'feature/ab60640-hidden-filters',
+    baseRef: 'develop',
+    authorLogin: 'mvisser',
+    body: PLANBOARD_BODY,
+    changedFiles: PLANBOARD_FILES.length,
+    additions: 634,
+    deletions: 66,
+    commitCount: 4,
+    updatedAt: ago(2 * HOUR),
+    labels: ['enhancement', 'planboard', 'translations'],
+    labelColors: { enhancement: 'a2eeef', planboard: '7057ff', translations: 'fbca04' },
+  }),
+  passedCount: 14,
+  totalCheckCount: 14,
+};
+
+const planboardDecorator: Decorator = (Story) => {
+  const control = getControl();
+  control.githubResponses.getPRReviewDetails = { pr: planboard.pullRequest, baseSha: 'develop' };
+  control.githubResponses.getPRFiles = PLANBOARD_FILES;
+  control.githubResponses.getReviews = [];
+  control.githubResponses.getAllComments = [
+    {
+      id: 'vera-proof-4812',
+      author: 'vera',
+      severity: 'unknown',
+      createdAt: ago(HOUR),
+      sourceBody: `## Vera proof\n\nHead SHA: ${PLANBOARD_HEAD}`,
+      body: `## Vera proof\n\nSaved search with a hidden **Region** filter now shows "Hidden fields in use" with the hint. API regression tests and the Playwright planboard suite passed.\n\n![Hidden fields in use · nl](${shot('2.0.0/main-window-focus.png')})\n\n![Hint tooltip](${shot('2.0.0/pr-detail.png')})\n\n![Saved search](${shot('2.0.0/main-window-prs.png')})\n\n![Translations](${shot('2.0.0/pr-discussion.png')})`,
+      htmlUrl: `${planboard.pullRequest.htmlUrl}#issuecomment-4812`,
+    },
+    {
+      id: 'review-agent-4812',
+      author: 'review-agent[bot]',
+      severity: 'unknown',
+      createdAt: ago(3 * HOUR),
+      body: 'The hook memoises on the layout object; saved searches recreate it on every load.',
+      htmlUrl: planboard.pullRequest.htmlUrl,
+      filePath: 'FSP/FSP.Portal/src/hooks/planboard/usePlanboardFilterLayout.ts',
+      lineNumber: 14,
+    },
+  ];
+  return (
+    <>
+      <Story />
+      <ToastViewport />
+    </>
+  );
+};
+
+const WORKSPACE = 'FSP/FSP.Portal/src/components/planboard/AdvancedFiltersWorkspace.tsx';
+const LAST_TEST = 'Tests/types/planboardFilters.test.ts';
+
+/** Waits for the snapshot, then marks `reviewed` with `step` open and one saved draft. */
+async function seedPlanboard(reviewed: string[], step: string) {
+  await waitFor(() =>
+    expect(
+      Object.values(useQuickReviewStore.getState().documents).some(
+        (doc) => doc.headSha === PLANBOARD_HEAD,
+      ),
+    ).toBe(true),
+  );
+  for (const key of Object.keys(useQuickReviewStore.getState().documents)) {
+    useQuickReviewStore.getState().updateDocument(key, (doc) => ({
+      ...doc,
+      walked: true,
+      reviewed,
+      step,
+      comments: [
+        {
+          id: 'draft-readonly',
+          path: WORKSPACE,
+          line: 99,
+          side: 'RIGHT',
+          body: "`readOnly` means a planner can't clear a hidden filter from here. Should they be able to drop it from the saved search instead?",
+          saved: true,
+          outdated: false,
+        },
+      ],
+    }));
+  }
+}
+
+async function continueReviewing(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const button = await canvas.findByRole('button', { name: /^Continue reviewing|Review files/ });
+  await waitFor(() => expect(button).toBeEnabled());
+  await userEvent.click(button);
+  return canvas;
+}
+
+/** design/quick-review-v2 frame A: the walk with the PR in view and its proof beside the diff. */
+export const WalkWithProof: Story = {
+  decorators: [planboardDecorator],
+  beforeEach: () => {
+    resetReviewDisplayPreferences();
+    useQuickReviewStore.setState({ documents: {} });
+    useQuickReviewStore.getState().startSinglePr(planboard);
+  },
+  play: async ({ canvasElement }) => {
+    await seedPlanboard(
+      [
+        'Database/Translations/pending/ab60640-hidden-filter-fields.json',
+        'FSP/FSP.Portal/src/types/planboardFilters.ts',
+        'Documentation/planboard/filters.md',
+        'Documentation/planboard/planboard.md',
+      ],
+      WORKSPACE,
+    );
+    const canvas = await continueReviewing(canvasElement);
+    await canvas.findByRole('img', { name: 'Hidden fields in use · nl' });
+  },
+};
+
+/** design/quick-review-v2 frame B: every file marked, the footer is the decision bar. */
+export const AllFilesReviewed: Story = {
+  decorators: [planboardDecorator],
+  beforeEach: () => {
+    resetReviewDisplayPreferences();
+    localStorage.setItem('borgdock-quick-review-context-open', 'false');
+    useQuickReviewStore.setState({ documents: {} });
+    useQuickReviewStore.getState().startSinglePr(planboard);
+  },
+  play: async ({ canvasElement }) => {
+    await seedPlanboard(
+      PLANBOARD_FILES.map((file) => file.filename),
+      LAST_TEST,
+    );
+    const canvas = await continueReviewing(canvasElement);
+    await canvas.findByText('That was the last file');
+  },
+};
+
+/** The timesheets PR of frame C, reviewed before at TIMESHEET_REVIEWED. */
+const timesheets = {
+  ...makePr({
+    number: 4815,
+    repoOwner: 'gomocha',
+    repoName: 'FSP',
+    title: 'Timesheets: round break minutes per shift instead of per day',
+    headSha: TIMESHEET_HEAD,
+    headRef: 'fix/ab60612-split-shift-breaks',
+    baseRef: 'develop',
+    authorLogin: 'sbakker',
+    body: TIMESHEET_BODY,
+    changedFiles: TIMESHEET_FILES.length,
+    additions: 278,
+    deletions: 24,
+    commitCount: 5,
+    updatedAt: ago(0.7 * HOUR),
+    labels: ['bug', 'payroll', 'customer: Heras'],
+    labelColors: { bug: 'd73a4a', payroll: '0e8a16', 'customer: Heras': 'e99695' },
+  }),
+  passedCount: 9,
+  totalCheckCount: 9,
+};
+
+/** design/quick-review-v2 frame C: approve #4812 in the walk, straight on to re-reviewing #4815. */
+export const ReReviewSinceLastReview: Story = {
+  decorators: [
+    (Story) => {
+      const control = getControl();
+      control.githubResponses.getPRReviewDetails = ({ prNumber }) => ({
+        pr:
+          prNumber === timesheets.pullRequest.number
+            ? timesheets.pullRequest
+            : planboard.pullRequest,
+        baseSha: 'develop',
+      });
+      control.githubResponses.getPRFiles = ({ prNumber }) =>
+        prNumber === timesheets.pullRequest.number ? TIMESHEET_FILES : PLANBOARD_FILES;
+      control.githubResponses.getRepositoryObject = (path) =>
+        path.includes('/compare/') ? TIMESHEET_COMPARE : null;
+      control.githubResponses.getReviews = [
+        {
+          id: 7,
+          state: 'CHANGES_REQUESTED',
+          body: 'Split shifts still round once per day; a 2×7 min break becomes 15 instead of 0.',
+          submitted_at: ago(48 * HOUR),
+          user: { login: 'koen' },
+          commit_id: TIMESHEET_REVIEWED,
+        },
+      ];
+      control.githubResponses.getAllComments = [
+        {
+          id: 'reply-4815',
+          author: 'sbakker',
+          severity: 'unknown',
+          createdAt: ago(2 * HOUR),
+          body: 'Fixed in 9c1d2e0: each part rounds on its own now, test added.',
+          htmlUrl: timesheets.pullRequest.htmlUrl,
+        },
+        {
+          id: 'vera-proof-4815',
+          author: 'vera',
+          severity: 'unknown',
+          createdAt: ago(30 * HOUR),
+          sourceBody: `## Vera proof\n\nHead SHA: ${TIMESHEET_REVIEWED}`,
+          body: `## Vera proof\n\nTimesheet week 43 with a split shift: breaks of 7 and 7 minutes.\n\n![Timesheet week 43 · split shift](${shot('2.0.0/sql-results.png')})`,
+          htmlUrl: timesheets.pullRequest.htmlUrl,
+        },
+      ];
+      return (
+        <>
+          <Story />
+          <ToastViewport />
+        </>
+      );
+    },
+  ],
+  beforeEach: () => {
+    resetReviewDisplayPreferences();
+    usePrStore.setState({ username: 'koen' });
+    useQuickReviewStore.setState({ documents: {} });
+    useQuickReviewStore
+      .getState()
+      .startSession([
+        planboard,
+        timesheets,
+        makePr({ number: 4821, title: 'Planboard: keyboard focus on resource rows' }),
+      ]);
+  },
+  play: async ({ canvasElement }) => {
+    await seedPlanboard(
+      PLANBOARD_FILES.map((file) => file.filename),
+      LAST_TEST,
+    );
+    const canvas = await continueReviewing(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Approve & auto-merge' }));
+    await canvas.findByText(/2 commits/);
   },
 };

@@ -25,6 +25,8 @@ export interface PullRequest {
   reviewStatus: ReviewStatus;
   commentCount: number;
   labels: string[];
+  /** GitHub's colour per label name, hex without `#`, when the fetch path provides it. */
+  labelColors?: Record<string, string>;
   additions: number;
   deletions: number;
   changedFiles: number;

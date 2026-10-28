@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Quick Review v2 — mockups</title>
+<style>
+  .page { display: flex; flex-direction: column; gap: 28px; padding: 4px 0 8px; color: var(--foreground, #17181c); font-family: var(--font-sans, "Segoe UI", system-ui, sans-serif); }
+  .sec h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .sec > p { margin: 0 0 10px; font-size: 13px; color: var(--muted-foreground, #5d6069); }
+  .legend { margin: 10px 0 0; padding-left: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; line-height: 1.45; }
+  .legend li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; }
+  .legend b.n { width: 18px; height: 18px; border-radius: 50%; background: #e11d48; color: #fff; font-size: 11px; display: grid; place-items: center; margin-top: 1px; }
+  .fit { position: relative; width: 100%; }
+  .fit > .app { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+
+  /* ---------- the app, light theme ---------- */
+  .app { position: relative; width: 1280px; height: 780px; display: flex; flex-direction: column; overflow: hidden; background: #fff; border: 1px solid #dcdce2; border-radius: 14px; box-shadow: 0 10px 34px rgba(20, 20, 40, .16); color: #17181c; font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif; font-size: 13px; }
+  .app code, .mono { font-family: "JetBrains Mono", "Cascadia Mono", Consolas, monospace; }
+  .i { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .mk { position: absolute; z-index: 5; width: 30px; height: 30px; border-radius: 50%; background: #e11d48; color: #fff; font: 600 15px/30px system-ui, sans-serif; text-align: center; box-shadow: 0 0 0 4px rgba(225, 29, 72, .22); }
+
+  .tb { height: 46px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px; border-bottom: 1px solid #ececf0; }
+  .tb h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .upnext { color: #8a8d96; font-size: 12px; display: flex; gap: 6px; align-items: center; }
+  .upnext b { color: #4a4d55; font-weight: 500; }
+  .prog { margin-left: auto; display: flex; align-items: center; gap: 10px; color: #5d6069; font-variant-numeric: tabular-nums; }
+  .bar { width: 120px; height: 3px; border-radius: 2px; background: #e2e2e8; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: #17181c; }
+  .gh { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 7px; color: #3b3d44; font-size: 12.5px; }
+  .ib { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; color: #5d6069; }
+
+  .prh { flex: none; padding: 12px 20px 12px; border-bottom: 1px solid #ececf0; background: linear-gradient(#f8f8ff, #fff); }
+  .over { display: flex; align-items: center; gap: 8px; color: #5d6069; font-size: 12px; }
+  .over .sep { color: #c4c6ce; }
+  .av { width: 20px; height: 20px; border-radius: 50%; background: #dfe3ff; color: #3730a3; font-size: 9.5px; font-weight: 600; display: grid; place-items: center; }
+  .chips { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 11px; border: 1px solid #e3e3e8; background: #fff; color: #3b3d44; font-size: 11.5px; white-space: nowrap; }
+  .chip .i { width: 12px; height: 12px; }
+  .chip.ok { color: #1a7f37; background: #eaf7ee; border-color: #c9ead3; }
+  .chip.wi { color: #3730a3; background: #eef0ff; border-color: #d9dcff; }
+  .chip.warn { color: #8a5a00; background: #fff6db; border-color: #f3e2a6; }
+  .title { margin: 6px 0 4px; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+  .lbls { display: inline-flex; gap: 5px; margin-left: 10px; vertical-align: 3px; }
+  .lbl { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--c) 60%, #fff); background: color-mix(in srgb, var(--c) 24%, #fff); color: color-mix(in srgb, var(--c) 30%, #17181c); font-size: 11.5px; font-weight: 500; letter-spacing: 0; }
+  .desc { display: flex; gap: 10px; align-items: flex-end; }
+  .desc p { margin: 0; max-width: 1000px; color: #4a4d55; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .more { flex: none; color: #4f46e5; font-weight: 500; font-size: 12.5px; display: inline-flex; gap: 4px; align-items: center; }
+  .rer { margin-top: 8px; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; background: #fff8e6; border: 1px solid #f3e2a6; color: #6b4a00; font-size: 12.5px; }
+  .rer .seg { margin-left: auto; }
+
+  .bd { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); overflow: hidden; }
+  .tree { min-width: 0; overflow: hidden; padding: 12px 10px; border-right: 1px solid #ececf0; background: #fcfcfd; }
+  .tp { padding: 0 8px 10px; }
+  .tp-top { display: flex; justify-content: space-between; font-size: 12px; color: #5d6069; }
+  .tp-top b { color: #17181c; font-weight: 600; }
+  .tp-bar { height: 4px; margin-top: 6px; border-radius: 2px; background: #e8e8ee; overflow: hidden; }
+  .tp-bar i { display: block; height: 100%; background: #1a7f37; }
+  .fold { display: flex; justify-content: space-between; gap: 6px; padding: 9px 8px 3px; color: #7a7d86; font-size: 11.5px; }
+  .fold span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fold .cnt { font-variant-numeric: tabular-nums; }
+  .fold .cnt.done { color: #1a7f37; }
+  .file { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; font-size: 12.5px; }
+  .file.cur { background: #eef0ff; color: #1e1b4b; font-weight: 500; }
+  .file .n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file .st { font-size: 11px; font-variant-numeric: tabular-nums; }
+  .file.done .n { color: #7a7d86; }
+  .ck { width: 15px; height: 15px; flex: none; display: grid; place-items: center; border-radius: 4px; border: 1.5px solid #c4c6ce; color: #fff; }
+  .ck .i { width: 11px; height: 11px; stroke-width: 3; }
+  .ck.on { background: #1a7f37; border-color: #1a7f37; }
+  .newdot { width: 7px; height: 7px; border-radius: 50%; background: #d97706; flex: none; }
+  .unch { margin-top: 10px; display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 7px; border: 1px dashed #d7d7de; color: #6e7180; font-size: 12px; }
+  .add { color: #1a7f37; }
+  .del { color: #cf222e; }
+
+  .pane { min-width: 0; display: flex; flex-direction: column; }
+  .ph { height: 42px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid #ececf0; }
+  .path { min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+  .path b { font-weight: 600; }
+  .muted { color: #7a7d86; font-size: 12px; white-space: nowrap; }
+  .sp { flex: 1; }
+  .seg { flex: none; display: inline-flex; border: 1px solid #e3e3e8; border-radius: 7px; overflow: hidden; background: #fff; }
+  .seg span { padding: 3px 9px; font-size: 11.5px; color: #5d6069; white-space: nowrap; }
+  .seg span.on { background: #f1f1f5; color: #17181c; font-weight: 500; }
+  .markbtn { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid #d7d7de; border-radius: 7px; font-size: 12px; white-space: nowrap; }
+  .markbtn.on { color: #1a7f37; border-color: #c9ead3; background: #eaf7ee; }
+  .diff { flex: 1; min-height: 0; overflow: hidden; font-size: 12px; line-height: 20px; }
+  .hunk { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 14px; background: #f5f6fb; color: #6e7180; }
+  .interdiff { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: #fff8e6; color: #6b4a00; border-bottom: 1px solid #f3e2a6; font-family: "Instrument Sans", "Segoe UI", sans-serif; font-size: 12px; }
+  .ln { display: grid; grid-template-columns: 44px 44px 20px 1fr; }
+  .ln > span:nth-child(-n+2) { padding-right: 8px; text-align: right; color: #a3a6af; }
+  .ln > span:nth-child(3) { color: #a3a6af; }
+  .ln .c { white-space: pre; overflow: hidden; }
+  .ln.a { background: #eaf7ee; }
+  .ln.a > span:nth-child(-n+3) { background: #d8f0e0; color: #4f7f5e; }
+  .ln.d { background: #fdeef0; }
+  .ln.d > span:nth-child(-n+3) { background: #f9d9de; color: #9b4250; }
+  .k { color: #8250df; } .s { color: #0a3069; } .f { color: #6639ba; } .t { color: #116329; } .cm { color: #6e7781; }
+  .draft { margin: 4px 14px 6px 108px; padding: 10px 12px; border: 1px solid #d9dcff; border-radius: 9px; background: #fafaff; font-family: "Instrument Sans", "Segoe UI", sans-serif; font-size: 12.5px; line-height: 1.45; }
+  .draft .dh { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #6e7180; font-size: 11.5px; }
+  .endcard { margin: 14px 14px; padding: 14px 16px; border: 1px solid #c9ead3; border-radius: 10px; background: #f6fcf8; font-family: "Instrument Sans", "Segoe UI", sans-serif; }
+  .endcard .eh { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #155c2b; }
+  .endcard .ta { margin-top: 10px; height: 64px; padding: 9px 11px; border: 1px solid #d7d7de; border-radius: 8px; background: #fff; color: #8a8d96; font-size: 12.5px; }
+  .endcard .dl { margin-top: 10px; font-size: 12px; color: #5d6069; }
+  .endcard .dr { display: flex; gap: 10px; align-items: center; margin-top: 6px; padding: 7px 10px; border-radius: 7px; background: #fff; border: 1px solid #ececf0; font-size: 12.5px; }
+  .endcard .dr code { font-size: 11.5px; color: #3730a3; }
+  .endcard .dr a { margin-left: auto; color: #4f46e5; font-weight: 500; }
+
+  .side { min-width: 0; display: flex; flex-direction: column; border-left: 1px solid #ececf0; background: #fcfcfd; }
+  .tabs { flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 6px 8px 0 10px; border-bottom: 1px solid #ececf0; }
+  .tab { padding: 7px 8px 8px; border-bottom: 2px solid transparent; color: #5d6069; font-size: 12px; white-space: nowrap; }
+  .tab.on { color: #17181c; border-color: #4f46e5; font-weight: 500; }
+  .tab .c { margin-left: 4px; padding: 0 5px; border-radius: 8px; background: #ececf2; font-size: 10.5px; }
+  .tabs .ib { margin-left: auto; margin-bottom: 4px; }
+  .sb { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 11px; padding: 12px 14px; }
+  .fresh { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; background: #eaf7ee; color: #155c2b; font-size: 12px; line-height: 1.4; }
+  .fresh.old { background: #fff6db; color: #6b4a00; }
+  .fresh .i { margin-top: 1px; }
+  .fresh a { color: inherit; font-weight: 600; text-decoration: underline; }
+  .src { display: flex; align-items: center; gap: 7px; color: #5d6069; font-size: 12px; }
+  .ex { margin: 0; color: #3b3d44; font-size: 12.5px; line-height: 1.5; }
+  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .shot { position: relative; overflow: hidden; aspect-ratio: 16 / 10; border: 1px solid #e1e1e7; border-radius: 8px; background: #fff; }
+  .shot.big { grid-column: span 2; }
+  .shot .cap { position: absolute; left: 6px; bottom: 6px; padding: 2px 6px; border-radius: 5px; background: rgba(23, 24, 28, .72); color: #fff; font-size: 10.5px; }
+  .shot .more-n { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(23, 24, 28, .45); color: #fff; font-size: 15px; font-weight: 600; }
+  .s-top { height: 9%; background: #2b2f6b; }
+  .s-body { position: absolute; top: 9%; bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: 34% 1fr; }
+  .s-fil { padding: 6% 7%; border-right: 1px solid #ececf0; background: #fafafc; display: flex; flex-direction: column; gap: 6%; }
+  .s-row { height: 7%; min-height: 4px; border-radius: 3px; background: #e3e3ea; }
+  .s-row.h { width: 55%; background: #c9cad4; }
+  .s-hid { margin-top: 4%; padding: 6%; border-radius: 5px; background: #fff3cd; border: 1px solid #f0d27a; }
+  .s-hid i { display: block; height: 5px; border-radius: 2px; background: #c58b00; width: 80%; }
+  .s-hid i + i { margin-top: 4px; width: 55%; background: #e7c25a; }
+  .s-board { position: relative; }
+  .s-board i { position: absolute; height: 9%; border-radius: 3px; }
+  .side-sec { border-top: 1px solid #ececf0; padding-top: 10px; }
+  .side-sec h4 { margin: 0 0 6px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #3b3d44; }
+  .side-sec h4 .muted { margin-left: auto; font-weight: 400; }
+  .tl { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; }
+  .tl li { display: flex; gap: 7px; align-items: center; }
+  .tl .i { color: #1a7f37; }
+  .prev-rev { padding: 9px 10px; border-radius: 8px; border: 1px solid #ececf0; background: #fff; font-size: 12.5px; line-height: 1.45; }
+  .prev-rev .who { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; color: #6e7180; font-size: 11.5px; }
+  .prev-rev + .prev-rev { margin-top: 6px; }
+  .rc { color: #cf222e; font-weight: 600; }
+  .rail { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; border-left: 1px solid #ececf0; background: #fcfcfd; }
+  .rail .ri { position: relative; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; color: #5d6069; }
+  .rail .ri .i { width: 16px; height: 16px; }
+  .rail .ri b { position: absolute; top: 1px; right: 0; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; background: #4f46e5; color: #fff; font-size: 9px; line-height: 14px; text-align: center; }
+  .rail .ri.ok { color: #1a7f37; }
+  .rail hr { width: 22px; border: 0; border-top: 1px solid #e3e3e8; margin: 4px 0; }
+
+  .ft { height: 58px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 20px; border-top: 1px solid #ececf0; }
+  .ft.done { background: #f3fbf5; border-top-color: #c9ead3; }
+  .ft .stat { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3b3d44; }
+  .ft .stat.ok { color: #155c2b; font-weight: 600; }
+  .ft .stat .muted { font-weight: 400; }
+  .ft .div { width: 1px; height: 24px; margin: 0 4px; background: #e3e3e8; }
+  .btn { height: 34px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #d7d7de; border-radius: 8px; background: #fff; color: #17181c; font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .btn.primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+  .btn.go { background: #1a7f37; border-color: #1a7f37; color: #fff; box-shadow: 0 2px 10px rgba(26, 127, 55, .3); }
+  .btn.dis { background: #f6f6f8; border-color: #ececf0; color: #a3a6af; }
+  .btn.danger { color: #b42318; }
+  .btn kbd { padding: 0 5px; border: 1px solid currentColor; border-radius: 4px; font: 10.5px/15px "JetBrains Mono", Consolas, monospace; opacity: .6; }
+  .hint { height: 26px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 20px; border-top: 1px solid #f1f1f4; background: #fcfcfd; color: #7a7d86; font-size: 11.5px; }
+  .hint kbd { font: 10.5px "JetBrains Mono", Consolas, monospace; color: #3b3d44; }
+  .toast { position: absolute; left: 20px; bottom: 96px; z-index: 4; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; border-radius: 10px; background: #1f2026; color: #f2f2f5; font-size: 13px; box-shadow: 0 8px 26px rgba(0, 0, 0, .28); }
+  .toast .i { color: #4ade80; }
+  .toast .u { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 6px; background: #34353d; font-weight: 500; }
+  .toast .u kbd { font: 10.5px "JetBrains Mono", Consolas, monospace; opacity: .7; }
+  .ring { width: 18px; height: 18px; border-radius: 50%; background: conic-gradient(#a5b4fc 0 62%, #3a3b44 62% 100%); -webkit-mask: radial-gradient(circle, transparent 5px, #000 6px); mask: radial-gradient(circle, transparent 5px, #000 6px); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-ccheck" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-img" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
+  <symbol id="i-chr" viewBox="0 0 24 24"><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></symbol>
+  <symbol id="i-chl" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-max" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.5 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h6"/><path d="M15 12h6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></symbol>
+</svg>
+
+<div class="page">
+
+<!-- =============================== A =============================== -->
+<section class="sec">
+  <h3>A · Walking files with the PR in view</h3>
+  <p>Title, a description excerpt and the proof stay on screen the whole time. No mode switch needed to remember what the PR is about.</p>
+  <div class="fit"><div class="app">
+    <span class="mk" style="left:938px;top:88px">1</span>
+    <span class="mk" style="left:1236px;top:96px">2</span>
+    <span class="mk" style="left:1236px;top:200px">3</span>
+    <span class="mk" style="left:224px;top:200px">4</span>
+    <span class="mk" style="left:1110px;top:712px">5</span>
+
+    <div class="tb">
+      <h2>Quick review</h2>
+      <div class="prog"><span>PR 3 / 35</span><span class="bar"><i style="width:6%"></i></span></div>
+      <span class="gh"><svg class="i"><use href="#i-left"/></svg>Previous PR</span>
+      <span class="gh">Review later<svg class="i"><use href="#i-right"/></svg></span>
+      <span class="ib"><svg class="i"><use href="#i-max"/></svg></span>
+      <span class="ib"><svg class="i"><use href="#i-x"/></svg></span>
+    </div>
+
+    <div class="prh">
+      <div class="over">
+        <span class="av">MV</span><span>mvisser</span><span class="sep">·</span><span>gomocha/FSP</span><span class="sep">·</span><span>#4812</span><span class="sep">·</span><span>updated 2 h ago</span><span class="sep">·</span><span class="mono" style="font-size:11.5px">feature/ab60640-hidden-filters → develop</span>
+        <div class="chips">
+          <span class="chip ok"><svg class="i"><use href="#i-ccheck"/></svg>CI 14/14</span>
+          <span class="chip ok"><svg class="i"><use href="#i-merge"/></svg>No conflicts</span>
+          <span class="chip wi"><svg class="i"><use href="#i-clip"/></svg>AB#60640 Hidden filter fields</span>
+          <span class="chip"><svg class="i"><use href="#i-msg"/></svg>4</span>
+          <span class="chip"><svg class="i"><use href="#i-ext"/></svg>GitHub</span>
+        </div>
+      </div>
+      <div class="title">Planboard: show saved-search filters that the organisation layout hides<span class="lbls"><span class="lbl" style="--c:#a2eeef">enhancement</span><span class="lbl" style="--c:#7057ff">planboard</span><span class="lbl" style="--c:#fbca04">translations</span></span></div>
+      <div class="desc">
+        <p>A saved search can fill in filter fields that the organisation's filter layout hides, so planners saw narrowed results without knowing why. The Advanced Filters workspace now lists those fields under "Hidden fields in use" with a hint, and <code>usePlanboardFilterLayout</code> exposes which fields are hidden. Translations for all six languages are in the pending folder.</p>
+        <span class="more">Full description<svg class="i"><use href="#i-down"/></svg></span>
+      </div>
+    </div>
+
+    <div class="bd" style="grid-template-columns:262px 1fr 340px">
+      <nav class="tree">
+        <div class="tp"><div class="tp-top"><span><b>4</b> of 10 reviewed</span><span>6 left</span></div><div class="tp-bar"><i style="width:40%"></i></div></div>
+        <div class="fold"><span>Database/Translations/pending</span><span class="cnt done">1/1</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">ab60640-hidden-filter-fields.json</span><span class="st add">+20</span></div>
+        <div class="fold"><span>Portal/src/components/planboard</span><span class="cnt">0/1</span></div>
+        <div class="file cur"><span class="ck"></span><span class="n">AdvancedFiltersWorkspace.tsx</span><span class="st"><span class="add">+128</span> <span class="del">−45</span></span></div>
+        <div class="fold"><span>Portal/src/hooks/planboard</span><span class="cnt">0/1</span></div>
+        <div class="file"><span class="ck"></span><span class="n">usePlanboardFilterLayout.ts</span><span class="st"><span class="add">+53</span> <span class="del">−14</span></span></div>
+        <div class="fold"><span>Portal/src/types</span><span class="cnt done">1/1</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">planboardFilters.ts</span><span class="st add">+3</span></div>
+        <div class="fold"><span>Documentation</span><span class="cnt done">2/2</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">planboard.md</span><span class="st add">+2</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">planboard.md</span><span class="st"><span class="add">+18</span> <span class="del">−2</span></span></div>
+        <div class="fold"><span>Tests</span><span class="cnt">0/4</span></div>
+        <div class="file"><span class="ck"></span><span class="n">planboard-advanced-filters.spec.ts</span><span class="st"><span class="add">+87</span> <span class="del">−5</span></span></div>
+        <div class="file"><span class="ck"></span><span class="n">AdvancedFiltersWorkspace.test.tsx</span><span class="st add">+250</span></div>
+        <div class="file"><span class="ck"></span><span class="n">usePlanboardFilterLayout.test.ts</span><span class="st add">+64</span></div>
+        <div class="file"><span class="ck"></span><span class="n">planboardFilters.test.ts</span><span class="st add">+9</span></div>
+      </nav>
+
+      <div class="pane">
+        <div class="ph">
+          <code class="path">Portal/src/components/planboard/<b>AdvancedFiltersWorkspace.tsx</b></code>
+          <span class="muted"><span class="add">+128</span> <span class="del">−45</span></span>
+          <span class="muted">2 of 10</span>
+          <span class="sp"></span>
+          <span class="seg"><span class="on">Unified</span><span>Split</span></span>
+          <span class="seg"><span>Wrap</span></span>
+          <span class="markbtn"><span class="ck"></span>Mark reviewed</span>
+        </div>
+        <div class="diff mono">
+          <div class="hunk">@@ -84,12 +84,26 @@ export function AdvancedFiltersWorkspace({ layout, savedSearch }: Props) {</div>
+          <div class="ln"><span>84</span><span>84</span><span></span><span class="c">  <span class="k">const</span> { visibleFields, hiddenFields } = <span class="f">usePlanboardFilterLayout</span>(layout);</span></div>
+          <div class="ln"><span>85</span><span>85</span><span></span><span class="c">  <span class="k">const</span> activeFilters = <span class="f">useActiveFilters</span>(savedSearch);</span></div>
+          <div class="ln d"><span>86</span><span></span><span>−</span><span class="c">  <span class="k">const</span> fields = visibleFields;</span></div>
+          <div class="ln a"><span></span><span>86</span><span>+</span><span class="c">  <span class="k">const</span> hiddenInUse = hiddenFields.<span class="f">filter</span>((field) =&gt; activeFilters.<span class="f">has</span>(field.key));</span></div>
+          <div class="ln"><span>87</span><span>87</span><span></span><span class="c"></span></div>
+          <div class="ln"><span>88</span><span>88</span><span></span><span class="c">  <span class="k">return</span> (</span></div>
+          <div class="ln"><span>89</span><span>89</span><span></span><span class="c">    &lt;<span class="t">FilterPanel</span>&gt;</span></div>
+          <div class="ln d"><span>90</span><span></span><span>−</span><span class="c">      {fields.<span class="f">map</span>((field) =&gt; (</span></div>
+          <div class="ln a"><span></span><span>90</span><span>+</span><span class="c">      {visibleFields.<span class="f">map</span>((field) =&gt; (</span></div>
+          <div class="ln"><span>91</span><span>91</span><span></span><span class="c">        &lt;<span class="t">FilterField</span> key={field.key} field={field} /&gt;</span></div>
+          <div class="ln"><span>92</span><span>92</span><span></span><span class="c">      ))}</span></div>
+          <div class="ln a"><span></span><span>93</span><span>+</span><span class="c">      {hiddenInUse.length &gt; <span class="s">0</span> &amp;&amp; (</span></div>
+          <div class="ln a"><span></span><span>94</span><span>+</span><span class="c">        &lt;<span class="t">FilterSection</span></span></div>
+          <div class="ln a"><span></span><span>95</span><span>+</span><span class="c">          title={<span class="f">t</span>(<span class="s">'PLANBOARD_FILTER_HIDDEN_FIELDS_IN_USE'</span>)}</span></div>
+          <div class="ln a"><span></span><span>96</span><span>+</span><span class="c">          hint={<span class="f">t</span>(<span class="s">'PLANBOARD_FILTER_HIDDEN_FIELDS_IN_USE_HINT'</span>)}</span></div>
+          <div class="ln a"><span></span><span>97</span><span>+</span><span class="c">        &gt;</span></div>
+          <div class="ln a"><span></span><span>98</span><span>+</span><span class="c">          {hiddenInUse.<span class="f">map</span>((field) =&gt; (</span></div>
+          <div class="ln a"><span></span><span>99</span><span>+</span><span class="c">            &lt;<span class="t">FilterField</span> key={field.key} field={field} readOnly /&gt;</span></div>
+          <div class="draft">
+            <div class="dh"><span class="av" style="width:16px;height:16px;font-size:8px">KB</span>Your draft · line 99</div>
+            <code>readOnly</code> means a planner can't clear a hidden filter from here. Should they be able to drop it from the saved search instead?
+          </div>
+          <div class="ln a"><span></span><span>100</span><span>+</span><span class="c">          ))}</span></div>
+          <div class="ln a"><span></span><span>101</span><span>+</span><span class="c">        &lt;/<span class="t">FilterSection</span>&gt;</span></div>
+          <div class="ln a"><span></span><span>102</span><span>+</span><span class="c">      )}</span></div>
+          <div class="ln"><span>93</span><span>103</span><span></span><span class="c">    &lt;/<span class="t">FilterPanel</span>&gt;</span></div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="tabs">
+          <span class="tab on">Proof<span class="c">3</span></span>
+          <span class="tab">Checks</span>
+          <span class="tab">Work item</span>
+          <span class="tab">Comments<span class="c">4</span></span>
+          <span class="ib" title="Collapse (])"><svg class="i"><use href="#i-chr"/></svg></span>
+        </div>
+        <div class="sb">
+          <div class="fresh"><svg class="i"><use href="#i-ccheck"/></svg><span>Matches the head commit <code>a1b2c3d</code></span></div>
+          <div class="src"><span class="av" style="width:18px;height:18px;font-size:8.5px;background:#e0f2fe;color:#075985">V</span>Vera · proof <span class="sep" style="color:#c4c6ce">·</span> 1 h ago</div>
+          <p class="ex">Saved search with a hidden <b>Region</b> filter now shows "Hidden fields in use" with the hint. API regression tests and the Playwright planboard suite passed.</p>
+          <div class="shots">
+            <div class="shot big">
+              <div class="s-top"></div>
+              <div class="s-body">
+                <div class="s-fil"><div class="s-row h"></div><div class="s-row"></div><div class="s-row"></div><div class="s-row"></div><div class="s-hid"><i></i><i></i></div></div>
+                <div class="s-board">
+                  <i style="left:6%;top:10%;width:30%;background:#c7d2fe"></i><i style="left:42%;top:10%;width:22%;background:#bbf7d0"></i>
+                  <i style="left:14%;top:28%;width:40%;background:#fde68a"></i><i style="left:60%;top:28%;width:28%;background:#c7d2fe"></i>
+                  <i style="left:4%;top:46%;width:24%;background:#bbf7d0"></i><i style="left:34%;top:46%;width:36%;background:#fecaca"></i>
+                  <i style="left:20%;top:64%;width:44%;background:#c7d2fe"></i><i style="left:8%;top:82%;width:26%;background:#fde68a"></i>
+                </div>
+              </div>
+              <span class="cap">Hidden fields in use · nl</span>
+            </div>
+            <div class="shot">
+              <div class="s-top"></div>
+              <div class="s-body"><div class="s-fil"><div class="s-row h"></div><div class="s-row"></div><div class="s-hid"><i></i><i></i></div></div><div class="s-board"><i style="left:8%;top:20%;width:50%;background:#c7d2fe"></i><i style="left:20%;top:50%;width:40%;background:#bbf7d0"></i></div></div>
+              <span class="cap">Hint tooltip</span>
+            </div>
+            <div class="shot">
+              <div class="s-top"></div>
+              <div class="s-body"><div class="s-fil"><div class="s-row h"></div><div class="s-row"></div><div class="s-row"></div></div><div class="s-board"><i style="left:8%;top:30%;width:60%;background:#fde68a"></i></div></div>
+              <span class="more-n">+1</span>
+            </div>
+          </div>
+          <div class="side-sec">
+            <h4>Test plan <span class="muted">from the description</span></h4>
+            <ul class="tl">
+              <li><svg class="i"><use href="#i-check"/></svg>Unit tests for the layout hook</li>
+              <li><svg class="i"><use href="#i-check"/></svg>Playwright: saved search with hidden Region</li>
+              <li><svg class="i"><use href="#i-check"/></svg>Translations checked in nl and de</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="ft">
+      <span class="stat">1 draft comment</span>
+      <span class="sp"></span>
+      <span class="btn">Previous <kbd>P</kbd></span>
+      <span class="btn">Next file <kbd>N</kbd></span>
+      <span class="btn primary">Mark reviewed &amp; next <kbd>V</kbd></span>
+      <span class="div"></span>
+      <span class="btn dis" title="6 files left">Approve · 6 left</span>
+    </div>
+    <div class="hint"><span><kbd>J/K</kbd> scroll</span><span><kbd>N/P</kbd> file</span><span><kbd>V</kbd> mark &amp; next</span><span><kbd>D</kbd> description</span><span><kbd>]</kbd> context panel</span><span><kbd>1–4</kbd> panel tab</span><span><kbd>Esc</kbd> overview</span><span class="sp"></span><span>Drafts saved on this device</span></div>
+  </div></div>
+  <ol class="legend">
+    <li><b class="n">1</b><span><b>PR header stays put in the walk.</b> Author, repo, number, branch, title and a two-line description excerpt. <i>Full description</i> (or <kbd>D</kbd>) expands it in place, pushing the diff down instead of opening a separate panel.</span></li>
+    <li><b class="n">2</b><span><b>Status chips</b> for CI, conflicts, the linked work item (hover preview, same as <code>LinkedWorkItemBadge</code>), comment count and GitHub.</span></li>
+    <li><b class="n">3</b><span><b>Context panel on the right, Proof tab first.</b> Screenshots and verification text pulled from the description and comments (the existing <code>reviewProofs</code>), with a freshness badge against the head SHA. Click a shot to open the existing <code>ImageViewer</code>. <kbd>]</kbd> collapses it to a rail and the choice is remembered.</span></li>
+    <li><b class="n">4</b><span><b>Tree shows progress per folder</b> (1/1, 0/4) and an overall bar. Long folder paths are shortened from the left so the useful end shows.</span></li>
+    <li><b class="n">5</b><span><b>Approve lives in the walk.</b> Disabled with the reason until every file is marked. <i>Finish review</i> is gone; <kbd>Esc</kbd> still goes back to the overview card.</span></li>
+  </ol>
+</section>
+
+<!-- =============================== B =============================== -->
+<section class="sec">
+  <h3>B · Last file marked: decide right there</h3>
+  <p>Marking the last file turns the footer into the decision bar. No Finish click, no trip back to the card.</p>
+  <div class="fit"><div class="app">
+    <span class="mk" style="left:200px;top:684px">1</span>
+    <span class="mk" style="left:880px;top:500px">2</span>
+    <span class="mk" style="left:1090px;top:684px">3</span>
+    <span class="mk" style="left:1240px;top:160px">4</span>
+
+    <div class="tb">
+      <h2>Quick review</h2>
+      <div class="prog"><span>PR 3 / 35</span><span class="bar"><i style="width:6%"></i></span></div>
+      <span class="gh"><svg class="i"><use href="#i-left"/></svg>Previous PR</span>
+      <span class="gh">Review later<svg class="i"><use href="#i-right"/></svg></span>
+      <span class="ib"><svg class="i"><use href="#i-max"/></svg></span>
+      <span class="ib"><svg class="i"><use href="#i-x"/></svg></span>
+    </div>
+
+    <div class="prh">
+      <div class="over">
+        <span class="av">MV</span><span>mvisser</span><span class="sep">·</span><span>gomocha/FSP</span><span class="sep">·</span><span>#4812</span><span class="sep">·</span><span>updated 2 h ago</span>
+        <div class="chips">
+          <span class="chip ok"><svg class="i"><use href="#i-ccheck"/></svg>CI 14/14</span>
+          <span class="chip ok"><svg class="i"><use href="#i-merge"/></svg>No conflicts</span>
+          <span class="chip wi"><svg class="i"><use href="#i-clip"/></svg>AB#60640</span>
+          <span class="chip"><svg class="i"><use href="#i-ext"/></svg>GitHub</span>
+        </div>
+      </div>
+      <div class="title">Planboard: show saved-search filters that the organisation layout hides<span class="lbls"><span class="lbl" style="--c:#a2eeef">enhancement</span><span class="lbl" style="--c:#7057ff">planboard</span><span class="lbl" style="--c:#fbca04">translations</span></span></div>
+      <div class="desc">
+        <p>A saved search can fill in filter fields that the organisation's filter layout hides, so planners saw narrowed results without knowing why. The Advanced Filters workspace now lists those fields under "Hidden fields in use" with a hint.</p>
+        <span class="more">Full description<svg class="i"><use href="#i-down"/></svg></span>
+      </div>
+    </div>
+
+    <div class="bd" style="grid-template-columns:262px 1fr 48px">
+      <nav class="tree">
+        <div class="tp"><div class="tp-top"><span><b>10</b> of 10 reviewed</span><span style="color:#1a7f37">done</span></div><div class="tp-bar"><i style="width:100%"></i></div></div>
+        <div class="fold"><span>Database/Translations/pending</span><span class="cnt done">1/1</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">ab60640-hidden-filter-fields.json</span><span class="st add">+20</span></div>
+        <div class="fold"><span>Portal/src/components/planboard</span><span class="cnt done">1/1</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">AdvancedFiltersWorkspace.tsx</span><span class="st"><span class="add">+128</span> <span class="del">−45</span></span></div>
+        <div class="fold"><span>Portal/src/hooks/planboard</span><span class="cnt done">1/1</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">usePlanboardFilterLayout.ts</span><span class="st"><span class="add">+53</span> <span class="del">−14</span></span></div>
+        <div class="fold"><span>Portal/src/types</span><span class="cnt done">1/1</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">planboardFilters.ts</span><span class="st add">+3</span></div>
+        <div class="fold"><span>Documentation</span><span class="cnt done">2/2</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">planboard.md</span><span class="st add">+2</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">planboard.md</span><span class="st"><span class="add">+18</span> <span class="del">−2</span></span></div>
+        <div class="fold"><span>Tests</span><span class="cnt done">4/4</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">planboard-advanced-filters.spec.ts</span><span class="st"><span class="add">+87</span> <span class="del">−5</span></span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">AdvancedFiltersWorkspace.test.tsx</span><span class="st add">+250</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">usePlanboardFilterLayout.test.ts</span><span class="st add">+64</span></div>
+        <div class="file cur"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">planboardFilters.test.ts</span><span class="st add">+9</span></div>
+      </nav>
+
+      <div class="pane">
+        <div class="ph">
+          <code class="path">Tests/<b>planboardFilters.test.ts</b></code>
+          <span class="muted"><span class="add">+9</span> <span class="del">−0</span></span>
+          <span class="muted">10 of 10</span>
+          <span class="sp"></span>
+          <span class="seg"><span class="on">Unified</span><span>Split</span></span>
+          <span class="seg"><span>Wrap</span></span>
+          <span class="markbtn on"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span>Reviewed</span>
+        </div>
+        <div class="diff mono">
+          <div class="hunk">@@ -41,6 +41,15 @@ describe('planboardFilters', () =&gt; {</div>
+          <div class="ln"><span>41</span><span>41</span><span></span><span class="c">  <span class="f">it</span>(<span class="s">'keeps visible fields in layout order'</span>, () =&gt; { … });</span></div>
+          <div class="ln a"><span></span><span>42</span><span>+</span><span class="c"></span></div>
+          <div class="ln a"><span></span><span>43</span><span>+</span><span class="c">  <span class="f">it</span>(<span class="s">'reports hidden fields a saved search fills in'</span>, () =&gt; {</span></div>
+          <div class="ln a"><span></span><span>44</span><span>+</span><span class="c">    <span class="k">const</span> layout = <span class="f">layoutWith</span>({ hidden: [<span class="s">'region'</span>, <span class="s">'skill'</span>] });</span></div>
+          <div class="ln a"><span></span><span>45</span><span>+</span><span class="c">    <span class="k">const</span> search = <span class="f">savedSearch</span>({ region: <span class="s">'NL-South'</span> });</span></div>
+          <div class="ln a"><span></span><span>46</span><span>+</span><span class="c">    <span class="f">expect</span>(<span class="f">hiddenFieldsInUse</span>(layout, search)).<span class="f">toEqual</span>([<span class="s">'region'</span>]);</span></div>
+          <div class="ln a"><span></span><span>47</span><span>+</span><span class="c">  });</span></div>
+          <div class="ln a"><span></span><span>48</span><span>+</span><span class="c"></span></div>
+          <div class="ln a"><span></span><span>49</span><span>+</span><span class="c">  <span class="f">it</span>(<span class="s">'ignores hidden fields the search leaves empty'</span>, () =&gt; {</span></div>
+          <div class="ln a"><span></span><span>50</span><span>+</span><span class="c">    <span class="f">expect</span>(<span class="f">hiddenFieldsInUse</span>(<span class="f">layoutWith</span>({ hidden: [<span class="s">'skill'</span>] }), <span class="f">savedSearch</span>({}))).<span class="f">toEqual</span>([]);</span></div>
+          <div class="ln a"><span></span><span>51</span><span>+</span><span class="c">  });</span></div>
+          <div class="ln"><span>42</span><span>52</span><span></span><span class="c">});</span></div>
+          <div class="endcard">
+            <div class="eh"><svg class="i" style="width:16px;height:16px"><use href="#i-ccheck"/></svg>That was the last file</div>
+            <div class="ta">Overall comment (optional) · posted with your review</div>
+            <div class="dl">Draft comments that go with it · 1</div>
+            <div class="dr"><code>AdvancedFiltersWorkspace.tsx:99</code><span><code style="color:#17181c">readOnly</code> means a planner can't clear a hidden filter from here…</span><a>Jump</a></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="rail">
+        <span class="ri" title="Expand (])"><svg class="i"><use href="#i-chl"/></svg></span>
+        <hr />
+        <span class="ri"><svg class="i"><use href="#i-img"/></svg><b>3</b></span>
+        <span class="ri ok"><svg class="i"><use href="#i-ccheck"/></svg></span>
+        <span class="ri"><svg class="i"><use href="#i-clip"/></svg></span>
+        <span class="ri"><svg class="i"><use href="#i-msg"/></svg><b>4</b></span>
+      </aside>
+    </div>
+
+    <div class="ft done">
+      <span class="stat ok"><svg class="i" style="width:16px;height:16px"><use href="#i-ccheck"/></svg>All 10 files reviewed <span class="muted">· 1 draft comment goes with your review</span></span>
+      <span class="sp"></span>
+      <span class="btn danger">Request changes <kbd>R</kbd></span>
+      <span class="btn">Comment <kbd>C</kbd></span>
+      <span class="btn">Approve <kbd>A</kbd></span>
+      <span class="btn go"><svg class="i"><use href="#i-merge"/></svg>Approve &amp; auto-merge <kbd>Enter</kbd></span>
+    </div>
+    <div class="hint"><span><kbd>Enter</kbd> approve &amp; auto-merge</span><span><kbd>A</kbd> approve</span><span><kbd>R</kbd> request changes</span><span><kbd>C</kbd> comment</span><span><kbd>N/P</kbd> file</span><span><kbd>Esc</kbd> overview</span><span class="sp"></span><span>Drafts saved on this device</span></div>
+  </div></div>
+  <ol class="legend">
+    <li><b class="n">1</b><span><b>Footer becomes the decision bar</b> the moment the last file is marked (<kbd>V</kbd> on the last file). Same bar if you mark files out of order.</span></li>
+    <li><b class="n">2</b><span><b>The compose screen moves inline</b>: overall comment and the list of drafts sit under the last diff, so nothing hides behind <i>Write review</i>.</span></li>
+    <li><b class="n">3</b><span><b>One key to ship</b>: <kbd>Enter</kbd> approves and turns on auto-merge (plain Approve when auto-merge is already on). <kbd>R</kbd> asks for an overall comment first.</span></li>
+    <li><b class="n">4</b><span><b>Collapsed context rail</b> keeps counts visible (3 proofs, CI green, 4 comments); click one to reopen on that tab.</span></li>
+  </ol>
+</section>
+
+<!-- =============================== C =============================== -->
+<section class="sec">
+  <h3>C · Straight on to the next PR, re-reviews show only what changed</h3>
+  <p>After approving, the next PR opens in the walk, not on the card. For a PR you reviewed before, you see only the commits since then.</p>
+  <div class="fit"><div class="app">
+    <span class="mk" style="left:470px;top:8px">1</span>
+    <span class="mk" style="left:1236px;top:100px">2</span>
+    <span class="mk" style="left:120px;top:440px">3</span>
+    <span class="mk" style="left:1236px;top:250px">4</span>
+    <span class="mk" style="left:402px;top:646px">5</span>
+
+    <div class="tb">
+      <h2>Quick review</h2>
+      <span class="upnext">Up next <b>#4821 Planboard: keyboard focus on resource rows</b></span>
+      <div class="prog"><span>PR 4 / 35</span><span class="bar"><i style="width:9%"></i></span></div>
+      <span class="gh"><svg class="i"><use href="#i-left"/></svg>Previous PR</span>
+      <span class="gh">Review later<svg class="i"><use href="#i-right"/></svg></span>
+      <span class="ib"><svg class="i"><use href="#i-max"/></svg></span>
+      <span class="ib"><svg class="i"><use href="#i-x"/></svg></span>
+    </div>
+
+    <div class="prh">
+      <div class="over">
+        <span class="av" style="background:#fde7d3;color:#9a3412">SB</span><span>sbakker</span><span class="sep">·</span><span>gomocha/FSP</span><span class="sep">·</span><span>#4815</span><span class="sep">·</span><span>updated 40 min ago</span>
+        <div class="chips">
+          <span class="chip ok"><svg class="i"><use href="#i-ccheck"/></svg>CI 9/9</span>
+          <span class="chip warn"><svg class="i"><use href="#i-undo"/></svg>Re-review</span>
+          <span class="chip wi"><svg class="i"><use href="#i-clip"/></svg>AB#60612 Payroll break mismatch</span>
+          <span class="chip"><svg class="i"><use href="#i-ext"/></svg>GitHub</span>
+        </div>
+      </div>
+      <div class="title">Timesheets: round break minutes per shift instead of per day<span class="lbls"><span class="lbl" style="--c:#d73a4a">bug</span><span class="lbl" style="--c:#0e8a16">payroll</span><span class="lbl" style="--c:#e99695">customer: Heras</span></span></div>
+      <div class="rer">
+        <svg class="i"><use href="#i-commit"/></svg>
+        <span>You requested changes on Oct 26 at <code>e4f5a6b</code>. <b>2 commits</b> since, touching <b>3 of 12</b> files.</span>
+        <span class="seg"><span class="on">Since my review · 3</span><span>All files · 12</span></span>
+      </div>
+    </div>
+
+    <div class="bd" style="grid-template-columns:262px 1fr 340px">
+      <nav class="tree">
+        <div class="tp"><div class="tp-top"><span><b>0</b> of 3 changed files</span><span>3 left</span></div><div class="tp-bar"><i style="width:0%"></i></div></div>
+        <div class="fold"><span>Api/Timesheets</span><span class="cnt">0/1</span></div>
+        <div class="file cur"><span class="ck"></span><span class="n">BreakRounding.cs</span><span class="newdot" title="Changed since your review"></span><span class="st"><span class="add">+8</span> <span class="del">−2</span></span></div>
+        <div class="fold"><span>Tests/Timesheets</span><span class="cnt">0/1</span></div>
+        <div class="file"><span class="ck"></span><span class="n">BreakRoundingTests.cs</span><span class="newdot"></span><span class="st add">+31</span></div>
+        <div class="fold"><span>Documentation</span><span class="cnt">0/1</span></div>
+        <div class="file"><span class="ck"></span><span class="n">timesheet-rounding.md</span><span class="newdot"></span><span class="st"><span class="add">+4</span> <span class="del">−1</span></span></div>
+        <div class="unch"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span>9 unchanged files, reviewed Oct 26</div>
+      </nav>
+
+      <div class="pane">
+        <div class="ph">
+          <code class="path">Api/Timesheets/<b>BreakRounding.cs</b></code>
+          <span class="muted"><span class="add">+8</span> <span class="del">−2</span></span>
+          <span class="muted">1 of 3</span>
+          <span class="sp"></span>
+          <span class="seg"><span class="on">Since my review</span><span>Whole PR</span></span>
+          <span class="markbtn"><span class="ck"></span>Mark reviewed</span>
+        </div>
+        <div class="diff mono">
+          <div class="interdiff"><svg class="i"><use href="#i-commit"/></svg>Showing <code>e4f5a6b</code> → <code>9c1d2e0</code> · "Round each split-shift part on its own"</div>
+          <div class="hunk">@@ -18,9 +18,7 @@ public static class BreakRounding</div>
+          <div class="ln"><span>18</span><span>18</span><span></span><span class="c">    <span class="k">public static int</span> <span class="f">RoundBreakMinutes</span>(IEnumerable&lt;Shift&gt; shifts, RoundingRule rule)</span></div>
+          <div class="ln"><span>19</span><span>19</span><span></span><span class="c">    {</span></div>
+          <div class="ln d"><span>20</span><span></span><span>−</span><span class="c">        <span class="k">var</span> total = shifts.<span class="f">Sum</span>(s =&gt; s.BreakMinutes);</span></div>
+          <div class="ln d"><span>21</span><span></span><span>−</span><span class="c">        <span class="k">return</span> rule.<span class="f">Round</span>(total);</span></div>
+          <div class="ln a"><span></span><span>20</span><span>+</span><span class="c">        <span class="k">return</span> shifts.<span class="f">Sum</span>(shift =&gt; <span class="f">RoundPerShift</span>(shift, rule));</span></div>
+          <div class="ln"><span>22</span><span>21</span><span></span><span class="c">    }</span></div>
+          <div class="hunk">@@ -41,6 +39,12 @@ public static class BreakRounding</div>
+          <div class="ln"><span>41</span><span>39</span><span></span><span class="c">    <span class="k">public static int</span> <span class="f">RoundToQuarter</span>(<span class="k">int</span> minutes) =&gt;</span></div>
+          <div class="ln"><span>42</span><span>40</span><span></span><span class="c">        (<span class="k">int</span>)(Math.<span class="f">Round</span>(minutes / <span class="s">15.0</span>, MidpointRounding.AwayFromZero) * <span class="s">15</span>);</span></div>
+          <div class="ln a"><span></span><span>41</span><span>+</span><span class="c"></span></div>
+          <div class="ln a"><span></span><span>42</span><span>+</span><span class="c">    <span class="k">public static int</span> <span class="f">RoundPerShift</span>(Shift shift, RoundingRule rule) =&gt;</span></div>
+          <div class="ln a"><span></span><span>43</span><span>+</span><span class="c">        shift.IsSplit</span></div>
+          <div class="ln a"><span></span><span>44</span><span>+</span><span class="c">            ? shift.Parts.<span class="f">Sum</span>(part =&gt; rule.<span class="f">Round</span>(part.BreakMinutes))</span></div>
+          <div class="ln a"><span></span><span>45</span><span>+</span><span class="c">            : rule.<span class="f">Round</span>(shift.BreakMinutes);</span></div>
+          <div class="ln a"><span></span><span>46</span><span>+</span><span class="c"></span></div>
+          <div class="ln a"><span></span><span>47</span><span>+</span><span class="c">    <span class="k">private static bool</span> <span class="f">HasBreak</span>(Shift shift) =&gt; shift.BreakMinutes &gt; <span class="s">0</span>;</span></div>
+          <div class="ln"><span>43</span><span>48</span><span></span><span class="c">}</span></div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="tabs">
+          <span class="tab on">Proof<span class="c">1</span></span>
+          <span class="tab">Checks</span>
+          <span class="tab">Work item</span>
+          <span class="tab">Comments<span class="c">6</span></span>
+          <span class="ib"><svg class="i"><use href="#i-chr"/></svg></span>
+        </div>
+        <div class="sb">
+          <div class="fresh old"><svg class="i"><use href="#i-warn"/></svg><span>Proof is for <code>e4f5a6b</code>, 2 commits behind the head. <a>Ask for fresh proof</a></span></div>
+          <div class="shots">
+            <div class="shot big" style="aspect-ratio:16/8">
+              <div class="s-top" style="background:#0f4c5c"></div>
+              <div class="s-board" style="position:absolute;inset:12% 6% 6% 6%">
+                <i style="left:0;top:4%;width:100%;height:10%;background:#e5e7eb"></i>
+                <i style="left:0;top:22%;width:100%;height:10%;background:#f3f4f6"></i>
+                <i style="left:0;top:40%;width:100%;height:10%;background:#f3f4f6"></i>
+                <i style="left:0;top:58%;width:100%;height:10%;background:#dcfce7"></i>
+                <i style="left:0;top:76%;width:100%;height:10%;background:#f3f4f6"></i>
+              </div>
+              <span class="cap">Timesheet week 43 · split shift</span>
+            </div>
+          </div>
+          <div class="side-sec">
+            <h4>Since your last review</h4>
+            <div class="prev-rev"><div class="who"><span class="av" style="width:16px;height:16px;font-size:8px">KB</span>You · Oct 26 · <span class="rc">Changes requested</span></div>Split shifts still round once per day; a 2×7 min break becomes 15 instead of 0.</div>
+            <div class="prev-rev"><div class="who"><span class="av" style="width:16px;height:16px;font-size:8px;background:#fde7d3;color:#9a3412">SB</span>sbakker · 2 h ago</div>Fixed in <code>9c1d2e0</code>: each part rounds on its own now, test added.</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="toast"><svg class="i" style="width:16px;height:16px"><use href="#i-ccheck"/></svg><span>Approved <b>#4812</b>, auto-merge on</span><span class="ring" title="Sends in 3 s"></span><span class="u"><svg class="i"><use href="#i-undo"/></svg>Undo <kbd>Z</kbd></span></div>
+
+    <div class="ft">
+      <span class="stat">No drafts</span>
+      <span class="sp"></span>
+      <span class="btn">Previous <kbd>P</kbd></span>
+      <span class="btn">Next file <kbd>N</kbd></span>
+      <span class="btn primary">Mark reviewed &amp; next <kbd>V</kbd></span>
+      <span class="div"></span>
+      <span class="btn dis">Approve · 3 left</span>
+    </div>
+    <div class="hint"><span><kbd>J/K</kbd> scroll</span><span><kbd>N/P</kbd> file</span><span><kbd>V</kbd> mark &amp; next</span><span><kbd>S</kbd> since my review / all</span><span><kbd>]</kbd> context panel</span><span><kbd>Z</kbd> undo approval</span><span><kbd>Esc</kbd> overview</span><span class="sp"></span><span>Drafts saved on this device</span></div>
+  </div></div>
+  <ol class="legend">
+    <li><b class="n">1</b><span><b>Up next</b> in the title bar, so you know what's coming without the card deck.</span></li>
+    <li><b class="n">2</b><span><b>Re-review banner</b>: your last verdict, its commit, and how many commits and files changed since. <kbd>S</kbd> toggles between those files and the whole PR.</span></li>
+    <li><b class="n">3</b><span><b>Unchanged files stay reviewed</b> and fold into one line. The diff shows only <code>e4f5a6b → 9c1d2e0</code>.</span></li>
+    <li><b class="n">4</b><span><b>Proof goes amber when it names an older commit</b> (freshness logic already in <code>reviewProofs</code>), with a one-click ask for fresh proof. Your previous review and the author's reply sit underneath.</span></li>
+    <li><b class="n">5</b><span><b>Undo toast</b>: the approval waits a few seconds before it's sent, so <kbd>Z</kbd> can take it back. GitHub can't delete a submitted review.</span></li>
+  </ol>
+</section>
+
+</div>
+<script>
+  function fit() {
+    document.querySelectorAll('.fit').forEach(function (wrap) {
+      var app = wrap.firstElementChild;
+      var scale = Math.min(1, wrap.clientWidth / 1282);
+      app.style.transform = 'scale(' + scale + ')';
+      wrap.style.height = Math.ceil(782 * scale) + 'px';
+    });
+  }
+  fit();
+  new ResizeObserver(fit).observe(document.body);
+</script>
+</body>
+</html>

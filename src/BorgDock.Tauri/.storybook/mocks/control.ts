@@ -93,6 +93,7 @@ export interface RawReview {
   body: string | null;
   submitted_at: string;
   user: { login: string } | null;
+  commit_id?: string;
 }
 
 // Phase 11 — github service responses
@@ -101,7 +102,9 @@ export type GithubResponses = {
   getReviewReadiness?: import('../../src/services/github/review-readiness').ReviewReadiness;
   getPRReviewDetails?:
     | { pr: PullRequest; baseSha: string }
-    | (() => { pr: PullRequest; baseSha: string } | Promise<{ pr: PullRequest; baseSha: string }>);
+    | ((args: {
+        prNumber: number;
+      }) => { pr: PullRequest; baseSha: string } | Promise<{ pr: PullRequest; baseSha: string }>);
   getOpenPRs?:
     | PullRequest[]
     | ((args: {
@@ -125,7 +128,7 @@ export type GithubResponses = {
   // Phase 11 / FilesTab additions
   getPRFiles?:
     | PullRequestFileChange[]
-    | (() => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
+    | ((args: { prNumber: number }) => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
   getCommitFiles?:
     | PullRequestFileChange[]
     | (() => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);

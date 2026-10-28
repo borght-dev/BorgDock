@@ -1,6 +1,7 @@
 import { AppWindow } from 'lucide-react';
 import { BackButton } from '@/components/layout/BackButton';
 import { avatarInitials, prRowKey } from '@/components/pr/pr-card-data';
+import { PrLabels } from '@/components/shared/PrLabels';
 import { Avatar, IconButton } from '@/components/shared/primitives';
 import { WorkstreamMembership } from '@/components/workstreams/Membership';
 import { isMyPr } from '@/services/pr-grouping';
@@ -23,7 +24,7 @@ interface PrDetailHeaderProps {
 /**
  * PrDetailHeader — the head of the full-screen detail view
  * (plans/ui-overhaul-workbench.md, phase 3): Back, `owner/repo #number` and
- * "Open in window" on the top line; then the avatar and title, the branch
+ * "Open in window" on the top line; then the avatar, title and labels, the branch
  * into its base, the readiness sentence and the action bar.
  */
 export function PrDetailHeader({ pr, actions, checks, onOpenInWindow }: PrDetailHeaderProps) {
@@ -54,7 +55,10 @@ export function PrDetailHeader({ pr, actions, checks, onOpenInWindow }: PrDetail
           size="md"
           aria-hidden="true"
         />
-        <h1 className="bd-detail__title">{p.title}</h1>
+        <div className="bd-detail__titletext">
+          <h1 className="bd-detail__title">{p.title}</h1>
+          <PrLabels pr={p} className="bd-detail__labels" />
+        </div>
       </div>
       <p className="bd-detail__meta">
         <em>{p.authorLogin}</em> wants to merge <code>{p.headRef}</code> into{' '}
