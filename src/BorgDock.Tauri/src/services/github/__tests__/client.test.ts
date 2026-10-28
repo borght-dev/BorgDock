@@ -155,9 +155,44 @@ describe('GitHubClient', () => {
       const headers = fetchSpy.mock.calls[0]![1].headers;
       expect(headers.Accept).toBe('application/vnd.github.full+json');
       expect(headers['If-None-Match']).toBeUndefined();
-      expect(client.getEtagEntries()).toEqual([
-        { url, etag: 'raw-etag', jsonData: [{ body: 'raw' }] },
+      expect(client.takeChangedEtagEntries()).toEqual([]);
+    });
+
+    it('persists only the entries that changed since the last save', async () => {
+      const client = createClient();
+      fetchSpy.mockResolvedValueOnce(mockResponse(200, { id: 1 }, { etag: '"a1"' }));
+      await client.get('repos/owner/a');
+      expect(client.takeChangedEtagEntries()).toEqual([
+        { url: 'https://api.github.com/repos/owner/a', etag: '"a1"', jsonData: { id: 1 } },
       ]);
+      expect(client.takeChangedEtagEntries()).toEqual([]);
+
+      fetchSpy.mockResolvedValueOnce(mockResponse(304));
+      await client.get('repos/owner/a');
+      fetchSpy.mockResolvedValueOnce(mockResponse(200, { id: 2 }, { etag: '"b1"' }));
+      await client.get('repos/owner/b');
+      expect(client.takeChangedEtagEntries().map((entry) => entry.url)).toEqual([
+        'https://api.github.com/repos/owner/b',
+      ]);
+    });
+
+    it('seeds only the newest 500 persisted entries and does not save them back', async () => {
+      const client = createClient();
+      client.seedEtagCache(
+        Array.from({ length: 505 }, (_, i) => ({
+          url: `https://api.github.com/p${i}`,
+          etag: `e${i}`,
+          data: i,
+        })),
+      );
+      expect(client.takeChangedEtagEntries()).toEqual([]);
+
+      fetchSpy.mockResolvedValue(mockResponse(304));
+      await client.get('p504');
+      expect(fetchSpy.mock.calls[0]![1].headers['If-None-Match']).toBe('e504');
+      fetchSpy.mockResolvedValueOnce(mockResponse(200, 0));
+      await client.get('p4');
+      expect(fetchSpy.mock.calls[1]![1].headers['If-None-Match']).toBeUndefined();
     });
     it('makes a GET request to the correct URL', async () => {
       const client = createClient();

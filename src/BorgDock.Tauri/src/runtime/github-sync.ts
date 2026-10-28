@@ -270,9 +270,10 @@ export function createGitHubSync(getSettings: () => AppSettings) {
         const accountClients = new Set(
           enabledRepos.map((repo) => getClientForRepo(repo.owner, repo.name)).filter(Boolean),
         );
-        saveCachedEtags(
-          [...accountClients].flatMap((accountClient) => accountClient?.getEtagEntries() ?? []),
+        const changedEtags = [...accountClients].flatMap(
+          (accountClient) => accountClient?.takeChangedEtagEntries() ?? [],
         );
+        if (changedEtags.length > 0) saveCachedEtags(changedEtags);
       };
 
       manager.onError = (error) => {

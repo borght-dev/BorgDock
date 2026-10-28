@@ -204,10 +204,9 @@ export const commands = {
 	cacheSaveTabData: (repoOwner: string, repoName: string, prNumber: number, dataType: string, jsonData: Value, prUpdatedAt: string) => typedError<null, string>(__TAURI_INVOKE("cache_save_tab_data", { repoOwner, repoName, prNumber, dataType, jsonData, prUpdatedAt })),
 	cacheLoadTabData: (repoOwner: string, repoName: string, prNumber: number, dataType: string) => typedError<Value | null, string>(__TAURI_INVOKE("cache_load_tab_data", { repoOwner, repoName, prNumber, dataType })),
 	/**
-	 *  Persist ETag entries. Runs every poll cycle with up to hundreds of
-	 *  entries, most of them unchanged — so rows whose stored `etag` already
-	 *  matches are skipped entirely (no re-serialisation, no write), and the
-	 *  remainder go through a single prepared statement in one transaction.
+	 *  Persist the ETag entries that changed since the last poll cycle. Rows whose
+	 *  stored `etag` already matches are skipped, the rest go through one prepared
+	 *  statement in one transaction, and the table is trimmed to its newest rows.
 	 */
 	cacheSaveEtags: (entries: Value[]) => typedError<null, string>(__TAURI_INVOKE("cache_save_etags", { entries })),
 	cacheLoadEtags: () => typedError<Value[], string>(__TAURI_INVOKE("cache_load_etags")),

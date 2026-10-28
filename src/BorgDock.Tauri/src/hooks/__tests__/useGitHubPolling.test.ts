@@ -42,7 +42,7 @@ const mockClientInstance = {
   isRateLimitLow: false,
   getRateLimit: vi.fn().mockReturnValue({ remaining: 5000, total: 5000, reset: new Date() }),
   getGraphqlRateLimit: vi.fn().mockReturnValue({ remaining: 5000, total: 5000, reset: new Date() }),
-  getEtagEntries: vi.fn().mockReturnValue([]),
+  takeChangedEtagEntries: vi.fn().mockReturnValue([]),
 };
 
 vi.mock('@/services/github/singleton', () => ({
