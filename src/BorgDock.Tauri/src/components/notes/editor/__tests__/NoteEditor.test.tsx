@@ -1,6 +1,6 @@
 import { undoDepth } from '@codemirror/commands';
 import { EditorView } from '@codemirror/view';
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { InlineToken } from '@/services/notes/parse';
 import { type ChipRenderer, type NoteCompletionSources, NoteEditor } from '../NoteEditor';
@@ -77,11 +77,14 @@ describe('NoteEditor', () => {
     expect(undoDepth(next.state)).toBe(0);
   });
 
-  it('renders chips, links and checkboxes in place', () => {
+  it('renders chips, links and checkboxes in place', async () => {
     const { container } = setup({ text: 'See [[Roadmap|the plan]] and AB#12\n- [ ] ship it' });
     expect(container.querySelector('.test-chip')).toHaveTextContent('item 12');
     expect(container.querySelector('.bd-note-wikilink')).toHaveTextContent('the plan');
-    expect(container.querySelector('.bd-note-task-box')).toHaveAttribute('aria-checked', 'false');
+    // The second line joins the viewport on CodeMirror's first measure, a frame later under load.
+    await waitFor(() =>
+      expect(container.querySelector('.bd-note-task-box')).toHaveAttribute('aria-checked', 'false'),
+    );
     expect(container.querySelector('.cm-content')).not.toHaveTextContent('[[');
   });
 
