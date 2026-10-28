@@ -26,6 +26,7 @@ interface ETagEntry {
 }
 
 const TRANSIENT_STATUS_CODES = new Set([429, 500, 502, 503]);
+const MAX_ETAG_ENTRIES = 500;
 const GITHUB_REQUEST_TIMEOUT_MS = 10_000;
 
 const log = createLogger('github');
@@ -35,6 +36,7 @@ export class GitHubClient {
   readonly account: string;
   private readonly persistedEtagPrefix: string;
   private readonly etagCache = new Map<string, ETagEntry>();
+  private readonly changedEtagUrls = new Set<string>();
   // REST and GraphQL draw from separate 5000/h pools — track them separately
   // so neither poisons the other's reading (the polling loop is GraphQL-only).
   private restRateLimit: RateLimit = { remaining: -1, total: -1, reset: null };
@@ -75,32 +77,58 @@ export class GitHubClient {
     return (rest >= 0 && rest < 500) || (graphql >= 0 && graphql < 500);
   }
 
-  /** Populate the in-memory ETag cache from persisted entries (call on startup). */
+  /**
+   * Populate the in-memory ETag cache from persisted entries (call on startup).
+   * Entries come oldest first; only the newest `MAX_ETAG_ENTRIES` stay.
+   */
   seedEtagCache(entries: Array<{ url: string; etag: string; data: unknown }>): void {
     for (const entry of entries) {
       if (this.persistedEtagPrefix) {
         if (!entry.url.startsWith(this.persistedEtagPrefix)) continue;
-        this.etagCache.set(entry.url.slice(this.persistedEtagPrefix.length), {
+        this.rememberEtag(entry.url.slice(this.persistedEtagPrefix.length), {
           etag: entry.etag,
           data: entry.data,
         });
       } else if (!entry.url.startsWith('github-account:')) {
-        this.etagCache.set(entry.url, { etag: entry.etag, data: entry.data });
+        this.rememberEtag(entry.url, { etag: entry.etag, data: entry.data });
       }
     }
   }
 
-  /** Export current ETag cache entries for persistence to SQLite. */
-  getEtagEntries(): Array<{ url: string; etag: string; jsonData: unknown }> {
+  /**
+   * The entries that changed since the last call, for persistence to SQLite.
+   * Sending the whole cache every poll cycle shipped hundreds of MB of response
+   * bodies over IPC and froze both the webview and the GUI thread.
+   */
+  takeChangedEtagEntries(): Array<{ url: string; etag: string; jsonData: unknown }> {
     const entries: Array<{ url: string; etag: string; jsonData: unknown }> = [];
-    for (const [url, entry] of this.etagCache) {
+    for (const url of this.changedEtagUrls) {
+      const entry = this.etagCache.get(url);
+      if (!entry) continue;
       entries.push({
         url: `${this.persistedEtagPrefix}${url}`,
         etag: entry.etag,
         jsonData: entry.data,
       });
     }
+    this.changedEtagUrls.clear();
     return entries;
+  }
+
+  private storeEtag(url: string, entry: ETagEntry): void {
+    this.rememberEtag(url, entry);
+    this.changedEtagUrls.add(url);
+  }
+
+  /** Newest last, so trimming from the front drops the oldest. */
+  private rememberEtag(url: string, entry: ETagEntry): void {
+    this.etagCache.delete(url);
+    this.etagCache.set(url, entry);
+    for (const oldest of this.etagCache.keys()) {
+      if (this.etagCache.size <= MAX_ETAG_ENTRIES) break;
+      this.etagCache.delete(oldest);
+      this.changedEtagUrls.delete(oldest);
+    }
   }
 
   async get<T>(
@@ -146,7 +174,7 @@ export class GitHubClient {
       this._freshCount++;
       const retryEtag = retryResponse.headers.get('etag');
       if (retryEtag) {
-        this.etagCache.set(url, { etag: retryEtag, data: retryBody });
+        this.storeEtag(url, { etag: retryEtag, data: retryBody });
       }
       return retryBody as T;
     }
@@ -171,11 +199,7 @@ export class GitHubClient {
 
     const etag = response.headers.get('etag');
     if (etag && useCache) {
-      this.etagCache.set(url, { etag, data: body });
-      if (this.etagCache.size > 500) {
-        const oldest = this.etagCache.keys().next().value;
-        if (oldest) this.etagCache.delete(oldest);
-      }
+      this.storeEtag(url, { etag, data: body });
     }
 
     log.info('GET ok', {

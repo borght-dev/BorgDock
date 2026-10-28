@@ -154,6 +154,7 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   reveal_in_file_manager: null,
   show_setup_wizard: null,
   window_ready: null,
+  renderer_heartbeat: null,
   // Additional commands surfaced during smoke (cache, agent, window mgmt,
   // worktree mutations, gh/git plumbing). Defaults are conservative no-ops
   // or empty arrays — specs override when they need real values.
@@ -389,13 +390,6 @@ export async function installMockTauri(
     };
 
     const tauriInternals = {
-      invoke: async (cmd: string, args: Record<string, unknown> = {}) => {
-        invokeLog.push({ cmd, args });
-        const handler = handlers.get(cmd);
-        if (handler) return await handler(args);
-        if (cmd.startsWith('plugin:')) return pluginDefault(cmd);
-        throw new Error(`mock-tauri: unhandled command "${cmd}"`);
-      },
       transformCallback: (cb: unknown) => cb,
       // Both currentWindow and currentWebview are read by @tauri-apps/api
       // (window.js, webview.js, webviewWindow.js) via the metadata field.
@@ -404,6 +398,16 @@ export async function installMockTauri(
         currentWebview: { label: 'main' },
       },
     };
+    // Read-only like Tauri's own (core.js), so code that tries to wrap it fails here too.
+    Object.defineProperty(tauriInternals, 'invoke', {
+      value: async (cmd: string, args: Record<string, unknown> = {}) => {
+        invokeLog.push({ cmd, args });
+        const handler = handlers.get(cmd);
+        if (handler) return await handler(args);
+        if (cmd.startsWith('plugin:')) return pluginDefault(cmd);
+        throw new Error(`mock-tauri: unhandled command "${cmd}"`);
+      },
+    });
 
     (window as unknown as { __TAURI_INTERNALS__: unknown }).__TAURI_INTERNALS__ = tauriInternals;
 

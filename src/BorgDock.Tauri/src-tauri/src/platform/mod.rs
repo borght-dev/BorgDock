@@ -6,6 +6,7 @@ pub mod flyout_cache;
 pub mod hotkey;
 pub mod idle;
 pub mod logs;
+pub mod responsiveness;
 pub mod taskbar;
 pub mod theme;
 pub mod tray;

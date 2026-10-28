@@ -4,6 +4,7 @@ import './styles/index.css';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { WhatsNewApp } from './components/whats-new/WhatsNewApp';
 import { attachConsoleBridge, createLogger } from './services/logger';
+import { startResponsivenessMonitor } from './services/responsiveness';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
 import { startWindowTheme } from './utils/theme';
 
@@ -13,6 +14,7 @@ startWindowTheme();
 
 disableDefaultContextMenu();
 attachConsoleBridge();
+startResponsivenessMonitor();
 const log = createLogger('whats-new-boot');
 
 window.addEventListener('error', (e) => {

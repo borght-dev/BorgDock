@@ -4,6 +4,7 @@ import './styles/index.css';
 import { FlyoutApp } from './components/flyout/FlyoutApp';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { attachConsoleBridge, createLogger } from './services/logger';
+import { startResponsivenessMonitor } from './services/responsiveness';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
 import { startWindowTheme } from './utils/theme';
 
@@ -16,6 +17,7 @@ disableDefaultContextMenu();
 // Route console.* into tauri-plugin-log so logs from the flyout reach
 // %APPDATA%/BorgDock/logs/borgdock.log alongside main-window logs.
 attachConsoleBridge();
+startResponsivenessMonitor();
 
 const bootLog = createLogger('flyout-boot');
 

@@ -103,7 +103,47 @@ fn initialize_connection(
     )
     .map_err(|e| format!("Failed to create cache tables: {e}"))?;
 
+    compact_etags(&conn)?;
     *slot = Some(conn);
+    Ok(())
+}
+
+/// The GitHub client's own limit (`MAX_ETAG_ENTRIES`); accounts share it. Rows
+/// past it were never read again (per-commit and per-branch URLs) and grew the
+/// table without bound, and every row loaded crosses IPC at startup.
+const ETAG_ROWS_KEPT: i64 = 500;
+
+/// Reclaiming space rewrites the file, so it waits until enough is free.
+const VACUUM_THRESHOLD_BYTES: i64 = 64 * 1024 * 1024;
+
+fn prune_etags(conn: &Connection) -> Result<usize, String> {
+    conn.execute(
+        "DELETE FROM cached_etags WHERE url NOT IN
+            (SELECT url FROM cached_etags ORDER BY cached_at DESC LIMIT ?1)",
+        rusqlite::params![ETAG_ROWS_KEPT],
+    )
+    .map_err(|e| format!("Failed to prune etag cache: {e}"))
+}
+
+fn compact_etags(conn: &Connection) -> Result<(), String> {
+    let pruned = prune_etags(conn)?;
+    let free_bytes: i64 = conn
+        .query_row(
+            "SELECT freelist_count * page_size FROM pragma_freelist_count(), pragma_page_size()",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|e| format!("Failed to read cache free space: {e}"))?;
+    if free_bytes >= VACUUM_THRESHOLD_BYTES {
+        conn.execute_batch("VACUUM")
+            .map_err(|e| format!("Failed to vacuum cache: {e}"))?;
+    }
+    if pruned > 0 || free_bytes >= VACUUM_THRESHOLD_BYTES {
+        log::info!(
+            "cache: pruned {pruned} etag row(s), reclaimed {} MiB",
+            free_bytes / (1024 * 1024)
+        );
+    }
     Ok(())
 }
 
@@ -272,10 +312,9 @@ pub async fn cache_load_tab_data(
     .await
 }
 
-/// Persist ETag entries. Runs every poll cycle with up to hundreds of
-/// entries, most of them unchanged — so rows whose stored `etag` already
-/// matches are skipped entirely (no re-serialisation, no write), and the
-/// remainder go through a single prepared statement in one transaction.
+/// Persist the ETag entries that changed since the last poll cycle. Rows whose
+/// stored `etag` already matches are skipped, the rest go through one prepared
+/// statement in one transaction, and the table is trimmed to its newest rows.
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
 pub async fn cache_save_etags(
@@ -352,41 +391,49 @@ fn save_etags_into(conn: &Connection, entries: &[Value]) -> Result<(), String> {
     tx.commit()
         .map_err(|e| format!("Failed to commit transaction: {e}"))?;
 
+    prune_etags(conn)?;
     Ok(())
 }
 
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
 pub async fn cache_load_etags(state: State<'_, PrCache>) -> Result<Vec<Value>, String> {
-    with_conn(state.conn.clone(), |conn| {
-        let mut stmt = conn
-            .prepare("SELECT url, etag, json_data FROM cached_etags")
-            .map_err(|e| format!("Failed to prepare query: {e}"))?;
+    with_conn(state.conn.clone(), load_etags_from).await
+}
 
-        let rows = stmt
-            .query_map([], |row| {
-                let url: String = row.get(0)?;
-                let etag: String = row.get(1)?;
-                let json_str: String = row.get(2)?;
-                Ok((url, etag, json_str))
-            })
-            .map_err(|e| format!("Failed to query etags: {e}"))?;
+/// The newest rows, oldest first, so a client's insertion-ordered map evicts
+/// the oldest when it trims to its own limit.
+fn load_etags_from(conn: &Connection) -> Result<Vec<Value>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT url, etag, json_data FROM
+                    (SELECT * FROM cached_etags ORDER BY cached_at DESC LIMIT ?1)
+                 ORDER BY cached_at ASC",
+        )
+        .map_err(|e| format!("Failed to prepare query: {e}"))?;
 
-        let mut results = Vec::new();
-        for row in rows {
-            let (url, etag, json_str) = row.map_err(|e| format!("Row error: {e}"))?;
-            let json_data: Value =
-                serde_json::from_str(&json_str).map_err(|e| format!("JSON parse error: {e}"))?;
-            let mut map = serde_json::Map::new();
-            map.insert("url".to_string(), Value::String(url));
-            map.insert("etag".to_string(), Value::String(etag));
-            map.insert("jsonData".to_string(), json_data);
-            results.push(Value::Object(map));
-        }
+    let rows = stmt
+        .query_map(rusqlite::params![ETAG_ROWS_KEPT], |row| {
+            let url: String = row.get(0)?;
+            let etag: String = row.get(1)?;
+            let json_str: String = row.get(2)?;
+            Ok((url, etag, json_str))
+        })
+        .map_err(|e| format!("Failed to query etags: {e}"))?;
 
-        Ok(results)
-    })
-    .await
+    let mut results = Vec::new();
+    for row in rows {
+        let (url, etag, json_str) = row.map_err(|e| format!("Row error: {e}"))?;
+        let json_data: Value =
+            serde_json::from_str(&json_str).map_err(|e| format!("JSON parse error: {e}"))?;
+        let mut map = serde_json::Map::new();
+        map.insert("url".to_string(), Value::String(url));
+        map.insert("etag".to_string(), Value::String(etag));
+        map.insert("jsonData".to_string(), json_data);
+        results.push(Value::Object(map));
+    }
+
+    Ok(results)
 }
 
 #[tauri::command]
@@ -568,6 +615,57 @@ mod tests {
             .unwrap();
         save_etags_into(&conn, &entries).unwrap();
         assert_eq!(row(&conn, "u1").unwrap().2, "sentinel");
+    }
+
+    fn insert_aged(conn: &Connection, count: i64) {
+        for age in 0..count {
+            conn.execute(
+                "INSERT INTO cached_etags (url, etag, json_data, cached_at) VALUES (?1, 'e', '{}', ?2)",
+                rusqlite::params![format!("u{age}"), format!("{}", 1_000_000_000 + age)],
+            )
+            .unwrap();
+        }
+    }
+
+    fn etag_rows(conn: &Connection) -> i64 {
+        conn.query_row("SELECT COUNT(*) FROM cached_etags", [], |r| r.get(0))
+            .unwrap()
+    }
+
+    #[test]
+    fn saving_trims_the_table_to_its_newest_rows() {
+        let conn = mem_conn();
+        insert_aged(&conn, ETAG_ROWS_KEPT + 5);
+        save_etags_into(
+            &conn,
+            &[json!({ "url": "fresh", "etag": "e", "jsonData": 1 })],
+        )
+        .unwrap();
+        assert_eq!(etag_rows(&conn), ETAG_ROWS_KEPT);
+        assert!(row(&conn, "fresh").is_some());
+        assert!(row(&conn, "u5").is_none(), "the oldest rows go first");
+        assert!(row(&conn, "u6").is_some());
+    }
+
+    #[test]
+    fn opening_the_cache_compacts_an_oversized_etag_table() {
+        let conn = mem_conn();
+        insert_aged(&conn, ETAG_ROWS_KEPT + 20);
+        compact_etags(&conn).unwrap();
+        assert_eq!(etag_rows(&conn), ETAG_ROWS_KEPT);
+    }
+
+    #[test]
+    fn loading_returns_the_newest_rows_oldest_first() {
+        let conn = mem_conn();
+        insert_aged(&conn, ETAG_ROWS_KEPT + 3);
+        let loaded = load_etags_from(&conn).unwrap();
+        assert_eq!(loaded.len() as i64, ETAG_ROWS_KEPT);
+        assert_eq!(loaded.first().unwrap()["url"], "u3");
+        assert_eq!(
+            loaded.last().unwrap()["url"],
+            format!("u{}", ETAG_ROWS_KEPT + 2)
+        );
     }
 }
 

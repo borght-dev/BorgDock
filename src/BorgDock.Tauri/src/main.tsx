@@ -6,6 +6,7 @@ import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { startApplicationRuntime } from './runtime/application-runtime';
 import { attachConsoleBridge, createLogger } from './services/logger';
 import './styles/index.css';
+import { startResponsivenessMonitor } from './services/responsiveness';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
 
 disableDefaultContextMenu();
@@ -14,6 +15,7 @@ disableDefaultContextMenu();
 // in %APPDATA%/BorgDock/logs/borgdock.log alongside Rust logs. Must run before
 // anything else writes to the console.
 attachConsoleBridge();
+startResponsivenessMonitor();
 
 const bootLog = createLogger('boot');
 bootLog.info('main.tsx loaded', {

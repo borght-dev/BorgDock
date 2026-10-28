@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './styles/index.css';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { WorkItemPaletteApp } from './components/work-item-palette/WorkItemPaletteApp';
+import { startResponsivenessMonitor } from './services/responsiveness';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
 import { startWindowTheme } from './utils/theme';
 
@@ -11,6 +12,7 @@ import { startWindowTheme } from './utils/theme';
 startWindowTheme();
 
 disableDefaultContextMenu();
+startResponsivenessMonitor();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
