@@ -14,6 +14,10 @@
 - **Decide the moment you're done** — Marking the last file reviewed turns the footer into your decision: request changes, comment, approve, or approve and auto-merge. You move straight on to the next pull request, with five seconds to undo. ![The decision bar after the last file is reviewed](whats-new/4.8.0/decide-in-place.png)
 - **Re-review only what changed** — Back at a pull request you reviewed before, Quick Review shows only the files that changed since your last review. Press S to see them all. ![A re-review showing only the files changed since the last review](whats-new/4.8.0/re-review.png)
 
+### Bug Fixes
+
+- BorgDock no longer freezes for a few seconds every minute or so. Clicks, alt-tab and the next file in a review respond right away again, and the first start of this version shrinks the cache BorgDock keeps on disk. If BorgDock ever does hang, its log now records where, and what you last clicked.
+
 ## 4.7.2 — 2026-10-28
 
 ### Bug Fixes

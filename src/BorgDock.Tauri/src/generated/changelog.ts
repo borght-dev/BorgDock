@@ -99,7 +99,9 @@ export const RELEASES: Release[] = [
         "keyboard": null
       }
     ],
-    "alsoFixed": [],
+    "alsoFixed": [
+      "BorgDock no longer freezes for a few seconds every minute or so. Clicks, alt-tab and the next file in a review respond right away again, and the first start of this version shrinks the cache BorgDock keeps on disk. If BorgDock ever does hang, its log now records where, and what you last clicked."
+    ],
     "autoOpenEligible": true
   },
   {
