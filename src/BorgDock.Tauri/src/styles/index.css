@@ -3028,6 +3028,47 @@ body.sql-resizing-v .sql-resize-handle {
     color: var(--color-accent-foreground);
   }
 
+  /* ── HoverPopover tooltip ────────────────────────── */
+  /* Opaque: in light mode --color-surface-raised is a tint, not a surface.
+     The arrow points at the trigger from the side the tooltip opens on. */
+  .bd-tooltip {
+    width: max-content;
+    padding: 10px 12px 9px;
+    border: 1px solid var(--color-strong-border);
+    border-radius: var(--radius-md);
+    background: var(--color-modal-bg);
+    box-shadow: var(--elevation-2);
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-text-primary);
+    animation: bd-tooltip-in var(--motion-fast) var(--ease-out);
+  }
+  .bd-tooltip::before {
+    position: absolute;
+    left: calc(var(--bd-tooltip-arrow-x) - 5px);
+    width: 10px;
+    height: 10px;
+    border: 1px solid var(--color-strong-border);
+    background: var(--color-modal-bg);
+    content: "";
+    transform: rotate(45deg);
+  }
+  .bd-tooltip[data-side="below"]::before {
+    top: -6px;
+    border-right: 0;
+    border-bottom: 0;
+  }
+  .bd-tooltip[data-side="above"]::before {
+    bottom: -6px;
+    border-top: 0;
+    border-left: 0;
+  }
+  @keyframes bd-tooltip-in {
+    from {
+      opacity: 0;
+    }
+  }
+
   /* ── Card ────────────────────────────────────────── */
   .bd-card {
     background: var(--color-card-background);

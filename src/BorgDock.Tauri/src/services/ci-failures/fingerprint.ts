@@ -58,9 +58,24 @@ export function hashText(text: string): string {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, '0');
 }
 
-function clipTitle(text: string, max = 90): string {
+/** The longest group title; the signal text it comes from is already cut at 240 characters. */
+const TITLE_MAX = 240;
+/** Groups made before titles kept their length were cut at this many characters. */
+const LEGACY_TITLE_MAX = 90;
+
+function clipTitle(text: string, max = TITLE_MAX): string {
   const single = text.replace(/\s+/g, ' ').trim();
   return single.length > max ? `${single.slice(0, max - 1)}…` : single;
+}
+
+/** A title cut by the old 90-character limit, which the group's signals can restore. */
+export function hasLegacyClip(title: string): boolean {
+  return title.length === LEGACY_TITLE_MAX && title.endsWith('…');
+}
+
+/** `full` is what the old limit cut down to `clipped`. */
+export function restoresClip(clipped: string, full: string): boolean {
+  return full !== clipped && full.startsWith(clipped.slice(0, -1));
 }
 
 /** The message, error class and expected/actual values: what makes two failures of one test the same. */

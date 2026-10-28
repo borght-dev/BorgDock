@@ -18,7 +18,7 @@ export { Dot } from './Dot';
 export type { FieldProps } from './Field';
 export { Field } from './Field';
 export type { HoverPopoverProps } from './HoverPopover';
-export { HoverPopover } from './HoverPopover';
+export { HoverPopover, isTextClipped } from './HoverPopover';
 export type { IconButtonProps, IconButtonSize } from './IconButton';
 export { IconButton } from './IconButton';
 export type { InputProps } from './Input';

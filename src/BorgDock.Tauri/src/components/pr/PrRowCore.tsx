@@ -1,7 +1,15 @@
 import clsx from 'clsx';
 import type { HTMLAttributes, MouseEvent, ReactNode } from 'react';
-import { Avatar, CheckBar, checkBarSummary } from '@/components/shared/primitives';
+import { CiFailureTooltip } from '@/components/ci-failures/CiFailureTooltip';
+import {
+  Avatar,
+  CheckBar,
+  checkBarSummary,
+  HoverPopover,
+  isTextClipped,
+} from '@/components/shared/primitives';
 import { TitleWithChips } from '@/components/workstreams/Membership';
+import type { CiGroupSummary } from '@/services/ci-failures/types';
 import { isStaleUpdate } from '@/services/focus-bucket';
 import { pullRequestRef } from '@/services/workstreams/membership';
 import type { PrDensity } from '@/types';
@@ -18,8 +26,8 @@ const NO_CHECKS: NonNullable<PrCardData['checks']> = { ok: 0, fail: 0, run: 0, t
 
 /** A PR row's marker for the related CI failure it shares. */
 export interface SharedFailureMarker {
-  /** What failed: the test, error or step the group is about. */
-  title: string;
+  /** The failure; its title names the test, error or step that failed. */
+  group: CiGroupSummary;
   /** Open PRs the failure fails, this one included. */
   prCount: number;
   /** The base branch, when the failure is also on it. */
@@ -46,26 +54,58 @@ function markerSummary(marker: SharedFailureMarker): string {
     : `Failure also on ${marker.alsoOn ?? 'the base branch'}`;
 }
 
-/** The marker in the meta line: names the failure and opens it, without opening the PR. */
+/** "fails 3 open PRs and main" in the marker's tooltip. */
+function tooltipReach(marker: SharedFailureMarker): string {
+  const prs = `${marker.prCount} open ${marker.prCount === 1 ? 'PR' : 'PRs'}`;
+  return `fails ${prs}${marker.alsoOn ? ` and ${marker.alsoOn}` : ''}`;
+}
+
+/**
+ * The marker in the meta line: names the failure and opens it, without
+ * opening the PR. A name cut off at the column's edge shows in full on hover.
+ */
 function FailureMarker({ marker }: { marker: SharedFailureMarker }) {
   const reach = markerReach(marker);
+  const { title } = marker.group;
   return (
-    <button
-      type="button"
-      className="bd-ci-marker"
-      data-ci-marker=""
-      data-not-caused={marker.notCausedBy ? 'true' : undefined}
-      title={`${markerSummary(marker)}. ${marker.title}. Show the PRs it fails.`}
-      onClick={(e) => {
-        e.stopPropagation();
-        marker.onOpen();
-      }}
-      onKeyDown={(e) => e.stopPropagation()}
+    <HoverPopover
+      variant="tooltip"
+      maxWidth={440}
+      when={isTextClipped}
+      triggerClassName="bd-ci-marker-slot"
+      content={
+        <CiFailureTooltip
+          group={marker.group}
+          tone={marker.notCausedBy ? 'warn' : 'bad'}
+          reach={tooltipReach(marker)}
+          notCausedBy={marker.notCausedBy}
+          hint={
+            marker.prCount === 1
+              ? 'Click to show the PR it fails'
+              : `Click to show the ${marker.prCount} PRs it fails`
+          }
+        />
+      }
     >
-      {marker.notCausedBy && <span className="bd-ci-marker__lead">Not caused by this PR</span>}
-      <span className="bd-ci-marker__name">{marker.title}</span>
-      {reach && <span className="bd-ci-marker__reach">{reach}</span>}
-    </button>
+      <button
+        type="button"
+        className="bd-ci-marker"
+        data-ci-marker=""
+        data-not-caused={marker.notCausedBy ? 'true' : undefined}
+        aria-label={`${markerSummary(marker)}. ${title}. Show the PRs it fails.`}
+        onClick={(e) => {
+          e.stopPropagation();
+          marker.onOpen();
+        }}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        {marker.notCausedBy && <span className="bd-ci-marker__lead">Not caused by this PR</span>}
+        <span className="bd-ci-marker__name" data-clip="">
+          {title}
+        </span>
+        {reach && <span className="bd-ci-marker__reach">{reach}</span>}
+      </button>
+    </HoverPopover>
   );
 }
 
@@ -132,16 +172,17 @@ function MetaLine({
   const open = !pr.isMerged && !pr.isClosed;
   const stale = isStaleUpdate({ open, updatedAt: pr.updatedAt }, staleAfterDays, now);
   return (
-    <span className="bd-wb-row__meta" data-stale={stale ? 'true' : undefined}>
-      <em>{pr.authorLogin}</em> in {pr.repoName}
-      {event && ago && `, ${event.verb} ${ago}`}
-      {stale && ', stale'}
-      {sharedFailure && (
-        <>
-          {' '}
-          <FailureMarker marker={sharedFailure} />
-        </>
-      )}
+    <span
+      className="bd-wb-row__meta"
+      data-stale={stale ? 'true' : undefined}
+      data-marked={sharedFailure ? '' : undefined}
+    >
+      <span className="bd-wb-row__meta-text">
+        <em>{pr.authorLogin}</em> in {pr.repoName}
+        {event && ago && `, ${event.verb} ${ago}`}
+        {stale && ', stale'}
+      </span>
+      {sharedFailure && <FailureMarker marker={sharedFailure} />}
     </span>
   );
 }

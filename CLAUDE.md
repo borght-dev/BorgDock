@@ -298,7 +298,13 @@ Hero images are **real screenshots captured from Storybook**, written large (not
 
 Voice: emulate the Home Assistant release blog — benefit-first, "you", per-feature, not root-cause engineering prose. The marketing site's `site/src/pages/changelog.astro` parses `/CHANGELOG.md` at build time, and `site/src/pages/whats-new/[version].astro` builds a post for every release with a highlight from the same entry and its hero images in `docs/whats-new/` (a hand-written `whats-new/<v>.astro` replaces it). So a release reaches the site's changelog and posts with no extra step; new *surfaces* still need entries in `design/site/screens.json` / `recordings.json` and a `bun run site:assets` (see `site/README.md`). The main window (Focus / PRs / Work Items) Storybook catalog is `src/components/layout/MainWindow.stories.tsx`.
 
+A story or meta that sets `globals: { theme: 'dark' }` ignores `globals=theme:light` in the iframe URL; capture light mode from a `…Light` story (`SharedFailuresLight`, `LongTitlesLight`). In a worktree the Storybook binary is hoisted to the repo root: `../../node_modules/.bin/storybook.exe dev -p 6007 --no-open`.
+
 Capturing from Storybook in a fresh worktree: `src/BorgDock.Tauri/public/whats-new/` is gitignored and filled by the build, and Vite serves only the public files that existed when Storybook started. Stories that show description images (`pr-detail-overviewtab--description-with-screenshots`) then render "Image could not load". Copy `docs/whats-new` there (or run `bun run build`) *before* starting Storybook. The first visit to each story compiles on demand, so a cold Storybook times out some `page.goto` calls in the capture scripts; rerun the failed slugs with `--only`.
+
+## Tooltips for cut-off text
+
+`HoverPopover` with `variant="tooltip"` and `when={isTextClipped}` explains text cut off with an ellipsis: it opens after 300 ms, only while the trigger's `[data-clip]` element is actually clipped. Drop the native `title` where you add one. A nowrap ellipsis span's min-content is its full text, so a flex item holding one never shrinks below that unless it has an explicit `min-width` (see `.bd-ci-marker-slot`).
 
 ## Vitest: a hook that returns a function
 

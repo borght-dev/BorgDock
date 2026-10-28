@@ -230,6 +230,31 @@ export const NarrowedToOneFailure: Story = {
   },
 };
 
+/**
+ * Failure names too long for the window: the strip and the row markers cut
+ * them at the column's edge, and hovering one shows the whole failure.
+ */
+export const LongTitles: Story = {
+  args: {
+    groups: [
+      {
+        ...masterGroup,
+        title:
+          'tests/checkout/payment-provider.spec.ts › pays with a saved card when the 3-D Secure challenge is skipped and the order total changes after a coupon is applied',
+        workflowNames: ['CI'],
+      },
+      {
+        ...cartGroup,
+        title:
+          'Deployment Failed, Error: Failed to deploy web package using OneDeploy to App Service. See the deployment log at https://example.scm.azurewebsites.net/api/deployments/latest for details.',
+        workflowNames: ['Deploy'],
+      },
+    ],
+  },
+};
+
+export const LongTitlesLight: Story = { ...LongTitles, globals: { theme: 'light' } };
+
 /** "Hide failing" on: only green and running PRs stay. */
 export const HideFailing: Story = {
   args: { hideFailing: true },

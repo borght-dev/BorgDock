@@ -17,7 +17,15 @@ import {
   collectEvidence,
   pendingOccurrence,
 } from './collect';
-import { candidateReasons, type Facets, FINGERPRINT_VERSION, fingerprintOf } from './fingerprint';
+import {
+  candidateReasons,
+  type Facets,
+  FINGERPRINT_VERSION,
+  type FingerprintContext,
+  fingerprintOf,
+  hasLegacyClip,
+  restoresClip,
+} from './fingerprint';
 import { GITHUB_HOST, sameAccount, scopeOf } from './identity';
 import * as store from './store-api';
 import type {
@@ -88,6 +96,16 @@ function isDue(entry: CiKnownOccurrence, now: string): boolean {
 
 function day(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function fingerprintContextOf(occurrence: CiOccurrence): FingerprintContext {
+  return {
+    failedStep: occurrence.failedStep,
+    workflowPath: occurrence.workflowPath ?? occurrence.workflowName,
+    conclusion: occurrence.conclusion,
+    appSlug: occurrence.appSlug,
+    checkName: occurrence.runId === null ? occurrence.jobName : null,
+  };
 }
 
 /**
@@ -325,6 +343,7 @@ export class CiFailureSync {
   /** Queues failed occurrences left from an earlier session or due for another read. */
   async resume(): Promise<void> {
     await this.upgradeFingerprints();
+    await this.repairClippedTitles();
     await this.requeueDue();
   }
 
@@ -478,13 +497,7 @@ export class CiFailureSync {
   ) {
     if (this.stopped) return;
     const snapshot = await this.snapshotFor(context.scope);
-    const fingerprintContext = {
-      failedStep: occurrence.failedStep,
-      workflowPath: occurrence.workflowPath ?? occurrence.workflowName,
-      conclusion: occurrence.conclusion,
-      appSlug: occurrence.appSlug,
-      checkName: occurrence.runId === null ? occurrence.jobName : null,
-    };
+    const fingerprintContext = fingerprintContextOf(occurrence);
     const fingerprints = signalsIn.map((signal) => fingerprintOf(signal, fingerprintContext));
     const incoming: IncomingSignal[] = fingerprints.flatMap((fingerprint, ordinal) =>
       fingerprint
@@ -568,6 +581,31 @@ export class CiFailureSync {
         }
       }).catch((error) =>
         log.warn('re-fingerprinting failed', { scope: context.scope, error: String(error) }),
+      );
+    }
+  }
+
+  /**
+   * Group titles used to be cut at 90 characters. A group made then gets its
+   * full title back from its stored signals; a group renamed since keeps its name.
+   */
+  async repairClippedTitles(): Promise<void> {
+    for (const context of this.contexts()) {
+      await this.serialized(context.scope, async () => {
+        const snapshot = await store.loadScope([context.scope]);
+        for (const group of snapshot.groups) {
+          if (this.stopped || !hasLegacyClip(group.title)) continue;
+          const detail = await store.loadGroup(group.id).catch(() => null);
+          const title = detail?.occurrences
+            .flatMap(({ occurrence, signals }) =>
+              signals.map((row) => fingerprintOf(row.signal, fingerprintContextOf(occurrence))),
+            )
+            .map((fingerprint) => fingerprint?.title)
+            .find((full) => full !== undefined && restoresClip(group.title, full));
+          if (title) await store.setGroup(group.id, { title }, group.revision);
+        }
+      }).catch((error) =>
+        log.warn('repairing clipped titles failed', { scope: context.scope, error: String(error) }),
       );
     }
   }

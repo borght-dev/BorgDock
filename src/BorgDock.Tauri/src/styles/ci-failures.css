@@ -483,14 +483,39 @@
   .bd-ci-filter button:hover {
     background: var(--color-surface-hover);
   }
+  /* With a marker the meta line is a row: the text keeps its width and the
+   * marker takes what is left, cutting its name only at the column's edge.
+   * The marker never gets narrower than its lead and reach with a few
+   * letters of the name (its text can't say so: the name doesn't wrap);
+   * in a narrower column the text gives way instead. */
+  .bd-wb-row__meta[data-marked] {
+    --bd-marker-min: 112px;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .bd-wb-row__meta-text {
+    flex: none;
+    max-width: calc(100% - var(--bd-marker-min) - 4px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bd-wb-row__meta[data-marked]:has(.bd-ci-marker[data-not-caused]) {
+    --bd-marker-min: 216px;
+  }
+  .bd-ci-marker-slot {
+    display: inline-flex;
+    flex: 0 1 auto;
+    min-width: var(--bd-marker-min);
+  }
   /* The row marker: names the shared failure and opens it. A PR red only
    * from failures that are not its doing gets the warning tone. */
   .bd-ci-marker {
     display: inline-flex;
-    flex: none;
+    flex: 0 1 auto;
     align-items: baseline;
     gap: 4px;
-    max-width: 320px;
+    min-width: 0;
     padding: 0 6px;
     border: 1px solid var(--color-status-red);
     border-radius: 999px;
@@ -525,7 +550,7 @@
     content: " ·";
   }
   .bd-ci-marker__name {
-    min-width: 0;
+    min-width: 3ch;
     overflow: hidden;
     font-weight: 500;
     text-overflow: ellipsis;
@@ -535,6 +560,93 @@
   }
   .bd-ci-marker__reach::before {
     content: "· ";
+  }
+  /* Narrow list: the warning colour alone says "not caused by this PR". */
+  @container (max-width: 640px) {
+    .bd-wb-row__meta[data-marked]:has(.bd-ci-marker[data-not-caused]) {
+      --bd-marker-min: 112px;
+    }
+    .bd-ci-marker__lead {
+      display: none;
+    }
+  }
+
+  /* ── Tooltip with a cut-off failure's full text ────────── */
+  .bd-ci-tip {
+    display: grid;
+    gap: 6px;
+  }
+  .bd-ci-tip p {
+    margin: 0;
+  }
+  .bd-ci-tip__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-ci-tip__dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-status-red);
+  }
+  .bd-ci-tip__head b {
+    font-weight: 600;
+    color: var(--color-error-badge-fg);
+  }
+  .bd-ci-tip__when {
+    margin-left: auto;
+    padding-left: 16px;
+    white-space: nowrap;
+  }
+  .bd-ci-tip__title {
+    padding: 7px 9px;
+    border: 1px solid color-mix(in srgb, var(--color-status-red) 22%, transparent);
+    border-radius: var(--radius-sm);
+    background: var(--color-error-badge-bg);
+    font-family: var(--font-code);
+    font-size: 11.5px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    user-select: text;
+  }
+  .bd-ci-tip[data-tone="warn"] .bd-ci-tip__dot {
+    background: var(--color-status-yellow);
+  }
+  .bd-ci-tip[data-tone="warn"] .bd-ci-tip__head b {
+    color: var(--color-warning-badge-fg);
+  }
+  .bd-ci-tip[data-tone="warn"] .bd-ci-tip__title {
+    border-color: color-mix(in srgb, var(--color-status-yellow) 24%, transparent);
+    background: var(--color-warning-badge-bg);
+  }
+  .bd-ci-tip__where {
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+  }
+  .bd-ci-tip__where b {
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+  .bd-ci-tip__cause {
+    font-size: 11.5px;
+    color: var(--color-warning-badge-fg);
+  }
+  .bd-ci-tip__foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 2px;
+    padding-top: 7px;
+    border-top: 1px solid var(--color-subtle-border);
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-ci-tip__foot [data-tone="warn"] {
+    color: var(--color-warning-badge-fg);
   }
 
   /* ── Strip above the PR list ───────────────────────────── */
