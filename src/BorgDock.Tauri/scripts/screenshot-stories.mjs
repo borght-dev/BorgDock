@@ -13,6 +13,7 @@
 //     "viewport": { "width": 1360, "height": 900 }, // optional render viewport
 //     "selector": "#storybook-root",       // optional element to clip to (default whole root)
 //     "delay":    700,                     // optional extra settle ms after load (default 600)
+//     "hover":    "[data-ci-marker]",      // optional element to rest the cursor on (tooltips)
 //     "args":     { "section": "prs" }     // optional story args passed through the URL
 //   }
 //
@@ -127,7 +128,7 @@ export async function waitForStory(page, entry, theme) {
  * Capture every entry to the file `outFile(entry)` returns.
  *
  * Each entry is `{ slug, storyId, theme, viewport?, selector?, delay?, args?,
- * seedIdle?, emit?, emitSettle? }` with a concrete theme ("dark" | "light").
+ * seedIdle?, emit?, emitSettle?, hover? }` with a concrete theme ("dark" | "light").
  * With `verifyTheme`, a story that renders in the other theme (a story-level
  * `globals` lock wins over the URL) is reported as a failure instead of being
  * written under the wrong name.
@@ -177,6 +178,12 @@ export async function captureEntries(entries, { outFile, verifyTheme = false } =
           );
         }
         await page.waitForTimeout(entry.emitSettle ?? 600);
+      }
+      // A tooltip or another hover state: rest the cursor on the element long
+      // enough for a delayed tooltip to open.
+      if (entry.hover) {
+        await page.hover(entry.hover);
+        await page.waitForTimeout(800);
       }
 
       // Now that any injected state has rendered, wait for the actual clip target.
