@@ -12,6 +12,8 @@ export type ConversationEntry = Exclude<DiscussionItem, { kind: 'code' }> & {
   htmlUrl?: string;
   filePath?: string;
   lineNumber?: number;
+  /** For a review: the head commit it was given on. */
+  commitId?: string;
 };
 
 export function usePrConversation(pr: PullRequest, enabled: boolean) {
@@ -58,6 +60,10 @@ export function usePrConversation(pr: PullRequest, enabled: boolean) {
           (item): ConversationEntry[] => {
             if (item.kind === 'code') return [];
             const comment = metadata.get(item.id);
+            const review =
+              item.kind === 'review'
+                ? reviews.find((r) => String(r.id) === item.id.slice(7))
+                : undefined;
             return [
               {
                 ...item,
@@ -66,13 +72,10 @@ export function usePrConversation(pr: PullRequest, enabled: boolean) {
                   (item.kind === 'review'
                     ? `${htmlUrl}#pullrequestreview-${item.id.slice(7)}`
                     : htmlUrl),
-                sourceBody:
-                  comment?.sourceBody ??
-                  (item.kind === 'review'
-                    ? reviews.find((review) => String(review.id) === item.id.slice(7))?.sourceBody
-                    : undefined),
+                sourceBody: comment?.sourceBody ?? review?.sourceBody,
                 filePath: comment?.filePath,
                 lineNumber: comment?.lineNumber,
+                commitId: review?.commit_id,
               },
             ];
           },

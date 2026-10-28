@@ -29,7 +29,7 @@ function makeNode(overrides: Record<string, unknown> = {}) {
     baseRefName: 'main',
     headRefName: 'feature',
     headRefOid: 'sha1',
-    labels: { nodes: [{ name: 'bug' }] },
+    labels: { nodes: [{ name: 'bug', color: 'd73a4a' }] },
     reviewRequests: { nodes: [] },
     commits: { totalCount: 1, nodes: [{ commit: { statusCheckRollup: null } }] },
     latestReviews: { nodes: [] },
@@ -604,6 +604,7 @@ describe('pollOpenPrsAggregate (adapter)', () => {
     expect(pr!.pullRequest.commentCount).toBe(5); // 3 comments + 2 review threads
     expect(pr!.pullRequest.commitCount).toBe(1);
     expect(pr!.pullRequest.labels).toEqual(['bug']);
+    expect(pr!.pullRequest.labelColors).toEqual({ bug: 'd73a4a' });
     expect(pr!.pullRequest.mergeable).toBe(true);
     expect(pr!.overallStatus).toBe('gray');
     expect(pr!.totalCheckCount).toBe(0);

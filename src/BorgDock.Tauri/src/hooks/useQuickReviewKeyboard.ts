@@ -6,11 +6,15 @@ import { useQuickReviewStore } from '@/stores/quick-review-store';
  * and phase 4). Letters are matched case-insensitively.
  *
  * - On the card: `ArrowRight` approve (when enabled), `ArrowLeft` review
- *   later, `Enter` review files, `Escape` close.
+ *   later, `Enter` review files, `Escape` close, `a` approve and `w` write
+ *   a review.
  * - In the file walk: `v` mark reviewed and next, `n` / `p` change files,
- *   `j` / `k` scroll vertically, `h` / `l` scroll horizontally, `w` wraps lines,
- *   `f` finish, `Escape` back to the card.
- * - On the card: `a` approve and `w` write a review.
+ *   `j` / `k` scroll vertically, `h` / `l` scroll horizontally, `w` wraps
+ *   lines, `d` opens the description, `]` folds the context panel, `1`–`4`
+ *   pick its tab, `s` switches between changes since the last review and
+ *   all files, `Escape` back to the card. Once every file is reviewed:
+ *   `Enter` / `a` approve, `r` request changes, `c` comment.
+ * - Anywhere: `z` takes back an approval while its Undo toast is up.
  */
 export type QuickReviewKey =
   | 'ArrowRight'
@@ -24,9 +28,18 @@ export type QuickReviewKey =
   | 'k'
   | 'h'
   | 'l'
-  | 'f'
   | 'a'
-  | 'w';
+  | 'w'
+  | 'd'
+  | ']'
+  | '1'
+  | '2'
+  | '3'
+  | '4'
+  | 's'
+  | 'r'
+  | 'c'
+  | 'z';
 
 export type QuickReviewKeymap = Partial<Record<QuickReviewKey, () => void>>;
 

@@ -1,0 +1,25 @@
+/* GitHub labels (PrLabels): GitHub's colour mixed into the theme, so a label
+   reads in both themes whatever colour the repository gave it. */
+/* Spacing around the list is the host's: preflight already resets the ul. */
+.bd-pr-labels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.bd-pr-label {
+  --label: var(--color-text-tertiary);
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--label) 55%, var(--color-background));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--label) 22%, var(--color-background));
+  color: color-mix(in srgb, var(--label) 32%, var(--color-text-primary));
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}

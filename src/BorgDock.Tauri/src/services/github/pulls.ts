@@ -29,6 +29,7 @@ interface GitHubRefDto {
 
 interface GitHubLabelDto {
   name: string;
+  color?: string;
 }
 
 interface GitHubPullRequestDto {
@@ -312,6 +313,13 @@ function mergeableFromState(state?: string): boolean | null {
   }
 }
 
+/** GitHub's colour per label name, for the label chips. Labels without a colour are left out. */
+export function labelColorsOf(labels: readonly GitHubLabelDto[]): Record<string, string> {
+  const colors: Record<string, string> = {};
+  for (const { name, color } of labels) if (name && color) colors[name] = color;
+  return colors;
+}
+
 export function aggregateReviewStatus(reviews: GitHubReviewDto[]): ReviewStatus {
   if (reviews.length === 0) return 'none';
 
@@ -396,6 +404,7 @@ function mapToPullRequest(dto: GitHubPullRequestDto, owner: string, repo: string
     reviewStatus: 'none',
     commentCount: (dto.comments ?? 0) + (dto.review_comments ?? 0),
     labels: dto.labels?.map((l) => l.name).filter((n) => n.length > 0) ?? [],
+    labelColors: labelColorsOf(dto.labels ?? []),
     additions: dto.additions,
     deletions: dto.deletions,
     changedFiles: dto.changed_files,

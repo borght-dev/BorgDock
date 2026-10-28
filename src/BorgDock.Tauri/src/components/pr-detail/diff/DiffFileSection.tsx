@@ -35,6 +35,8 @@ interface DiffFileSectionProps {
   onAddComment?: (line: DiffLine) => void;
   renderLineAttachment?: (line: DiffLine) => ReactNode;
   richContent?: ReactNode;
+  /** The sticky header with the path, sizes and hunk buttons, and the N / P hunk keys. Default true; Quick Review draws its own. */
+  header?: boolean;
 }
 
 function statusPillTone(status: DiffFile['status']): PillTone {
@@ -74,6 +76,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
       onAddComment,
       renderLineAttachment,
       richContent,
+      header = true,
     },
     ref,
   ) {
@@ -133,7 +136,9 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
 
     const handleKeyDown = useCallback(
       (e: ReactKeyboardEvent<HTMLDivElement>) => {
+        // Without the header (Quick Review) N and P belong to the host, like the hunk buttons.
         if (
+          !header ||
           onAddComment ||
           (e.target as HTMLElement).closest('input,textarea,select,[contenteditable="true"]')
         )
@@ -146,7 +151,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
           handlePrevHunk();
         }
       },
-      [handleNextHunk, handlePrevHunk, onAddComment],
+      [handleNextHunk, handlePrevHunk, onAddComment, header],
     );
 
     return (
@@ -159,82 +164,84 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
         onKeyDown={handleKeyDown}
       >
         {/* Sticky file header */}
-        <div className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 border-b border-[var(--color-diff-file-header-border)] bg-[var(--color-diff-file-header-bg)] backdrop-blur-[8px]">
-          <IconButton
-            icon={
-              collapsed ? (
-                <ChevronRight size={12} strokeWidth={3} aria-hidden="true" />
-              ) : (
-                <ChevronDown size={12} strokeWidth={3} aria-hidden="true" />
-              )
-            }
-            tooltip={collapsed ? 'Expand' : 'Collapse'}
-            aria-label={collapsed ? 'Expand' : 'Collapse'}
-            size={22}
-            onClick={() => setCollapsed((v) => !v)}
-          />
+        {header && (
+          <div className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 border-b border-[var(--color-diff-file-header-border)] bg-[var(--color-diff-file-header-bg)] backdrop-blur-[8px]">
+            <IconButton
+              icon={
+                collapsed ? (
+                  <ChevronRight size={12} strokeWidth={3} aria-hidden="true" />
+                ) : (
+                  <ChevronDown size={12} strokeWidth={3} aria-hidden="true" />
+                )
+              }
+              tooltip={collapsed ? 'Expand' : 'Collapse'}
+              aria-label={collapsed ? 'Expand' : 'Collapse'}
+              size={22}
+              onClick={() => setCollapsed((v) => !v)}
+            />
 
-          <Pill tone={statusPillTone(file.status)} data-diff-status>
-            {statusBadgeLetter(file.status)}
-          </Pill>
+            <Pill tone={statusPillTone(file.status)} data-diff-status>
+              {statusBadgeLetter(file.status)}
+            </Pill>
 
-          {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
-          <span
-            className="flex-1 min-w-0 truncate text-[11px] font-medium text-[var(--color-text-secondary)]"
-            style={{ fontFamily: 'var(--font-code)' }}
-            title={file.filename}
-          >
-            {displayName}
-          </span>
+            {/* style: var(--font-code) custom property — no Tailwind font-mono maps to this design token */}
+            <span
+              className="flex-1 min-w-0 truncate text-[11px] font-medium text-[var(--color-text-secondary)]"
+              style={{ fontFamily: 'var(--font-code)' }}
+              title={file.filename}
+            >
+              {displayName}
+            </span>
 
-          <div className="shrink-0 flex items-center gap-1.5 text-[10px]">
-            {file.additions > 0 && (
-              <span className="text-[var(--color-status-green)]" data-diff-stat="added">
-                +{file.additions}
-              </span>
-            )}
-            {file.deletions > 0 && (
-              <span className="text-[var(--color-status-red)]" data-diff-stat="deleted">
-                -{file.deletions}
-              </span>
+            <div className="shrink-0 flex items-center gap-1.5 text-[10px]">
+              {file.additions > 0 && (
+                <span className="text-[var(--color-status-green)]" data-diff-stat="added">
+                  +{file.additions}
+                </span>
+              )}
+              {file.deletions > 0 && (
+                <span className="text-[var(--color-status-red)]" data-diff-stat="deleted">
+                  -{file.deletions}
+                </span>
+              )}
+            </div>
+
+            <IconButton
+              icon={<ArrowUp size={12} strokeWidth={2.25} aria-hidden="true" />}
+              tooltip="Previous hunk (p)"
+              aria-label="Previous hunk"
+              size={22}
+              onClick={handlePrevHunk}
+              data-action="prev-hunk"
+            />
+            <IconButton
+              icon={<ArrowDown size={12} strokeWidth={2.25} aria-hidden="true" />}
+              tooltip="Next hunk (n)"
+              aria-label="Next hunk"
+              size={22}
+              onClick={handleNextHunk}
+              data-action="next-hunk"
+            />
+
+            <IconButton
+              icon={<Copy size={12} strokeWidth={2.25} aria-hidden="true" />}
+              tooltip="Copy file path"
+              aria-label="Copy file path"
+              size={22}
+              onClick={() => onCopyPath(file.filename)}
+            />
+
+            {onOpenInGitHub && (
+              <IconButton
+                icon={<ExternalLink size={12} strokeWidth={2.25} aria-hidden="true" />}
+                tooltip="Open in GitHub"
+                aria-label="Open in GitHub"
+                size={22}
+                onClick={() => onOpenInGitHub(file.filename)}
+              />
             )}
           </div>
-
-          <IconButton
-            icon={<ArrowUp size={12} strokeWidth={2.25} aria-hidden="true" />}
-            tooltip="Previous hunk (p)"
-            aria-label="Previous hunk"
-            size={22}
-            onClick={handlePrevHunk}
-            data-action="prev-hunk"
-          />
-          <IconButton
-            icon={<ArrowDown size={12} strokeWidth={2.25} aria-hidden="true" />}
-            tooltip="Next hunk (n)"
-            aria-label="Next hunk"
-            size={22}
-            onClick={handleNextHunk}
-            data-action="next-hunk"
-          />
-
-          <IconButton
-            icon={<Copy size={12} strokeWidth={2.25} aria-hidden="true" />}
-            tooltip="Copy file path"
-            aria-label="Copy file path"
-            size={22}
-            onClick={() => onCopyPath(file.filename)}
-          />
-
-          {onOpenInGitHub && (
-            <IconButton
-              icon={<ExternalLink size={12} strokeWidth={2.25} aria-hidden="true" />}
-              tooltip="Open in GitHub"
-              aria-label="Open in GitHub"
-              size={22}
-              onClick={() => onOpenInGitHub(file.filename)}
-            />
-          )}
-        </div>
+        )}
 
         {/* Diff content */}
         {!collapsed && (

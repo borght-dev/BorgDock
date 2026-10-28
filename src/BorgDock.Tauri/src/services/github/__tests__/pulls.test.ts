@@ -41,7 +41,7 @@ const fakePrDto = {
   user: { login: 'alice', avatar_url: 'https://avatars.example.com/alice' },
   head: { ref: 'feature-x' },
   base: { ref: 'main' },
-  labels: [{ name: 'enhancement' }],
+  labels: [{ name: 'enhancement', color: 'a2eeef' }],
 };
 
 describe('getOpenPRs', () => {
@@ -73,6 +73,7 @@ describe('getOpenPRs', () => {
     expect(pr.isDraft).toBe(false);
     expect(pr.commentCount).toBe(3);
     expect(pr.labels).toEqual(['enhancement']);
+    expect(pr.labelColors).toEqual({ enhancement: 'a2eeef' });
     expect(pr.reviewStatus).toBe('approved');
     expect(pr.repoOwner).toBe('owner');
     expect(pr.repoName).toBe('repo');

@@ -308,7 +308,13 @@ Capturing from Storybook in a fresh worktree: `src/BorgDock.Tauri/public/whats-n
 
 ## Vitest: a hook that returns a function
 
-`beforeEach(() => someMock.mockReset())` returns the mock, and Vitest runs a function returned from `beforeEach` as that test's teardown. A mock that later rejects then fails the test with its own error after every assertion passed. Give hooks a block body: `beforeEach(() => { someMock.mockReset(); })`.
+`beforeEach(() => someMock.mockReset())` returns the mock, and Vitest runs a function returned from `beforeEach` as that test's teardown. A mock that later rejects then fails the test with its own error after every assertion passed. Give hooks a block body: `beforeEach(() => { someMock.mockReset(); })`. The same goes for `onTestFinished`.
+
+## Quick Review approvals wait for Undo
+
+Approve (card, walk, composer) moves the deck on at once and posts the review only when its Undo toast runs out (`components/focus/quick-review-approval.ts`, `APPROVAL_UNDO_MS`); GitHub cannot take a review back. A test that expects `submitReview` after an approval must run the toast out first (`sendHeldApproval()` in `QuickReviewOverlay.test.tsx`), and e2e specs `expect.poll` the posted review with a timeout above 5 s. A refused approval brings the PR back with the error (`reopen`). Request changes and Comment still post immediately.
+
+The walk's design reference is `design/quick-review-v2/mockups.html`; the stories `WalkWithProof`, `AllFilesReviewed` and `ReReviewSinceLastReview` render its three frames.
 
 ## Self-Improvement
 

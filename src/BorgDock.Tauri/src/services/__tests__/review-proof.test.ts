@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ConversationEntry } from '@/hooks/usePrConversation';
-import { proofImages, reviewProofs } from '../review-proof';
+import { descriptionChecklist, descriptionProof, proofImages, reviewProofs } from '../review-proof';
 
 function comment(body: string, overrides: Partial<ConversationEntry> = {}): ConversationEntry {
   return {
@@ -66,13 +66,44 @@ describe('developer proof', () => {
       ),
     ).toEqual([{ src: 'https://example.com/one.png', alt: 'Screenshot' }]);
   });
-  it('sorts proof newest first and excludes script content from excerpts', () => {
+  it('sorts proof newest first and leaves headings and script content out of excerpts', () => {
     const proofs = reviewProofs([
       comment('PROOF older', { id: 'old', createdAt: '2026-10-04T10:00:00Z' }),
       comment('<h2>PROOF</h2><script>secret</script><p>Newer</p>'),
     ]);
     expect(proofs[0]?.entry.id).toBe('proof');
     expect(proofs[0]?.excerpt).not.toContain('secret');
-    expect(proofs[0]?.excerpt).toBe('PROOF Newer');
+    expect(proofs[0]?.excerpt).toBe('Newer');
+  });
+});
+
+describe('the description as proof', () => {
+  const pr = { authorLogin: 'mvisser', createdAt: '2026-10-01T00:00:00Z' };
+
+  it('takes the proof section up to the next heading of its level', () => {
+    const body =
+      '## Summary\n\nWhat changed.\n\n## Verification\n\nThe flow passed.\n\n### After\n\n![After](https://example.com/after.png)\n\n## Notes\n\nUnrelated.';
+    const entry = descriptionProof({ ...pr, body });
+    expect(entry?.body).toBe(
+      '## Verification\n\nThe flow passed.\n\n### After\n\n![After](https://example.com/after.png)\n',
+    );
+    const [proof] = reviewProofs([entry!]);
+    expect(proof?.excerpt).toBe('The flow passed.');
+    expect(proof?.images).toEqual([{ src: 'https://example.com/after.png', alt: 'After' }]);
+  });
+
+  it('is null without a proof heading', () => {
+    expect(descriptionProof({ ...pr, body: '## Summary\n\nVerified by hand.' })).toBeNull();
+  });
+
+  it('reads the task list as a checklist', () => {
+    expect(
+      descriptionChecklist(
+        'Intro\n- [x] Unit tests for the `hook`\n* [ ] Playwright\n- plain item',
+      ),
+    ).toEqual([
+      { text: 'Unit tests for the hook', done: true },
+      { text: 'Playwright', done: false },
+    ]);
   });
 });

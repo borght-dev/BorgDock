@@ -2,18 +2,39 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
 import { FocusTrap } from 'focus-trap-react';
-import { Maximize2, Minimize2, X } from 'lucide-react';
-import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
-import { prRowKey } from '@/components/pr/pr-card-data';
+import {
+  ChevronLeft,
+  ChevronRight,
+  GitCommitHorizontal,
+  History,
+  Maximize2,
+  Minimize2,
+  X,
+} from 'lucide-react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { checkCountsFor, prRowKey } from '@/components/pr/pr-card-data';
 import { DiffFileSection } from '@/components/pr-detail/diff/DiffFileSection';
 import { ImageDiff } from '@/components/pr-detail/diff/ImageDiff';
+import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { DetailDialog } from '@/components/shared/DetailDialog';
-import { PrDescription } from '@/components/shared/PrDescription';
-import { Button, IconButton } from '@/components/shared/primitives';
+import { Button, checkBarSummary, IconButton, Seg2 } from '@/components/shared/primitives';
 import { usePrConversation } from '@/hooks/usePrConversation';
 import { useQuickReviewDocument } from '@/hooks/useQuickReviewDocument';
 import { type QuickReviewKeymap, useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
+import { useReviewReadiness } from '@/hooks/useReviewReadiness';
+import { useReviewSince } from '@/hooks/useReviewSince';
+import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
 import { isImagePath } from '@/services/github/images';
+import { postComment } from '@/services/github/mutations';
+import { getClientForRepo } from '@/services/github/singleton';
 import {
   isGeneratedPath,
   markGeneratedReviewed,
@@ -24,20 +45,30 @@ import {
   reviewProgress,
   unreviewedLabel,
 } from '@/services/quick-review';
+import { reviewVerb } from '@/services/review-since';
 import { usePrStore } from '@/stores/pr-store';
 import { type ReviewDecision, useQuickReviewStore } from '@/stores/quick-review-store';
-import type { DiffLine, PullRequestWithChecks } from '@/types';
+import { toastError } from '@/stores/toast-store';
+import type { DiffLine, PullRequest, PullRequestWithChecks } from '@/types';
 import { motionMs, motionOK } from '@/utils/motion';
+import { formatAgo } from '@/utils/relative-time';
 import {
   getReviewDraftStorageWarning,
   subscribeReviewDraftStorage,
 } from '@/utils/review-draft-storage';
 import { ApproveButton, QuickReviewCard, QuickReviewCardHeader } from './QuickReviewCard';
+import { QuickReviewChecks } from './QuickReviewChecks';
 import { QuickReviewComment } from './QuickReviewComment';
+import { type ContextTab, QuickReviewContext } from './QuickReviewContext';
+import { QuickReviewDecisionBar } from './QuickReviewDecisionBar';
 import { QuickReviewDiscussion } from './QuickReviewDiscussion';
+import { QuickReviewEndCard } from './QuickReviewEndCard';
 import { QuickReviewFinish } from './QuickReviewFinish';
 import { QuickReviewNavigation } from './QuickReviewNavigation';
+import { QuickReviewPrHeader } from './QuickReviewPrHeader';
+import { proofCount, proofsFor, QuickReviewProof } from './QuickReviewProof';
 import { QuickReviewSummary } from './QuickReviewSummary';
+import { holdApproval, undoHeldApproval, useHeldApproval } from './quick-review-approval';
 import './quick-review.css';
 
 /** How long a decided card takes to fly off the deck (`.qr-card--gone-*`). */
@@ -47,6 +78,8 @@ const PEEKS = 2;
 const FULLSCREEN_KEY = 'borgdock-quick-review-fullscreen';
 const WRAP_LINES_KEY = 'borgdock-quick-review-wrap-lines';
 const RICH_DIFF_KEY = 'borgdock-quick-review-rich-diff';
+const SPLIT_DIFF_KEY = 'borgdock-quick-review-split-diff';
+const CONTEXT_OPEN_KEY = 'borgdock-quick-review-context-open';
 
 function readReviewPreference(key: string, fallback = false): boolean {
   try {
@@ -185,18 +218,42 @@ function GhostCard({
   );
 }
 
+/** Focus to the walk's current file in the tree, or to Mark reviewed when there is none. */
+function focusCurrentFile(walk: HTMLElement | null) {
+  const target =
+    walk?.querySelector<HTMLElement>('.qr-file[aria-current]') ??
+    walk?.querySelector<HTMLElement>('.qr-mark');
+  target?.focus();
+}
+
+/** The line of shortcuts under the dialog: each key with what it does. */
+function Shortcuts({ keys }: { keys: ReadonlyArray<readonly [string, string]> }) {
+  return (
+    <span className="qr-shortcuts">
+      {keys.map(([key, action]) => (
+        <span key={key}>
+          <kbd>{key}</kbd> {action}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /**
  * QuickReviewOverlay — Quick Review over whichever view is on top
- * (plans/ui-overhaul-workbench.md, phase 4, after the iteration 2 mockup).
+ * (plans/ui-overhaul-workbench.md, phase 4, after the iteration 2 mockup;
+ * the file walk after design/quick-review-v2).
  *
  * A deck of cards, one per PR: the current one on top, the next two peeking
  * behind. The card summarises the PR (files by folder, what is left to
- * review, CI); "Review files" turns it into a file walk (tree, diff, Mark
- * reviewed and next); Approve is enabled once every non-generated file is
- * marked and flings the card right, Review later flings it left. The
- * overlay scales in from 0.96 and fades (`--motion-base`, `--ease-out`) and
- * reverses on close; every movement collapses to instant under reduced
- * motion.
+ * review, CI); "Review files" turns it into a file walk: the PR's header and
+ * description above, the tree, the diff and a context panel with the proof
+ * beside it. Marking the last file turns the walk's footer into the
+ * decision bar. Approving moves on at once and posts the review when its
+ * Undo toast runs out; the next PR opens where the last one was decided (on
+ * the card or in the walk). The overlay scales in from 0.96 and fades
+ * (`--motion-base`, `--ease-out`) and reverses on close; every movement
+ * collapses to instant under reduced motion.
  */
 export function QuickReviewOverlay() {
   const state = useQuickReviewStore((s) => s.state);
@@ -206,6 +263,7 @@ export function QuickReviewOverlay() {
   const needsMyReview = usePrStore((s) => s.needsMyReview());
   const [closing, setClosing] = useState(false);
   const [fullscreen, setFullscreen] = useState(() => readReviewPreference(FULLSCREEN_KEY));
+  const [walking, setWalking] = useState(false);
   const handledInRun = useRef(new Set<string>());
   const closeTimer = useRef<number | undefined>(undefined);
   const deck = useDeckMotion(queue, index, state === 'complete', decisions);
@@ -223,6 +281,7 @@ export function QuickReviewOverlay() {
       window.clearTimeout(closeTimer.current);
       handledInRun.current.clear();
       setClosing(false);
+      setWalking(false);
     }
   }, [state]);
 
@@ -249,6 +308,7 @@ export function QuickReviewOverlay() {
   const nextPr = complete
     ? orderQuickReviewPrs(needsMyReview).find((pr) => !reviewedKeys.has(prKey(pr)))
     : undefined;
+  const upNext = complete ? undefined : queue[index + 1];
   const reviewNext = () => {
     if (!nextPr) return;
     queue.forEach((pr) => {
@@ -258,12 +318,17 @@ export function QuickReviewOverlay() {
   };
   useQuickReviewKeyboard(
     complete && !closing
-      ? { Escape: requestClose, ...(nextPr ? { Enter: reviewNext } : {}) }
+      ? {
+          Escape: requestClose,
+          z: undoHeldApproval,
+          ...(nextPr ? { Enter: reviewNext } : {}),
+        }
       : undefined,
   );
 
   if (state === 'idle') return null;
   const decided = complete ? queue.length : index;
+  const busy = state === 'submitting';
   return (
     <FocusTrap
       focusTrapOptions={{
@@ -280,7 +345,7 @@ export function QuickReviewOverlay() {
           tabIndex={-1}
           className="qr-backdrop"
           aria-label="Close Quick Review"
-          disabled={state === 'submitting'}
+          disabled={busy}
           onClick={requestClose}
         />
         <div
@@ -295,6 +360,14 @@ export function QuickReviewOverlay() {
         >
           <div className="qr-titlebar">
             <h2 className="qr-heading">Quick review</h2>
+            {upNext && (
+              <span className="qr-upnext" title={upNext.pullRequest.title}>
+                Up next{' '}
+                <b>
+                  #{upNext.pullRequest.number} {upNext.pullRequest.title}
+                </b>
+              </span>
+            )}
             <span className="qr-prog">
               <span>
                 PR {Math.min(index + 1, queue.length)} / {queue.length}
@@ -307,10 +380,22 @@ export function QuickReviewOverlay() {
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={state === 'submitting'}
+                disabled={busy}
+                leading={<ChevronLeft size={14} aria-hidden="true" />}
                 onClick={() => useQuickReviewStore.getState().goBack()}
               >
                 Previous PR
+              </Button>
+            )}
+            {walking && !complete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                trailing={<ChevronRight size={14} aria-hidden="true" />}
+                onClick={() => useQuickReviewStore.getState().advance('skipped')}
+              >
+                Review later
               </Button>
             )}
             <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
@@ -318,7 +403,7 @@ export function QuickReviewOverlay() {
               icon={<X size={12} strokeWidth={2.25} aria-hidden="true" />}
               tooltip="Close"
               aria-label="Close"
-              disabled={state === 'submitting'}
+              disabled={busy}
               onClick={requestClose}
             />
           </div>
@@ -347,10 +432,12 @@ export function QuickReviewOverlay() {
                 </div>
               </div>
               <footer className="qr-footer">
-                <span className="qr-spacer" />
-                <span className="qr-shortcuts">
-                  {nextPr ? 'Enter review next PR · Esc close' : 'Esc close'}
-                </span>
+                <Shortcuts
+                  keys={[
+                    ...(nextPr ? [['Enter', 'review next PR'] as const] : []),
+                    ['Esc', 'close'],
+                  ]}
+                />
               </footer>
             </>
           ) : (
@@ -362,6 +449,8 @@ export function QuickReviewOverlay() {
                 leaving={deck.leaving}
                 rising={deck.rising}
                 closing={closing}
+                startInWalk={walking}
+                onWalkingChange={setWalking}
                 onClose={requestClose}
               />
             )
@@ -373,6 +462,7 @@ export function QuickReviewOverlay() {
 }
 
 type Mode = 'card' | 'walk' | 'compose';
+type Scope = 'since' | 'all';
 
 interface WorkspaceProps {
   pr: PullRequestWithChecks;
@@ -384,10 +474,28 @@ interface WorkspaceProps {
   rising: boolean;
   /** The overlay is animating out: no more keys. */
   closing: boolean;
+  /** The previous PR was decided in the walk: open this one there too. */
+  startInWalk: boolean;
+  onWalkingChange: (walking: boolean) => void;
   onClose: () => void;
 }
 
-function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: WorkspaceProps) {
+/** The Checks tab: required checks are only asked for while it is open. */
+function ChecksTab({ pr, detail }: { pr: PullRequestWithChecks; detail: PullRequest }) {
+  const readiness = useReviewReadiness(detail);
+  return <QuickReviewChecks pr={pr} readiness={readiness} />;
+}
+
+function QuickReviewWorkspace({
+  pr,
+  peeks,
+  leaving,
+  rising,
+  closing,
+  startInWalk,
+  onWalkingChange,
+  onClose,
+}: WorkspaceProps) {
   const storageWarning = useSyncExternalStore(
     subscribeReviewDraftStorage,
     getReviewDraftStorageWarning,
@@ -400,30 +508,67 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
     loadError,
     stale,
     reload,
+    prepare,
     submit,
   } = useQuickReviewDocument(pr.pullRequest);
   const state = useQuickReviewStore((s) => s.state);
   const error = useQuickReviewStore((s) => s.error);
-  const [mode, setMode] = useState<Mode>('card');
+  const heldApproval = useHeldApproval();
+  const [mode, setMode] = useState<Mode>(startInWalk ? 'walk' : 'card');
   const [wrapLines, setWrapLines] = useState(() => readReviewPreference(WRAP_LINES_KEY));
   const [richDiff, setRichDiff] = useState(() => readReviewPreference(RICH_DIFF_KEY, true));
-  const [showingComments, setShowingComments] = useState(false);
-  const [commentsOpened, setCommentsOpened] = useState(false);
+  const [splitDiff, setSplitDiff] = useState(() => readReviewPreference(SPLIT_DIFF_KEY));
+  const [contextOpen, setContextOpen] = useState(() =>
+    readReviewPreference(CONTEXT_OPEN_KEY, true),
+  );
+  const [contextTab, setContextTab] = useState<ContextTab>('proof');
+  const [describing, setDescribing] = useState(false);
+  const [scope, setScope] = useState<Scope>('since');
   const [reattachId, setReattachId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const [endNotice, setEndNotice] = useState('');
+  const [commentsPopup, setCommentsPopup] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const walkRef = useRef<HTMLElement>(null);
+  const endBodyRef = useRef<HTMLTextAreaElement>(null);
   const lastMode = useRef<Mode>('card');
+  const pendingWalk = useRef(startInWalk);
+  const focusDecision = useRef(false);
+  const sinceApplied = useRef(false);
   const approveReasonId = useId();
   const walkPhase = usePresence(mode === 'walk', motionMs('--motion-push', 260));
 
+  const detail = snapshot?.pr ?? pr.pullRequest;
+  const client = getClientForRepo(detail.repoOwner, detail.repoName);
+  const conversation = usePrConversation(detail, true);
+  const proofs = proofsFor(detail, conversation);
+  const links = useWorkItemLinks(detail);
+  const workItems = new Map(links.workItems.map((item) => [item.id, item]));
+  const since = useReviewSince(snapshot);
+  const changed = since?.files ? new Set(since.files.map((f) => f.filename)) : null;
+  const sinceScoped = !!changed && scope === 'since';
+
   const files = snapshot?.files ?? [];
   const paths = files.map((f) => f.filename);
+  const walkFiles = sinceScoped ? files.filter((f) => changed.has(f.filename)) : files;
+  const walkGroups = (snapshot?.groups ?? [])
+    .map((group) =>
+      sinceScoped ? { ...group, files: group.files.filter((f) => changed.has(f.filename)) } : group,
+    )
+    .filter((group) => group.files.length > 0);
   const progress = reviewProgress(paths, doc.reviewed);
+  const walkProgress = reviewProgress(
+    walkFiles.map((f) => f.filename),
+    doc.reviewed,
+  );
   const reviewed = new Set(doc.reviewed);
-  const fileIndex = files.findIndex((f) => f.filename === doc.step);
-  const file = files[fileIndex];
+  const fileIndex = walkFiles.findIndex((f) => f.filename === doc.step);
+  const prFile = walkFiles[fileIndex];
+  const sinceFile = sinceScoped
+    ? since?.files?.find((f) => f.filename === prFile?.filename && f.patch)
+    : undefined;
+  const file = sinceFile ?? prFile;
   const imageFile = !!file && isImagePath(file.filename);
   const richDiffVisible = imageFile && richDiff;
   const commentsByLine = new Map<string, ReviewCommentDraft[]>();
@@ -434,12 +579,11 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
     list.push(comment);
     commentsByLine.set(key, list);
   }
-  const detail = snapshot?.pr ?? pr.pullRequest;
-  const conversation = usePrConversation(detail, true);
-  const [commentsPopup, setCommentsPopup] = useState(false);
   const busy = state === 'submitting';
   const ready = !!snapshot && !loading && !loadError && !stale;
+  const allReviewed = ready && progress.left === 0;
   const unreadyComments = doc.comments.some((c) => !c.saved || c.outdated || !c.body.trim());
+  const checks = checkBarSummary(checkCountsFor(pr)).state;
 
   /** Why a review with this decision cannot be submitted yet, or null. */
   function issueFor(event: ReviewEvent): string | null {
@@ -473,85 +617,137 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
   }
   const approveIssue = approveBlocker();
 
+  useEffect(() => onWalkingChange(mode === 'walk'), [mode, onWalkingChange]);
+
   // Focus follows the view: into the tree when the walk opens, back to the
   // button that opened it when the walk closes.
   useEffect(() => {
     const before = lastMode.current;
     lastMode.current = mode;
     if (before === mode) return;
-    if (mode === 'walk') {
-      const target =
-        walkRef.current?.querySelector<HTMLElement>('.qr-file[aria-current]') ??
-        walkRef.current?.querySelector<HTMLElement>('.qr-mark');
-      target?.focus();
-    } else if (mode === 'card') {
+    if (mode === 'walk') focusCurrentFile(walkRef.current);
+    else if (mode === 'card') {
       const selector = before === 'walk' ? '.qr-files-btn' : '.qr-write';
       stageRef.current?.querySelector<HTMLElement>(selector)?.focus();
     }
   }, [mode]);
 
+  // The previous PR was decided in the walk: this one opens there as soon
+  // as its files are in.
+  useEffect(() => {
+    if (!pendingWalk.current || !ready || files.length === 0) return;
+    pendingWalk.current = false;
+    openWalk();
+    focusCurrentFile(walkRef.current);
+  });
+
+  // On a re-review, the files nothing touched since the last review keep
+  // that review: they start out marked, and the walk moves to a changed file
+  // if it opened on another one before GitHub answered.
+  useEffect(() => {
+    if (!since?.files || !snapshot || sinceApplied.current) return;
+    sinceApplied.current = true;
+    const touched = new Set(since.files.map((f) => f.filename));
+    const kept = snapshot.files.map((f) => f.filename).filter((path) => !touched.has(path));
+    const firstChanged =
+      snapshot.files.find((f) => touched.has(f.filename) && !doc.reviewed.includes(f.filename)) ??
+      snapshot.files.find((f) => touched.has(f.filename));
+    update((d) => ({
+      ...d,
+      reviewed: [...new Set([...d.reviewed, ...kept])],
+      step: d.step === null || touched.has(d.step) ? d.step : (firstChanged?.filename ?? null),
+    }));
+  });
+
+  // Marking the last file hands the keyboard to the decision bar.
+  useEffect(() => {
+    if (!focusDecision.current || !allReviewed) return;
+    focusDecision.current = false;
+    walkRef.current?.querySelector<HTMLElement>('.qr-decide--go')?.focus();
+  });
+
   function go(path: string | null) {
-    setShowingComments(false);
     update((d) => ({ ...d, step: path }));
     mainRef.current?.scrollTo?.(0, 0);
   }
   function openWalk() {
     if (!ready || files.length === 0) return;
-    const resume = file && !reviewed.has(file.filename) ? file.filename : undefined;
-    const firstOpen = files.find((f) => !reviewed.has(f.filename))?.filename;
-    const target = resume ?? firstOpen ?? file?.filename ?? files[0]?.filename ?? null;
-    setShowingComments(false);
+    const current = walkFiles[fileIndex];
+    const resume = current && !reviewed.has(current.filename) ? current.filename : undefined;
+    const firstOpen = walkFiles.find((f) => !reviewed.has(f.filename))?.filename;
+    const target = resume ?? firstOpen ?? current?.filename ?? walkFiles[0]?.filename ?? null;
     update((d) => ({ ...d, walked: true, step: target }));
     setMode('walk');
   }
   function toCard() {
-    setShowingComments(false);
     setMode('card');
   }
   function step(delta: number) {
     if (!ready || busy || fileIndex < 0) return;
-    const target = files[fileIndex + delta];
+    const target = walkFiles[fileIndex + delta];
     if (target) go(target.filename);
   }
   function scrollFile(delta: number) {
-    if (!showingComments) mainRef.current?.scrollBy?.(0, delta * 72);
+    mainRef.current?.scrollBy?.(0, delta * 72);
   }
   function scrollFileHorizontally(delta: number) {
-    if (showingComments || wrapLines) return;
+    if (wrapLines) return;
     mainRef.current?.querySelector<HTMLElement>('[data-diff-scroll]')?.scrollBy?.(delta * 72, 0);
   }
   function toggleWrapLines() {
-    if (showingComments || richDiffVisible) return;
+    if (richDiffVisible) return;
     const next = !wrapLines;
     setWrapLines(next);
     writeReviewPreference(WRAP_LINES_KEY, next);
   }
+  function chooseSplit(next: boolean) {
+    setSplitDiff(next);
+    writeReviewPreference(SPLIT_DIFF_KEY, next);
+  }
+  function toggleContext() {
+    const next = !contextOpen;
+    setContextOpen(next);
+    writeReviewPreference(CONTEXT_OPEN_KEY, next);
+  }
+  function openContext(tab: ContextTab) {
+    setContextTab(tab);
+    if (!contextOpen) toggleContext();
+  }
+  function chooseScope(next: Scope) {
+    setScope(next);
+    if (next === 'since' && changed && doc.step && !changed.has(doc.step)) {
+      go(files.find((f) => changed.has(f.filename))?.filename ?? null);
+    }
+  }
   /** Marks the current file and moves to the next file not reviewed yet. */
   function markAndNext() {
-    if (!ready || !file || busy) return;
-    const done = new Set([...doc.reviewed, file.filename]);
-    update((d) => ({ ...d, reviewed: [...new Set([...d.reviewed, file.filename])] }));
+    if (!ready || !prFile || busy) return;
+    const done = new Set([...doc.reviewed, prFile.filename]);
+    update((d) => ({ ...d, reviewed: [...new Set([...d.reviewed, prFile.filename])] }));
     const next =
-      files.slice(fileIndex + 1).find((f) => !done.has(f.filename)) ??
-      files.find((f) => !done.has(f.filename));
+      walkFiles.slice(fileIndex + 1).find((f) => !done.has(f.filename)) ??
+      walkFiles.find((f) => !done.has(f.filename));
     if (next) go(next.filename);
+    else if (reviewProgress(paths, [...done]).left === 0) focusDecision.current = true;
   }
   function toggleReviewed() {
-    if (!ready || !file || busy) return;
+    if (!ready || !prFile || busy) return;
     update((d) => ({
       ...d,
-      reviewed: d.reviewed.includes(file.filename)
-        ? d.reviewed.filter((p) => p !== file.filename)
-        : [...d.reviewed, file.filename],
+      reviewed: d.reviewed.includes(prFile.filename)
+        ? d.reviewed.filter((p) => p !== prFile.filename)
+        : [...d.reviewed, prFile.filename],
     }));
   }
   function skipGenerated() {
     if (!ready || busy) return;
     update((d) => markGeneratedReviewed(d, paths));
   }
+  /** Approves with Undo: the deck moves on now, GitHub hears of it when the toast runs out. */
   function approve(autoMerge = !detail.autoMergeEnabled) {
     if (busy || approveIssue) return;
-    void submit('APPROVE', autoMerge);
+    const send = prepare('APPROVE', autoMerge);
+    if (send) holdApproval(pr, send, autoMerge && !detail.autoMergeEnabled);
   }
   function later() {
     if (busy) return;
@@ -559,7 +755,28 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
   }
   function submitComposed() {
     if (busy || submitIssue) return;
+    if (doc.event === 'APPROVE') {
+      const send = prepare();
+      if (send) holdApproval(pr, send, false);
+      return;
+    }
     void submit();
+  }
+  /** Request changes or Comment from the decision bar: both need something to say. */
+  function decide(event: Exclude<ReviewEvent, 'APPROVE'>) {
+    if (busy) return;
+    const issue = issueFor(event);
+    if (issue) {
+      setEndNotice(issue);
+      endBodyRef.current?.focus();
+      return;
+    }
+    setEndNotice('');
+    void submit(event);
+  }
+  function jumpTo(comment: ReviewCommentDraft) {
+    if (sinceScoped && !changed?.has(comment.path)) setScope('all');
+    go(comment.path);
   }
 
   const keymap: QuickReviewKeymap | undefined = closing
@@ -574,8 +791,23 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
           h: () => scrollFileHorizontally(-1),
           l: () => scrollFileHorizontally(1),
           w: toggleWrapLines,
-          f: toCard,
-          Escape: () => (showingComments ? setShowingComments(false) : toCard()),
+          d: () => setDescribing((v) => !v),
+          ']': toggleContext,
+          '1': () => openContext('proof'),
+          '2': () => openContext('checks'),
+          '3': () => openContext('work'),
+          '4': () => openContext('comments'),
+          z: undoHeldApproval,
+          ...(changed ? { s: () => chooseScope(scope === 'since' ? 'all' : 'since') } : {}),
+          ...(allReviewed
+            ? {
+                a: () => approve(false),
+                Enter: () => approve(),
+                r: () => decide('REQUEST_CHANGES'),
+                c: () => decide('COMMENT'),
+              }
+            : {}),
+          Escape: toCard,
         }
       : mode === 'compose'
         ? { Escape: toCard }
@@ -585,6 +817,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
             Enter: openWalk,
             a: () => approve(),
             w: () => setMode('compose'),
+            z: undoHeldApproval,
             Escape: onClose,
           };
   useQuickReviewKeyboard(keymap);
@@ -629,11 +862,8 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
         }
         onReattach={() => {
           setReattachId(comment.id);
-          go(
-            files.some((f) => f.filename === comment.path)
-              ? comment.path
-              : (files[0]?.filename ?? null),
-          );
+          setScope('all');
+          go(paths.includes(comment.path) ? comment.path : (paths[0] ?? null));
           setMode('walk');
         }}
       />
@@ -644,6 +874,22 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
       await openUrl(detail.htmlUrl);
     } catch {
       setNotice('Could not open GitHub.');
+    }
+  }
+  async function askForProof(commit: string) {
+    if (!client || !detail.headSha) return;
+    try {
+      await postComment(
+        client,
+        detail.repoOwner,
+        detail.repoName,
+        detail.number,
+        `@${detail.authorLogin} could you post fresh proof for ${detail.headSha.slice(0, 7)}? The latest proof is for ${commit.slice(0, 7)}.`,
+      );
+      setNotice('Asked the author for fresh proof.');
+      conversation.reload();
+    } catch (err) {
+      toastError('Could not ask for fresh proof', err);
     }
   }
 
@@ -741,7 +987,76 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
     );
 
   const walking = mode === 'walk';
-  const generatedFile = file ? isGeneratedPath(file.filename) : false;
+  const generatedFile = prFile ? isGeneratedPath(prFile.filename) : false;
+  const folder = file?.filename.includes('/')
+    ? file.filename.slice(0, file.filename.lastIndexOf('/'))
+    : '';
+  const fileDrafts = doc.comments.filter((c) => c.path === file?.filename);
+  /**
+   * Drafts sit on their lines only in the unified PR diff: the split view
+   * cannot take them, and the interdiff numbers lines of the reviewed commit,
+   * which GitHub would not accept as anchors on the PR.
+   */
+  const inlineDrafts = !splitDiff && !sinceFile;
+  const autoMergeLabel = detail.autoMergeEnabled ? 'approve' : 'approve & auto-merge';
+  const walkShortcuts: Array<readonly [string, string]> = allReviewed
+    ? [
+        ['Enter', autoMergeLabel],
+        ...(detail.autoMergeEnabled ? [] : [['A', 'approve'] as const]),
+        ['R', 'request changes'],
+        ['C', 'comment'],
+        ['N/P', 'file'],
+        ['Esc', 'overview'],
+      ]
+    : [
+        ...(wrapLines || richDiffVisible ? [] : [['H/L', 'scroll horizontally'] as const]),
+        ['J/K', 'scroll'],
+        ['N/P', 'file'],
+        ['V', 'mark & next'],
+        ['D', 'description'],
+        [']', 'context panel'],
+        ['1–4', 'panel tab'],
+        ...(richDiffVisible ? [] : [['W', 'wrap lines'] as const]),
+        ...(changed ? [['S', 'since my review / all'] as const] : []),
+        ['Esc', 'overview'],
+      ];
+  const shortcuts: Array<readonly [string, string]> = [
+    ...(walking
+      ? walkShortcuts
+      : mode === 'compose'
+        ? [['Esc', 'back to the card'] as const]
+        : [
+            ['A/→', detail.autoMergeEnabled ? 'approve' : 'approve & auto merge'] as const,
+            ['W', 'write review'] as const,
+            ['←', 'review later'] as const,
+            ['Enter', 'review files'] as const,
+            ['Esc', 'close'] as const,
+          ]),
+    ...(heldApproval ? [['Z', 'undo approval'] as const] : []),
+  ];
+
+  const contextContent: Record<ContextTab, ReactNode> = {
+    proof: (
+      <QuickReviewProof
+        pr={detail}
+        proofs={proofs}
+        conversation={conversation}
+        since={since}
+        onAskForProof={client ? (commit) => void askForProof(commit) : undefined}
+      />
+    ),
+    checks: <ChecksTab pr={pr} detail={detail} />,
+    work: links.workItemIds.length ? (
+      <div className="qr-linked-items">
+        {links.workItemIds.map((id) => (
+          <LinkedWorkItemBadge key={id} workItemId={id} workItem={workItems.get(id)} />
+        ))}
+      </div>
+    ) : (
+      <p className="qr-muted">No linked work items.</p>
+    ),
+    comments: <QuickReviewDiscussion pr={detail} enabled conversation={conversation} />,
+  };
 
   return (
     <fieldset className="qr-workspace" disabled={busy} aria-busy={busy} data-mode={mode}>
@@ -766,6 +1081,7 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
               pr={pr}
               detail={detail}
               onFileSelect={(path) => {
+                if (sinceScoped && !changed?.has(path)) setScope('all');
                 go(path);
                 setMode('walk');
                 update((doc) => ({ ...doc, walked: true }));
@@ -811,15 +1127,75 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
             ref={walkRef}
             className="qr-walk"
             data-state={walkPhase}
+            data-context={contextOpen ? 'open' : 'rail'}
             aria-label="File walk"
             inert={walkPhase === 'closing'}
             aria-hidden={walkPhase === 'closing' || undefined}
           >
+            <QuickReviewPrHeader
+              pr={pr}
+              detail={detail}
+              workItemIds={links.workItemIds}
+              workItems={workItems}
+              commentCount={conversation.items.length}
+              reReview={!!since}
+              expanded={describing}
+              onToggleDescription={() => setDescribing((v) => !v)}
+              onOpenComments={() => openContext('comments')}
+              onOpenGitHub={() => void openGitHub()}
+            >
+              {since && (
+                <div className="qr-rereview">
+                  <History size={14} strokeWidth={2.25} aria-hidden="true" />
+                  <span>
+                    You {reviewVerb(since.review.state)} {formatAgo(since.review.submittedAt)} at{' '}
+                    <code>{since.review.commitId.slice(0, 7)}</code>.{' '}
+                    {since.files ? (
+                      <>
+                        <b>
+                          {since.commits} {since.commits === 1 ? 'commit' : 'commits'}
+                        </b>{' '}
+                        since, touching{' '}
+                        <b>
+                          {since.files.length} of {files.length}
+                        </b>{' '}
+                        files.
+                      </>
+                    ) : (
+                      'The branch was rewritten since, so every file is shown.'
+                    )}
+                  </span>
+                  {changed && (
+                    <Seg2
+                      size="sm"
+                      ariaLabel="Files to review"
+                      value={scope}
+                      onChange={chooseScope}
+                      options={[
+                        { value: 'since', label: `Since my review · ${changed.size}` },
+                        { value: 'all', label: `All files · ${files.length}` },
+                      ]}
+                    />
+                  )}
+                </div>
+              )}
+            </QuickReviewPrHeader>
             <QuickReviewNavigation
               document={doc}
-              groups={snapshot?.groups ?? []}
-              currentPath={file?.filename ?? null}
+              groups={walkGroups}
+              currentPath={prFile?.filename ?? null}
               onNavigate={go}
+              progress={walkProgress}
+              changed={changed ?? undefined}
+              unchanged={
+                sinceScoped && since
+                  ? {
+                      count: files.length - walkFiles.length,
+                      reviewedAgo: formatAgo(since.review.submittedAt),
+                      onShowAll: () => chooseScope('all'),
+                    }
+                  : undefined
+              }
             />
             <div className="qr-pane">
               {alert}
@@ -832,48 +1208,61 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                 </div>
               )}
               <div className="qr-pane__head">
-                {file ? (
+                {file && prFile ? (
                   <>
-                    <code className="qr-pane__path" title={file.filename}>
-                      {file.filename}
-                    </code>
-                    <span className="qr-muted">
+                    <button
+                      type="button"
+                      className="qr-pane__path"
+                      title={`${file.filename} · click to copy`}
+                      onClick={() =>
+                        void writeText(file.filename)
+                          .then(() => setNotice('Copied the file path.'))
+                          .catch(() => setNotice('Could not copy file path.'))
+                      }
+                    >
+                      {folder && <span className="qr-pane__dir">{folder}</span>}
+                      <b>
+                        {folder ? '/' : ''}
+                        {file.filename.split('/').pop()}
+                      </b>
+                    </button>
+                    <span className="qr-muted qr-pane__delta">
                       <span className="qr-positive">+{file.additions}</span>{' '}
                       <span className="qr-negative">−{file.deletions}</span>
                     </span>
-                    <span className="qr-muted">
-                      File {fileIndex + 1} of {files.length}
+                    <span className="qr-muted qr-pane__count">
+                      {fileIndex + 1} of {walkFiles.length}
                     </span>
-                    <span className="qr-spacer" />
-                    <label className="qr-pane__check">
-                      <input
-                        type="checkbox"
-                        checked={reviewed.has(file.filename)}
-                        onChange={toggleReviewed}
-                        disabled={!ready}
-                      />{' '}
-                      {reviewed.has(file.filename)
-                        ? 'Reviewed'
-                        : generatedFile
-                          ? 'Generated, skippable'
-                          : 'Not reviewed'}
-                    </label>
                   </>
                 ) : (
-                  <span className="qr-spacer qr-muted">
+                  <span className="qr-muted">
                     {loading ? 'Loading changed files…' : 'No file selected.'}
                   </span>
+                )}
+                <span className="qr-spacer" />
+                {!richDiffVisible && (
+                  <Seg2
+                    size="sm"
+                    ariaLabel="Diff layout"
+                    value={splitDiff ? 'split' : 'unified'}
+                    onChange={(value) => chooseSplit(value === 'split')}
+                    options={[
+                      { value: 'unified', label: 'Unified' },
+                      { value: 'split', label: 'Split' },
+                    ]}
+                  />
                 )}
                 <Button
                   variant="ghost"
                   size="sm"
+                  aria-label="Wrap lines"
                   aria-pressed={wrapLines}
                   aria-keyshortcuts="W"
                   className="qr-wrap-lines"
-                  disabled={showingComments || richDiffVisible}
+                  disabled={richDiffVisible}
                   onClick={toggleWrapLines}
                 >
-                  Wrap lines
+                  Wrap
                 </Button>
                 {imageFile && (
                   <Button
@@ -881,7 +1270,6 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                     size="sm"
                     aria-pressed={richDiff}
                     className="qr-rich-diff"
-                    disabled={showingComments}
                     onClick={() => {
                       setRichDiff(!richDiff);
                       writeReviewPreference(RICH_DIFF_KEY, !richDiff);
@@ -890,44 +1278,48 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                     Rich diff
                   </Button>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-pressed={showingComments}
-                  onClick={() => {
-                    setCommentsOpened(true);
-                    setShowingComments((v) => !v);
-                  }}
-                >
-                  {showingComments ? 'Back to diff' : 'Comments'}
-                </Button>
-              </div>
-              <div className="qr-main" hidden={!showingComments} data-quick-review-comments>
-                {commentsOpened && (
-                  <QuickReviewDiscussion
-                    pr={detail}
-                    enabled={commentsOpened}
-                    conversation={conversation}
-                  />
+                {prFile && (
+                  <label
+                    className="qr-pane__check"
+                    data-done={reviewed.has(prFile.filename) || undefined}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={reviewed.has(prFile.filename)}
+                      onChange={toggleReviewed}
+                      disabled={!ready}
+                    />
+                    {reviewed.has(prFile.filename)
+                      ? 'Reviewed'
+                      : generatedFile
+                        ? 'Generated, skippable'
+                        : 'Mark reviewed'}
+                  </label>
                 )}
               </div>
+              {sinceFile && since && (
+                <div className="qr-interdiff">
+                  <GitCommitHorizontal size={14} strokeWidth={2.25} aria-hidden="true" />
+                  <span>
+                    Showing <code>{since.review.commitId.slice(0, 7)}</code> →{' '}
+                    <code>{detail.headSha?.slice(0, 7)}</code>
+                    {since.latestMessage && <> · “{since.latestMessage}”</>}
+                  </span>
+                </div>
+              )}
               <div
                 className="qr-main"
                 ref={mainRef}
-                hidden={showingComments}
                 data-quick-review-content
                 data-wrap-lines={wrapLines}
               >
                 {file && (
                   <div key={file.filename} className="qr-diff">
-                    <details className="qr-context">
-                      <summary>PR description</summary>
-                      <PrDescription body={detail.body || 'No description provided.'} />
-                    </details>
                     <DiffFileSection
-                      key={`${file.filename}:${doc.headSha}:${doc.baseSha}`}
+                      key={`${file.filename}:${doc.headSha}:${doc.baseSha}:${sinceFile ? 'since' : 'all'}`}
                       file={file}
-                      viewMode="unified"
+                      header={false}
+                      viewMode={splitDiff && !richDiffVisible ? 'split' : 'unified'}
                       richContent={
                         richDiffVisible ? (
                           <ImageDiff
@@ -944,88 +1336,78 @@ function QuickReviewWorkspace({ pr, peeks, leaving, rising, closing, onClose }: 
                         void writeText(path).catch(() => setNotice('Could not copy file path.'))
                       }
                       onOpenInGitHub={() => void openGitHub()}
-                      onAddComment={ready ? addComment : undefined}
+                      onAddComment={inlineDrafts && ready ? addComment : undefined}
                       renderLineAttachment={(line) => {
-                        const anchor = reviewLineAnchor(line);
+                        const anchor = inlineDrafts ? reviewLineAnchor(line) : null;
                         return anchor
                           ? commentsByLine.get(`${anchor.side}:${anchor.line}`)?.map(commentView)
                           : null;
                       }}
                     />
-                    <p className="qr-notice qr-muted">
-                      {richDiffVisible
-                        ? 'Check both image revisions, then mark the file reviewed.'
-                        : 'End of file. Use + beside a line to add a draft comment.'}
-                    </p>
+                    {!inlineDrafts && !richDiffVisible && fileDrafts.map(commentView)}
+                    {allReviewed ? (
+                      <QuickReviewEndCard
+                        document={doc}
+                        update={update}
+                        last={fileIndex === walkFiles.length - 1}
+                        notice={endNotice}
+                        bodyRef={endBodyRef}
+                        onJump={jumpTo}
+                      />
+                    ) : (
+                      <p className="qr-notice qr-muted">
+                        {richDiffVisible
+                          ? 'Check both image revisions, then mark the file reviewed.'
+                          : sinceFile
+                            ? 'End of the changes since your review. Press S for the whole PR to comment on a line.'
+                            : splitDiff
+                              ? 'End of file. Switch to Unified to comment on a line.'
+                              : 'End of file. Use + beside a line to add a draft comment.'}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
             </div>
-            <div className="qr-foot" data-quick-review-actions>
-              <span className="qr-foot__left" data-quick-review-progress="">
-                {progress.reviewed} of {progress.total} reviewed, {progress.left} to go
-              </span>
-              {progress.generatedLeft > 0 && (
-                <Button variant="ghost" size="md" className="qr-skip-gen" onClick={skipGenerated}>
-                  Skip generated
-                </Button>
-              )}
-              <Button
-                variant="secondary"
-                size="md"
-                className="qr-prev"
-                aria-keyshortcuts="P"
-                disabled={!ready || fileIndex <= 0}
-                onClick={() => step(-1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="secondary"
-                size="md"
-                className="qr-next"
-                aria-keyshortcuts="N"
-                disabled={!ready || fileIndex < 0 || fileIndex >= files.length - 1}
-                onClick={() => step(1)}
-              >
-                Next file
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
-                className="qr-mark"
-                aria-keyshortcuts="V"
-                disabled={!ready || !file}
-                onClick={markAndNext}
-              >
-                Mark reviewed and next
-              </Button>
-              <Button
-                variant={progress.left === 0 ? 'primary' : 'secondary'}
-                size="md"
-                className="qr-finish"
-                aria-keyshortcuts="F"
-                onClick={toCard}
-              >
-                Finish review
-              </Button>
-            </div>
+            <QuickReviewContext
+              open={contextOpen}
+              tab={contextTab}
+              onTab={openContext}
+              onToggle={toggleContext}
+              checks={checks}
+              counts={{
+                proof: proofCount(proofs),
+                work: links.workItemIds.length,
+                comments: conversation.items.length,
+              }}
+            >
+              {contextContent[contextTab]}
+            </QuickReviewContext>
+            <QuickReviewDecisionBar
+              progress={progress}
+              draftCount={doc.comments.length}
+              ready={ready}
+              approveIssue={approveIssue}
+              autoMergeEnabled={!!detail.autoMergeEnabled}
+              canGoBack={fileIndex > 0}
+              canGoOn={fileIndex >= 0 && fileIndex < walkFiles.length - 1}
+              hasFile={!!prFile}
+              onSkipGenerated={skipGenerated}
+              onPrevious={() => step(-1)}
+              onNext={() => step(1)}
+              onMark={markAndNext}
+              onApprove={(autoMerge) => approve(autoMerge)}
+              onRequestChanges={() => decide('REQUEST_CHANGES')}
+              onComment={() => decide('COMMENT')}
+            />
           </section>
         )}
       </div>
       <footer className="qr-footer" data-walking={walking}>
+        <Shortcuts keys={shortcuts} />
+        <span className="qr-spacer" />
         <span role="status">
           {busy ? 'Submitting review…' : storageWarning || notice || 'Drafts saved on this device.'}
-        </span>
-        <span className="qr-spacer" />
-        <span className="qr-shortcuts">
-          {walking
-            ? richDiffVisible
-              ? 'J/K scroll vertically · V mark reviewed · N/P change file · F finish · Esc back'
-              : 'H/L scroll horizontally · J/K scroll vertically · W wrap lines · V mark reviewed · N/P change file · F finish · Esc back'
-            : mode === 'compose'
-              ? 'Esc back to the card'
-              : `A/→ ${detail.autoMergeEnabled ? 'approve' : 'approve & auto merge'} when enabled · W write review · ← review later · Enter review files · Esc close`}
         </span>
       </footer>
     </fieldset>

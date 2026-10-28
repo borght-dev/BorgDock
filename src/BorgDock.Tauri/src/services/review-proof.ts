@@ -1,4 +1,5 @@
 import type { ConversationEntry } from '@/hooks/usePrConversation';
+import type { PullRequest } from '@/types';
 
 export interface ProofImage {
   src: string;
@@ -57,13 +58,13 @@ export function reviewProofs(
         commit && headSha && /^[a-f0-9]{7,40}$/i.test(headSha)
           ? headSha.toLowerCase().startsWith(commit) || commit.startsWith(headSha.toLowerCase())
           : undefined;
+      // The excerpt is what the proof says: images and headings ("## Proof") are left out.
       const doc = new DOMParser().parseFromString(
-        body.replace(/!\[[^\]]*\]\([^)]*\)/g, ''),
+        body.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/^\s{0,3}#{1,6}\s.*$/gm, ''),
         'text/html',
       );
-      for (const node of doc.querySelectorAll('script,style')) node.remove();
-      for (const node of doc.querySelectorAll('p,div,li,h1,h2,h3,h4,h5,h6,br'))
-        node.append(doc.createTextNode(' '));
+      for (const node of doc.querySelectorAll('script,style,h1,h2,h3,h4,h5,h6')) node.remove();
+      for (const node of doc.querySelectorAll('p,div,li,br')) node.append(doc.createTextNode(' '));
       const excerpt = (doc.body.textContent ?? '')
         .replace(/[#*`]/g, '')
         .replace(/\s+/g, ' ')
@@ -80,4 +81,51 @@ export function reviewProofs(
       ];
     })
     .sort((a, b) => Date.parse(b.entry.createdAt) - Date.parse(a.entry.createdAt));
+}
+
+export interface ChecklistItem {
+  text: string;
+  done: boolean;
+}
+
+/** The task list items (`- [x] …`) of a PR description, in order. */
+export function descriptionChecklist(body: string): ChecklistItem[] {
+  return [...body.matchAll(/^\s*[-*+]\s+\[([ xX])\]\s+(.+)$/gm)].map((match) => ({
+    done: match[1] !== ' ',
+    text: match[2]!.replace(/[*_`]/g, '').trim(),
+  }));
+}
+
+const PROOF_HEADING =
+  /\b(proof|verification|verified|evidence|screenshots?|before|after|test plan)\b/i;
+
+/**
+ * The proof section of a PR description as a conversation entry: from the
+ * first heading that names proof, verification, evidence or screenshots to
+ * the next heading of the same or a higher level. Null when there is none.
+ */
+export function descriptionProof(
+  pr: Pick<PullRequest, 'authorLogin' | 'body' | 'createdAt'>,
+): ConversationEntry | null {
+  const lines = pr.body.split(/\r?\n/);
+  const start = lines.findIndex((line) => {
+    const heading = /^\s{0,3}(#{1,6})\s+(.*)$/.exec(line);
+    return !!heading && PROOF_HEADING.test(heading[2]!);
+  });
+  if (start < 0) return null;
+  const level = /^\s{0,3}(#{1,6})/.exec(lines[start]!)![1]!.length;
+  const end = lines.findIndex((line, index) => {
+    const heading = /^\s{0,3}(#{1,6})\s/.exec(line);
+    return index > start && !!heading && heading[1]!.length <= level;
+  });
+  const section = lines.slice(start, end < 0 ? undefined : end).join('\n');
+  return {
+    kind: 'comment',
+    id: 'description',
+    author: pr.authorLogin,
+    authorIsBot: false,
+    body: section,
+    sourceBody: section,
+    createdAt: pr.createdAt,
+  };
 }

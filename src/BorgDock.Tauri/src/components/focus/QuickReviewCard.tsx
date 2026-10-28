@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import type { ReactNode } from 'react';
 import { avatarInitials } from '@/components/pr/pr-card-data';
+import { PrLabels } from '@/components/shared/PrLabels';
 import { Avatar, Button } from '@/components/shared/primitives';
 import type { PullRequest, PullRequestWithChecks } from '@/types';
 import { formatAgo } from '@/utils/relative-time';
@@ -15,7 +16,7 @@ interface HeaderProps {
   extra?: ReactNode;
 }
 
-/** Author, repository, number and age over the title: every card of the deck has it. */
+/** Author, repository, number and age over the title and labels: every card of the deck has it. */
 export function QuickReviewCardHeader({ pr, now, extra }: HeaderProps) {
   const ago = formatAgo(pr.updatedAt, now);
   return (
@@ -30,9 +31,12 @@ export function QuickReviewCardHeader({ pr, now, extra }: HeaderProps) {
         {ago && <span>updated {ago}</span>}
         {extra && <span className="qr-card__over-extra">{extra}</span>}
       </div>
-      <h2 data-pr-title="" className="qr-card__title">
-        {pr.title}
-      </h2>
+      <div className="qr-card__titlerow">
+        <h2 data-pr-title="" className="qr-card__title">
+          {pr.title}
+        </h2>
+        <PrLabels pr={pr} className="qr-card__labels" />
+      </div>
     </header>
   );
 }

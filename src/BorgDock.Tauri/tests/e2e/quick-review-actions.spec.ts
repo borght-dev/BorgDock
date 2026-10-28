@@ -128,21 +128,29 @@ async function bootList(page: Page, patch?: string, autoMerge = false) {
   return reviews;
 }
 
-/** Walks every file: Skip generated, then V for each file left. */
+/** Walks every file: Skip generated, then V for each file left; Esc back to the card. */
 async function reviewAllFiles(page: Page) {
   await page.getByRole('button', { name: /^(Review files|Continue reviewing · \d+ left)$/ }).click();
-  await expect(page.getByText('0 of 5 reviewed, 3 to go')).toBeVisible();
+  const progress = page.locator('[data-quick-review-progress]');
+  await expect(progress).toHaveText('0 of 5 reviewed3 left');
   const skip = page.getByRole('button', { name: 'Skip generated' });
   await skip.click();
   await expect(skip).toHaveCount(0);
   for (let i = 0; i < 3; i++) await page.keyboard.press('v');
-  await expect(page.getByText('5 of 5 reviewed, 0 to go')).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath('walk-finish-shortcut.png') });
-  await page.keyboard.press('f');
+  await expect(progress).toHaveText('5 of 5 revieweddone');
+  // The last mark turns the footer into the decision bar: no Finish step.
+  await expect(page.locator('.qr-foot[data-done]')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('walk-decision-bar.png') });
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('navigation', { name: 'Review path' })).toHaveCount(0);
 }
 
+/** Approvals are posted when their Undo toast runs out. */
+const UNDO_WINDOW = { timeout: 10_000 };
+
 test('the row Review action opens Quick Review; Approve waits for the files', async ({ page }) => {
+  // Approvals wait 5 s for Undo before they are posted.
+  test.slow();
   const reviews = await bootList(page);
 
   // Only review and merge shapes get the slot: my PR and someone else's do not.
@@ -163,7 +171,7 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   await review.click();
 
   const dialog = page.getByRole('dialog', { name: 'Quick Review' });
-  await expect(dialog).toBeVisible();
+  await expect(dialog).toBeVisible({ timeout: 20_000 });
   // The row's action opened Quick Review, not the detail view.
   await expect(page.locator('.bd-viewstack')).toHaveAttribute('data-depth', '1');
   await expect(dialog.getByRole('article', { name: 'Pull request #3' })).toBeVisible();
@@ -185,12 +193,12 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   await expect.poll(() => diff.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   await page.keyboard.press('k');
   await expect.poll(() => diff.evaluate((element) => element.scrollTop)).toBe(0);
-  await expect(dialog.getByText('File 1 of 5')).toBeVisible();
+  await expect(dialog.getByText('1 of 5', { exact: true })).toBeVisible();
   await page.keyboard.press('n');
-  await expect(dialog.getByText('File 2 of 5')).toBeVisible();
+  await expect(dialog.getByText('2 of 5', { exact: true })).toBeVisible();
   await page.keyboard.press('p');
-  await expect(dialog.getByText('File 1 of 5')).toBeVisible();
-  await page.keyboard.press('f');
+  await expect(dialog.getByText('1 of 5', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
 
   await reviewAllFiles(page);
   await expect(dialog.getByRole('button', { name: 'Review files again' })).toBeVisible();
@@ -213,13 +221,15 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   await dialog.focus();
   await page.keyboard.press('Enter');
   await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
-  expect(reviews).toEqual([
-    { number: 3, body: { event: 'APPROVE', body: '', commit_id: 'sha3', comments: [] } },
-  ]);
+  await expect
+    .poll(() => reviews, UNDO_WINDOW)
+    .toEqual([{ number: 3, body: { event: 'APPROVE', body: '', commit_id: 'sha3', comments: [] } }]);
 });
 
 for (const alreadyEnabled of [false, true]) {
   test(`A approves and ${alreadyEnabled ? 'preserves existing' : 'enables'} auto merge`, async ({ page }) => {
+    // Approvals wait 5 s for Undo before they are posted.
+    test.slow();
     const reviews = await bootList(page, undefined, alreadyEnabled);
     const mutations: unknown[] = [];
     await page.route('https://api.github.com/graphql', (route) => {
@@ -243,6 +253,8 @@ for (const alreadyEnabled of [false, true]) {
     await row.hover();
     await row.getByRole('button', { name: 'Review #3' }).click();
     const dialog = page.getByRole('dialog', { name: 'Quick Review' });
+    // The overlay is a lazy chunk: on a cold dev server its first compile takes a while.
+    await expect(dialog).toBeVisible({ timeout: 20_000 });
     const primary = dialog.getByRole('button', {
       name: alreadyEnabled ? 'Approve' : 'Approve & auto merge', exact: true,
     });
@@ -252,9 +264,9 @@ for (const alreadyEnabled of [false, true]) {
     await expect(primary).toBeEnabled();
     await page.keyboard.press('a');
     await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
-    expect(reviews).toEqual([
-      { number: 3, body: { event: 'APPROVE', body: '', commit_id: 'sha3', comments: [] } },
-    ]);
+    await expect
+      .poll(() => reviews, UNDO_WINDOW)
+      .toEqual([{ number: 3, body: { event: 'APPROVE', body: '', commit_id: 'sha3', comments: [] } }]);
     await expect.poll(() => mutations).toEqual(alreadyEnabled ? [] : [
       { pullRequestId: 'PR_3', expectedHeadOid: 'sha3', mergeMethod: 'SQUASH' },
     ]);
@@ -283,12 +295,12 @@ test('full screen preserves the file walk and remembers the size across reloads'
   await dialog.getByRole('button', { name: 'Review files', exact: true }).click();
   await dialog.focus();
   await page.keyboard.press('v');
-  await expect(dialog.getByText('File 2 of 5')).toBeVisible();
+  await expect(dialog.getByText('2 of 5', { exact: true })).toBeVisible();
   const currentPath = await dialog.locator('.qr-file[aria-current]').getAttribute('title');
   await dialog.getByRole('button', { name: 'Exit full screen' }).click();
   await expect.poll(() => dialog.boundingBox()).toEqual(normalBounds);
   await expect(dialog.locator('.qr-file[aria-current]')).toHaveAttribute('title', currentPath!);
-  await expect(dialog.getByText('1 of 5 reviewed, 2 to go')).toBeVisible();
+  await expect(dialog.locator('[data-quick-review-progress]')).toHaveText('1 of 5 reviewed2 left');
   await dialog.getByRole('button', { name: 'Full screen', exact: true }).click();
   await expect.poll(() => dialog.boundingBox()).toEqual(fullBounds);
   await page.screenshot({ path: test.info().outputPath('quick-review-fullscreen.png') });
@@ -332,8 +344,8 @@ test('long diff lines scroll with H/L and wrap without changing review or draft 
   await expect.poll(() => scroller.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   await expect.poll(async () => (await line.boundingBox())!.height).toBeGreaterThan(originalHeight);
   expect(await line.textContent()).toBe(originalText);
-  await expect(dialog.getByText('File 1 of 5')).toBeVisible();
-  await expect(dialog.getByText('0 of 5 reviewed, 3 to go')).toBeVisible();
+  await expect(dialog.getByText('1 of 5', { exact: true })).toBeVisible();
+  await expect(dialog.locator('[data-quick-review-progress]')).toHaveText('0 of 5 reviewed3 left');
   await page.screenshot({ path: test.info().outputPath('quick-review-wrap-lines.png') });
   await dialog.getByRole('button', { name: 'Comment on new line 1' }).click();
   const draft = dialog.getByPlaceholder('Describe the issue or suggest a change...');
@@ -348,7 +360,7 @@ test('long diff lines scroll with H/L and wrap without changing review or draft 
   await wrap.click();
   await dialog.focus();
   await page.keyboard.press('n');
-  await expect(dialog.getByText('File 2 of 5')).toBeVisible();
+  await expect(dialog.getByText('2 of 5', { exact: true })).toBeVisible();
   await expect(wrap).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => scroller.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   await dialog.getByRole('button', { name: 'Close', exact: true }).click();
@@ -357,12 +369,12 @@ test('long diff lines scroll with H/L and wrap without changing review or draft 
   await row.getByRole('button', { name: 'Review #3' }).click();
   await dialog.getByRole('button', { name: /^(Review files|Continue reviewing)/ }).click();
   await expect(wrap).toHaveAttribute('aria-pressed', 'true');
-  await dialog.getByRole('button', { name: 'Comments', exact: true }).click();
-  await expect(wrap).toBeDisabled();
-  await dialog.focus();
-  await page.keyboard.press('w');
+  // Comments open beside the diff: the diff and its wrapping stay as they were.
+  const comments = dialog.getByRole('tab', { name: /^Comments/ });
+  await comments.click();
+  await expect(comments).toHaveAttribute('aria-selected', 'true');
   await expect(wrap).toHaveAttribute('aria-pressed', 'true');
-  await dialog.getByRole('button', { name: 'Back to diff', exact: true }).click();
+  await expect(line).toBeVisible();
 });
 
 test('rich image diffs show exact revisions, file lifecycle changes, and SVG text fallback', async ({ page }) => {
@@ -415,7 +427,7 @@ test('rich image diffs show exact revisions, file lifecycle changes, and SVG tex
   await page.keyboard.press('Escape');
   await review.focus();
   await page.keyboard.press('v');
-  await expect(review.getByText('1 of 5 reviewed, 4 to go')).toBeVisible();
+  await expect(review.locator('[data-quick-review-progress]')).toHaveText('1 of 5 reviewed4 left');
   await expect(comparison.getByText('New image', { exact: true })).toBeVisible();
   await expect(comparison.getByAltText('After: images/new.png')).toBeVisible();
   await review.locator('.qr-file[title="images/removed.png"]').click();
@@ -438,6 +450,8 @@ test('rich image diffs show exact revisions, file lifecycle changes, and SVG tex
 test('approving the top card of a queue flings it right and the next card rises', async ({
   page,
 }) => {
+  // Approvals wait 5 s for Undo before they are posted.
+  test.slow();
   const reviews = await bootList(page);
   // Shift+R: every review waiting on me.
   await page.keyboard.press('Shift+R');
@@ -457,7 +471,7 @@ test('approving the top card of a queue flings it right and the next card rises'
   await expect(dialog.getByRole('article', { name: `Pull request #${second}` })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Approve', exact: true })).toBeDisabled();
   await expect(dialog.locator('.qr-card--gone-right')).toHaveCount(0);
-  expect(reviews.map((r) => r.number)).toEqual([first]);
+  await expect.poll(() => reviews.map((r) => r.number), UNDO_WINDOW).toEqual([first]);
 
   // Review later flings the last card left and ends on the summary.
   await page.keyboard.press('ArrowLeft');

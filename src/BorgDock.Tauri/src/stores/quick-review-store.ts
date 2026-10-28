@@ -30,6 +30,11 @@ interface QuickReviewStoreState {
   startSinglePr: (pr: PullRequestWithChecks) => void;
   advance: (decision: ReviewDecision) => void;
   goBack: () => void;
+  /**
+   * Back to `pr` with its decision undone: an approval taken back with Undo,
+   * or one GitHub refused (`error`). Starts a session for it when none is open.
+   */
+  reopen: (pr: PullRequestWithChecks, error?: string) => void;
   setSubmitting: () => void;
   setError: (error: string) => void;
   clearError: () => void;
@@ -112,6 +117,21 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
         if (currentIndex > 0) {
           set({ currentIndex: currentIndex - 1, state: 'reviewing', error: null });
         }
+      },
+
+      reopen: (pr, error) => {
+        const { queue, decisions } = get();
+        const key = prRowKey(pr.pullRequest);
+        const index = queue.findIndex((queued) => prRowKey(queued.pullRequest) === key);
+        const next = new Map(decisions);
+        next.delete(key);
+        set({
+          state: error ? 'error' : 'reviewing',
+          error: error ?? null,
+          ...(index >= 0
+            ? { currentIndex: index, decisions: next }
+            : { queue: [pr], currentIndex: 0, decisions: new Map() }),
+        });
       },
 
       setSubmitting: () => set({ state: 'submitting', error: null }),

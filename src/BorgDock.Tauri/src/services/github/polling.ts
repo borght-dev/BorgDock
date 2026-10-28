@@ -9,7 +9,7 @@ import type {
 } from '@/types';
 import { aggregatePrWithChecks } from './aggregate';
 import type { GitHubClient } from './client';
-import { aggregateReviewStatus, mapReviewState } from './pulls';
+import { aggregateReviewStatus, labelColorsOf, mapReviewState } from './pulls';
 
 const log = createLogger('github:polling');
 
@@ -94,6 +94,7 @@ const PR_FIELDS = /* GraphQL */ `
           labels(first: 20) {
             nodes {
               name
+              color
             }
           }
           reviewRequests(first: 20) {
@@ -287,7 +288,7 @@ interface GqlPrNode {
   baseRefName: string;
   headRefName: string;
   headRefOid: string;
-  labels: { nodes: Array<{ name: string }> } | null;
+  labels: { nodes: Array<{ name: string; color: string }> } | null;
   reviewRequests: { nodes: Array<{ requestedReviewer: GqlRequestedReviewer | null }> } | null;
   commits: {
     totalCount: number;
@@ -528,6 +529,7 @@ function mapNode(node: GqlPrNode, owner: string, repo: string): PullRequestWithC
     reviewStatus,
     commentCount: node.comments.totalCount + node.reviewThreads.totalCount,
     labels: (node.labels?.nodes ?? []).map((l) => l.name).filter((n) => n.length > 0),
+    labelColors: labelColorsOf(node.labels?.nodes ?? []),
     additions: node.additions,
     deletions: node.deletions,
     changedFiles: node.changedFiles,
