@@ -204,7 +204,7 @@ export function seedActivity({
     threads: [
       makeThread({
         id: 'a',
-        slot: 'W3',
+        place: 'W3',
         title: 'Fix login',
         status: 'question',
         questionRequestId: 'req-1',
@@ -226,7 +226,7 @@ export function seedActivity({
         id: 'mini:b',
         hostId: 'mini',
         hostLabel: 'Mac mini',
-        slot: 'M2',
+        place: 'M2',
         status: 'plan',
         run: {
           id: 'run:thread:b:ordinal:4',
@@ -241,8 +241,8 @@ export function seedActivity({
           lastVisitedAt: null,
         },
       }),
-      makeThread({ id: 'c', slot: 'W1' }),
-      makeThread({ id: 'd', slot: 'W2', status: 'failed' }),
+      makeThread({ id: 'c', place: 'W1' }),
+      makeThread({ id: 'd', place: 'W2', status: 'failed' }),
     ],
   });
   useCiFailuresStore.setState({

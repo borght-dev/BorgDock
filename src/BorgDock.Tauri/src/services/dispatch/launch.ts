@@ -3,15 +3,18 @@ import {
   type T3Catalogue,
   type T3ModelOption,
   type T3ModelSelection,
+  type T3Workspace,
   t3LaunchThread,
+  t3SendMessage,
   t3ShowThread,
 } from '@/services/t3/api';
 import { type RunKind, useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { configuredHosts, rawId, scopedId } from './hosts';
 import { assignItemToMe, moveItemState } from './items';
+import { canContinue, type LaunchTarget, targetPlace } from './launch-target';
 import { dispatchAdoClient, syncAll } from './sync';
-import type { AgentThread, DispatchItem, ItemOverview, Slot, SyncScope } from './types';
+import type { AgentThread, DispatchItem, ItemOverview, SyncScope } from './types';
 
 /**
  * How the agent begins. `plan`: propose a plan and wait. `work`: straight to
@@ -283,8 +286,9 @@ export function preferredModel(models: readonly LaunchModel[], lastPicked: strin
 
 export interface StartRequest {
   item: DispatchItem;
-  slot: Slot;
-  model: LaunchModel;
+  target: LaunchTarget;
+  /** Absent when the target continues a thread: it keeps its own model. */
+  model: LaunchModel | undefined;
   effort: string | null;
   mode: LaunchMode;
   /** The first message, as edited in the sheet. */
@@ -309,67 +313,105 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** What `launchInSlot` starts: a titled thread with its first message, in a free slot. */
-export interface SlotLaunch {
-  slot: Slot;
-  model: LaunchModel;
+/** What `launchAt` starts: a titled thread with its first message. */
+export interface TargetLaunch {
+  target: LaunchTarget;
+  /** Absent when the target continues a thread: it keeps its own model. */
+  model: LaunchModel | undefined;
   effort: string | null;
   title: string;
   prompt: string;
 }
 
+export function hostRefOf(hostId: string) {
+  const host = configuredHosts(useSettingsStore.getState().settings).find((h) => h.id === hostId);
+  return { id: hostId, baseUrl: host?.baseUrl };
+}
+
+/** Where T3 runs a new thread for `target`: its project and the checkout in it. */
+function workspaceOf(target: Exclude<LaunchTarget, { kind: 'continue' }>): {
+  projectId: string;
+  workspace: T3Workspace;
+} {
+  if (target.kind === 'worktree') {
+    return {
+      projectId: target.project.id,
+      workspace: { type: 'worktree', baseRef: target.baseRef },
+    };
+  }
+  const { thread } = target;
+  return {
+    projectId: thread.projectId,
+    workspace: thread.worktreePath
+      ? { type: 'existingWorktree', worktreePath: thread.worktreePath, branch: thread.branch }
+      : { type: 'root' },
+  };
+}
+
 /**
- * Start a thread in a free slot and resolve with its scoped id. Every T3
- * launch goes through here: Dispatch's item threads and runs, and related CI
- * failure investigations.
+ * Start an agent where `target` says and resolve with its thread's scoped id.
+ * Every T3 launch goes through here: Dispatch's item threads and runs,
+ * workstream runs and related CI failure investigations.
  */
-export async function launchInSlot(request: SlotLaunch): Promise<string> {
-  const { slot, model } = request;
+export async function launchAt(request: TargetLaunch): Promise<string> {
+  const { target, model } = request;
   const written = request.prompt.trim();
   if (!written) throw new Error('The first message is empty.');
   if (written.length > PROMPT_LIMIT) {
     throw new Error('The first message is longer than 20,000 characters.');
   }
-  if (!slot.available) throw new Error(`${slot.hostLabel} is offline.`);
-  if (slot.state !== 'free') {
-    throw new Error(`${slot.name} already has an open thread. Settle it or pick another slot.`);
+  const host = hostRefOf(target.hostId);
+  if (target.kind === 'continue') {
+    if (!canContinue(target.thread)) {
+      throw new Error(
+        `${target.thread.title} is still at work. Start a new thread in its checkout.`,
+      );
+    }
+    await t3SendMessage(host, rawId(target.hostId, target.thread.id), written, false);
+    return target.thread.id;
   }
-  const settings = useSettingsStore.getState().settings;
-  const host = configuredHosts(settings).find((h) => h.id === slot.hostId);
-  const rawThreadId = await t3LaunchThread(
-    { id: slot.hostId, baseUrl: host?.baseUrl },
-    {
-      projectId: rawId(slot.hostId, slot.id),
-      title: request.title.slice(0, TITLE_LIMIT),
-      modelSelection: model.selection(model.efforts.length > 0 ? request.effort : null),
-      prompt: withVault(written),
-    },
-  );
-  return scopedId(slot.hostId, rawThreadId);
+  if (!model) throw new Error('Pick a model.');
+  const { projectId, workspace } = workspaceOf(target);
+  const rawThreadId = await t3LaunchThread(host, {
+    projectId: rawId(target.hostId, projectId),
+    title: request.title.slice(0, TITLE_LIMIT),
+    modelSelection: model.selection(model.efforts.length > 0 ? request.effort : null),
+    prompt: withVault(written),
+    workspace,
+  });
+  return scopedId(target.hostId, rawThreadId);
+}
+
+/** The repository a target works in, remembered so the next sheet starts there. */
+export function rememberTarget(target: LaunchTarget): void {
+  const repository =
+    target.kind === 'worktree'
+      ? (target.project.repository?.key ?? null)
+      : (useDispatchStore.getState().projects.find((p) => p.id === target.thread.projectId)
+          ?.repository?.key ?? null);
+  useDispatchStore.getState().rememberTarget({ hostId: target.hostId, repository });
 }
 
 /**
- * Start an agent on `item` in `slot`: launch the thread, link it to the item,
+ * Start an agent on `item` where `target` says: launch the thread, link it to the item,
  * then do the ADO steps that were asked for. The thread runs by then, so an
  * ADO step that fails is reported, not rolled back.
  */
 export async function startThread(request: StartRequest): Promise<StartResult> {
-  const { item, slot, model } = request;
+  const { item, target, model } = request;
   const written = request.prompt.trim();
-  const threadId = await launchInSlot({
-    slot,
+  const threadId = await launchAt({
+    target,
     model,
     effort: request.effort,
     title: `AB#${item.id} ${item.title}`,
     prompt: request.mode === 'plan' && written ? withPlanFirst(written) : written,
   });
   const settings = useSettingsStore.getState().settings;
-  const host = configuredHosts(settings).find((h) => h.id === slot.hostId);
-  const hostRef = { id: slot.hostId, baseUrl: host?.baseUrl };
-  const rawThreadId = rawId(slot.hostId, threadId);
   const store = useDispatchStore.getState();
   store.linkThread(threadId, item.id);
-  store.rememberLaunch(model.id, request.effort, request.mode);
+  if (model) store.rememberLaunch(model.id, request.effort, request.mode);
+  rememberTarget(target);
 
   const warnings: string[] = [];
   const client = dispatchAdoClient();
@@ -384,24 +426,14 @@ export async function startThread(request: StartRequest): Promise<StartResult> {
     );
   }
   if (request.openInT3) {
-    await t3ShowThread(hostRef, rawThreadId, settings.agents?.t3Path).catch((error) =>
-      warnings.push(`T3 did not open: ${errorText(error)}`),
-    );
+    await t3ShowThread(
+      hostRefOf(target.hostId),
+      rawId(target.hostId, threadId),
+      settings.agents?.t3Path,
+    ).catch((error) => warnings.push(`T3 did not open: ${errorText(error)}`));
   }
   syncAll(true);
   return { threadId, warnings };
-}
-
-/** The free slot an item's last thread ran in: the natural place for a QA or Done handoff. */
-export function lastSlotOf(
-  threads: readonly AgentThread[],
-  slots: readonly Slot[],
-): Slot | undefined {
-  const last = threads[0];
-  if (!last) return undefined;
-  return slots.find(
-    (slot) => slot.id === last.projectId && slot.available && slot.state === 'free',
-  );
 }
 
 export type { T3Catalogue };
@@ -417,8 +449,8 @@ export interface RunRequest {
   /** For a sync, the states of the items it was given, and their ids. */
   states: string[];
   itemIds: number[];
-  slot: Slot;
-  model: LaunchModel;
+  target: LaunchTarget;
+  model: LaunchModel | undefined;
   effort: string | null;
   prompt: string;
   openInT3: boolean;
@@ -431,9 +463,9 @@ export interface RunRequest {
  * one item is that item's thread: its row shows the agent at work.
  */
 export async function startRun(request: RunRequest): Promise<string> {
-  const { slot, model } = request;
-  const threadId = await launchInSlot({
-    slot,
+  const { target, model } = request;
+  const threadId = await launchAt({
+    target,
     model,
     effort: request.effort,
     title: `Dispatch: ${request.label}`,
@@ -445,7 +477,10 @@ export async function startRun(request: RunRequest): Promise<string> {
       .filter((o) => request.itemIds.includes(o.item.id))
       .map((o) => [String(o.item.id), o.item.state]),
   );
-  store.linkThread(threadId, request.scope === 'item' ? (request.itemIds[0] ?? null) : null);
+  // A continued thread keeps the item it belongs to.
+  if (target.kind !== 'continue') {
+    store.linkThread(threadId, request.scope === 'item' ? (request.itemIds[0] ?? null) : null);
+  }
   store.addRun({
     threadId,
     kind: request.kind,
@@ -453,17 +488,20 @@ export async function startRun(request: RunRequest): Promise<string> {
     states: request.states,
     itemIds: request.itemIds,
     fromStates,
-    slot: slot.name,
+    where: targetPlace(target),
     startedAt: new Date().toISOString(),
   });
-  store.rememberRunChoice({ slotId: slot.id, model: model.id, effort: request.effort });
+  rememberTarget(target);
+  store.rememberRunChoice({
+    target: useDispatchStore.getState().launchPreferences.target,
+    model: model?.id ?? store.runChoice.model,
+    effort: model ? request.effort : store.runChoice.effort,
+  });
   if (request.openInT3) {
-    const settings = useSettingsStore.getState().settings;
-    const host = configuredHosts(settings).find((h) => h.id === slot.hostId);
     await t3ShowThread(
-      { id: slot.hostId, baseUrl: host?.baseUrl },
-      rawId(slot.hostId, threadId),
-      settings.agents?.t3Path,
+      hostRefOf(target.hostId),
+      rawId(target.hostId, threadId),
+      useSettingsStore.getState().settings.agents?.t3Path,
     ).catch(() => {});
   }
   syncAll(true);

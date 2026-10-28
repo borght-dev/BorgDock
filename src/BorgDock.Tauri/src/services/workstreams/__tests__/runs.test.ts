@@ -41,7 +41,7 @@ describe('startWorkstreamRun', () => {
       startWorkstreamRun({
         workstreamId: id,
         kind: 'review',
-        slot: { available: true, state: 'free' } as never,
+        target: { kind: 'worktree', hostId: 'local' } as never,
         model: {} as never,
         effort: null,
         prompt: 'Review it',

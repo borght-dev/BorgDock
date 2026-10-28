@@ -11,7 +11,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import {
+  LAUNCH_BRANCHES,
   LAUNCH_CATALOGUE,
+  MAC_T3_HOST,
   makeDispatchScene,
   makeLaneSyncScene,
   makeRunScene,
@@ -338,6 +340,7 @@ function seedDispatch(
         ? makeRunScene()
         : { threads: [], runs: [] };
   getControl().invokeResponses.t3_catalogue = runSheet ? WIDE_CATALOGUE : LAUNCH_CATALOGUE;
+  getControl().invokeResponses.t3_list_branches = LAUNCH_BRANCHES;
   useDispatchStore.setState({
     briefFilter,
     launch: launching && selectedItemId !== null ? { itemId: selectedItemId } : null,
@@ -358,6 +361,7 @@ function seedDispatch(
       project: 'Shop',
       personalAccessToken: 'storybook-token',
     },
+    agents: { ...useSettingsStore.getState().settings.agents, t3Hosts: [MAC_T3_HOST] },
   } as never);
 }
 
@@ -483,9 +487,27 @@ export const RailDispatchOutOfSync: Story = {
   args: { section: 'dispatch', dispatchItem: 59403 },
 };
 
-/** The launch sheet: a slot, a model, how the agent begins and its first message. */
+/** The launch sheet: a new worktree in an environment, a model, how the agent begins and its first message. */
 export const RailDispatchLaunch: Story = {
   args: { section: 'dispatch', dispatchItem: 60201, launching: true },
+};
+
+/** A QA handoff: the sheet goes back to the thread that did the work, to continue it. */
+export const RailDispatchLaunchHandoff: Story = {
+  args: { section: 'dispatch', dispatchItem: 60102, launching: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('radio', { name: 'Update for QA' }));
+  },
+};
+
+/** The launch sheet on an earlier thread that is still at work: a new thread starts beside it. */
+export const RailDispatchLaunchExistingThread: Story = {
+  args: { section: 'dispatch', dispatchItem: 60031, launching: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Existing thread' }));
+  },
 };
 
 /** Dispatch as a board: needs you, agents working, up next and not started. */
@@ -513,7 +535,7 @@ export const RailDispatchStatesSyncing: Story = {
   args: { section: 'dispatch', dispatchView: 'walk', dispatchItem: null, dispatchRuns: 'syncing' },
 };
 
-/** The run sheet for Sync all: the items, a slot, a model, the message and the schedule. */
+/** The run sheet for Sync all: the items, where it runs, a model, the message and the schedule. */
 export const RailDispatchSyncSheet: Story = {
   args: {
     section: 'dispatch',
@@ -523,7 +545,7 @@ export const RailDispatchSyncSheet: Story = {
   },
 };
 
-/** Fix out of sync: the items grouped by where they move, a slot, a model and its reasoning. */
+/** Fix out of sync: the items grouped by where they move, where it runs, a model and its reasoning. */
 export const RailDispatchFixSheet: Story = {
   args: {
     section: 'dispatch',

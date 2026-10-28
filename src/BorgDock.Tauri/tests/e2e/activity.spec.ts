@@ -223,7 +223,7 @@ test('an answer the thread no longer asks falls back to Open', async ({ page }) 
         hostLabel: 'This laptop',
         available: true,
         projectId: 'p',
-        slot: 'W3',
+        place: 'W3',
         title: 'Fix login',
         branch: null,
         createdAt: '2026-01-01T08:00:00.000Z',

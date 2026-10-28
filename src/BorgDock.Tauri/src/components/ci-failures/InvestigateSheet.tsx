@@ -3,11 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { LaunchChoiceFields, useLaunchChoice } from '@/components/dispatch/LaunchChoice';
 import { Button } from '@/components/shared/primitives';
 import { parseScope } from '@/services/ci-failures/identity';
-import {
-  AlreadyOwnedError,
-  launchInvestigation,
-  slotForRepo,
-} from '@/services/ci-failures/investigate';
+import { AlreadyOwnedError, launchInvestigation } from '@/services/ci-failures/investigate';
 import {
   investigationCandidates,
   investigationPrompt,
@@ -48,17 +44,17 @@ function useGroup(groupId: string) {
 }
 
 /**
- * InvestigateSheet — one agent for a whole failure group. Pick a T3 slot and
- * model (or a terminal session), pick the evidence the first message carries
+ * InvestigateSheet — one agent for a whole failure group. Pick where it runs in
+ * T3 and the model (or a terminal session), pick the evidence the first message carries
  * and read it before it goes out. Launching claims the group first.
  */
 export function InvestigateSheet({ groupId, onClose }: InvestigateSheetProps) {
   const { detail, error } = useGroup(groupId);
-  const slots = useDispatchStore((s) => s.overview?.slots ?? []);
+  const t3Known = useDispatchStore((s) => s.projects.length > 0);
   const defaultProvider = useSettingsStore((s) => s.settings.agents?.defaultProvider ?? 'claude');
   const parts = detail ? parseScope(detail.summary.scope) : null;
-  const choice = useLaunchChoice(slots, parts ? slotForRepo(slots, parts.repo) : null);
-  const [mode, setMode] = useState<'t3' | 'terminal'>(slots.length > 0 ? 't3' : 'terminal');
+  const choice = useLaunchChoice({ repository: parts ? `${parts.owner}/${parts.repo}` : null });
+  const [mode, setMode] = useState<'t3' | 'terminal'>(t3Known ? 't3' : 'terminal');
   const candidates = useMemo(() => (detail ? investigationCandidates(detail) : []), [detail]);
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const [edited, setEdited] = useState<string | null>(null);
@@ -89,8 +85,7 @@ export function InvestigateSheet({ groupId, onClose }: InvestigateSheetProps) {
           shortId: shortGroupId(detail.summary.id),
         })
       : '');
-  const ready =
-    !!detail && chosen.length > 0 && (mode === 'terminal' || (!!choice.slot && !!choice.model));
+  const ready = !!detail && chosen.length > 0 && (mode === 'terminal' || choice.ready);
 
   const toggle = (id: string) => {
     setEdited(null);
@@ -109,8 +104,14 @@ export function InvestigateSheet({ groupId, onClose }: InvestigateSheetProps) {
       await launchInvestigation(
         detail,
         prompt,
-        mode === 't3' && choice.slot && choice.model
-          ? { kind: 't3', slot: choice.slot, model: choice.model, effort: choice.effort, openInT3 }
+        mode === 't3' && choice.target
+          ? {
+              kind: 't3',
+              target: choice.target,
+              model: choice.model,
+              effort: choice.effort,
+              openInT3,
+            }
           : { kind: 'terminal', provider: defaultProvider },
       );
       showToast({
@@ -184,7 +185,7 @@ export function InvestigateSheet({ groupId, onClose }: InvestigateSheetProps) {
                   role="radio"
                   aria-checked={mode === 't3'}
                   className={clsx('bd-dp-sheet__day', mode === 't3' && 'bd-dp-sheet__day--on')}
-                  disabled={slots.length === 0}
+                  disabled={!t3Known}
                   onClick={() => setMode('t3')}
                 >
                   T3 thread
@@ -202,7 +203,7 @@ export function InvestigateSheet({ groupId, onClose }: InvestigateSheetProps) {
                   Terminal ({defaultProvider === 'codex' ? 'Codex' : 'Claude'})
                 </button>
               </div>
-              {slots.length === 0 && (
+              {!t3Known && (
                 <p className="bd-dp-sheet__hint">
                   Pair T3 in Settings → Agents to run it as a thread BorgDock can follow.
                 </p>

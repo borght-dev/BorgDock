@@ -2,7 +2,6 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { makeDispatchScene } from '../__fixtures__/dispatch-data';
 import { DispatchBoard } from '../DispatchBoard';
-import { DISPATCH_ITEM_MIME } from '../SlotStrip';
 import type { DispatchActions } from '../unit-actions';
 
 const NOW = Date.parse('2026-10-12T12:00:00Z');
@@ -30,7 +29,6 @@ function renderBoard(openId: number | null = null) {
   render(
     <DispatchBoard
       items={scene.overview.items}
-      slots={scene.overview.slots}
       openId={openId}
       now={NOW}
       busy={false}
@@ -103,17 +101,5 @@ describe('DispatchBoard', () => {
     const { onSelect } = renderBoard();
     fireEvent.click(screen.getByRole('button', { name: /^Upgrade the report renderer, AB#60150/ }));
     expect(onSelect).toHaveBeenCalledWith(60150);
-  });
-
-  it('lets only an item without a running agent be dragged, carrying its id', () => {
-    renderBoard();
-    const running = within(column('Agents working')).getAllByRole('article')[0] as HTMLElement;
-    const idle = within(column('Not started')).getAllByRole('article')[0] as HTMLElement;
-    expect(running).toHaveAttribute('draggable', 'false');
-    expect(idle).toHaveAttribute('draggable', 'true');
-
-    const setData = vi.fn();
-    fireEvent.dragStart(idle, { dataTransfer: { setData, effectAllowed: '' } });
-    expect(setData).toHaveBeenCalledWith(DISPATCH_ITEM_MIME, '60201');
   });
 });

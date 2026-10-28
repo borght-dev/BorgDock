@@ -25,7 +25,7 @@ function factsOf(host: DispatchHost, thread: AgentThread, items: number[]): T3Th
   return {
     rawId: rawId(host.id, thread.id),
     title: thread.title,
-    slot: thread.slot,
+    slot: thread.place,
     createdAt: thread.createdAt,
     runId: run.id,
     runCompletedAt: run.completedAt,

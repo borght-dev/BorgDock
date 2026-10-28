@@ -1,11 +1,18 @@
 import { t3Catalogue } from '@/services/t3/api';
-import { useDispatchStore } from '@/stores/dispatch-store';
+import { type RememberedTarget, useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { showToast, toastError } from '@/stores/toast-store';
 import type { DispatchSyncSchedule } from '@/types';
-import { configuredHosts } from './hosts';
-import { configuredPrompts, launchModels, preferredModel, startRun, syncPrompt } from './launch';
-import type { Slot, SyncScope } from './types';
+import {
+  configuredPrompts,
+  hostRefOf,
+  launchModels,
+  preferredModel,
+  startRun,
+  syncPrompt,
+} from './launch';
+import { type LaunchTarget, repositoryProjects, targetPlace } from './launch-target';
+import type { AgentProject, SyncScope } from './types';
 import { preselected, syncCandidates, syncLabel } from './walk';
 
 const EVERY_ITEM: SyncScope = { kind: 'all' };
@@ -32,10 +39,16 @@ export function scheduleDue(
   return lastRunDay !== localDay(now);
 }
 
-/** The slot a scheduled run takes: the last run's when it is free, else the first free one. */
-export function scheduledSlot(slots: readonly Slot[], lastSlotId: string | null): Slot | null {
-  const free = slots.filter((slot) => slot.available && slot.state === 'free');
-  return free.find((slot) => slot.id === lastSlotId) ?? free[0] ?? null;
+/** Where a scheduled run starts: a new worktree of the last run's repository, in its environment. */
+export function scheduledTarget(
+  projects: readonly AgentProject[],
+  last: RememberedTarget | null,
+): Extract<LaunchTarget, { kind: 'worktree' }> | null {
+  if (!last?.repository) return null;
+  const project = repositoryProjects(projects, last.hostId).find(
+    (p) => p.repository?.key === last.repository,
+  );
+  return project ? { kind: 'worktree', hostId: last.hostId, project, baseRef: null } : null;
 }
 
 /**
@@ -54,20 +67,23 @@ export async function runScheduleIfDue(now: Date = new Date()): Promise<void> {
   const picked = new Set(preselected(candidates, EVERY_ITEM));
   const units = candidates.filter((o) => picked.has(o.item.id));
   if (units.length === 0) return;
-  const slot = scheduledSlot(store.overview.slots, store.runChoice.slotId);
-  if (!slot) {
-    showToast({ tone: 'info', message: 'Scheduled sync skipped: every slot is busy.' });
+  const target = scheduledTarget(store.projects, store.runChoice.target);
+  if (!target) {
+    showToast({
+      tone: 'info',
+      message:
+        'Scheduled sync skipped: start Sync all by hand once, so it knows where to run, or that environment is offline.',
+    });
     return;
   }
   try {
-    const host = configuredHosts(settings).find((h) => h.id === slot.hostId);
-    const catalogue = await t3Catalogue({ id: slot.hostId, baseUrl: host?.baseUrl });
+    const catalogue = await t3Catalogue(hostRefOf(target.hostId));
     const models = launchModels(
       catalogue,
-      store.threads.filter((t) => t.hostId === slot.hostId),
+      store.threads.filter((t) => t.hostId === target.hostId),
     );
     const model = models.find((m) => m.id === preferredModel(models, store.runChoice.model));
-    if (!model) throw new Error(`${slot.hostLabel} lists no models.`);
+    if (!model) throw new Error(`${target.project.hostLabel} lists no models.`);
     const label = syncLabel(EVERY_ITEM, units.length);
     await startRun({
       kind: 'sync',
@@ -75,13 +91,16 @@ export async function runScheduleIfDue(now: Date = new Date()): Promise<void> {
       scope: EVERY_ITEM.kind,
       states: [...new Set(units.map((o) => o.item.state))],
       itemIds: units.map((o) => o.item.id),
-      slot,
+      target,
       model,
       effort: store.runChoice.effort,
       prompt: syncPrompt(units, configuredPrompts(settings.agents?.dispatchPrompts), EVERY_ITEM),
       openInT3: false,
     });
-    showToast({ tone: 'success', message: `Scheduled ${label} started in ${slot.name}.` });
+    showToast({
+      tone: 'success',
+      message: `Scheduled ${label} started in ${targetPlace(target)}.`,
+    });
   } catch (error) {
     toastError('Scheduled sync not started', error);
   }

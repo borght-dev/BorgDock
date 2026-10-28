@@ -11,7 +11,7 @@ import {
   Star,
   X,
 } from 'lucide-react';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, IconButton, Input, Pill } from '@/components/shared/primitives';
 import { createLogger } from '@/services/logger';
 
@@ -70,13 +70,6 @@ export interface CheckoutPanelProps {
   favoritesOnlyDefault?: boolean;
   windowsTerminalProfile?: string;
   onDismiss: () => void;
-  /**
-   * Called once a worktree holds the branch (already checked out, or right
-   * after a successful checkout). Set by flows that only need the worktree
-   * path, such as "Open a new thread in T3": the panel hands the path over
-   * instead of showing its launch buttons.
-   */
-  onWorktreeReady?: (worktreePath: string) => void;
   /** Adds a "T3" launch button next to Explorer / Terminal / Claude / VSCode. */
   onOpenInT3?: (worktreePath: string) => void;
 }
@@ -115,7 +108,6 @@ export function CheckoutPanel({
   favoritesOnlyDefault,
   windowsTerminalProfile,
   onDismiss,
-  onWorktreeReady,
   onOpenInT3,
 }: CheckoutPanelProps) {
   const defaultName = useMemo(() => sanitizeBranchForPath(branchName), [branchName]);
@@ -184,17 +176,6 @@ export function CheckoutPanel({
       cancelled = true;
     };
   }, [repoBasePath, branchName]);
-
-  // Hand the worktree path over as soon as one holds the branch. The ref
-  // keeps the effect from re-firing when the parent re-renders with a new
-  // callback identity for the same mode.
-  const readyPath = mode.kind === 'ready' || mode.kind === 'success' ? mode.worktreePath : null;
-  const handedOverRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!onWorktreeReady || !readyPath || handedOverRef.current === readyPath) return;
-    handedOverRef.current = readyPath;
-    onWorktreeReady(readyPath);
-  }, [onWorktreeReady, readyPath]);
 
   const nonMainWorktrees = useMemo(
     () => (worktrees ?? []).filter((w) => !w.isMainWorktree),

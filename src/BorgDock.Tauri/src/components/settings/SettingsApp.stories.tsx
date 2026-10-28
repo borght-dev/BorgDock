@@ -53,7 +53,7 @@ export const FirstLaunch: Story = {
 
 export const Agents: Story = {
   play: ({ canvasElement }) => {
-    canvasElement.querySelector('#field-t3-slot-pattern')?.scrollIntoView({ block: 'start' });
+    canvasElement.querySelector('#field-t3-pairing')?.scrollIntoView({ block: 'start' });
     const panel = canvasElement.querySelector('main');
     if (panel) panel.scrollTop -= 24;
   },

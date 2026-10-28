@@ -153,11 +153,6 @@ export interface AgentSettings {
   t3Model: string;
   t3ModelInstance: string;
   /**
-   * Regular expression a T3 project's title must match to count as a slot in
-   * Dispatch, e.g. `^W\d+$`. Empty: every T3 project is a slot.
-   */
-  t3SlotPattern?: string;
-  /**
    * First messages Dispatch starts an agent with, per way of beginning.
    * Placeholders: `{id}`, `{title}`, `{branch}`; `{items}` for sync;
    * `{iteration}`, `{assigned}` for suggest. An empty one uses the default.

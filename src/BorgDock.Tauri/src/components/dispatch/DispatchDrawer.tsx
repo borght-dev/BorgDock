@@ -1,12 +1,11 @@
 import { X } from 'lucide-react';
 import { IconButton } from '@/components/shared/primitives';
-import type { ItemOverview, Slot } from '@/services/dispatch/types';
+import type { ItemOverview } from '@/services/dispatch/types';
 import { DispatchDetail } from './DispatchDetail';
 import type { DispatchActions } from './unit-actions';
 
 interface DispatchDrawerProps {
   overview: ItemOverview;
-  slots: readonly Slot[];
   actions: DispatchActions;
   now: number;
   busy: boolean;
@@ -14,14 +13,7 @@ interface DispatchDrawerProps {
 }
 
 /** DispatchDrawer — an item's detail over the right side of the board or the walk. */
-export function DispatchDrawer({
-  overview,
-  slots,
-  actions,
-  now,
-  busy,
-  onClose,
-}: DispatchDrawerProps) {
+export function DispatchDrawer({ overview, actions, now, busy, onClose }: DispatchDrawerProps) {
   return (
     <aside className="bd-dp-drawer" aria-label="Work item">
       <header className="bd-dp-drawer__head">
@@ -34,7 +26,7 @@ export function DispatchDrawer({
           onClick={onClose}
         />
       </header>
-      <DispatchDetail overview={overview} slots={slots} actions={actions} now={now} busy={busy} />
+      <DispatchDetail overview={overview} actions={actions} now={now} busy={busy} />
     </aside>
   );
 }

@@ -27,7 +27,6 @@ import { useSettingsStore } from '@/stores/settings-store';
 import type { T3HostSettings } from '@/types/settings';
 import { LOCAL_HOST } from '../hosts';
 import {
-  compileSlotPattern,
   followHostList,
   resetHostSync,
   syncHost,
@@ -60,7 +59,7 @@ function snapshot(threads: T3Thread[], sequence = 1): T3Snapshot {
   return {
     changed: true,
     sequence,
-    projects: [{ id: 'p1', title: 'W1', workspaceRoot: 'D:/work/one' }],
+    projects: [{ id: 'p1', title: 'W1', workspaceRoot: 'D:/work/one', repository: null }],
     threads,
   };
 }
@@ -128,7 +127,7 @@ describe('toAgentThread', () => {
     });
     const thread = toAgentThread(LOCAL_HOST, t3Thread(), 'W1', previous);
     expect(thread.questionRequestId).toBe('req');
-    expect(thread.slot).toBe('W1');
+    expect(thread.place).toBe('W1');
     expect(thread.open).toBe(true);
   });
 
@@ -182,18 +181,6 @@ describe('toKnownPullRequest', () => {
       workItemIds: [60214],
       checks: { passed: 23, failed: 1, pending: 0, total: 24 },
     });
-  });
-});
-
-describe('compileSlotPattern', () => {
-  it('takes every project when the pattern is empty or does not compile', () => {
-    expect(compileSlotPattern(undefined)).toBeNull();
-    expect(compileSlotPattern('  ')).toBeNull();
-    expect(compileSlotPattern('([')).toBeNull();
-  });
-
-  it('compiles a pattern', () => {
-    expect(compileSlotPattern('^[MVW]\\d+$')?.test('W3')).toBe(true);
   });
 });
 
@@ -283,7 +270,7 @@ describe('syncHost', () => {
     expect(threads).toMatchObject([
       {
         id: 't1',
-        slot: 'W1',
+        place: 'W1',
         conversationReferences: { explicitIds: [60214], mentionedIds: [] },
         questionRequestId: 'req',
         lastAgentMessage: 'Row id or pixel offset?',

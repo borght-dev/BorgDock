@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { type ReactNode, useMemo } from 'react';
-import type { ItemOverview, Slot } from '@/services/dispatch/types';
+import type { ItemOverview } from '@/services/dispatch/types';
 import {
   type BriefFilter,
   type Lane,
@@ -10,7 +10,7 @@ import {
 } from '@/services/dispatch/walk';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { useUiStore } from '@/stores/ui-store';
-import { BriefStat, briefCounts, FilterBar, useBriefMatch } from './BriefFilters';
+import { BriefStat, briefCounts, FilterBar, useAgentsWorking, useBriefMatch } from './BriefFilters';
 import { DispatchDrawer } from './DispatchDrawer';
 import type { DispatchActions } from './unit-actions';
 import { WalkRow } from './WalkRow';
@@ -63,34 +63,30 @@ const FOLDED_LEAD: Record<BriefFilter, string> = {
 function WalkBriefing({
   items,
   lanes,
-  slots,
   selectedId,
   match,
   fix,
-  slotStrip,
   onPick,
 }: {
   items: readonly ItemOverview[];
   lanes: readonly Lane[];
-  slots: readonly Slot[];
   selectedId: number | null;
   match: ((overview: ItemOverview) => boolean) | null;
   fix?: ReactNode;
-  slotStrip?: ReactNode;
   onPick: (id: number) => void;
 }) {
   const shown = lanes.filter((lane) => lane.inWalk || lane.rows.length > 0);
+  const working = useAgentsWorking(items);
   return (
     <section className="bd-dp-brief" aria-label="Overview">
       <div className="bd-dp-brief__numbers">
         <div className="bd-dp-brief__stats">
-          {briefCounts(items, slots).map((count) => (
+          {briefCounts(items, working).map((count) => (
             <BriefStat key={count.filter} count={count}>
               {count.filter === 'outOfSync' && fix}
             </BriefStat>
           ))}
         </div>
-        {slotStrip}
       </div>
       <div className="bd-dp-brief__pipe">
         <span className="bd-dp-brief__caption">
@@ -188,7 +184,6 @@ function WalkLane({
 
 export interface DispatchWalkProps {
   items: readonly ItemOverview[];
-  slots: readonly Slot[];
   /** The item whose detail is open in the drawer. */
   openId: number | null;
   now: number;
@@ -206,8 +201,6 @@ export interface DispatchWalkProps {
   footer?: ReactNode;
   /** In the overview, under the out-of-sync count: the button that fixes them. */
   fix?: ReactNode;
-  /** In the overview, under the counts: the slots agents run in. */
-  slotStrip?: ReactNode;
 }
 
 /**
@@ -220,7 +213,6 @@ export interface DispatchWalkProps {
  */
 export function DispatchWalk({
   items,
-  slots,
   openId,
   now,
   busy,
@@ -232,7 +224,6 @@ export function DispatchWalk({
   laneNotice,
   footer,
   fix,
-  slotStrip,
 }: DispatchWalkProps) {
   const lanes = useMemo(() => walkLanes(items), [items]);
   const running = useRunningItems();
@@ -251,11 +242,9 @@ export function DispatchWalk({
         <WalkBriefing
           items={items}
           lanes={lanes}
-          slots={slots}
           selectedId={openId}
           match={match}
           fix={fix}
-          slotStrip={slotStrip}
           onPick={(id) => {
             onSelect(id);
             scrollToRow(id);
@@ -294,7 +283,6 @@ export function DispatchWalk({
       {open && (
         <DispatchDrawer
           overview={open}
-          slots={slots}
           actions={actions}
           now={now}
           busy={busy}

@@ -158,7 +158,7 @@ describe('unit copy', () => {
         makeThread({
           id: 't',
           status: 'question',
-          slot: 'W3',
+          place: 'W3',
           lastActivityAt: '2026-10-12T11:56:00Z',
         }),
       ],

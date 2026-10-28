@@ -1,7 +1,7 @@
 import { launchAgentSession, writePromptFile } from '@/services/claude-launcher';
-import { configuredHosts, rawId } from '@/services/dispatch/hosts';
-import { type LaunchModel, launchInSlot } from '@/services/dispatch/launch';
-import type { Slot } from '@/services/dispatch/types';
+import { rawId } from '@/services/dispatch/hosts';
+import { hostRefOf, type LaunchModel, launchAt } from '@/services/dispatch/launch';
+import type { LaunchTarget } from '@/services/dispatch/launch-target';
 import { findRepoConfig } from '@/services/repo-lookup';
 import { t3ShowThread } from '@/services/t3/api';
 import { ensureWorktree } from '@/services/worktree-lookup';
@@ -15,7 +15,13 @@ import * as store from './store-api';
 import type { CiClaim, CiGroupDetail } from './types';
 
 export type InvestigationTarget =
-  | { kind: 't3'; slot: Slot; model: LaunchModel; effort: string | null; openInT3: boolean }
+  | {
+      kind: 't3';
+      target: LaunchTarget;
+      model: LaunchModel | undefined;
+      effort: string | null;
+      openInT3: boolean;
+    }
   | { kind: 'terminal'; provider: AgentProvider };
 
 /** Someone claimed the group between opening the sheet and launching. */
@@ -24,15 +30,6 @@ export class AlreadyOwnedError extends Error {
     super(`${claim.ownerLabel ?? 'Someone'} already investigates this failure.`);
     this.name = 'AlreadyOwnedError';
   }
-}
-
-/** The T3 slot whose workspace is this repository, when one is free. */
-export function slotForRepo(slots: readonly Slot[], repo: string): string | null {
-  const name = repo.toLowerCase();
-  const matches = (slot: Slot) =>
-    (slot.workspaceRoot ?? '').toLowerCase().replace(/\\/g, '/').split('/').includes(name) ||
-    slot.name.toLowerCase().includes(name);
-  return slots.find((slot) => slot.available && slot.state === 'free' && matches(slot))?.id ?? null;
 }
 
 /**
@@ -76,28 +73,27 @@ export async function launchInvestigation(
     kind: target.kind,
     ownerRef: `pending:${crypto.randomUUID()}`,
     label: title,
-    hostId: target.kind === 't3' ? target.slot.hostId : null,
+    hostId: target.kind === 't3' ? target.target.hostId : null,
   });
   if (result.outcome === 'alreadyClaimed') throw new AlreadyOwnedError(result.claim);
   const claim = result.claim;
   try {
     let ownerRef: string;
     if (target.kind === 't3') {
-      ownerRef = await launchInSlot({
-        slot: target.slot,
+      ownerRef = await launchAt({
+        target: target.target,
         model: target.model,
         effort: target.effort,
         title,
         prompt,
       });
-      useDispatchStore.getState().linkThread(ownerRef, null);
+      // A continued thread keeps the item it belongs to.
+      if (target.target.kind !== 'continue') useDispatchStore.getState().linkThread(ownerRef, null);
       if (target.openInT3) {
-        const settings = useSettingsStore.getState().settings;
-        const host = configuredHosts(settings).find((h) => h.id === target.slot.hostId);
         await t3ShowThread(
-          { id: target.slot.hostId, baseUrl: host?.baseUrl },
-          rawId(target.slot.hostId, ownerRef),
-          settings.agents?.t3Path,
+          hostRefOf(target.target.hostId),
+          rawId(target.target.hostId, ownerRef),
+          useSettingsStore.getState().settings.agents?.t3Path,
         ).catch(() => {});
       }
     } else {

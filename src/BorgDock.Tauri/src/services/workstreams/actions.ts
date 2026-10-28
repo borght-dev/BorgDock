@@ -110,7 +110,7 @@ export function memberActions(resolved: ResolvedMember): MemberAction[] {
         label: 'Settle thread',
         confirm: {
           title: 'Settle this thread?',
-          message: `The agent in ${resolved.thread.slot} stops and the slot is free again.`,
+          message: `The agent in ${resolved.thread.place} stops.`,
           label: 'Settle',
         },
       });
@@ -186,7 +186,7 @@ export async function runMemberAction(
   return false;
 }
 
-/** The raw thread id and host of a thread member, for launching into its slot. */
+/** The raw thread id and host of a thread member, for launching into its checkout. */
 export function threadTarget(
   resolved: ResolvedMember,
 ): { hostId: string; threadId: string } | null {

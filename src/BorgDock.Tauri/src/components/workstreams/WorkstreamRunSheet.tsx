@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { LaunchChoiceFields, useLaunchChoice } from '@/components/dispatch/LaunchChoice';
 import { Button, Checkbox } from '@/components/shared/primitives';
+import { scopedId } from '@/services/dispatch/hosts';
+import { targetPlace } from '@/services/dispatch/launch-target';
 import type { Assessment } from '@/services/workstreams/attention';
 import { buildBrief, DEFAULT_WORKSTREAM_PROMPTS, fillPrompt } from '@/services/workstreams/brief';
 import { startWorkstreamRun } from '@/services/workstreams/runs';
@@ -29,7 +31,7 @@ const SUBTITLE: Record<RunKind, string> = {
 };
 
 /**
- * WorkstreamRunSheet — start an agent from a workstream, in a free T3 slot:
+ * WorkstreamRunSheet — start an agent from a workstream, where you pick in T3:
  * a review that ends with proposals, or work on the next action. The first
  * message is the workstream's brief and can be edited before it goes.
  */
@@ -39,9 +41,17 @@ export function WorkstreamRunSheet({
   kind,
   onClose,
 }: WorkstreamRunSheetProps) {
-  const slots = useDispatchStore((s) => s.overview?.slots ?? []);
+  const t3Known = useDispatchStore((s) => s.projects.length > 0);
   const prompts = useSettingsStore((s) => s.settings.agents?.dispatchPrompts);
-  const choice = useLaunchChoice(slots, null);
+  const pullRequest = document.members.find((m) => m.ref.kind === 'github-pr')?.ref;
+  const ownThreadIds = document.members.flatMap((m) =>
+    m.ref.kind === 't3-thread' ? [scopedId(m.ref.hostId, m.ref.threadId)] : [],
+  );
+  const choice = useLaunchChoice({
+    repository:
+      pullRequest?.kind === 'github-pr' ? `${pullRequest.owner}/${pullRequest.repo}` : null,
+    threadIds: ownThreadIds,
+  });
   const template =
     (kind === 'review' ? prompts?.workstreamReview : prompts?.workstreamWork)?.trim() ||
     DEFAULT_WORKSTREAM_PROMPTS[kind];
@@ -51,16 +61,16 @@ export function WorkstreamRunSheet({
   );
   const [planFirst, setPlanFirst] = useState(true);
   const [starting, setStarting] = useState(false);
-  const { slot, model, effort } = choice;
+  const { target, model, effort, ready } = choice;
 
   const start = async (openInT3: boolean) => {
-    if (!slot || !model) return;
+    if (!target || !ready) return;
     setStarting(true);
     try {
       await startWorkstreamRun({
         workstreamId: document.id,
         kind,
-        slot,
+        target,
         model,
         effort,
         prompt,
@@ -71,8 +81,8 @@ export function WorkstreamRunSheet({
         tone: 'success',
         message:
           kind === 'review'
-            ? `Review started in ${slot.name}. Its proposals show here when it stops.`
-            : `Started in ${slot.name} on the next action.`,
+            ? `Review started in ${targetPlace(target)}. Its proposals show here when it stops.`
+            : `Started in ${targetPlace(target)} on the next action.`,
       });
       onClose();
     } catch (error) {
@@ -97,7 +107,7 @@ export function WorkstreamRunSheet({
           <Button
             variant="secondary"
             size="md"
-            disabled={!slot || !model || starting}
+            disabled={!ready || starting}
             onClick={() => void start(true)}
           >
             Start and open T3
@@ -105,7 +115,7 @@ export function WorkstreamRunSheet({
           <Button
             variant="primary"
             size="md"
-            disabled={!slot || !model}
+            disabled={!ready}
             loading={starting}
             onClick={() => void start(false)}
           >
@@ -114,12 +124,12 @@ export function WorkstreamRunSheet({
         </>
       }
     >
-      {slots.length === 0 ? (
+      {!t3Known ? (
         <p className="bd-dp-sheet__hint">
-          No T3 slots yet. Pair with T3 in Settings → Agents, then open this again.
+          No T3 projects yet. Pair with T3 in Settings → Agents, then open this again.
         </p>
       ) : (
-        <LaunchChoiceFields choice={choice} />
+        <LaunchChoiceFields choice={choice} ownThreadIds={ownThreadIds} />
       )}
       {kind === 'work' && (
         <Checkbox

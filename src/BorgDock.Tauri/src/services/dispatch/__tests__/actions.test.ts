@@ -50,7 +50,7 @@ describe('dispatchActions', () => {
     const thread = makeThread({
       id: 'mac:t1',
       hostId: 'mac',
-      slot: 'M4',
+      place: 'M4',
       status: 'question',
       questionRequestId: 'req',
     });

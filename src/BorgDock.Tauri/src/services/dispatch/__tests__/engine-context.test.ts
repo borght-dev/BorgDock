@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildOverview, type EngineInput } from '../engine';
-import { makeItem, makeKnownPr, makeThread, makeThreadPr, PROJECTS } from './fixtures';
+import { makeItem, makeKnownPr, makeThread, makeThreadPr } from './fixtures';
 
 const NOW = new Date('2026-10-02T12:00:00Z');
 
@@ -8,12 +8,10 @@ function input(overrides: Partial<EngineInput>): EngineInput {
   return {
     items: [],
     threads: [],
-    projects: PROJECTS,
     pullRequests: [],
     queued: new Set([102]),
     hiddenSuggestions: new Set(),
     manualLinks: new Map(),
-    slotPattern: /^W\d+$/,
     now: NOW,
     ...overrides,
   };

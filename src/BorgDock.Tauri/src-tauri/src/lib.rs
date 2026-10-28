@@ -204,7 +204,8 @@ macro_rules! app_commands {
             t3::commands::t3_respond,
             t3::commands::t3_send_message,
             t3::commands::t3_settle,
-            t3::commands::t3_open_thread,
+            t3::commands::t3_open_pr_thread,
+            t3::commands::t3_list_branches,
             t3::commands::t3_list_sessions,
             // Related CI failures
             ci_failures::commands::ci_read_job_log,

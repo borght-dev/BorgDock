@@ -1,10 +1,9 @@
 import clsx from 'clsx';
 import { Button, CheckBar, Dot, type DotTone } from '@/components/shared/primitives';
 import { WorkItemTypePill } from '@/components/work-items/WorkItemTypePill';
-import { BAY_LABEL, type Bay, type ItemOverview, type Slot } from '@/services/dispatch/types';
+import { BAY_LABEL, type Bay, type ItemOverview } from '@/services/dispatch/types';
 import { DispatchDrawer } from './DispatchDrawer';
-import { canStart, UnitAside } from './DispatchRow';
-import { DISPATCH_ITEM_MIME } from './SlotStrip';
+import { UnitAside } from './DispatchRow';
 import { currentThread, type DispatchActions, unitActions } from './unit-actions';
 import { toCheckBarCounts, whyLine } from './unit-copy';
 
@@ -56,11 +55,6 @@ const LANE_BAYS: readonly { bay: Bay; label: string }[] = [
 /** At most this many buttons on a card: the one it needs, and one way out. */
 const CARD_ACTIONS = 2;
 
-function startDrag(e: React.DragEvent, itemId: number) {
-  e.dataTransfer.setData(DISPATCH_ITEM_MIME, String(itemId));
-  e.dataTransfer.effectAllowed = 'move';
-}
-
 interface CardProps {
   overview: ItemOverview;
   selected: boolean;
@@ -79,8 +73,6 @@ function BoardCard({ overview, selected, now, busy, actions, onSelect }: CardPro
       className="bd-fb-card bd-dp-card"
       data-dp-id={item.id}
       data-selected={selected ? 'true' : undefined}
-      draggable={canStart(overview)}
-      onDragStart={(e) => startDrag(e, item.id)}
     >
       <div
         className="bd-fb-card__main"
@@ -135,7 +127,6 @@ function BoardCard({ overview, selected, now, busy, actions, onSelect }: CardPro
 
 interface DispatchBoardProps {
   items: readonly ItemOverview[];
-  slots: readonly Slot[];
   /** The item whose detail is open in the drawer. */
   openId: number | null;
   now: number;
@@ -149,13 +140,11 @@ interface DispatchBoardProps {
 /**
  * DispatchBoard — the same items as the list, as four columns: what needs
  * you, what agents are working on, what is queued and what nobody started.
- * Each card carries the one action it needs. A card that has no running
- * agent can be dragged onto a free slot. Picking a card opens its detail in
- * a drawer over the board.
+ * Each card carries the one action it needs. Picking a card opens its detail
+ * in a drawer over the board.
  */
 export function DispatchBoard({
   items,
-  slots,
   openId,
   now,
   busy,
@@ -222,8 +211,6 @@ export function DispatchBoard({
                   )}
                   data-dp-id={overview.item.id}
                   data-selected={overview.item.id === openId ? 'true' : undefined}
-                  draggable={canStart(overview)}
-                  onDragStart={(e) => startDrag(e, overview.item.id)}
                   onClick={() => onSelect(overview.item.id)}
                 >
                   <WorkItemTypePill type={overview.item.typeName} />
@@ -238,7 +225,6 @@ export function DispatchBoard({
       {open && (
         <DispatchDrawer
           overview={open}
-          slots={slots}
           actions={actions}
           now={now}
           busy={busy}

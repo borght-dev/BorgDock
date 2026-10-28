@@ -79,7 +79,7 @@ export function suggestMembers(
           offer(
             prRef,
             pr.title || shortIdentity(prRef),
-            `Opened by the agent in ${resolved.thread.slot}`,
+            `Opened by the agent in ${resolved.thread.place}`,
           );
       }
     }

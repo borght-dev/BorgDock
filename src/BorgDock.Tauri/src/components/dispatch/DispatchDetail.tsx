@@ -2,7 +2,7 @@ import { ExternalLink } from 'lucide-react';
 import { Button, CheckBar } from '@/components/shared/primitives';
 import { WorkItemTypePill } from '@/components/work-items/WorkItemTypePill';
 import { ItemMembership } from '@/components/workstreams/Membership';
-import type { ItemOverview, Slot } from '@/services/dispatch/types';
+import type { ItemOverview } from '@/services/dispatch/types';
 import { AgentSays } from './AgentSays';
 import { StateTrack } from './StateTrack';
 import { ThreadStatusPill } from './ThreadStatusPill';
@@ -11,7 +11,6 @@ import { dueLabel, shortAge, toCheckBarCounts } from './unit-copy';
 
 interface DispatchDetailProps {
   overview: ItemOverview;
-  slots: readonly Slot[];
   actions: DispatchActions;
   /** Epoch ms the relative times are measured from. */
   now: number;
@@ -19,24 +18,13 @@ interface DispatchDetailProps {
   busy?: boolean;
 }
 
-function freeSlotNames(slots: readonly Slot[]): string {
-  const free = slots.filter((slot) => slot.available && slot.state === 'free').map((s) => s.name);
-  return free.length > 0 ? `Free slots: ${free.join(', ')}` : 'Every slot is busy';
-}
-
 /**
  * DispatchDetail — the selected item beside the Dispatch list: what it is,
- * where it stands in ADO, in which slot its agent runs and what that agent
+ * where it stands in ADO, where its agent works and what that agent
  * last said. A question is answered right here; every other step is one of
  * the buttons under "Next action".
  */
-export function DispatchDetail({
-  overview,
-  slots,
-  actions,
-  now,
-  busy = false,
-}: DispatchDetailProps) {
+export function DispatchDetail({ overview, actions, now, busy = false }: DispatchDetailProps) {
   const { item, pullRequest, suggestion } = overview;
   const thread = currentThread(overview);
   const due = dueLabel(item.dueDate, now);
@@ -67,8 +55,8 @@ export function DispatchDetail({
           <dd>{item.state}</dd>
         </div>
         <div>
-          <dt>Slot</dt>
-          <dd>{thread ? `${thread.slot}, ${thread.hostLabel}` : 'None'}</dd>
+          <dt>Agent works in</dt>
+          <dd>{thread ? `${thread.place}, ${thread.hostLabel}` : 'None'}</dd>
         </div>
         <div>
           <dt>Pull request</dt>
@@ -119,7 +107,6 @@ export function DispatchDetail({
             <div className="bd-dp-agent__head">
               <strong>No active agent</strong>
             </div>
-            <p className="bd-dp-agent__thread">{freeSlotNames(slots)}</p>
           </>
         )}
       </section>
@@ -154,7 +141,7 @@ export function DispatchDetail({
             {earlier.map((t) => (
               <li key={t.id}>
                 <span className="bd-dp-earlier__age">{shortAge(t.lastActivityAt, now)}</span>
-                <span className="bd-dp-earlier__slot">{t.slot}</span>
+                <span className="bd-dp-earlier__place">{t.place}</span>
                 <button type="button" className="bd-dp-link" onClick={() => actions.openInT3(t)}>
                   {t.title}
                 </button>

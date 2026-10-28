@@ -12,7 +12,7 @@ const run: AgentRun = {
   states: ['Code Review'],
   itemIds: [1, 2],
   fromStates: { 1: 'Code Review', 2: 'Code Review' },
-  slot: 'W7',
+  where: 'W7',
   startedAt: '2026-10-19T10:00:00Z',
 };
 
@@ -21,12 +21,10 @@ describe('RunCard progress', () => {
     const overview = buildOverview({
       items: [makeItem({ id: 1, state: 'Code Review' }), makeItem({ id: 2, state: 'Code Review' })],
       threads: [],
-      projects: [],
       pullRequests: [],
       queued: new Set(),
       hiddenSuggestions: new Set(),
       manualLinks: new Map(),
-      slotPattern: null,
     }).overview;
     useDispatchStore.setState({
       overview,

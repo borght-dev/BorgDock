@@ -45,13 +45,13 @@ export function whyLine(overview: ItemOverview, now: number): string {
     case 'waiting': {
       const waiting = threads.find((t) => t.open && NEEDS_YOU.includes(t.status));
       if (!waiting) return overview.waitingFor ?? item.state;
-      return `${THREAD_STATUS_LABEL[waiting.status]} in ${waiting.slot}, ${ago(waiting.lastActivityAt, now)}`;
+      return `${THREAD_STATUS_LABEL[waiting.status]} in ${waiting.place}, ${ago(waiting.lastActivityAt, now)}`;
     }
     case 'drift':
       return suggestion?.reason ?? item.state;
     case 'working':
       return thread
-        ? `Running in ${thread.slot} for ${shortAge(thread.createdAt, now)}`
+        ? `Running in ${thread.place} for ${shortAge(thread.createdAt, now)}`
         : item.state;
     case 'next':
     case 'idle': {

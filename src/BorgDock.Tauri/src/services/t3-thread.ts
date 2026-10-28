@@ -1,73 +1,126 @@
-import { invoke } from '@tauri-apps/api/core';
 import { type GuardDecision, guardLaunch } from '@/services/ci-failures/launch-guard';
+import { rawId, scopedId } from '@/services/dispatch/hosts';
+import { hostRefOf } from '@/services/dispatch/launch';
+import {
+  type LaunchTarget,
+  projectForRepository,
+  repositoryProjects,
+} from '@/services/dispatch/launch-target';
 import { createLogger } from '@/services/logger';
-import { sendOsNotification } from '@/services/notification';
-import { findRepoConfig } from '@/services/repo-lookup';
-import { findWorktreeForBranch } from '@/services/worktree-lookup';
+import { isMainWindow, MAIN_WINDOW_LABEL } from '@/services/navigation';
+import {
+  LOCAL_T3_HOST_ID,
+  type T3PrWorkspace,
+  t3OpenPrThread,
+  t3ShowThread,
+  t3Snapshot,
+} from '@/services/t3/api';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useT3ThreadStore } from '@/stores/t3-thread-store';
 import type { PullRequest } from '@/types';
 
 const log = createLogger('t3-thread');
 
-export interface T3OpenThreadResult {
-  /** 1 = T3 only activated (unpaired); 2 = thread created through the API. */
-  tier: number;
-  threadId?: string;
+/** Another window asks the main window, where Dispatch's T3 data lives, to open the dialog. */
+export const OPEN_PR_THREAD_EVENT = 'open-pr-thread-dialog';
+
+function repositoryOf(pr: PullRequest): string {
+  return `${pr.repoOwner}/${pr.repoName}`;
 }
 
-/**
- * Open a new, empty T3 thread for `pr` on `worktreePath` and bring T3 to the
- * front. When BorgDock is not paired with T3 the app is only activated and
- * the user is told how to pair.
- */
-export async function openT3Thread(
+function executable(): string | undefined {
+  return useSettingsStore.getState().settings.agents?.t3Path;
+}
+
+async function openOn(
   pr: PullRequest,
-  worktreePath: string,
-): Promise<T3OpenThreadResult> {
+  hostId: string,
+  projectId: string,
+  workspace: T3PrWorkspace,
+): Promise<string> {
   const agents = useSettingsStore.getState().settings.agents;
   const context = {
     pr: pr.number,
-    repository: `${pr.repoOwner}/${pr.repoName}`,
-    branch: pr.headRef,
-    worktreePath,
+    repository: repositoryOf(pr),
+    hostId,
+    workspace: workspace.type,
   };
-  const started = performance.now();
-  log.info('openT3Thread started', context);
-  let result: T3OpenThreadResult;
-  try {
-    result = await invoke<T3OpenThreadResult>('t3_open_thread', {
-      workspaceRoot: worktreePath,
-      branch: pr.headRef,
-      title: `PR #${pr.number}: ${pr.title}`,
-      repository: `${pr.repoOwner}/${pr.repoName}`,
-      prNumber: pr.number,
-      prUrl: pr.htmlUrl,
-      model: agents?.t3Model ?? 'claude-fable-5',
-      modelInstance: agents?.t3ModelInstance ?? 'claudeAgent',
-      executable: agents?.t3Path,
-    });
-  } catch (err) {
-    log.error('openT3Thread failed', err, {
-      ...context,
-      durationMs: Math.round(performance.now() - started),
-    });
-    throw err;
+  log.info('PR thread requested', context);
+  const threadId = await log.time('open PR thread', () =>
+    t3OpenPrThread(
+      hostRefOf(hostId),
+      {
+        projectId: rawId(hostId, projectId),
+        workspace,
+        title: `PR #${pr.number}: ${pr.title}`,
+        repository: repositoryOf(pr),
+        prNumber: pr.number,
+        prUrl: pr.htmlUrl,
+        model: agents?.t3Model ?? 'claude-fable-5',
+        modelInstance: agents?.t3ModelInstance ?? 'claudeAgent',
+      },
+      executable(),
+    ),
+  );
+  return scopedId(hostId, threadId);
+}
+
+/**
+ * Open a new, empty T3 thread for `pr` where `target` says and bring T3 to
+ * the front on it. A new worktree checks the pull request's branch out (T3
+ * reuses the worktree that has it); continuing a thread only shows it.
+ * Resolves with the thread's scoped id.
+ */
+export async function openPrThread(pr: PullRequest, target: LaunchTarget): Promise<string> {
+  if (target.kind === 'continue') {
+    await t3ShowThread(
+      hostRefOf(target.hostId),
+      rawId(target.hostId, target.thread.id),
+      executable(),
+    );
+    return target.thread.id;
   }
-  log.info('openT3Thread completed', {
-    ...context,
-    tier: result.tier,
-    threadId: result.threadId,
-    durationMs: Math.round(performance.now() - started),
+  if (target.kind === 'worktree') {
+    return openOn(pr, target.hostId, target.project.id, { type: 'checkOut' });
+  }
+  const { thread } = target;
+  return openOn(
+    pr,
+    target.hostId,
+    thread.projectId,
+    thread.worktreePath
+      ? { type: 'existingWorktree', worktreePath: thread.worktreePath, branch: thread.branch }
+      : { type: 'root' },
+  );
+}
+
+/**
+ * Open a new T3 thread for `pr` in the worktree at `worktreePath` on this
+ * machine, under T3's project for the pull request's repository. Windows
+ * other than the main one have no Dispatch data, so T3 is asked directly.
+ */
+export async function openT3Thread(pr: PullRequest, worktreePath: string): Promise<void> {
+  const snapshot = await t3Snapshot({ id: LOCAL_T3_HOST_ID }, null);
+  const projects = snapshot.projects.map((project) => ({
+    ...project,
+    hostId: LOCAL_T3_HOST_ID,
+    hostLabel: '',
+    available: true,
+  }));
+  const project = projectForRepository(
+    repositoryProjects(projects, LOCAL_T3_HOST_ID),
+    repositoryOf(pr),
+  );
+  if (!project) {
+    throw new Error(
+      `T3 on this machine has no project for ${repositoryOf(pr)}. Add the repository in T3 first.`,
+    );
+  }
+  await openOn(pr, LOCAL_T3_HOST_ID, project.id, {
+    type: 'existingWorktree',
+    worktreePath,
+    branch: pr.headRef,
   });
-  if (result.tier === 1) {
-    void sendOsNotification({
-      title: 'T3 opened without a new thread',
-      body: 'Pair BorgDock with T3 in Settings → Agents so threads can be created for you.',
-      severity: 'info',
-    }).catch(() => {});
-  }
-  return result;
 }
 
 /**
@@ -88,35 +141,16 @@ export function guardT3Launch(pr: PullRequest): Promise<GuardDecision> {
 }
 
 /**
- * Entry point for "Open a new thread in T3". Opens the thread straight away
- * when the PR branch is already checked out in a worktree; otherwise hands
- * the PR to the worktree picker (see `T3CheckoutDialog`), which calls
- * `openT3Thread` once a worktree exists.
+ * Entry point for "Open a new thread in T3": the dialog in the main window
+ * picks the environment and where the thread works (`T3PrThreadDialog`).
  */
 export async function requestT3Thread(pr: PullRequest): Promise<void> {
-  log.info('T3 thread requested', {
-    pr: pr.number,
-    repository: `${pr.repoOwner}/${pr.repoName}`,
-    branch: pr.headRef,
-  });
-  const repoConfig = findRepoConfig(
-    useSettingsStore.getState().settings.repos,
-    pr.repoOwner,
-    pr.repoName,
-  );
-  if (!repoConfig?.worktreeBasePath) {
-    throw new Error(
-      `No worktree base path configured for ${pr.repoOwner}/${pr.repoName}. Configure it in Settings → Repos.`,
-    );
-  }
-  if ((await guardT3Launch(pr)) === 'cancel') return;
-  const existing = await log.time('find worktree', () =>
-    findWorktreeForBranch(repoConfig.worktreeBasePath, pr.headRef),
-  );
-  if (existing) {
-    await openT3Thread(pr, existing.path);
+  if (!isMainWindow()) {
+    const { emitTo } = await import('@tauri-apps/api/event');
+    await emitTo(MAIN_WINDOW_LABEL, OPEN_PR_THREAD_EVENT, pr);
     return;
   }
-  log.info('Opening checkout picker', { pr: pr.number, repoBasePath: repoConfig.worktreeBasePath });
-  useT3ThreadStore.getState().setPendingCheckout(pr);
+  log.info('T3 thread requested', { pr: pr.number, repository: repositoryOf(pr) });
+  if ((await guardT3Launch(pr)) === 'cancel') return;
+  useT3ThreadStore.getState().setPendingPr(pr);
 }

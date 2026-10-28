@@ -17,17 +17,16 @@ import {
   useDispatchStore,
 } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import { showToast, toastError } from '@/stores/toast-store';
+import { toastError } from '@/stores/toast-store';
 import { shortcutLabel } from '@/utils/shortcut-label';
 import { BriefChips, useBriefMatch } from './BriefFilters';
 import { DispatchBoard } from './DispatchBoard';
 import { DispatchDetail } from './DispatchDetail';
 import { DispatchListSplit } from './DispatchListSplit';
-import { canStart, DispatchRow } from './DispatchRow';
+import { DispatchRow } from './DispatchRow';
 import { DispatchWalk } from './DispatchWalk';
 import { LaunchSheet } from './LaunchSheet';
 import { RunSheet } from './RunSheet';
-import { SlotStrip } from './SlotStrip';
 import { shortAge } from './unit-copy';
 import {
   BulkRunResult,
@@ -100,20 +99,6 @@ function Health({ ado, hosts, now }: { ado: SourceStatus; hosts: HostStatus[]; n
   );
 }
 
-/**
- * A free slot was picked: open the launch sheet there for the item that is
- * next in line, the first one queued, else the first nobody started.
- */
-function startNextIn(items: readonly ItemOverview[], slotId: string): void {
-  const next =
-    items.find((o) => o.bay === 'next') ?? items.find((o) => o.bay === 'idle' && canStart(o));
-  if (!next) {
-    showToast({ message: 'Nothing is waiting to be started.' });
-    return;
-  }
-  useDispatchStore.getState().openLaunch({ itemId: next.item.id, slotId });
-}
-
 /** A local T3 that answers but rejects BorgDock, or has never been paired. */
 function needsPairing(host: HostStatus | undefined): boolean {
   return !!host && !host.ok && host.id === LOCAL_T3_HOST_ID && /pair/i.test(host.error ?? '');
@@ -149,8 +134,6 @@ function PairingNotice({ error }: { error: string }) {
  *
  * - Head row: title, States, List or Board, the health of the sources (ADO and every
  *   T3 host) and search.
- * - The slot strip: every T3 project an agent can run in, per host. States
- *   shows it inside its briefing.
  * - States (`DispatchWalk`, the default): one section per ADO state in the
  *   order they are checked each morning, under a briefing of the counts. Every row
  *   says what the item needs, why, and what was said last; a row opens its
@@ -163,8 +146,8 @@ function PairingNotice({ error }: { error: string }) {
  * - J / K move, Enter opens the work item full screen, A takes the selected
  *   item's first action, S starts an agent on it, M moves its state, O opens
  *   its thread in T3 (useKeyboardNav).
- * - Start opens the launch sheet. So does dropping a row on a free slot, or
- *   picking a free slot, which takes the item that is next in line.
+ * - Start opens the launch sheet: where the agent runs, its model and its
+ *   first message.
  */
 export function DispatchSection() {
   const ado = useSettingsStore((s) => s.settings.azureDevOps);
@@ -181,7 +164,6 @@ export function DispatchSection() {
   const runSheet = useDispatchStore((s) => s.runSheet);
   const viewMode = useDispatchStore((s) => s.viewMode);
   const setViewMode = useDispatchStore((s) => s.setViewMode);
-  const openLaunch = useDispatchStore((s) => s.openLaunch);
   const now = useClock();
   const match = useBriefMatch();
 
@@ -200,14 +182,6 @@ export function DispatchSection() {
   const total = overview?.items.length ?? 0;
   const driftCount = outOfSync(overview?.items ?? []).length;
   const walking = viewMode === 'walk' && overview !== null;
-  const slotStrip = (
-    <SlotStrip
-      slots={overview?.slots ?? []}
-      onShowItem={selectItem}
-      onStartIn={(slot) => startNextIn(overview?.items ?? [], slot.id)}
-      onDropItem={(slot, itemId) => openLaunch({ itemId, slotId: slot.id })}
-    />
-  );
 
   return (
     <div className="bd-wb-prs bd-dp">
@@ -258,15 +232,11 @@ export function DispatchSection() {
         </div>
       )}
 
-      {!walking && overview !== null && (
-        <BriefChips items={searched} slots={overview.slots} shown={items.length} />
-      )}
-      {!walking && slotStrip}
+      {!walking && overview !== null && <BriefChips items={searched} shown={items.length} />}
 
       {viewMode === 'walk' && overview !== null && (
         <DispatchWalk
           items={searched}
-          slots={overview.slots}
           openId={selectedId}
           now={now}
           busy={busy}
@@ -280,13 +250,11 @@ export function DispatchSection() {
           laneNotice={(lane) => <LaneRunResult state={lane.state} />}
           footer={<PickupSection items={overview.items.map((o) => o.item)} />}
           fix={<FixOutOfSyncButton count={driftCount} short />}
-          slotStrip={slotStrip}
         />
       )}
       {viewMode === 'board' && overview !== null && (
         <DispatchBoard
           items={items}
-          slots={overview.slots}
           openId={selectedId}
           now={now}
           busy={busy}
@@ -335,13 +303,7 @@ export function DispatchSection() {
         }
         detail={
           selected ? (
-            <DispatchDetail
-              overview={selected}
-              slots={overview?.slots ?? []}
-              actions={dispatchActions}
-              now={now}
-              busy={busy}
-            />
+            <DispatchDetail overview={selected} actions={dispatchActions} now={now} busy={busy} />
           ) : (
             <div className="bd-dp-empty-detail">
               Pick an item to see its agent and its next step.

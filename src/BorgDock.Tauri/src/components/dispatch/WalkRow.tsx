@@ -112,7 +112,7 @@ function LatestLine({
 export interface WalkRowProps {
   overview: ItemOverview;
   selected: boolean;
-  /** The slot of a running sync that has this item, if one does. */
+  /** Where a running sync that has this item works, if one does. */
   inRun?: string;
   /** Epoch ms the relative times are measured from. */
   now: number;

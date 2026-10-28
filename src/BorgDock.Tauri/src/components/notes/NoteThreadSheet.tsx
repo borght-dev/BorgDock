@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LaunchChoiceFields, useLaunchChoice } from '@/components/dispatch/LaunchChoice';
 import { Button } from '@/components/shared/primitives';
 import { Sheet } from '@/components/workstreams/Sheet';
+import { targetPlace } from '@/services/dispatch/launch-target';
 import { NOTE_PROMPT_LIMIT, notePrompt, startThreadFromNote } from '@/services/notes/agents';
 import { titleOf } from '@/services/notes/parse';
 import { useDispatchStore } from '@/stores/dispatch-store';
@@ -15,26 +16,26 @@ interface NoteThreadSheetProps {
 }
 
 /**
- * NoteThreadSheet — start a T3 thread from a note: pick the slot and model,
+ * NoteThreadSheet — start a T3 thread from a note: pick where it runs and the model,
  * check the first message (the note, or the selection), start. The thread's
  * link lands in the note, and its results are written back when it stops.
  */
 export function NoteThreadSheet({ path, text, onClose }: NoteThreadSheetProps) {
-  const slots = useDispatchStore((s) => s.overview?.slots ?? []);
-  const choice = useLaunchChoice(slots, null);
+  const t3Known = useDispatchStore((s) => s.projects.length > 0);
+  const choice = useLaunchChoice();
   const [prompt, setPrompt] = useState(() => notePrompt(path, text));
   const [title, setTitle] = useState(() => titleOf(path));
   const [starting, setStarting] = useState(false);
-  const { slot, model, effort } = choice;
+  const { target, model, effort, ready } = choice;
 
   const start = async (openInT3: boolean) => {
-    if (!slot || !model) return;
+    if (!target || !ready) return;
     setStarting(true);
     try {
-      await startThreadFromNote({ path, slot, model, effort, title, prompt, openInT3 });
+      await startThreadFromNote({ path, target, model, effort, title, prompt, openInT3 });
       showToast({
         tone: 'success',
-        message: `Started in ${slot.name}. Its answer lands under "Agent notes" when it stops.`,
+        message: `Started in ${targetPlace(target)}. Its answer lands under "Agent notes" when it stops.`,
       });
       onClose();
     } catch (error) {
@@ -59,7 +60,7 @@ export function NoteThreadSheet({ path, text, onClose }: NoteThreadSheetProps) {
           <Button
             variant="secondary"
             size="md"
-            disabled={!slot || !model || starting}
+            disabled={!ready || starting}
             onClick={() => void start(true)}
           >
             Start and open T3
@@ -67,7 +68,7 @@ export function NoteThreadSheet({ path, text, onClose }: NoteThreadSheetProps) {
           <Button
             variant="primary"
             size="md"
-            disabled={!slot || !model}
+            disabled={!ready}
             loading={starting}
             onClick={() => void start(false)}
           >
@@ -76,9 +77,9 @@ export function NoteThreadSheet({ path, text, onClose }: NoteThreadSheetProps) {
         </>
       }
     >
-      {slots.length === 0 ? (
+      {!t3Known ? (
         <p className="bd-dp-sheet__hint">
-          No T3 slots yet. Pair with T3 in Settings → Agents, then open this again.
+          No T3 projects yet. Pair with T3 in Settings → Agents, then open this again.
         </p>
       ) : (
         <LaunchChoiceFields choice={choice} />

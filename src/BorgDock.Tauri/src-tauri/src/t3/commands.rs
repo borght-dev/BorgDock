@@ -8,7 +8,6 @@ use rusqlite::{Connection, OpenFlags};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::Mutex;
 use tauri::Emitter;
 use uuid::Uuid;
@@ -32,15 +31,6 @@ pub struct T3Probe {
     pub running: bool,
     pub paired: bool,
     pub origin: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-#[cfg_attr(test, derive(specta::Type))]
-#[serde(rename_all = "camelCase")]
-pub struct T3LaunchResult {
-    /// 1: T3 was only brought forward (not paired). 2: the thread was created.
-    pub tier: u8,
-    pub thread_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, serde::Deserialize)]
@@ -434,77 +424,103 @@ async fn activate(executable: Option<String>) -> Result<(), String> {
         .map_err(|e| e.to_string())?
 }
 
-async fn ensure_project(
-    client: &Client,
-    shell: &Value,
-    workspace_root: &str,
-) -> Result<String, String> {
-    if let Some(project_id) = shell::project_for_workspace(shell, workspace_root) {
-        return Ok(project_id);
-    }
-    let project_id = Uuid::new_v4().to_string();
-    let title = Path::new(workspace_root)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("BorgDock project");
-    client
-        .post(
-            "/api/projects/mutate",
-            &json!({
-                "type": "project.create",
-                "commandId": Uuid::new_v4().to_string(),
-                "projectId": project_id,
-                "title": title,
-                "workspaceRoot": workspace_root,
-            }),
-        )
-        .await?;
-    Ok(project_id)
+/// Where a pull request thread works.
+#[derive(Debug, serde::Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum PrWorkspace {
+    /// T3 checks the pull request out in a worktree, or reuses one that has its branch.
+    CheckOut,
+    /// The project's own checkout, where an earlier thread worked.
+    Root,
+    /// The checkout another thread works in.
+    #[serde(rename_all = "camelCase")]
+    ExistingWorktree {
+        worktree_path: String,
+        branch: Option<String>,
+    },
 }
 
-/// Open a fresh, empty T3 thread on `workspace_root` for a pull request and
-/// bring T3 to the front on it. Not paired: T3 is only brought forward
-/// (tier 1) so the user can start the thread by hand.
+/// A new, empty thread for a pull request.
+#[derive(Debug, serde::Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct PrThreadRequest {
+    pub project_id: String,
+    pub workspace: PrWorkspace,
+    pub title: String,
+    /// `owner/name`.
+    pub repository: String,
+    pub pr_number: u32,
+    pub pr_url: String,
+    /// Used when neither the project nor an earlier thread names a model.
+    pub model: String,
+    pub model_instance: String,
+}
+
+/// The checkout T3 prepared for `pr_url` in the project at `project_root`.
+async fn check_out_pull_request(
+    client: &Client,
+    project_root: &str,
+    pr_url: &str,
+) -> Result<Value, String> {
+    let prepared = client
+        .rpc(
+            "git.preparePullRequestThread",
+            json!({ "cwd": project_root, "reference": pr_url, "mode": "worktree" }),
+        )
+        .await?;
+    let worktree_path = prepared["worktreePath"]
+        .as_str()
+        .filter(|path| !path.is_empty())
+        .ok_or_else(|| "T3 did not check the pull request out in a worktree".to_string())?;
+    Ok(json!({
+        "type": "existing_worktree",
+        "worktreePath": worktree_path,
+        "branch": prepared["branch"],
+    }))
+}
+
+/// Open a fresh, empty T3 thread for a pull request on `host` and bring T3 to
+/// the front on it. Returns the new thread's id.
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
-#[allow(clippy::too_many_arguments)]
-pub async fn t3_open_thread(
-    workspace_root: String,
-    branch: String,
-    title: String,
-    repository: String,
-    pr_number: u32,
-    pr_url: String,
-    model: String,
-    model_instance: String,
+pub async fn t3_open_pr_thread(
+    host: HostRef,
+    request: PrThreadRequest,
     executable: Option<String>,
-) -> Result<T3LaunchResult, String> {
-    let host = hosts::resolve(&HostRef::local()).await?;
-    let Some(access_token) = hosts::token(&host.id).await? else {
-        activate(executable).await?;
-        return Ok(T3LaunchResult {
-            tier: 1,
-            thread_id: None,
-        });
-    };
-    let client = Client::new(host, access_token);
+) -> Result<String, String> {
+    let client = Client::connect(&host).await?;
     let shell = client.get(SHELL_PATH).await?;
-    let project_id = ensure_project(&client, &shell, &workspace_root).await?;
-    let (selection, runtime_mode) = shell::thread_defaults(&shell, &project_id);
+    let workspace_strategy = match &request.workspace {
+        PrWorkspace::CheckOut => {
+            let root = shell::project_root(&shell, &request.project_id)
+                .ok_or_else(|| "T3 no longer lists that project".to_string())?;
+            check_out_pull_request(&client, &root, &request.pr_url).await?
+        }
+        PrWorkspace::Root => json!({ "type": "root" }),
+        PrWorkspace::ExistingWorktree {
+            worktree_path,
+            branch,
+        } => {
+            json!({ "type": "existing_worktree", "worktreePath": worktree_path, "branch": branch })
+        }
+    };
+    let (selection, runtime_mode) = shell::thread_defaults(&shell, &request.project_id);
     let thread_id = Uuid::new_v4().to_string();
     client
         .rpc(
             "orchestration.launchThread",
             json!({
                 "threadId": thread_id,
-                "projectId": project_id,
-                "title": title,
+                "projectId": request.project_id,
+                "title": request.title,
                 "modelSelection": selection.unwrap_or_else(
-                    || json!({ "instanceId": model_instance, "model": model, "options": [] }),
+                    || json!({ "instanceId": request.model_instance, "model": request.model, "options": [] }),
                 ),
                 "runtimeMode": runtime_mode.unwrap_or_else(|| DEFAULT_RUNTIME_MODE.to_string()),
                 "interactionMode": "default",
-                "workspaceStrategy": { "type": "root", "branch": branch },
+                "workspaceStrategy": workspace_strategy,
             }),
         )
         .await?;
@@ -516,16 +532,16 @@ pub async fn t3_open_thread(
                 "type": "thread.metadata.update",
                 "threadId": thread_id,
                 "linkedPullRequest": {
-                    "projectId": project_id,
-                    "repository": repository,
-                    "number": pr_number,
-                    "url": pr_url,
+                    "projectId": request.project_id,
+                    "repository": request.repository,
+                    "number": request.pr_number,
+                    "url": request.pr_url,
                 },
             }),
         )
         .await
     {
-        log::warn!("t3_open_thread: linking the pull request failed: {error}");
+        log::warn!("t3_open_pr_thread: linking the pull request failed: {error}");
     }
     let shown = match environment_id(&client).await {
         Ok(environment) => {
@@ -540,13 +556,62 @@ pub async fn t3_open_thread(
         Err(error) => Err(error),
     };
     if let Err(error) = shown {
-        log::warn!("t3_open_thread: could not open the thread directly: {error}");
+        log::warn!("t3_open_pr_thread: could not open the thread directly: {error}");
         activate(executable).await?;
     }
-    Ok(T3LaunchResult {
-        tier: 2,
-        thread_id: Some(thread_id),
-    })
+    Ok(thread_id)
+}
+
+#[derive(Debug, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct BranchDto {
+    pub name: String,
+    pub is_default: bool,
+    pub is_remote: bool,
+}
+
+fn read_branches(refs: &Value) -> Vec<BranchDto> {
+    refs["refs"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|reference| {
+            Some(BranchDto {
+                name: reference["name"].as_str()?.to_string(),
+                is_default: reference["isDefault"].as_bool().unwrap_or(false),
+                is_remote: reference["isRemote"].as_bool().unwrap_or(false),
+            })
+        })
+        .collect()
+}
+
+async fn list_branches(client: &Client, checkout: &str) -> Result<Vec<BranchDto>, String> {
+    let refs = client
+        .rpc(
+            "vcs.listRefs",
+            json!({ "cwd": checkout, "refKind": "all", "limit": 100 }),
+        )
+        .await?;
+    Ok(read_branches(&refs))
+}
+
+/// The branches a new worktree of the checkout at `checkout` can start from.
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn t3_list_branches(host: HostRef, checkout: String) -> Result<Vec<BranchDto>, String> {
+    let client = Client::connect(&host).await?;
+    list_branches(&client, &checkout).await
+}
+
+/// The branch a new worktree starts from when none was picked: the
+/// repository's default, by its local name when it has one.
+fn default_branch(branches: &[BranchDto]) -> Option<&str> {
+    branches
+        .iter()
+        .filter(|branch| branch.is_default)
+        .min_by_key(|branch| branch.is_remote)
+        .map(|branch| branch.name.as_str())
 }
 
 /// The providers and models the host can start a thread on.
@@ -569,6 +634,44 @@ pub struct LaunchRequest {
     pub model_selection: Value,
     /// The first message; the agent starts on it at once.
     pub prompt: String,
+    #[serde(default)]
+    pub workspace: Workspace,
+}
+
+/// Where a new thread works.
+#[derive(Debug, Default, serde::Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum Workspace {
+    /// The project's own checkout.
+    #[default]
+    Root,
+    /// A new checkout cut from `base_ref`, the repository's default branch
+    /// when absent. The base is fetched from its remote first.
+    #[serde(rename_all = "camelCase")]
+    Worktree { base_ref: Option<String> },
+    /// A checkout that exists already, such as the one another thread works in.
+    #[serde(rename_all = "camelCase")]
+    ExistingWorktree {
+        worktree_path: String,
+        branch: Option<String>,
+    },
+}
+
+/// `workspace` as T3 takes it; a worktree's base must be resolved by then.
+fn workspace_strategy(workspace: &Workspace) -> Value {
+    match workspace {
+        Workspace::Root => json!({ "type": "root" }),
+        Workspace::Worktree { base_ref } => {
+            json!({ "type": "worktree", "baseRef": base_ref, "startFromOrigin": true })
+        }
+        Workspace::ExistingWorktree {
+            worktree_path,
+            branch,
+        } => {
+            json!({ "type": "existing_worktree", "worktreePath": worktree_path, "branch": branch })
+        }
+    }
 }
 
 fn launch_command(request: &LaunchRequest, thread_id: &str, runtime_mode: &str) -> Value {
@@ -579,7 +682,7 @@ fn launch_command(request: &LaunchRequest, thread_id: &str, runtime_mode: &str) 
         "modelSelection": request.model_selection,
         "runtimeMode": runtime_mode,
         "interactionMode": "default",
-        "workspaceStrategy": { "type": "root" },
+        "workspaceStrategy": workspace_strategy(&request.workspace),
         "initialMessage": {
             "messageId": Uuid::new_v4().to_string(),
             "text": request.prompt,
@@ -616,6 +719,17 @@ async fn launch_with_client(client: &Client, mut request: LaunchRequest) -> Resu
     };
     request.project_id = Some(project_id.clone());
     let shell = client.get(SHELL_PATH).await?;
+    if let Workspace::Worktree { base_ref: None } = request.workspace {
+        let checkout = shell::project_root(&shell, &project_id)
+            .ok_or_else(|| "T3 no longer lists that project".to_string())?;
+        let branches = list_branches(client, &checkout).await?;
+        let base = default_branch(&branches).ok_or_else(|| {
+            format!("T3 names no default branch for {checkout}. Pick the branch to start from.")
+        })?;
+        request.workspace = Workspace::Worktree {
+            base_ref: Some(base.to_string()),
+        };
+    }
     let (_, runtime_mode) = shell::thread_defaults(&shell, &project_id);
     let thread_id = Uuid::new_v4().to_string();
     client
@@ -890,6 +1004,7 @@ mod tests {
             title: "AB#60201 Search ignores accents".to_string(),
             model_selection: json!({ "instanceId": "codex", "model": "default", "options": [] }),
             prompt: "Pick up AB#60201".to_string(),
+            workspace: Workspace::Root,
         };
         let command = launch_command(&request, "thread-1", "full-access");
         assert_eq!(command["threadId"], "thread-1");
@@ -897,6 +1012,36 @@ mod tests {
         assert_eq!(command["interactionMode"], "default");
         assert_eq!(command["initialMessage"]["text"], "Pick up AB#60201");
         assert_eq!(command["initialMessage"]["attachments"], json!([]));
+    }
+
+    #[test]
+    fn a_new_worktree_starts_from_the_fetched_base_and_an_existing_one_is_bound_as_is() {
+        let worktree = workspace_strategy(&Workspace::Worktree {
+            base_ref: Some("master".into()),
+        });
+        assert_eq!(
+            worktree,
+            json!({ "type": "worktree", "baseRef": "master", "startFromOrigin": true })
+        );
+        let existing: Workspace = serde_json::from_value(json!({
+            "type": "existingWorktree", "worktreePath": "D:/Shop/t3-1", "branch": "fix/1"
+        }))
+        .unwrap();
+        assert_eq!(
+            workspace_strategy(&existing),
+            json!({ "type": "existing_worktree", "worktreePath": "D:/Shop/t3-1", "branch": "fix/1" })
+        );
+    }
+
+    #[test]
+    fn a_new_worktree_without_a_base_takes_the_local_default_branch() {
+        let branches = read_branches(&json!({ "refs": [
+            { "name": "origin/main", "isRemote": true, "isDefault": true, "current": false },
+            { "name": "feature/x", "isDefault": false, "current": true },
+            { "name": "main", "isDefault": true, "current": false },
+        ]}));
+        assert_eq!(default_branch(&branches), Some("main"));
+        assert_eq!(default_branch(&branches[1..2]), None);
     }
 
     #[tokio::test]
@@ -972,6 +1117,7 @@ mod tests {
             title: "Disk cleanup".into(),
             model_selection: json!({"instanceId":"remote-provider", "model":"default", "options":[]}),
             prompt: "Clean up this host".into(),
+            workspace: Workspace::Root,
         };
         let result = tokio::time::timeout(
             std::time::Duration::from_secs(10),

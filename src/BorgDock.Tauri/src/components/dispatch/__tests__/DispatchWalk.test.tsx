@@ -31,7 +31,6 @@ function renderWalk(openId: number | null = null) {
   render(
     <DispatchWalk
       items={scene.overview.items}
-      slots={scene.overview.slots}
       openId={openId}
       now={NOW}
       busy={false}

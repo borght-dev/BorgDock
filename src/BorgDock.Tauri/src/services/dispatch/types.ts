@@ -4,7 +4,7 @@
  * what it needs from you.
  */
 
-import type { T3Run } from '@/services/t3/api';
+import type { T3Repository, T3Run } from '@/services/t3/api';
 
 /** Where an item sits, most urgent first. */
 export type Bay = 'waiting' | 'drift' | 'working' | 'next' | 'idle' | 'paused' | 'handed';
@@ -95,10 +95,15 @@ export interface AgentThread {
   /** False while the thread's host is offline: its last known state shows, its actions don't run. */
   available: boolean;
   projectId: string;
-  /** Title of the T3 project the thread runs in. */
-  slot: string;
+  /**
+   * Where the thread works, as rows name it: its branch when T3 made a
+   * worktree for it, else its project's title.
+   */
+  place: string;
   title: string;
   branch: string | null;
+  /** The worktree the thread works in; absent when it works in its project's own checkout. */
+  worktreePath?: string | null;
   createdAt: string;
   lastActivityAt: string;
   open: boolean;
@@ -133,6 +138,8 @@ export interface AgentProject {
   available: boolean;
   title: string;
   workspaceRoot: string | null;
+  /** The git repository the project checks out; absent outside one. */
+  repository?: T3Repository | null;
 }
 
 /** The newest block of an item's Developer Notes. */
@@ -288,23 +295,6 @@ export interface ItemOverview {
   latest: LatestMessage | null;
 }
 
-export type SlotState = 'free' | 'mine' | 'busy';
-
-/** A T3 project seen as a place to start an agent. */
-export interface Slot {
-  id: string;
-  hostId: string;
-  hostLabel: string;
-  available: boolean;
-  name: string;
-  workspaceRoot: string | null;
-  /** free: no open thread. mine: an open thread on one of my items. busy: an open thread on anything else. */
-  state: SlotState;
-  itemId: number | null;
-  running: boolean;
-  needsYou: boolean;
-}
-
 export interface UnlinkedThread extends AgentThread {
   guessItemId: number | null;
 }
@@ -324,7 +314,6 @@ export interface Overview {
    */
   combinedPullRequests?: Record<number, UnitPullRequest[]>;
   unlinkedThreads: UnlinkedThread[];
-  slots: Slot[];
 }
 
 /**

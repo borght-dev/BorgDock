@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { LAUNCH_CATALOGUE } from '@/components/dispatch/__fixtures__/dispatch-data';
+import {
+  LAUNCH_BRANCHES,
+  LAUNCH_CATALOGUE,
+} from '@/components/dispatch/__fixtures__/dispatch-data';
 import { MainWindow } from '@/components/layout/MainWindow';
 import { ViewStack } from '@/components/layout/ViewStack';
 import type { WorkstreamStatus } from '@/services/workstreams/types';
@@ -48,6 +51,7 @@ function Harness({
 }: HarnessProps) {
   useState(() => {
     getControl().invokeResponses.t3_catalogue = LAUNCH_CATALOGUE;
+    getControl().invokeResponses.t3_list_branches = LAUNCH_BRANCHES;
     const { ids } = seedWorkstreams(scene);
     const id = open !== undefined ? ids[open] : undefined;
     useWorkstreamsStore.setState({ filter });
@@ -147,5 +151,5 @@ export const DispatchChips: Story = { args: { section: 'dispatch' } };
 /** "Add to workstream" from a pull request. */
 export const AddToWorkstream: Story = { args: { section: 'prs', sheet: 'add' } };
 
-/** Review with an agent: a free slot, a model, and the workstream as the first message. */
+/** Review with an agent: where it runs, a model, and the workstream as the first message. */
 export const ReviewWithAgent: Story = { args: { open: 0, sheet: 'review' } };

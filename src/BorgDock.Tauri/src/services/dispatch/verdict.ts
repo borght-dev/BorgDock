@@ -162,7 +162,7 @@ export function driftOf({ item, threads, pullRequests }: ItemFacts): Drift | nul
     if (to) {
       return {
         to,
-        reason: `An agent works on it in ${thread.slot}. ${still}`,
+        reason: `An agent works on it in ${thread.place}. ${still}`,
         evidence: 'started',
       };
     }
@@ -279,7 +279,7 @@ export function evidenceOf({ item, threads, pullRequests, now }: ItemFacts): Evi
   if (thread) {
     const running = thread.status === 'running';
     evidence.push({
-      label: `${running ? 'agent running' : 'agent'} · ${thread.slot}`,
+      label: `${running ? 'agent running' : 'agent'} · ${thread.place}`,
       tone: running ? 'run' : null,
     });
   } else if (inProgress) {
@@ -325,7 +325,7 @@ export function latestMessage(
   if (thread?.lastAgentMessage) {
     said.push({
       source: 'agent',
-      author: `Agent · ${thread.slot}`,
+      author: `Agent · ${thread.place}`,
       at: thread.lastActivityAt,
       text: clip(thread.lastAgentMessage.replace(/\s+/g, ' ').trim(), AGENT_MESSAGE_LIMIT),
     });

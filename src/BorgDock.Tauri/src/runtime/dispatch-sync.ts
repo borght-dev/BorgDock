@@ -13,10 +13,12 @@ import {
 } from '@/services/dispatch/sync';
 import { NEEDS_YOU } from '@/services/dispatch/types';
 import { PollingManager } from '@/services/polling';
+import { OPEN_PR_THREAD_EVENT, requestT3Thread } from '@/services/t3-thread';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
+import type { PullRequest } from '@/types';
 import { trackPolling } from './visibility';
 
 /** A poll of the T3 on this machine costs one local request. */
@@ -41,6 +43,9 @@ async function listenToOtherWindows(): Promise<() => void> {
     listen<{ itemId: number; actionId: string }>(ITEM_ACTION_EVENT, (event) => {
       runItemAction(event.payload.itemId, event.payload.actionId);
     }),
+    listen<PullRequest>(OPEN_PR_THREAD_EVENT, (event) => {
+      void bringMainWindowForward().then(() => requestT3Thread(event.payload));
+    }),
   ]);
   return () => {
     for (const stop of stops) stop();
@@ -55,8 +60,7 @@ function remoteHosts() {
  * useDispatchSync — keeps the Dispatch overview current while `enabled`: polls
  * the T3 hosts and Azure DevOps, reads everything again on Refresh, and
  * rebuilds the overview when one of its other inputs changes (pull requests,
- * the track star, the slot pattern, the host list, hidden suggestions, manual
- * links). It also answers the notifications and the tray flyout when they ask
+ * the track star, the host list, hidden suggestions, manual links). It also answers the notifications and the tray flyout when they ask
  * to show an item or to take an action on it.
  */
 export function startDispatchSync(): () => void {
@@ -103,9 +107,6 @@ export function startDispatchSync(): () => void {
     }),
     useSettingsStore.subscribe((state, previous) => {
       if (state.settings.azureDevOps !== previous.settings.azureDevOps) void syncItems(true);
-      if (state.settings.agents?.t3SlotPattern !== previous.settings.agents?.t3SlotPattern) {
-        recomputeOverview();
-      }
       if (state.settings.agents?.t3Hosts !== previous.settings.agents?.t3Hosts) followHostList();
     }),
     useDispatchStore.subscribe((state, previous) => {

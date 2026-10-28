@@ -459,7 +459,7 @@ function resolveThread(member: Member, ref: T3ThreadRef, snapshot: SourceSnapsho
     resolvedAt: thread.open ? null : thread.lastActivityAt,
     activityAt: thread.lastActivityAt,
     needsYou,
-    identity: `${thread.slot} on ${host.label}`,
+    identity: `${thread.place} on ${host.label}`,
     thread,
     hostLabel: host.label,
   };

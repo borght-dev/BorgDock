@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildOverview, type EngineInput } from '../engine';
 import { guessItem, linkThreads, referencedItemIds } from '../link';
-import { makeItem, makeKnownPr, makeThread, makeThreadPr, PROJECTS } from './fixtures';
+import { makeItem, makeKnownPr, makeThread, makeThreadPr } from './fixtures';
 
 const NOW = new Date('2026-10-02T12:00:00Z');
 
@@ -9,12 +9,10 @@ function input(overrides: Partial<EngineInput>): EngineInput {
   return {
     items: [],
     threads: [],
-    projects: PROJECTS,
     pullRequests: [],
     queued: new Set(),
     hiddenSuggestions: new Set(),
     manualLinks: new Map(),
-    slotPattern: /^W\d+$/,
     now: NOW,
     ...overrides,
   };
@@ -421,7 +419,7 @@ describe('buildOverview bays', () => {
           states: [{ name: 'Needs Human', category: 'InProgress' }],
         }),
       ],
-      threads: [makeThread({ id: 't', title: 'AB#50001', status: 'question', slot: 'W1' })],
+      threads: [makeThread({ id: 't', title: 'AB#50001', status: 'question', place: 'W1' })],
     });
     expect(overview.items[0]?.bay).toBe('waiting');
     expect(overview.items[0]?.waitingFor).toBe('Agent asks in W1');
@@ -464,66 +462,10 @@ describe('buildOverview bays', () => {
   });
 });
 
-describe('buildOverview slots', () => {
-  it('marks slots free, mine, or busy with other work', () => {
-    const overview = overviewOf({
-      items: [makeItem({ id: 50001 })],
-      threads: [
-        makeThread({
-          id: 'a',
-          projectId: 'p-w0',
-          slot: 'W0',
-          title: 'AB#50001',
-          status: 'question',
-        }),
-        makeThread({
-          id: 'b',
-          projectId: 'p-w1',
-          slot: 'W1',
-          title: 'AB#99999 not mine',
-          status: 'running',
-        }),
-        makeThread({
-          id: 'c',
-          projectId: 'p-w2',
-          slot: 'W2',
-          title: 'AB#50001 old',
-          status: 'settled',
-          open: false,
-        }),
-      ],
-    });
-    expect(overview.slots.map((s) => [s.name, s.state, s.itemId, s.needsYou])).toEqual([
-      ['W0', 'mine', 50001, true],
-      ['W1', 'busy', null, false],
-      ['W2', 'free', null, false],
-    ]);
-  });
-
-  it('leaves out projects and threads outside the slot pattern', () => {
-    const projects = [
-      ...PROJECTS,
-      {
-        id: 'p-notes',
-        hostId: 'local',
-        hostLabel: 'This machine',
-        available: true,
-        title: 'notes',
-        workspaceRoot: '/work/notes',
-      },
-    ];
-    const thread = makeThread({ id: 'n', projectId: 'p-notes', slot: 'notes', title: 'AB#50001' });
-    const filtered = overviewOf({ items: [makeItem({ id: 50001 })], projects, threads: [thread] });
-    expect(filtered.slots.map((s) => s.name)).toEqual(['W0', 'W1', 'W2']);
-    expect(filtered.items[0]?.threads).toEqual([]);
-
-    const all = overviewOf({
-      items: [makeItem({ id: 50001 })],
-      projects,
-      threads: [thread],
-      slotPattern: null,
-    });
-    expect(all.slots.map((s) => s.name)).toContain('notes');
-    expect(all.items[0]?.threads.map((t) => t.id)).toEqual(['n']);
+describe('buildOverview threads', () => {
+  it('takes the threads of every T3 project, whatever it is called', () => {
+    const thread = makeThread({ id: 'n', projectId: 'p-notes', place: 'notes', title: 'AB#50001' });
+    const overview = overviewOf({ items: [makeItem({ id: 50001 })], threads: [thread] });
+    expect(overview.items[0]?.threads.map((t) => t.id)).toEqual(['n']);
   });
 });

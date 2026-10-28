@@ -39,18 +39,18 @@ export function runStatus(
   run: AgentRun,
   thread: AgentThread | undefined,
 ): { label: string; tone: Tone; stopped: boolean } {
-  if (!thread) return { label: `Starting in ${run.slot}`, tone: 'run', stopped: false };
+  if (!thread) return { label: `Starting in ${run.where}`, tone: 'run', stopped: false };
   switch (thread.status) {
     case 'running':
-      return { label: `Agent working in ${run.slot}`, tone: 'run', stopped: false };
+      return { label: `Agent working in ${run.where}`, tone: 'run', stopped: false };
     case 'your-turn':
-      return { label: `Agent done in ${run.slot}`, tone: 'ok', stopped: true };
+      return { label: `Agent done in ${run.where}`, tone: 'ok', stopped: true };
     case 'failed':
-      return { label: `Agent failed in ${run.slot}`, tone: 'bad', stopped: true };
+      return { label: `Agent failed in ${run.where}`, tone: 'bad', stopped: true };
     case 'settled':
       return { label: 'Settled', tone: 'mute', stopped: true };
     default:
-      return { label: `Agent asks in ${run.slot}`, tone: 'bad', stopped: true };
+      return { label: `Agent asks in ${run.where}`, tone: 'bad', stopped: true };
   }
 }
 
@@ -88,7 +88,7 @@ export function runTitle(run: AgentRun): string {
   }
 }
 
-/** The item ids in a run that is still going, with the slot it runs in. */
+/** The item ids in a run that is still going, with where it runs. */
 export function useRunningItems(): ReadonlyMap<number, string> {
   const runs = useDispatchStore((s) => s.runs);
   const threads = useDispatchStore((s) => s.threads);
@@ -97,7 +97,7 @@ export function useRunningItems(): ReadonlyMap<number, string> {
     for (const run of runs) {
       const thread = threads.find((t) => t.id === run.threadId);
       if (runStatus(run, thread).stopped) continue;
-      for (const id of run.itemIds) if (!running.has(id)) running.set(id, run.slot);
+      for (const id of run.itemIds) if (!running.has(id)) running.set(id, run.where);
     }
     return running;
   }, [runs, threads]);
@@ -175,7 +175,7 @@ export function RunCard({ run }: { run: AgentRun }) {
           <span className="bd-dp-run__spin" aria-hidden="true" />
         )}
         <span className="bd-dp-runcard__what">
-          <strong>{status.stopped ? status.label : `${runTitle(run)} in ${run.slot}`}</strong>
+          <strong>{status.stopped ? status.label : `${runTitle(run)} in ${run.where}`}</strong>
           {facts && <span className="bd-dp-runcard__facts">{facts}</span>}
           {tracksMoves(run) && !unverified && <RunProgressBar items={progress.items} />}
         </span>
