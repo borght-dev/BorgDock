@@ -1,0 +1,20 @@
+[
+  {
+    "slug": "fresh-worktree",
+    "storyId": "main-window-mainwindow--rail-dispatch-fix-sheet",
+    "viewport": { "width": 1360, "height": 860 },
+    "delay": 3000
+  },
+  {
+    "slug": "existing-thread",
+    "storyId": "main-window-mainwindow--rail-dispatch-launch-handoff",
+    "viewport": { "width": 1360, "height": 860 },
+    "delay": 3500
+  },
+  {
+    "slug": "open-pr-in-t3",
+    "storyId": "pull-requests-open-in-t3--check-out",
+    "viewport": { "width": 1000, "height": 620 },
+    "delay": 3000
+  }
+]

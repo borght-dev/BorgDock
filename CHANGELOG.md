@@ -1,5 +1,18 @@
 # Changelog
 
+## 4.9.0 — 2026-10-28
+
+### New Features
+
+- **Start an agent on any machine, in a fresh worktree** — Starting an agent no longer means finding a free slot. Pick the machine T3 runs on, the repository (BorgDock picks the one your work lives in) and the branch to start from, and T3 makes a fresh worktree for the thread, just like a thread you start in T3 itself. You get the same choice everywhere you start an agent: a work item, Sync and Fix out of sync, a CI failure to investigate, a workstream and a note. ![Fix out of sync with the machine, the repository and a new worktree picked](whats-new/4.9.0/fresh-worktree.png)
+- **Pick up where an agent left off** — Choose Existing thread to send your message to a thread that already worked on it, or to start a new thread in the same checkout. Handing a work item to QA goes back to the thread that did the work, so the agent already knows what it changed. ![Handing a work item to QA in the thread that did the work](whats-new/4.9.0/existing-thread.png)
+- **Open a pull request in T3 on any machine** — Open in T3 asks which machine to use and lets T3 check out the pull request's branch, reusing the worktree that already has it. Or pick a thread that already works on it. It works the same from the pull request list, its detail window and the tray. ![Opening a pull request in T3, with T3 checking out its branch](whats-new/4.9.0/open-pr-in-t3.png)
+
+### Improvements
+
+- Slots are gone from Dispatch: you no longer keep a row of W0, W1 … worktrees around, and the Dispatch slots setting is gone. Dispatch follows the threads of every T3 project and names an agent by its branch.
+- The scheduled Sync all starts in a fresh worktree of the repository your last run used. Until you've run Sync all once by hand, it waits and tells you why.
+
 ## 4.8.0 — 2026-10-28
 
 ### New Features
