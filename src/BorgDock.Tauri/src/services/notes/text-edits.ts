@@ -42,15 +42,24 @@ export function appendUnderHeading(text: string, heading: string, lines: string[
   return [...all.slice(0, insertAt), ...lines, ...spacer, ...after].join(nl);
 }
 
-/** The task on `line` ticked or unticked; `null` when that line holds no task. */
-export function toggleTask(text: string, line: number): string | null {
+/**
+ * The task reading `task` set to `done`: the one on `line` when it is still
+ * there, else the first task with that text, since lines move when the file
+ * changes. `null` when there is no such task or it is already in that state.
+ */
+export function setTask(text: string, line: number, task: string, done: boolean): string | null {
   const nl = newlineOf(text);
   const all = text.split(/\r?\n/);
-  const current = all[line];
-  if (current === undefined) return null;
-  const match = /^(\s*[-*+] \[)([ xX])(\] .*)$/.exec(current);
-  if (!match) return null;
-  all[line] = `${match[1]}${match[2] === ' ' ? 'x' : ' '}${match[3]}`;
+  const match = (i: number) => {
+    const m = /^(\s*[-*+] \[)([ xX])(\] )(.*)$/.exec(all[i] ?? '');
+    return m && m[4]!.trim() === task ? m : null;
+  };
+  const at = match(line) ? line : all.findIndex((_, i) => match(i));
+  const found = at < 0 ? null : match(at);
+  if (!found) return null;
+  const next = `${found[1]}${done ? 'x' : ' '}${found[3]}${found[4]}`;
+  if (next === all[at]) return null;
+  all[at] = next;
   return all.join(nl);
 }
 

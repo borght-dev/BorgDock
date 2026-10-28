@@ -4,6 +4,7 @@ import { type ParsedNote, parseNote, titleOf } from '@/services/notes/parse';
 import { folderOf, pathFor, uniquePath } from '@/services/notes/paths';
 import { type NotesStorage, nativeNotesStorage } from '@/services/notes/storage';
 import { renameLinks } from '@/services/notes/text-edits';
+import { retargetThreads } from '@/services/notes/thread-tracking';
 import {
   buildIndex,
   EMPTY_INDEX,
@@ -70,6 +71,8 @@ interface NotesState {
 }
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
+/** The save in flight for each note: the next one waits, then reads the buffer again. */
+const writing = new Map<string, Promise<void>>();
 let generation = 0;
 
 function rememberedOpenNote(): string | null {
@@ -125,6 +128,33 @@ export const useNotesStore = create<NotesState>()((set, get) => {
       conflicts: without(state.conflicts, path),
       openPath: state.openPath === path ? null : state.openPath,
     });
+  };
+
+  /** Write a note's unsaved edit over the text last read from its file. */
+  const saveBuffer = async (p: string) => {
+    const state = get();
+    const buffer = state.buffers[p];
+    if (buffer === undefined || p in state.conflicts || state.folder === undefined) return;
+    const base = state.texts[p] ?? null;
+    try {
+      const outcome = await storage.write(state.folder, p, buffer, base);
+      if (outcome.status === 'written') {
+        // A keystroke during the write keeps its own, newer buffer.
+        const now = get().buffers[p];
+        stored(p, buffer);
+        if (now !== undefined && now !== buffer) {
+          clearTimeout(timers.get(p));
+          timers.set(
+            p,
+            setTimeout(() => void get().flush(p), AUTOSAVE_MS),
+          );
+        }
+      } else {
+        set({ conflicts: { ...get().conflicts, [p]: outcome.disk } });
+      }
+    } catch (error) {
+      log.error(`saving ${p} failed`, error);
+    }
   };
 
   return {
@@ -287,29 +317,10 @@ export const useNotesStore = create<NotesState>()((set, get) => {
       for (const p of paths) {
         clearTimeout(timers.get(p));
         timers.delete(p);
-        const state = get();
-        const buffer = state.buffers[p];
-        if (buffer === undefined || p in state.conflicts || state.folder === undefined) continue;
-        const base = state.texts[p] ?? null;
-        try {
-          const outcome = await storage.write(state.folder, p, buffer, base);
-          if (outcome.status === 'written') {
-            // A keystroke during the write keeps its own, newer buffer.
-            const now = get().buffers[p];
-            stored(p, buffer);
-            if (now !== undefined && now !== buffer) {
-              clearTimeout(timers.get(p));
-              timers.set(
-                p,
-                setTimeout(() => void get().flush(p), AUTOSAVE_MS),
-              );
-            }
-          } else {
-            set({ conflicts: { ...get().conflicts, [p]: outcome.disk } });
-          }
-        } catch (error) {
-          log.error(`saving ${p} failed`, error);
-        }
+        const pending = (writing.get(p) ?? Promise.resolve()).then(() => saveBuffer(p));
+        writing.set(p, pending);
+        await pending;
+        if (writing.get(p) === pending) writing.delete(p);
       }
     },
 
@@ -343,8 +354,12 @@ export const useNotesStore = create<NotesState>()((set, get) => {
       const target = pathFor(folderOf(path), title);
       if (target === path) return path;
       await get().flush(path);
+      if (get().buffers[path] !== undefined || path in get().conflicts) {
+        throw new Error('The note has changes that are not saved yet. Resolve them first.');
+      }
       const backlinks = state.index.backlinks.get(path) ?? [];
       await storage.rename(folder, path, target);
+      retargetThreads(path, target);
       const text = get().texts[path];
       forget(path);
       if (text !== undefined) stored(target, text);

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Checkbox } from '@/components/shared/primitives';
 import { titleOf } from '@/services/notes/parse';
 import { isTemplatePath } from '@/services/notes/paths';
-import { toggleTask } from '@/services/notes/text-edits';
+import { setTask } from '@/services/notes/text-edits';
 import { useNotesStore } from '@/stores/notes-store';
 
 /** Open tasks across the vault, templates left out. */
@@ -52,13 +52,14 @@ export function TasksView() {
                       type="checkbox"
                       className="bd-notes-task__box"
                       checked={task.done}
-                      onChange={() =>
+                      onChange={(e) => {
+                        const done = e.target.checked;
                         void useNotesStore
                           .getState()
                           .update(path, (text) =>
-                            text === null ? null : toggleTask(text, task.line),
-                          )
-                      }
+                            text === null ? null : setTask(text, task.line, task.text, done),
+                          );
+                      }}
                     />
                     <span>{task.text}</span>
                   </label>

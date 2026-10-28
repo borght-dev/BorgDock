@@ -8,19 +8,27 @@ const WINDOW_POLL_MS = 15_000;
 
 /**
  * The notes vault for a component that shows notes: loads it once settings
- * are read when nothing loaded it yet (a pop-out has its own stores), and
- * keeps it current while the component is mounted.
+ * are read when nothing loaded it yet (a pop-out has its own stores), loads
+ * it again when the sync folder moves, and keeps it current while the
+ * component is mounted. In the main window the runtime got there first, so
+ * this only polls.
  */
 export function useNotesVault() {
   const hasLoaded = useSettingsStore((s) => s.hasLoaded);
+  const folder = useSettingsStore((s) => notesFolderSetting(s.settings));
+  const context = useSettingsStore((s) => JSON.stringify(refContextOf(s.settings)));
+
   useEffect(() => {
     if (!hasLoaded) return;
     const store = useNotesStore.getState();
-    const settings = useSettingsStore.getState().settings;
-    if (store.folder === undefined) {
-      store.setContext(refContextOf(settings));
-      void store.load(notesFolderSetting(settings));
+    if (JSON.stringify(store.context) !== context) store.setContext(JSON.parse(context));
+    if (store.folder !== folder) {
+      void store.flush().then(() => useNotesStore.getState().load(folder));
     }
+  }, [hasLoaded, folder, context]);
+
+  useEffect(() => {
+    if (!hasLoaded) return;
     const timer = window.setInterval(() => void useNotesStore.getState().refresh(), WINDOW_POLL_MS);
     const onFocus = () => void useNotesStore.getState().refresh();
     window.addEventListener('focus', onFocus);

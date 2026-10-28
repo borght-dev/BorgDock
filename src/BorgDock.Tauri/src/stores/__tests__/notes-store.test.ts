@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { memoryNotesStorage } from '@/services/notes/storage';
+import { readTracked, trackThread } from '@/services/notes/thread-tracking';
 import { setNotesStorage, useNotesStore } from '../notes-store';
 
 let vault: ReturnType<typeof memoryNotesStorage>;
 const store = () => useNotesStore.getState();
 
 beforeEach(async () => {
+  window.localStorage.clear();
   vault = memoryNotesStorage({
     'Plan.md': '# Plan\nShip it',
     'Daily/2026-10-28.md': 'Waiting on [[Plan]]',
@@ -74,6 +76,31 @@ describe('notes store', () => {
     expect(target).toBe('Launch plan.md');
     expect(vault.files.get('Daily/2026-10-28.md')?.text).toBe('Waiting on [[Launch plan]]');
     expect(store().index.backlinks.get('Launch plan.md')).toHaveLength(1);
+  });
+
+  it('refuses to rename a note whose edit could not be saved, and keeps the edit', async () => {
+    store().edit('Plan.md', 'my edit');
+    vault.files.set('Plan.md', { text: 'their edit', modifiedMs: 999 });
+    await expect(store().rename('Plan.md', 'Launch plan')).rejects.toThrow(/not saved/);
+    expect(store().buffers['Plan.md']).toBe('my edit');
+    expect(vault.files.get('Plan.md')?.text).toBe('their edit');
+    expect(vault.files.has('Launch plan.md')).toBe(false);
+  });
+
+  it('saves a note once when the autosave and a note switch flush it together', async () => {
+    store().edit('Plan.md', 'one save');
+    await Promise.all([store().flush('Plan.md'), store().flush('Plan.md')]);
+    expect(vault.files.get('Plan.md')?.text).toBe('one save');
+    expect(store().conflicts).toEqual({});
+    expect(store().buffers).toEqual({});
+  });
+
+  it('moves the threads started from a note along with a rename', async () => {
+    trackThread({ path: 'Plan.md', hostId: 'local', threadId: 't-1', label: 'Run', startedAt: 1 });
+    await store().rename('Plan.md', 'Launch plan');
+    expect(readTracked()).toEqual([
+      { path: 'Launch plan.md', hostId: 'local', threadId: 't-1', label: 'Run', startedAt: 1 },
+    ]);
   });
 
   it('updates a note from what the file holds now', async () => {

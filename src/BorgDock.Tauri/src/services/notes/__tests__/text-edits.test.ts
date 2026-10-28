@@ -6,7 +6,7 @@ import {
   hasMarkerBlock,
   markerBlock,
   renameLinks,
-  toggleTask,
+  setTask,
 } from '../text-edits';
 
 describe('appendUnderHeading', () => {
@@ -32,12 +32,23 @@ describe('appendUnderHeading', () => {
   });
 });
 
-describe('toggleTask', () => {
-  it('ticks and unticks a task line and ignores other lines', () => {
-    expect(toggleTask('a\n- [ ] ship', 1)).toBe('a\n- [x] ship');
-    expect(toggleTask('  * [X] done', 0)).toBe('  * [ ] done');
-    expect(toggleTask('just text', 0)).toBeNull();
-    expect(toggleTask('x', 4)).toBeNull();
+describe('setTask', () => {
+  it('ticks and unticks the task on its line', () => {
+    expect(setTask('a\n- [ ] ship', 1, 'ship', true)).toBe('a\n- [x] ship');
+    expect(setTask('  * [X] done', 0, 'done', false)).toBe('  * [ ] done');
+  });
+
+  it('finds the task by its text when the lines moved', () => {
+    const moved = '- [ ] added elsewhere\n- [ ] First\n- [ ] Second';
+    expect(setTask(moved, 1, 'Second', true)).toBe(
+      '- [ ] added elsewhere\n- [ ] First\n- [x] Second',
+    );
+  });
+
+  it('changes nothing when the task is gone or already in that state', () => {
+    expect(setTask('just text', 0, 'ship', true)).toBeNull();
+    expect(setTask('- [x] ship', 0, 'ship', true)).toBeNull();
+    expect(setTask('x', 4, 'x', true)).toBeNull();
   });
 });
 

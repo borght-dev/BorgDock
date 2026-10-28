@@ -13,43 +13,13 @@ import { useDispatchStore } from '@/stores/dispatch-store';
 import { useNotesStore } from '@/stores/notes-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { appendUnderHeading, hasMarkerBlock, markerBlock } from './text-edits';
+import { readTracked, type TrackedThread, writeTracked } from './thread-tracking';
 
 const log = createLogger('notes:writeback');
-const STORAGE_KEY = 'borgdock.notes.threads';
 /** A thread that waits is asked for its last message at most this often. */
 const ASK_EVERY_MS = 60_000;
 /** Threads tracked longer than this stop being followed. */
 const FOLLOW_FOR_MS = 14 * 24 * 60 * 60 * 1000;
-
-export interface TrackedThread {
-  path: string;
-  hostId: string;
-  /** The id T3 knows the thread by. */
-  threadId: string;
-  label: string;
-  startedAt: number;
-}
-
-function readTracked(): TrackedThread[] {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '[]') as unknown;
-    return Array.isArray(parsed) ? (parsed as TrackedThread[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeTracked(threads: TrackedThread[]) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
-  } catch {
-    // Following threads is best-effort; the note keeps the thread's link.
-  }
-}
-
-export function trackThread(thread: TrackedThread) {
-  writeTracked([...readTracked().filter((t) => t.threadId !== thread.threadId), thread]);
-}
 
 /** A short, stable id for one message, so the same text is never written twice. */
 export function messageId(text: string): string {

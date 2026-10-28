@@ -13,8 +13,8 @@ import { useNotesStore } from '@/stores/notes-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { titleOf } from './parse';
 import { appendUnderHeading } from './text-edits';
+import { trackThread } from './thread-tracking';
 import { vaultPath, withVault } from './vault-line';
-import { trackThread } from './writeback';
 
 /** T3 refuses a longer first message. */
 export const NOTE_PROMPT_LIMIT = 20_000;

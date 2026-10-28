@@ -31,6 +31,23 @@ export async function captureToToday(text: string, context: CaptureContext | nul
   return path;
 }
 
+/**
+ * The window has its own stores and stays alive while hidden: it reads the
+ * settings when it opens and each time it is shown again, so a moved sync
+ * folder is followed (useNotesVault reloads the vault).
+ */
+function readSettings() {
+  void invoke<AppSettings | null>('load_settings')
+    .then((settings) =>
+      useSettingsStore.setState({
+        ...(settings ? { settings } : {}),
+        isLoading: false,
+        hasLoaded: true,
+      }),
+    )
+    .catch(() => useSettingsStore.setState({ isLoading: false, hasLoaded: true }));
+}
+
 function hide() {
   getCurrentWindow()
     .hide()
@@ -54,18 +71,7 @@ export function NoteCaptureApp() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    // The window has its own stores: it reads the settings itself, then the vault.
-    if (!useSettingsStore.getState().hasLoaded) {
-      void invoke<AppSettings | null>('load_settings')
-        .then((settings) =>
-          useSettingsStore.setState({
-            ...(settings ? { settings } : {}),
-            isLoading: false,
-            hasLoaded: true,
-          }),
-        )
-        .catch(() => useSettingsStore.setState({ isLoading: false, hasLoaded: true }));
-    }
+    if (!useSettingsStore.getState().hasLoaded) readSettings();
     const raf = requestAnimationFrame(() => {
       inputRef.current?.focus();
       void revealWindow();
@@ -79,6 +85,7 @@ export function NoteCaptureApp() {
       setSaved(null);
       setError(null);
       setContext(captureContext());
+      readSettings();
       void useNotesStore.getState().refresh();
       requestAnimationFrame(() => inputRef.current?.focus());
     });
