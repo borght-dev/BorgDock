@@ -1,0 +1,9 @@
+[
+  {
+    "slug": "failures-in-full",
+    "storyId": "ci-failures-pr-list--long-titles",
+    "viewport": { "width": 1280, "height": 800 },
+    "delay": 1500,
+    "hover": "[data-pr-key=\"borght-dev/BorgDock#479\"] [data-ci-marker]"
+  }
+]

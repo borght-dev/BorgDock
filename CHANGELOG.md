@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.7.2 — 2026-10-28
+
+### Bug Fixes
+
+- **See the whole failure** — Shared CI failures above your pull request list were cut off after 90 characters, even with room to spare. Now you see the whole test or error. The tag on a pull request uses all the space on its line, too. When a name still doesn't fit, rest your cursor on it: a tooltip shows the full failure, the workflow and step it fails in, how many pull requests it blocks and who's on it. Failures BorgDock already knew about get their full names back the first time you start this version. ![The full text of a shared CI failure in a tooltip on the pull request list](whats-new/4.7.2/failures-in-full.png)
+
 ## 4.7.1 — 2026-10-27
 
 ### New Features

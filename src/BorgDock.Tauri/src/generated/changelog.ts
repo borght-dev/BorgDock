@@ -4,6 +4,25 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.7.2",
+    "date": "2026-10-28",
+    "summary": "See the whole failure.",
+    "highlights": [
+      {
+        "kind": "fixed",
+        "title": "See the whole failure",
+        "description": "Shared CI failures above your pull request list were cut off after 90 characters, even with room to spare. Now you see the whole test or error. The tag on a pull request uses all the space on its line, too. When a name still doesn't fit, rest your cursor on it: a tooltip shows the full failure, the workflow and step it fails in, how many pull requests it blocks and who's on it. Failures BorgDock already knew about get their full names back the first time you start this version.",
+        "hero": {
+          "src": "/whats-new/4.7.2/failures-in-full.png",
+          "alt": "The full text of a shared CI failure in a tooltip on the pull request list"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.7.1",
     "date": "2026-10-27",
     "summary": "Everything that changed, in one place, One shared failure, one place to fix it, See which merge broke master, and more.",
