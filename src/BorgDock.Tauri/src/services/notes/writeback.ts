@@ -86,13 +86,16 @@ export function startThreadWriteback(): () => void {
           return null;
         });
         if (!message?.trim()) continue;
+        // A rename while the message was read moved the thread to the note's new path.
+        const path = readTracked().find((t) => t.threadId === entry.threadId)?.path ?? entry.path;
         await useNotesStore
           .getState()
-          .update(entry.path, (text) =>
+          .update(path, (text) =>
             text === null ? null : withAgentNote(text, entry, message, new Date()),
           );
       }
-      writeTracked(tracked);
+      // Prune what is stored now, so a rename during this pass is kept.
+      writeTracked(readTracked().filter((t) => Date.now() - t.startedAt < FOLLOW_FOR_MS));
     } finally {
       running = false;
     }

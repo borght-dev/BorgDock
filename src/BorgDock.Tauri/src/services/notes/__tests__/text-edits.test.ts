@@ -45,6 +45,11 @@ describe('setTask', () => {
     );
   });
 
+  it('never ticks an example of the task inside a code fence', () => {
+    const note = '```\n- [ ] Ship\n```\n- [ ] added\n- [ ] Ship';
+    expect(setTask(note, 3, 'Ship', true)).toBe('```\n- [ ] Ship\n```\n- [ ] added\n- [x] Ship');
+  });
+
   it('changes nothing when the task is gone or already in that state', () => {
     expect(setTask('just text', 0, 'ship', true)).toBeNull();
     expect(setTask('- [x] ship', 0, 'ship', true)).toBeNull();

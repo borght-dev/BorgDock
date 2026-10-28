@@ -5,6 +5,8 @@
  * it was, line endings included.
  */
 
+import { parseNote } from './parse';
+
 function newlineOf(text: string): string {
   return text.includes('\r\n') ? '\r\n' : '\n';
 }
@@ -50,12 +52,10 @@ export function appendUnderHeading(text: string, heading: string, lines: string[
 export function setTask(text: string, line: number, task: string, done: boolean): string | null {
   const nl = newlineOf(text);
   const all = text.split(/\r?\n/);
-  const match = (i: number) => {
-    const m = /^(\s*[-*+] \[)([ xX])(\] )(.*)$/.exec(all[i] ?? '');
-    return m && m[4]!.trim() === task ? m : null;
-  };
-  const at = match(line) ? line : all.findIndex((_, i) => match(i));
-  const found = at < 0 ? null : match(at);
+  // The parser's tasks leave out code fences and frontmatter.
+  const tasks = parseNote('', text).tasks.filter((t) => t.text === task);
+  const at = (tasks.find((t) => t.line === line) ?? tasks[0])?.line ?? -1;
+  const found = /^(\s*[-*+] \[)([ xX])(\] )(.*)$/.exec(all[at] ?? '');
   if (!found) return null;
   const next = `${found[1]}${done ? 'x' : ' '}${found[3]}${found[4]}`;
   if (next === all[at]) return null;
