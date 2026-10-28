@@ -46,11 +46,6 @@ export interface RemoteWorktreeRepoSettings {
   favoriteWorktreePaths?: string[];
 }
 
-export interface FilePaletteRoot {
-  path: string;
-  label?: string;
-}
-
 export interface UiSettings {
   theme: ThemeMode;
   globalHotkey: string;
@@ -58,14 +53,6 @@ export interface UiSettings {
   editorCommand: string;
   runAtStartup: boolean;
   worktreePaletteFavoritesOnly?: boolean;
-  filePaletteActiveRootPath?: string;
-  filePaletteFavoritesOnly?: boolean;
-  filePaletteRootsCollapsed?: boolean;
-  filePaletteChangesCollapsed?: boolean;
-  filePaletteChangesMode?: 'head' | 'base' | 'both';
-  filePaletteScope?: 'all' | 'changes' | 'filename' | 'content' | 'symbol';
-  /** Remembered diff layout for file-viewer windows. Controlled by the Split/Unified buttons and Ctrl+Shift+M. */
-  fileViewerDefaultViewMode?: 'unified' | 'split';
   /** Override for the Windows Terminal profile used when launching "Claude". Empty = auto-detect. */
   windowsTerminalProfile?: string;
   quickReviewHotkey: string;
@@ -273,7 +260,6 @@ export interface AppSettings {
   azureDevOps: AzureDevOpsSettings;
   sql: SqlSettings;
   ciFailures?: CiFailureSettings;
-  filePaletteRoots?: FilePaletteRoot[];
   settingsWindow?: { x: number; y: number; width: number; height: number };
   workstreams?: WorkstreamSettings;
 }

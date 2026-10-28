@@ -12,11 +12,12 @@ export type ActiveSection =
   | 'workstreams'
   | 'workitems'
   | 'worktrees'
-  | 'activity';
+  | 'activity'
+  | 'notes';
 
 /**
- * Sections in rail order; keys `1`–`7` pick them by position. Activity goes
- * last, so the keys of the sections before it stay the same.
+ * Sections in rail order; keys `1`–`8` pick them by position. New sections
+ * go last, so the keys of the sections before them stay the same.
  */
 export const SECTION_ORDER: readonly ActiveSection[] = [
   'focus',
@@ -26,10 +27,11 @@ export const SECTION_ORDER: readonly ActiveSection[] = [
   'workitems',
   'worktrees',
   'activity',
+  'notes',
 ];
 
 /** Tabs of a workstream's detail view. */
-export type WorkstreamTab = 'overview' | 'members' | 'map' | 'activity';
+export type WorkstreamTab = 'overview' | 'members' | 'map' | 'activity' | 'notes';
 
 const ACTIVITY_VISITED_STORE_KEY = 'activityVisitedAt';
 
@@ -38,7 +40,7 @@ function isActiveSection(value: unknown): value is ActiveSection {
 }
 
 /** Tabs of the PR detail view, for `pr-detail` views that open on a specific tab. */
-export type PrDetailTab = 'overview' | 'commits' | 'files' | 'checks' | 'discussion';
+export type PrDetailTab = 'overview' | 'commits' | 'files' | 'checks' | 'discussion' | 'notes';
 
 /**
  * What the main window shows. `list` is the section list (`activeSection`

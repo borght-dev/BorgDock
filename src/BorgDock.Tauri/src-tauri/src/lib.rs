@@ -5,12 +5,13 @@ mod app_data;
 pub mod auth;
 pub mod cache;
 pub mod ci_failures;
-pub mod file_palette;
+pub mod content_search;
 pub mod flyout;
 pub mod git;
 mod http;
 pub mod keychain;
 pub mod maintenance;
+pub mod notes;
 mod runtime;
 mod sqlite_store;
 use tauri::{generate_handler, Emitter, Manager};
@@ -136,8 +137,6 @@ macro_rules! app_commands {
             git::commands::scan_repos_under,
             git::commands::resolve_repo_path,
             git::commands::run_gh_command,
-            git::diff::git_file_diff,
-            git::diff::git_changed_files,
             git::worktree_changes::list_worktree_changes,
             git::worktree_changes::diff_worktree_vs_head,
             git::worktree_changes::diff_worktree_vs_base,
@@ -231,11 +230,8 @@ macro_rules! app_commands {
             ci_failures::store::commands::ci_store_info,
             // Azure DevOps HTTP proxy (CORS bypass)
             ado::ado_fetch,
-            // File palette
-            file_palette::read_file::read_text_file,
-            file_palette::files::list_root_files,
-            file_palette::content_search::search_content,
-            file_palette::windows::open_file_viewer_window,
+            // Full-text search
+            content_search::search_content,
             // Activity journal
             activity::commands::activity_open_source,
             activity::commands::activity_sources,
@@ -256,6 +252,13 @@ macro_rules! app_commands {
             activity::push::activity_push_test,
             platform::taskbar::set_taskbar_badge,
             // Workstreams
+            // Notes vault
+            notes::commands::notes_folder_path,
+            notes::commands::notes_list,
+            notes::commands::notes_read_many,
+            notes::commands::notes_write,
+            notes::commands::notes_rename,
+            notes::commands::notes_trash,
             workstreams::commands::workstreams_folder_path,
             workstreams::commands::workstreams_list,
             workstreams::commands::workstreams_read,
@@ -375,10 +378,6 @@ pub fn run() {
         .manage(platform::flyout_cache::FlyoutCache {
             data: Mutex::new(None),
         })
-        .manage(file_palette::cache::FileIndexCache {
-            conn: std::sync::Arc::new(std::sync::Mutex::new(None)),
-            in_flight: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashSet::new())),
-        })
         .manage(git::worktree_cache::WorktreeCache::default());
 
     builder
@@ -432,8 +431,10 @@ pub fn run() {
                 );
             }
 
-            let file_cache_state = app.state::<file_palette::cache::FileIndexCache>();
-            file_palette::cache::init(&file_cache_state);
+            // The removed File Palette kept its file index here.
+            tauri::async_runtime::spawn_blocking(|| {
+                let _ = std::fs::remove_file(crate::app_data::directory().join("fileindex.db"));
+            });
 
             // Register the fixed palette + SQL hotkeys (Ctrl+F7/F8/F9/F10)
             // once, at setup. These are code-defined and must not be re-

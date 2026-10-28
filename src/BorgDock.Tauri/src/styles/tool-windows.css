@@ -4,7 +4,7 @@
  * palette and flyout share with the main window's grammar. Tokens only; every
  * duration is a --motion-* token, so reduced motion collapses all of it.
  * The window chrome (.bd-title-bar, .bd-statusbar), the list-row state
- * (.bd-list-row) and the older .sql-* / .bd-fp-* / .bd-fv-* families live in
+ * (.bd-list-row) and the older .sql-* family live in
  * index.css; the tool-window entrance is in motion.css.
  */
 

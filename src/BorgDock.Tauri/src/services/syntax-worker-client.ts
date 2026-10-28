@@ -50,9 +50,7 @@ function dispatchNext(): void {
         if (worker === current) failWorker();
       };
     }
-    const job =
-      [...pending.values()].find((job) => job.request.operation !== 'symbols') ??
-      pending.values().next().value;
+    const job = pending.values().next().value;
     if (!job) return;
     activeId = job.request.id;
     timeout = setTimeout(failWorker, WORK_TIMEOUT_MS);
@@ -66,7 +64,6 @@ export function requestSyntax(
   filename: string,
   lines: string[],
   signal?: AbortSignal,
-  operation: 'highlight' | 'symbols' = 'highlight',
 ): Promise<Result> {
   if (typeof Worker === 'undefined' || signal?.aborted || pending.size >= MAX_PENDING) {
     return Promise.resolve(null);
@@ -84,7 +81,7 @@ export function requestSyntax(
       dispatchNext();
     };
     pending.set(id, {
-      request: { id, filename, lines, operation },
+      request: { id, filename, lines },
       finish: (result) => {
         pending.delete(id);
         signal?.removeEventListener('abort', abort);

@@ -46,7 +46,7 @@ function readPrParams(): { owner: string; repo: string; number: number } {
  */
 async function preparePopOut() {
   const settings = await invoke<AppSettings>('load_settings');
-  useSettingsStore.setState({ settings, isLoading: false });
+  useSettingsStore.setState({ settings, isLoading: false, hasLoaded: true });
 
   try {
     await invoke('cache_init');

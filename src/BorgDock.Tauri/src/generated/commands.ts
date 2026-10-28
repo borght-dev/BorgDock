@@ -161,8 +161,6 @@ export const commands = {
 	scanReposUnder: (path: string) => typedError<RepoCandidate_Serialize[], string>(__TAURI_INVOKE("scan_repos_under", { path })),
 	resolveRepoPath: (path: string) => typedError<DiscoveredRepo, string>(__TAURI_INVOKE("resolve_repo_path", { path })),
 	runGhCommand: (args: string[]) => typedError<string, string>(__TAURI_INVOKE("run_gh_command", { args })),
-	gitFileDiff: (path: string, baseline: string) => typedError<FileDiffOutput, string>(__TAURI_INVOKE("git_file_diff", { path, baseline })),
-	gitChangedFiles: (root: string) => typedError<ChangedFilesOutput_Serialize, string>(__TAURI_INVOKE("git_changed_files", { root })),
 	listWorktreeChanges: (worktreePath: string) => typedError<WorktreeChangeSet_Serialize, string>(__TAURI_INVOKE("list_worktree_changes", { worktreePath })),
 	diffWorktreeVsHead: (worktreePath: string, filePath: string) => typedError<UnifiedDiff_Serialize, string>(__TAURI_INVOKE("diff_worktree_vs_head", { worktreePath, filePath })),
 	diffWorktreeVsBase: (worktreePath: string, baseBranch: string, filePath: string) => typedError<UnifiedDiff_Serialize, string>(__TAURI_INVOKE("diff_worktree_vs_base", { worktreePath, baseBranch, filePath })),
@@ -333,10 +331,7 @@ export const commands = {
 	ciClear: (keepDecisions: boolean) => typedError<null, string>(__TAURI_INVOKE("ci_clear", { keepDecisions })),
 	ciStoreInfo: () => typedError<CiStoreInfo, string>(__TAURI_INVOKE("ci_store_info")),
 	adoFetch: (request: AdoFetchRequest_Deserialize) => typedError<AdoFetchResponse_Serialize, string>(__TAURI_INVOKE("ado_fetch", { request })),
-	readTextFile: (path: string, maxBytes: number | null) => typedError<string, ReadFileError>(__TAURI_INVOKE("read_text_file", { path, maxBytes })),
-	listRootFiles: (root: string, limit: number | null) => typedError<ListFilesResult, string>(__TAURI_INVOKE("list_root_files", { root, limit })),
 	searchContent: (root: string, pattern: string, cancelToken: number) => typedError<ContentFileResult[], string>(__TAURI_INVOKE("search_content", { root, pattern, cancelToken })),
-	openFileViewerWindow: (path: string, baseline: string | null) => typedError<null, string>(__TAURI_INVOKE("open_file_viewer_window", { path, baseline })),
 	activityOpenSource: (source: ActivitySourceRequest) => typedError<ActivitySourceState_Serialize, string>(__TAURI_INVOKE("activity_open_source", { source })),
 	activitySources: () => typedError<ActivitySourceState_Serialize[], string>(__TAURI_INVOKE("activity_sources")),
 	/**  Settings dropped the source: its entries stay, with actions disabled. */
@@ -370,6 +365,14 @@ export const commands = {
 	 *  GUI thread with the shared timeout, like every window command.
 	 */
 	setTaskbarBadge: (count: number) => typedError<null, string>(__TAURI_INVOKE("set_taskbar_badge", { count })),
+	/**  The vault folder for `folder` (the sync folder, or none). */
+	notesFolderPath: (folder: string | null) => typedError<string, string>(__TAURI_INVOKE("notes_folder_path", { folder })),
+	notesList: (folder: string | null) => typedError<NoteFile[], string>(__TAURI_INVOKE("notes_list", { folder })),
+	notesReadMany: (folder: string | null, paths: string[]) => typedError<NoteContent_Serialize[], string>(__TAURI_INVOKE("notes_read_many", { folder, paths })),
+	/**  Write a note over `base`, the text last read; `None` creates it. */
+	notesWrite: (folder: string | null, path: string, contents: string, base: string | null) => typedError<NoteWriteOutcome_Serialize, string>(__TAURI_INVOKE("notes_write", { folder, path, contents, base })),
+	notesRename: (folder: string | null, from: string, to: string) => typedError<null, string>(__TAURI_INVOKE("notes_rename", { folder, from, to })),
+	notesTrash: (folder: string | null, path: string) => typedError<null, string>(__TAURI_INVOKE("notes_trash", { folder, path })),
 	/**  The folder workstreams are kept in for `folder` (the sync folder, or none). */
 	workstreamsFolderPath: (folder: string | null) => typedError<string, string>(__TAURI_INVOKE("workstreams_folder_path", { folder })),
 	workstreamsList: (folder: string | null) => typedError<WorkstreamFile[], string>(__TAURI_INVOKE("workstreams_list", { folder })),
@@ -1146,7 +1149,6 @@ export type AppSettings_Deserialize = {
 	sql?: SqlSettings_Deserialize,
 	ciFailures?: CiFailureSettings_Deserialize,
 	repoPriority?: { [key in string]: string },
-	filePaletteRoots?: FilePaletteRoot_Deserialize[] | null,
 	workstreams?: WorkstreamSettings_Deserialize | null,
 };
 
@@ -1171,7 +1173,6 @@ export type AppSettings_Serialize = {
 	sql: SqlSettings_Serialize,
 	ciFailures: CiFailureSettings_Serialize,
 	repoPriority: { [key in string]: string },
-	filePaletteRoots?: FilePaletteRoot_Serialize[],
 	workstreams?: WorkstreamSettings_Serialize,
 };
 
@@ -1278,40 +1279,6 @@ export type CachedRepoWorktrees_Serialize = {
 export type Catalogue = {
 	environmentId: string,
 	providers: ProviderDto[],
-};
-
-export type ChangedFile = ChangedFile_Serialize | ChangedFile_Deserialize;
-
-export type ChangedFile_Deserialize = {
-	path: string,
-	status: string,
-	oldPath?: string | null,
-	additions: number,
-	deletions: number,
-};
-
-export type ChangedFile_Serialize = {
-	path: string,
-	status: string,
-	oldPath: string | null,
-	additions: number,
-	deletions: number,
-};
-
-export type ChangedFilesOutput = ChangedFilesOutput_Serialize | ChangedFilesOutput_Deserialize;
-
-export type ChangedFilesOutput_Deserialize = {
-	local: ChangedFile_Deserialize[],
-	vsBase: ChangedFile_Deserialize[],
-	baseRef: string,
-	inRepo: boolean,
-};
-
-export type ChangedFilesOutput_Serialize = {
-	local: ChangedFile_Serialize[],
-	vsBase: ChangedFile_Serialize[],
-	baseRef: string,
-	inRepo: boolean,
 };
 
 export type CheckoutPrResult = {
@@ -2059,41 +2026,6 @@ export type FileChange_Serialize = {
 	isSubmodule: boolean,
 };
 
-export type FileDiffOutput = {
-	/**
-	 *  Unified-diff text from git. Empty if the file is unchanged vs the
-	 *  baseline.
-	 */
-	patch: string,
-	/**
-	 *  Human-readable label for the baseline actually used (e.g. "HEAD" or
-	 *  "master"). Empty when `in_repo` is false.
-	 */
-	baselineRef: string,
-	/**
-	 *  `false` when the file is not inside a git working tree, so the UI can
-	 *  disable the diff toggles instead of showing a misleading error.
-	 */
-	inRepo: boolean,
-};
-
-export type FileEntry = {
-	rel_path: string,
-	size: number,
-};
-
-export type FilePaletteRoot = FilePaletteRoot_Serialize | FilePaletteRoot_Deserialize;
-
-export type FilePaletteRoot_Deserialize = {
-	path: string,
-	label?: string | null,
-};
-
-export type FilePaletteRoot_Serialize = {
-	path: string,
-	label?: string,
-};
-
 export type GhAccount = {
 	login: string,
 	active: boolean,
@@ -2297,11 +2229,6 @@ export type LimitRecoveryDto_Serialize = {
 	autoResume: boolean,
 };
 
-export type ListFilesResult = {
-	entries: FileEntry[],
-	truncated: boolean,
-};
-
 export type ModelChoiceDto = {
 	id: string,
 	label: string,
@@ -2323,6 +2250,42 @@ export type ModelOptionDto = {
 	kind: string,
 	choices: ModelChoiceDto[],
 };
+
+export type NoteContent = NoteContent_Serialize | NoteContent_Deserialize;
+
+export type NoteContent_Deserialize = {
+	path: string,
+	/**  `None`: the note is gone or can't be read. */
+	contents?: string | null,
+};
+
+export type NoteContent_Serialize = {
+	path: string,
+	/**  `None`: the note is gone or can't be read. */
+	contents: string | null,
+};
+
+export type NoteFile = {
+	path: string,
+	modifiedMs: number | null,
+	size: number | null,
+};
+
+export type NoteWriteOutcome = NoteWriteOutcome_Serialize | NoteWriteOutcome_Deserialize;
+
+export type NoteWriteOutcome_Deserialize = { status: "written" } |
+/**
+ *  The file holds other text than the writer last read. `disk` is what
+ *  it holds, `None` when the file is gone.
+ */
+{ status: "conflict"; disk?: string | null };
+
+export type NoteWriteOutcome_Serialize = { status: "written" } |
+/**
+ *  The file holds other text than the writer last read. `disk` is what
+ *  it holds, `None` when the file is gone.
+ */
+{ status: "conflict"; disk: string | null };
 
 export type NotificationChannels = NotificationChannels_Serialize | NotificationChannels_Deserialize;
 
@@ -2505,8 +2468,6 @@ export type QuestionOptionDto = {
 	/**  What T3 expects back for this option. */
 	value: string,
 };
-
-export type ReadFileError = { kind: "notFound"; path: string } | { kind: "tooLarge"; size: number; limit: number } | { kind: "binary" } | { kind: "io"; message: string };
 
 export type RemoteWorktreeRef = {
 	id: string,
@@ -3091,18 +3052,6 @@ export type UiSettings_Deserialize = {
 	editorCommand?: string,
 	runAtStartup?: boolean,
 	worktreePaletteFavoritesOnly?: boolean,
-	filePaletteFavoritesOnly?: boolean,
-	filePaletteRootsCollapsed?: boolean,
-	filePaletteActiveRootPath?: string | null,
-	filePaletteChangesCollapsed?: boolean | null,
-	filePaletteChangesMode?: string | null,
-	filePaletteScope?: string | null,
-	/**
-	 *  Remembered diff layout for file-viewer windows ("unified" | "split").
-	 *  Users pick this via the Split/Unified toolbar or Ctrl+Shift+M; the
-	 *  next viewer window opens in the same layout.
-	 */
-	fileViewerDefaultViewMode?: string | null,
 	/**
 	 *  Override for the Windows Terminal profile used when launching "Claude"
 	 *  or similar wt-based shells. Empty/None = auto-detect from wt settings.json.
@@ -3128,18 +3077,6 @@ export type UiSettings_Serialize = {
 	editorCommand: string,
 	runAtStartup: boolean,
 	worktreePaletteFavoritesOnly: boolean,
-	filePaletteFavoritesOnly: boolean,
-	filePaletteRootsCollapsed: boolean,
-	filePaletteActiveRootPath?: string,
-	filePaletteChangesCollapsed?: boolean,
-	filePaletteChangesMode?: string,
-	filePaletteScope?: string,
-	/**
-	 *  Remembered diff layout for file-viewer windows ("unified" | "split").
-	 *  Users pick this via the Split/Unified toolbar or Ctrl+Shift+M; the
-	 *  next viewer window opens in the same layout.
-	 */
-	fileViewerDefaultViewMode?: string,
 	/**
 	 *  Override for the Windows Terminal profile used when launching "Claude"
 	 *  or similar wt-based shells. Empty/None = auto-detect from wt settings.json.

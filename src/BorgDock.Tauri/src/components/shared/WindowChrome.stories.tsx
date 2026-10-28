@@ -48,7 +48,11 @@ export const TitleAndStatusBars: Story = {
             style={{ boxShadow: 'var(--elevation-1)' }}
           >
             <WindowTitleBar
-              title={<span className="bd-fv-path">src/components/sql/SqlApp.tsx</span>}
+              title={
+                <span className="truncate font-mono text-xs text-[var(--color-text-secondary)]">
+                  src/components/sql/SqlApp.tsx
+                </span>
+              }
               actions={
                 <Button variant="secondary" size="sm">
                   Copy all

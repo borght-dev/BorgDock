@@ -1,9 +1,11 @@
 import { Bot, MoreHorizontal, Play, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BackButton } from '@/components/layout/BackButton';
+import { NotesTab, useNoteCount } from '@/components/notes/NotesTab';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button, IconButton, Input, Pill, Tabs } from '@/components/shared/primitives';
 import { isOverlayOpen, popView } from '@/services/navigation';
+import { workstreamKey } from '@/services/notes/vault-index';
 import { setStatus, setTitle } from '@/services/workstreams/edits';
 import { LIMITS, type RunKind } from '@/services/workstreams/types';
 import { toastError } from '@/stores/toast-store';
@@ -64,6 +66,7 @@ export function WorkstreamDetailView({ id, tab = 'overview' }: WorkstreamDetailV
   const [deleting, setDeleting] = useState(false);
   const [running, setRunning] = useState<RunKind | null>(null);
   const now = useClock();
+  const noteCount = useNoteCount(workstreamKey(id));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -181,6 +184,7 @@ export function WorkstreamDetailView({ id, tab = 'overview' }: WorkstreamDetailV
     { id: 'members', label: 'Members', count: document.members.length || undefined },
     { id: 'map', label: 'Map' },
     { id: 'activity', label: 'Activity' },
+    { id: 'notes', label: 'Notes', count: noteCount || undefined },
   ];
 
   return (
@@ -383,6 +387,13 @@ export function WorkstreamDetailView({ id, tab = 'overview' }: WorkstreamDetailV
             <MapTab document={document} assessment={assessment} readOnly={readOnly} />
           )}
           {tab === 'activity' && <ActivityTab document={document} />}
+          {tab === 'notes' && (
+            <NotesTab
+              refKey={workstreamKey(id)}
+              newTitle={document.title}
+              newFirstLine={`[${document.title.replace(/[[\]]/g, '')}](borgdock://workstreams/${encodeURIComponent(id)})`}
+            />
+          )}
         </div>
       </div>
 

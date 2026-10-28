@@ -8,6 +8,7 @@ import {
   launchAgentSession,
   writePromptFile,
 } from '@/services/claude-launcher';
+import { withNotesFor } from '@/services/notes/agents';
 import { sendOsNotification } from '@/services/notification';
 import { findRepoConfig } from '@/services/repo-lookup';
 import { ensureWorktree } from '@/services/worktree-lookup';
@@ -94,7 +95,12 @@ export function useClaudeActions() {
         fixEvidence(p.repoOwner, p.repoName, p.number, target.checkNames).catch(() => null),
       ]);
       log('building fix prompt');
-      const prompt = buildFixPrompt(pr, failedCheckNames, evidence, repo);
+      const prompt = withNotesFor(
+        buildFixPrompt(pr, failedCheckNames, evidence, repo),
+        p.repoOwner,
+        p.repoName,
+        p.number,
+      );
       log('writing prompt file');
       const promptFile = await writePromptFile(prompt);
       log('prompt written', promptFile);
@@ -116,7 +122,7 @@ export function useClaudeActions() {
 
       notifyLaunching(p.number, p.headRef);
       const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
-      const prompt = buildConflictPrompt(pr);
+      const prompt = withNotesFor(buildConflictPrompt(pr), p.repoOwner, p.repoName, p.number);
       const promptFile = await writePromptFile(prompt);
       await launch(worktreePath, promptFile, 'Resolve merge conflicts', provider);
       log('claude launched for conflict resolution');
@@ -135,7 +141,7 @@ export function useClaudeActions() {
       notifyLaunching(p.number, p.headRef);
       const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
       log('building monitor prompt');
-      const prompt = buildMonitorPrompt(pr, repo);
+      const prompt = withNotesFor(buildMonitorPrompt(pr, repo), p.repoOwner, p.repoName, p.number);
       log('writing prompt file');
       const promptFile = await writePromptFile(prompt);
       log('prompt written', promptFile);

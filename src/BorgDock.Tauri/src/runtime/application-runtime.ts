@@ -9,6 +9,7 @@ import { startCiFailuresSync } from './ci-failures-sync';
 import { startDispatchSync } from './dispatch-sync';
 import { createGitHubSync } from './github-sync';
 import { initialize } from './initialize';
+import { startNotesSync } from './notes-sync';
 import { followT3Sessions } from './t3-sessions';
 import { startVisibilityTracking } from './visibility';
 import { startWorkstreamsSync } from './workstreams-sync';
@@ -32,6 +33,7 @@ export function startApplicationRuntime(): () => void {
   const stopSessions = followT3Sessions();
   const stopActivity = startActivitySync();
   const stopWorkstreams = WORKSTREAMS_ENABLED ? startWorkstreamsSync() : undefined;
+  const stopNotes = startNotesSync();
   const getSettings = () => useSettingsStore.getState().settings;
   const reconcile = (restart = false) => {
     if (stopped || !useSettingsStore.getState().hasLoaded) return;
@@ -129,6 +131,7 @@ export function startApplicationRuntime(): () => void {
     stopSessions();
     stopActivity();
     stopWorkstreams?.();
+    stopNotes();
     document.removeEventListener('borgdock-refresh', refresh);
   };
 }

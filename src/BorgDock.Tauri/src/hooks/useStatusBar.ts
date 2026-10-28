@@ -68,7 +68,7 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
       const ratePart = rate ? ` · rate${loginPart} ${rate.remaining}/${rate.limit}${poolPart}` : '';
       return {
         left: `synced ${ago(lastPollTime)}${ratePart}`,
-        right: keys('Ctrl+F7 worktrees · Ctrl+F8 files · Ctrl+F9 ADO'),
+        right: keys('Ctrl+F7 worktrees · Ctrl+F8 quick note · Ctrl+F9 ADO'),
       };
     }
     case 'workitems':
@@ -91,6 +91,13 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
       return {
         left: 'what changed since you last checked',
         right: keys('J K move · Enter act · E read · U unread · # dismiss · Z undo'),
+      };
+    case 'notes':
+      return {
+        left: 'markdown notes, linked to your pull requests, items and threads',
+        right: keys(
+          'Ctrl+O open · Ctrl+Shift+F search · Ctrl+Enter tick task · Ctrl+F8 quick note',
+        ),
       };
   }
 }

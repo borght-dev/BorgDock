@@ -235,13 +235,12 @@ describe('public/theme-boot.js', () => {
       'flyout.html',
       'settings.html',
       'sql.html',
-      'file-palette.html',
-      'file-viewer.html',
       'work-item-palette.html',
       'workitem-detail.html',
       'pr-detail.html',
       'worktree.html',
       'whats-new.html',
+      'note-capture.html',
     ];
     for (const entry of entries) {
       const htmlText = readFileSync(resolve(root, entry), 'utf8');

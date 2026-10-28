@@ -76,7 +76,7 @@ src/BorgDock.Tauri/         # Tauri + React application
 
 Full spec: `BorgDock-Implementation-Plan.md`
 
-## Syntax highlighting (diff view, file palette, file viewer)
+## Syntax highlighting (diff view)
 
 Tree-sitter based. Two moving parts that must stay in sync:
 
@@ -126,7 +126,7 @@ The command has to be `async` so it can await the bounded oneshot.
 
 ## Tauri capabilities are per-window — plugin permissions don't auto-propagate
 
-Each pop-out window (`file-palette`, `workitem-detail`, `pr-detail`, `sql`, etc.) has its own JSON file in `src-tauri/capabilities/`, and Tauri only honors plugin invocations that the **specific window's** capabilities file allows. Registering a plugin globally in `lib.rs::run` and adding it to `Cargo.toml` is necessary but NOT sufficient — the per-window capabilities file must also list `<plugin>:default` (or a tighter allowlist) for that window to call it.
+Each pop-out window (`work-item-palette`, `workitem-detail`, `pr-detail`, `sql`, etc.) has its own JSON file in `src-tauri/capabilities/`, and Tauri only honors plugin invocations that the **specific window's** capabilities file allows. Registering a plugin globally in `lib.rs::run` and adding it to `Cargo.toml` is necessary but NOT sufficient — the per-window capabilities file must also list `<plugin>:default` (or a tighter allowlist) for that window to call it.
 
 Symptom of the missing grant: `await import('@tauri-apps/plugin-<x>')` resolves fine, but the actual call (e.g. `open(...)`, `save(...)`) rejects with a permission error. If the call site has a `try/catch` that swallows errors with just a `console.error`, the user-facing failure is "button does nothing." Check the devtools console first — the error message names the window and the missing permission.
 
@@ -256,6 +256,19 @@ What changed since I last checked, kept until I read or dismiss it (#88). Plan: 
 - **The shared SQLite module** is `src-tauri/src/sqlite_store.rs`: lazy open on a blocking thread, `user_version` migrations, a newer schema opens read-only, a corrupt file is moved aside. `CiStore` and `ActivityDb` both use it; a new store should too. `reset_all_settings` deletes both files.
 - **Actions are checked again right before they run** (`services/activity/actions.ts`, `revalidate`). Components pass the store state it reads as the `world` argument; with the React Compiler, a call that reads `getState()` inside render memoizes a stale answer.
 - **A list with `role="listbox"` swallows every list key**: `isOverlayOpen()` treats it as an open dropdown. The Activity list is `role="list"`.
+
+## Notes: an Obsidian-style vault
+
+Markdown notes in `<workstreams sync folder>/BorgDock Notes/` (else `%APPDATA%/BorgDock/notes/`), linked to PRs, work items, T3 threads and workstreams. They replaced the File Palette and File Viewer (gone, with symbol extraction and `git/diff.rs`). Rules and decisions: `docs/superpowers/specs/2026-10-28-notes.md`.
+
+- `src-tauri/src/notes/` is the vault on disk: list, batch read, write, rename, trash. `resolve()` refuses anything outside the vault, hidden folders and non-`.md` files. Full-text search is `content_search.rs` (`search_content`) run on the vault folder.
+- `src/services/notes/` is pure apart from `chips.ts`, `agents.ts`, `writeback.ts`, `daily.ts`, `decisions.ts`, `vault-line.ts`: `parse.ts` (`scanLine` is the one tokenizer for the index and the editor), `vault-index.ts` (links, backlinks, mentions by `RefKey`, tags, tasks), `text-edits.ts`, `graph.ts`. `src/stores/notes-store.ts` holds the files and writes them; `src/runtime/notes-sync.ts` is the main window's poller, `hooks/useNotesVault.ts` the other windows'.
+- **Never write over text you haven't read.** Every write passes `base`, the text last read; Rust compares it with the disk and answers `conflict` with what the file holds. The store keeps the unsaved edit and shows "Changed on disk". Appends (capture, digest, threads, writeback, task ticks) go through `update()`, which reads the file fresh first.
+- BorgDock writes text you didn't type only between `<!-- borgdock:… -->` markers (`markerBlock`), and only appends.
+- Chips read live state from the stores (`chipView(token, context, sources)`); React components pass the store slices they subscribed to (`RefChip`), the editor's DOM chips are redrawn by `refreshChips` when a store moves. Don't call `chipView` without sources inside render: the React Compiler memoizes a stale answer.
+- The quick note window is `note-capture` (`Ctrl+F8`, `note-capture.html`). PR and work item detail remember what they show in `localStorage` (`rememberCaptureContext`), which is how a capture in another window links it.
+- Every agent prompt BorgDock writes gets the vault line (`withVault`): Dispatch launches go through `launchInSlot`, Fix / Resolve / Monitor through `withNotesFor`.
+- e2e: `tests/e2e/helpers/mock-tauri.ts` answers every `notes_*` command from `window.__notes`; seed it with `page.addInitScript` before `bootApp`.
 
 ## Floating surfaces need an opaque token
 

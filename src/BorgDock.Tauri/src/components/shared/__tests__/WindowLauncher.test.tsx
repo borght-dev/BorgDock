@@ -11,14 +11,21 @@ describe('WindowLauncher', () => {
     render(<WindowLauncher />);
     fireEvent.click(screen.getByRole('button', { name: 'Open window' }));
 
-    for (const label of ['Worktrees', 'Files', 'Work items', 'SQL', 'Settings', "What's new"]) {
+    for (const label of [
+      'Worktrees',
+      'Quick note',
+      'Work items',
+      'SQL',
+      'Settings',
+      "What's new",
+    ]) {
       expect(screen.getByRole('menuitem', { name: new RegExp(label, 'i') })).toBeInTheDocument();
     }
   });
 
   it.each([
     ['Worktrees', 'worktrees'],
-    ['Files', 'files'],
+    ['Quick note', 'note-capture'],
     ['Work items', 'work-items'],
     ['SQL', 'sql'],
   ])('opens %s through the shared native launcher', async (label, tool) => {

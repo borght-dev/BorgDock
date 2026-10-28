@@ -4,7 +4,7 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 /// Static description of a window opened by a global hotkey. All windows that
-/// fit this shape (the four palettes + SQL workbench) go through one
+/// fit this shape (the palettes + SQL workbench) go through one
 /// `open_or_toggle_palette` code path. Agent Overview is excluded — it has
 /// settings-driven geometry that doesn't fit a const spec.
 struct PaletteSpec {
@@ -31,7 +31,7 @@ struct PaletteSpec {
 pub(crate) fn is_reusable_tool_window(label: &str) -> bool {
     matches!(
         label,
-        "worktree-palette" | "file-palette" | "work-item-palette" | "sql"
+        "worktree-palette" | "note-capture" | "work-item-palette" | "sql"
     )
 }
 
@@ -46,12 +46,12 @@ const SQL_SPEC: PaletteSpec = PaletteSpec {
     resizable: true,
 };
 
-const FILE_PALETTE_SPEC: PaletteSpec = PaletteSpec {
-    label: "file-palette",
-    title: "BorgDock File Palette",
-    url: "file-palette.html",
-    inner_size: (1100.0, 600.0),
-    min_inner_size: Some((800.0, 400.0)),
+const NOTE_CAPTURE_SPEC: PaletteSpec = PaletteSpec {
+    label: "note-capture",
+    title: "BorgDock Quick Note",
+    url: "note-capture.html",
+    inner_size: (560.0, 230.0),
+    min_inner_size: Some((420.0, 200.0)),
     decorations: false,
     skip_taskbar: true,
     resizable: true,
@@ -79,11 +79,11 @@ const WORKTREE_PALETTE_SPEC: PaletteSpec = PaletteSpec {
     resizable: true,
 };
 
-/// Hotkey → spec table. Used to build all four fixed hotkey callbacks
+/// Hotkey → spec table. Used to build every fixed hotkey callback
 /// identically in `register_fixed_hotkeys`.
 const PALETTE_HOTKEYS: &[(&str, &PaletteSpec)] = &[
     ("Ctrl+F7", &WORKTREE_PALETTE_SPEC),
-    ("Ctrl+F8", &FILE_PALETTE_SPEC),
+    ("Ctrl+F8", &NOTE_CAPTURE_SPEC),
     ("Ctrl+F9", &WORK_ITEM_PALETTE_SPEC),
     ("Ctrl+F10", &SQL_SPEC),
 ];
@@ -162,7 +162,7 @@ fn open_palette_window(
 fn spec_for_tool(tool: &str) -> Option<&'static PaletteSpec> {
     match tool {
         "worktrees" => Some(&WORKTREE_PALETTE_SPEC),
-        "files" => Some(&FILE_PALETTE_SPEC),
+        "note-capture" => Some(&NOTE_CAPTURE_SPEC),
         "work-items" => Some(&WORK_ITEM_PALETTE_SPEC),
         "sql" => Some(&SQL_SPEC),
         _ => None,
@@ -333,7 +333,7 @@ pub async fn palette_ready(app: tauri::AppHandle, window: tauri::Window) -> Resu
     log::info!("palette_ready[{label}]: entry");
     if !matches!(
         label.as_str(),
-        "work-item-palette" | "worktree-palette" | "file-palette"
+        "work-item-palette" | "worktree-palette" | "note-capture"
     ) {
         log::warn!("palette_ready[{label}]: rejecting — not a palette window");
         return Err(format!("palette_ready: not a palette window: {label}"));
@@ -375,12 +375,7 @@ mod tests {
 
     #[test]
     fn fixed_tool_windows_are_reused_instead_of_destroyed() {
-        for label in [
-            "worktree-palette",
-            "file-palette",
-            "work-item-palette",
-            "sql",
-        ] {
+        for label in ["worktree-palette", "note-capture", "work-item-palette", "sql"] {
             assert!(is_reusable_tool_window(label), "{label}");
         }
         assert!(!is_reusable_tool_window("settings"));
@@ -389,7 +384,7 @@ mod tests {
 
     #[test]
     fn launcher_ids_resolve_to_every_fixed_tool_window() {
-        for tool in ["worktrees", "files", "work-items", "sql"] {
+        for tool in ["worktrees", "note-capture", "work-items", "sql"] {
             assert!(spec_for_tool(tool).is_some(), "{tool}");
         }
         assert!(spec_for_tool("unknown").is_none());

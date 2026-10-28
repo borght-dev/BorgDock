@@ -337,9 +337,6 @@
   --color-stripe-overlay: rgba(255, 255, 255, 0.4);
   /* Selected text in code editors (SQL editor). */
   --color-code-selection: rgba(79, 70, 229, 0.16);
-  /* Find-in-file matches (file palette preview, code view). */
-  --color-find-match-bg: rgba(201, 138, 18, 0.28);
-  --color-find-match-current-bg: rgba(201, 138, 18, 0.55);
 }
 
 .dark {
@@ -581,8 +578,6 @@
   --color-chip-count-on-bg: rgba(255, 255, 255, 0.1);
   --color-stripe-overlay: rgba(255, 255, 255, 0.28);
   --color-code-selection: rgba(127, 126, 255, 0.28);
-  --color-find-match-bg: rgba(229, 180, 84, 0.26);
-  --color-find-match-current-bg: rgba(229, 180, 84, 0.5);
 }
 
 /* Motion tokens (motion.css) */

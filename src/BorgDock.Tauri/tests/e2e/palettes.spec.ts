@@ -3,33 +3,11 @@ import { SAMPLE_WORK_ITEMS } from './helpers/seed';
 import { bootApp } from './helpers/test-utils';
 
 /**
- * File palette + work-item palette, both popped out as their own
- * windows. The search input is plain `<input>` (no `role=textbox` is
- * set explicitly, but Playwright's `getByRole('textbox')` matches it).
- *
- * - file palette: src/components/file-palette/FilePaletteSearchPane.tsx
- *   uses `aria-label="File palette search"`.
- * - work-item palette: src/components/work-item-palette/WorkItemPaletteApp.tsx
- *   uses `placeholder="Search ID, title, @assignee, state:active, type:bug…"`.
- *
- * The palette windows are framed for opening on demand; we boot them
- * directly via the dedicated HTML entries.
+ * The work-item palette, popped out as its own window and booted directly
+ * from its HTML entry. Its search input
+ * (src/components/work-item-palette/WorkItemPaletteApp.tsx) has
+ * `placeholder="Search ID, title, @assignee, state:active, type:bug…"`.
  */
-
-test('file palette: input is focused on open', async ({ page }) => {
-  await bootApp(page, 'file-palette.html', 'palette-loaded');
-  const input = page.getByRole('textbox', { name: /file palette search/i });
-  await expect(input).toBeFocused();
-});
-
-test('file palette: typing narrows visible results', async ({ page }) => {
-  await bootApp(page, 'file-palette.html', 'palette-loaded');
-  const input = page.getByRole('textbox', { name: /file palette search/i });
-  await input.fill('001');
-  // The seeded palette has src/file-001.ts among 200 files; the substring
-  // match should surface it.
-  await expect(page.getByText('file-001.ts').first()).toBeVisible();
-});
 
 test('work-item palette: input is focused on open', async ({ page }) => {
   await bootApp(page, 'work-item-palette.html', 'happy-path', {

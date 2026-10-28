@@ -2,7 +2,8 @@ import { unitActions } from '@/components/dispatch/unit-actions';
 import { dispatchActions, runItemAction, showDispatchItem } from '@/services/dispatch/actions';
 import { configuredHosts, rawId } from '@/services/dispatch/hosts';
 import { postComment } from '@/services/github/mutations';
-import { showPr, showWorkItem } from '@/services/navigation';
+import { showNote, showPr, showWorkItem } from '@/services/navigation';
+import { notePathOfUrl } from '@/services/notes/decisions';
 import { closePr } from '@/services/pr-actions';
 import { t3ShowThread } from '@/services/t3/api';
 import { useDispatchStore } from '@/stores/dispatch-store';
@@ -72,8 +73,11 @@ export function openOriginal(resolved: ResolvedMember): void {
       );
       return;
     }
-    case 'link':
-      openUrl(ref.url);
+    case 'link': {
+      const note = notePathOfUrl(ref.url);
+      if (note) void showNote(note);
+      else openUrl(ref.url);
+    }
   }
 }
 

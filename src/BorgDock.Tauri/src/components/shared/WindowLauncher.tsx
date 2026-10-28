@@ -1,10 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import {
   Braces,
-  FileSearch,
   GitBranch,
   Grid2X2Plus,
   ListTodo,
+  NotebookPen,
   Settings,
   Sparkles,
 } from 'lucide-react';
@@ -15,7 +15,7 @@ import { IconButton, Kbd } from './primitives';
 
 const TOOL_WINDOWS = [
   { id: 'worktrees', label: 'Worktrees', shortcut: 'Ctrl+F7', icon: GitBranch },
-  { id: 'files', label: 'Files', shortcut: 'Ctrl+F8', icon: FileSearch },
+  { id: 'note-capture', label: 'Quick note', shortcut: 'Ctrl+F8', icon: NotebookPen },
   { id: 'work-items', label: 'Work items', shortcut: 'Ctrl+F9', icon: ListTodo },
   { id: 'sql', label: 'SQL', shortcut: 'Ctrl+F10', icon: Braces },
 ] as const;
