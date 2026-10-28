@@ -4,6 +4,7 @@ import './styles/index.css';
 import { PrDetailApp } from './components/pr-detail/PRDetailApp';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { attachConsoleBridge, createLogger } from './services/logger';
+import { startResponsivenessMonitor } from './services/responsiveness';
 import { disableDefaultContextMenu } from './utils/disable-default-context-menu';
 import { startWindowTheme } from './utils/theme';
 
@@ -16,6 +17,7 @@ disableDefaultContextMenu();
 // Route console.* into tauri-plugin-log so logs land in %APPDATA%/BorgDock/logs/borgdock.log.
 // Must run before anything else writes to the console.
 attachConsoleBridge();
+startResponsivenessMonitor();
 
 const bootLog = createLogger('pr-detail-boot');
 

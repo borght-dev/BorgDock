@@ -117,6 +117,7 @@ macro_rules! app_commands {
             platform::theme::get_system_theme,
             platform::logs::get_log_folder,
             platform::logs::open_log_folder,
+            platform::responsiveness::renderer_heartbeat,
             // Git
             git::worktree::list_worktrees,
             git::worktree::list_worktrees_bare,
@@ -326,6 +327,9 @@ pub fn run() {
                 // hidden. See platform::window::revealed().
                 tauri::WindowEvent::Destroyed => {
                     crate::platform::window::mark_window_destroyed(window.label());
+                    window
+                        .state::<platform::responsiveness::Responsiveness>()
+                        .forget(window.label());
                 }
                 _ => {}
             }
@@ -367,8 +371,10 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(log_plugin)
+        .plugin(platform::responsiveness::plugin())
         .plugin(tauri_plugin_os::init())
         .manage(ProcessState::default())
+        .manage(platform::responsiveness::Responsiveness::default())
         .manage(updater::PendingUpdate::<updater::DownloadedUpdate>::default())
         .manage(PrCache::default())
         .manage(ci_failures::store::CiStore::default())
@@ -392,6 +398,7 @@ pub fn run() {
                 |key, error| log::error!("window action[{key}]: {error}"),
                 platform::window::MAIN_THREAD_TIMEOUT,
             )?);
+            platform::responsiveness::start(app.handle().clone());
             platform::tray::setup_tray(app)?;
             activity::push::start(app.handle().clone());
             platform::tray::start_initializing_animation(app.handle().clone());

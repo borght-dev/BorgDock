@@ -280,11 +280,28 @@ Storybook ignores `src-tauri/**` in its watcher (`.storybook/main.ts`). Without 
 
 ## Diagnosing a hung / frozen BorgDock (AppHang)
 
-Symptom pattern seen on 2026-09-08 (2.2.0): `%APPDATA%\BorgDock\logs\borgdock.log` shows webview lines (poll cycles every ~65 s) stop dead while Rust-side `worktree cache refreshed` lines keep coming every 5 min, then Windows reports `AppHangTransient` for `borgdock.exe` in the Application event log (Event 1001). That split means the main GUI thread / IPC is blocked while the tokio runtime is alive. Things to know before chasing it:
+Start with `grep responsiveness` in `%APPDATA%\BorgDock\logs\borgdock.log`. The watchdog (`platform/responsiveness.rs`, renderer half `src/services/responsiveness.ts`) writes:
+
+| Line | Meaning |
+|---|---|
+| `GUI thread blocked for Ns` / `responsive again after Ns` | Rust's main thread missed a ping: a native deadlock, a sync command, or a huge IPC body being parsed |
+| `window 'x' renderer silent for Ns, last input: …` | that window's JS stopped beating while the GUI thread was fine; names the last click or key |
+| `long frame` / `slow interaction` (`[responsiveness:<window>]`) | renderer jank after the fact: the scripts that ran (LoAF), or the clicked element |
+| `private memory jumped A -> B MiB in one second` | a giant allocation in `borgdock.exe` |
+| `whole process paused for Ns` | system sleep, debugger, or machine-wide starvation; not a BorgDock bug |
+| `window 'x': renderer process unresponsive` / `GPU process exited` (…) | WebView2's own `ProcessFailed` verdict |
+
+`renderer stats` and the watchdog's resource line (every 10 min) give the heap, private-bytes and handle trend for leaks over uptime.
+
+**IPC bodies are parsed on the GUI thread.** On 2026-10-28 (4.7.2) every poll cycle sent the whole ETag cache (~450 MB of GitHub response bodies) through `cache_save_etags`; the webview spiked to 10 GB, `borgdock.exe` to 6 GB, and the window froze every ~70 s. Send deltas over IPC, never a whole cache, and cap anything persisted (`ETAG_ROWS_KEPT`, 500 rows).
+
+`window.__TAURI_INTERNALS__.invoke` is read-only (`Object.defineProperty`): assigning to it throws and the window never boots. The e2e mock (`tests/e2e/helpers/mock-tauri.ts`) was writable and hid this; it is read-only now, but check anything touching Tauri internals in a real build.
+
+Older pattern (2026-09-08, 2.2.0): webview lines stop dead while Rust-side `worktree cache refreshed` lines keep coming, then Windows reports `AppHangTransient` for `borgdock.exe` in the Application event log (Event 1001). Things to know before chasing a hang:
 
 - **Log timestamps are UTC**; WER / event-log / file mtimes are local time. Convert before correlating.
 - `borgdock-panic.log` only covers panics, never hangs. WER keeps no dump for transient hangs, and `[profile.release] strip = true` means a post-hoc dump would show borgdock frames as module+offset only.
-- **To catch the next one**, run `pwsh -File src/BorgDock.Tauri/scripts/diag/hang-watchdog.ps1` and leave it open. It triggers on `Process.Responding = false` or on `borgdock.log` going stale, attaches `cdb` non-invasively, and writes `logs\hang-<stamp>.txt` (all thread stacks, OS/WebView2 frames symbolized) plus a full minidump. Read thread 0 (main) first: a wait inside `EmbeddedBrowserWebView.dll` means WebView2, a wait under a `borgdock` frame means a Rust-side Mutex/oneshot deadlock (see "Tauri sync commands and main-thread operations").
+- **To catch the next one**, run `pwsh -File src/BorgDock.Tauri/scripts/diag/hang-watchdog.ps1` and leave it open. It triggers on `Process.Responding = false` (its stale-log trigger rarely fires now: the watchdog keeps writing during a freeze), attaches `cdb` non-invasively, and writes `logs\hang-<stamp>.txt` (all thread stacks, OS/WebView2 frames symbolized) plus a full minidump. Read thread 0 (main) first: a wait inside `EmbeddedBrowserWebView.dll` means WebView2, a wait under a `borgdock` frame means a Rust-side Mutex/oneshot deadlock (see "Tauri sync commands and main-thread operations").
 - For symbolized borgdock frames, build a local release with `strip = false` and `debug = 1` temporarily (don't commit) and run that instead of the installed exe.
 
 ## Check for existing patterns before implementing

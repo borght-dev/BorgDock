@@ -115,6 +115,12 @@ export const commands = {
 	 */
 	openLogFolder: () => typedError<null, string>(__TAURI_INVOKE("open_log_folder")),
 	/**
+	 *  Every window's renderer calls this every 2 s while it is visible, and once
+	 *  when it is hidden. Async so the log write on recovery stays off the GUI
+	 *  thread.
+	 */
+	rendererHeartbeat: (beat: RendererHeartbeat_Deserialize) => typedError<null, string>(__TAURI_INVOKE("renderer_heartbeat", { beat })),
+	/**
 	 *  Heavy per-worktree scan (status + ahead/behind + sha). The three git calls
 	 *  per worktree run on a small scoped thread pool (`SCAN_CONCURRENCY` wide)
 	 *  instead of sequentially — 14 worktrees went from ~24 s to a few seconds.
@@ -2519,6 +2525,25 @@ export type RemoteWorktreeRepoSettings_Serialize = {
 	basePath: string,
 	enabled: boolean,
 	favoriteWorktreePaths: string[],
+};
+
+/**  What a window's renderer reports with each heartbeat. */
+export type RendererHeartbeat = RendererHeartbeat_Serialize | RendererHeartbeat_Deserialize;
+
+/**  What a window's renderer reports with each heartbeat. */
+export type RendererHeartbeat_Deserialize = {
+	visible: boolean,
+	/**  The last click or key press, and how long ago. */
+	lastInteraction?: string | null,
+	heapMb?: number | null,
+};
+
+/**  What a window's renderer reports with each heartbeat. */
+export type RendererHeartbeat_Serialize = {
+	visible: boolean,
+	/**  The last click or key press, and how long ago. */
+	lastInteraction: string | null,
+	heapMb: number | null,
 };
 
 export type RepoCandidate = RepoCandidate_Serialize | RepoCandidate_Deserialize;
