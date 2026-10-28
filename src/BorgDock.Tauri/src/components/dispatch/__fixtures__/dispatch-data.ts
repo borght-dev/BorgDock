@@ -1,5 +1,5 @@
 // A day of work in Dispatch, for stories and tests: sixteen items across every
-// bay, nine local slots and five on a second host. The overview is built by
+// bay, nine local T3 projects and five on a second host. The overview is built by
 // the real engine, so the scene cannot drift from what the app would show.
 
 import { buildOverview } from '@/services/dispatch/engine';
@@ -247,18 +247,28 @@ function toItem(spec: ItemSpec, now: number): DispatchItem {
 }
 
 const LOCAL = { hostId: 'local', hostLabel: 'This machine' };
+const SHOP_REPOSITORY = {
+  key: 'github.com/acme/shop',
+  displayName: 'acme/shop',
+  owner: 'acme',
+  name: 'shop',
+};
 const MAC = { hostId: 'mac', hostLabel: 'Mac' };
 
 function projects(): AgentProject[] {
   const local = Array.from({ length: 9 }, (_, i) => ({ ...LOCAL, name: `W${i}` }));
   const mac = Array.from({ length: 5 }, (_, i) => ({ ...MAC, name: `M${i}` }));
-  return [...local, ...mac].map((slot) => ({
-    id: `p-${slot.name.toLowerCase()}`,
-    hostId: slot.hostId,
-    hostLabel: slot.hostLabel,
+  // Every project is a checkout of one repository; W0 and M0 are its own checkouts.
+  return [...local, ...mac].map((project) => ({
+    id: `p-${project.name.toLowerCase()}`,
+    hostId: project.hostId,
+    hostLabel: project.hostLabel,
     available: true,
-    title: slot.name,
-    workspaceRoot: `/work/shop/${slot.name}`,
+    title: project.name,
+    workspaceRoot: project.name.endsWith('0')
+      ? '/work/shop'
+      : `/work/shop/.worktrees/${project.name}`,
+    repository: SHOP_REPOSITORY,
   }));
 }
 
@@ -285,7 +295,8 @@ No schema change. About 14 files.`;
 
 interface ThreadSpec {
   id: string;
-  slot: string;
+  /** The T3 project the thread runs in. */
+  project: string;
   title: string;
   status: ThreadStatus;
   /** Minutes since the agent last did something. */
@@ -299,7 +310,7 @@ interface ThreadSpec {
 const THREAD_SPECS: ThreadSpec[] = [
   {
     id: 't-60214',
-    slot: 'W3',
+    project: 'W3',
     title: 'AB#60214 Order list loses its scroll position',
     status: 'question',
     idleMinutes: 4,
@@ -308,7 +319,7 @@ const THREAD_SPECS: ThreadSpec[] = [
   },
   {
     id: 't-59877',
-    slot: 'W1',
+    project: 'W1',
     title: 'AB#59877 Technician availability',
     status: 'plan',
     idleMinutes: 18,
@@ -318,7 +329,7 @@ const THREAD_SPECS: ThreadSpec[] = [
   },
   {
     id: 't-60102',
-    slot: 'W5',
+    project: 'W5',
     title: 'AB#60102 CSV export drops the last column',
     status: 'your-turn',
     idleMinutes: 31,
@@ -328,7 +339,7 @@ const THREAD_SPECS: ThreadSpec[] = [
   },
   {
     id: 't-59640',
-    slot: 'W7',
+    project: 'W7',
     title: 'AB#59640 Flaky login test',
     status: 'failed',
     idleMinutes: 62,
@@ -338,7 +349,7 @@ const THREAD_SPECS: ThreadSpec[] = [
   },
   {
     id: 't-60031',
-    slot: 'W2',
+    project: 'W2',
     title: 'AB#60031 Bulk-assign jobs from the map view',
     status: 'running',
     idleMinutes: 1,
@@ -347,7 +358,7 @@ const THREAD_SPECS: ThreadSpec[] = [
   },
   {
     id: 't-60150',
-    slot: 'M4',
+    project: 'M4',
     title: 'AB#60150 Upgrade the report renderer',
     status: 'running',
     idleMinutes: 2,
@@ -355,7 +366,7 @@ const THREAD_SPECS: ThreadSpec[] = [
   },
   {
     id: 't-59403',
-    slot: 'W4',
+    project: 'W4',
     title: 'AB#59403 Asset history on the detail page',
     status: 'settled',
     idleMinutes: 2 * 24 * 60,
@@ -363,7 +374,7 @@ const THREAD_SPECS: ThreadSpec[] = [
   },
   {
     id: 't-59958',
-    slot: 'W6',
+    project: 'W6',
     title: 'AB#59958 Recurring jobs timezone',
     status: 'settled',
     idleMinutes: 9 * 24 * 60,
@@ -371,28 +382,28 @@ const THREAD_SPECS: ThreadSpec[] = [
   },
   {
     id: 't-59712',
-    slot: 'W8',
+    project: 'W8',
     title: 'AB#59712 Barcode scan on the mobile client',
     status: 'settled',
     idleMinutes: 3 * 24 * 60,
   },
   {
     id: 't-other-1',
-    slot: 'W0',
+    project: 'W0',
     title: 'Spike: map tile caching',
     status: 'running',
     idleMinutes: 6,
   },
   {
     id: 't-other-2',
-    slot: 'M0',
+    project: 'M0',
     title: 'Docs: release checklist',
     status: 'your-turn',
     idleMinutes: 90,
   },
   {
     id: 't-other-3',
-    slot: 'M3',
+    project: 'M3',
     title: 'AB#58810 Tenant export',
     status: 'running',
     idleMinutes: 3,
@@ -400,14 +411,14 @@ const THREAD_SPECS: ThreadSpec[] = [
 ];
 
 function toThread(spec: ThreadSpec, now: number): AgentThread {
-  const host = spec.slot.startsWith('M') ? MAC : LOCAL;
+  const host = spec.project.startsWith('M') ? MAC : LOCAL;
   const lastActivityAt = new Date(now - spec.idleMinutes * MINUTE).toISOString();
   return {
     id: spec.id,
     ...host,
     available: true,
-    projectId: `p-${spec.slot.toLowerCase()}`,
-    slot: spec.slot,
+    projectId: `p-${spec.project.toLowerCase()}`,
+    place: spec.project,
     title: spec.title,
     branch: spec.branch ?? null,
     createdAt: new Date(now - spec.idleMinutes * MINUTE - 40 * MINUTE).toISOString(),
@@ -599,6 +610,16 @@ export const WIDE_CATALOGUE: T3Catalogue = {
   ],
 };
 
+/** What `t3_list_branches` answers: the branches a new worktree can start from. */
+export const LAUNCH_BRANCHES = [
+  { name: 'main', isDefault: true, isRemote: false },
+  { name: 'release/4.7', isDefault: false, isRemote: false },
+  { name: 'feature/60214-order-list-scroll', isDefault: false, isRemote: false },
+];
+
+/** The Mac as a configured T3 host, so the environment picker shows two machines. */
+export const MAC_T3_HOST = { id: 'mac', label: 'Mac', baseUrl: 'http://mac:3773' };
+
 export interface DispatchScene {
   items: DispatchItem[];
   threads: AgentThread[];
@@ -612,23 +633,20 @@ export interface DispatchScene {
 export function makeDispatchScene(now: number = Date.now()): DispatchScene {
   const items = ITEM_SPECS.map((spec) => toItem(spec, now));
   const threads = THREAD_SPECS.map((spec) => toThread(spec, now));
-  const slots = projects();
   const { overview } = buildOverview({
     items,
     threads,
-    projects: slots,
     pullRequests: PULL_REQUESTS,
     queued: QUEUED,
     hiddenSuggestions: new Set(),
     manualLinks: new Map(),
-    slotPattern: null,
     now: new Date(now),
   });
   const at = new Date(now - 2 * MINUTE).toISOString();
   return {
     items,
     threads,
-    projects: slots,
+    projects: projects(),
     overview,
     ado: { ok: true, at, error: null },
     hosts: [
@@ -653,7 +671,7 @@ export function makeRunScene(now: number = Date.now()): {
     toThread(
       {
         id: 't-sync',
-        slot: 'W0',
+        project: 'W0',
         title: 'Dispatch: Sync all (8)',
         status: 'your-turn',
         idleMinutes: 3,
@@ -670,7 +688,7 @@ export function makeRunScene(now: number = Date.now()): {
     toThread(
       {
         id: 't-suggest',
-        slot: 'M0',
+        project: 'M0',
         title: 'Dispatch: Suggest my next item',
         status: 'running',
         idleMinutes: 0,
@@ -685,7 +703,7 @@ export function makeRunScene(now: number = Date.now()): {
       kind: 'suggest',
       states: [],
       itemIds: [],
-      slot: 'M0',
+      where: 'M0',
       startedAt: new Date(now - 2 * MINUTE).toISOString(),
     },
     {
@@ -693,7 +711,7 @@ export function makeRunScene(now: number = Date.now()): {
       kind: 'sync',
       states: ['Code Review', 'Development In Progress'],
       itemIds: [59403, 60245, 60248, 59958],
-      slot: 'W0',
+      where: 'W0',
       startedAt: new Date(now - 20 * MINUTE).toISOString(),
     },
   ];
@@ -711,7 +729,7 @@ export function makeLaneSyncScene(now: number = Date.now()): {
       toThread(
         {
           id: 't-lane',
-          slot: 'W2',
+          project: 'W2',
           title: 'Dispatch: Sync Code Review (4)',
           status: 'running',
           idleMinutes: 0,
@@ -728,7 +746,7 @@ export function makeLaneSyncScene(now: number = Date.now()): {
         states: ['Code Review'],
         itemIds,
         fromStates: Object.fromEntries(itemIds.map((id) => [String(id), 'Code Review'])),
-        slot: 'W2',
+        where: 'W2',
         startedAt: new Date(now - 3 * MINUTE).toISOString(),
       },
     ],

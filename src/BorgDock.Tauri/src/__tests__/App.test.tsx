@@ -197,7 +197,7 @@ describe('App', () => {
     useInitStore.setState({ isComplete: true });
   });
 
-  it('applies a slot-pattern change saved by another window without restarting', async () => {
+  it('applies an agent setting saved by another window without restarting', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
     const { listen } = await import('@tauri-apps/api/event');
     const initial = {
@@ -207,7 +207,7 @@ describe('App', () => {
         defaultPostFixAction: 'none' as const,
         t3Model: 'default',
         t3ModelInstance: 'claudeAgent',
-        t3SlotPattern: '^W',
+        t3Path: 'C:/T3/T3.exe',
       },
     };
     let saved = initial;
@@ -222,13 +222,13 @@ describe('App', () => {
       expect(vi.mocked(listen).mock.calls.some(([name]) => name === 'settings:changed')).toBe(true),
     );
 
-    saved = { ...initial, agents: { ...initial.agents, t3SlotPattern: '^M' } };
+    saved = { ...initial, agents: { ...initial.agents, t3Path: 'D:/T3/T3.exe' } };
     const handler = vi.mocked(listen).mock.calls.find(([name]) => name === 'settings:changed')![1];
     await act(async () => {
       handler({ event: 'settings:changed', id: 1, payload: null });
     });
     await waitFor(() =>
-      expect(useSettingsStore.getState().settings.agents?.t3SlotPattern).toBe('^M'),
+      expect(useSettingsStore.getState().settings.agents?.t3Path).toBe('D:/T3/T3.exe'),
     );
   });
 

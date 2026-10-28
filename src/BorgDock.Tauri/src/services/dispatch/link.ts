@@ -91,7 +91,7 @@ export interface ThreadLinks {
   threadsByItem: Map<number, AgentThread[]>;
   /** Open threads that point at no item at all. */
   unlinked: AgentThread[];
-  /** The item of every thread, including items that aren't mine; tells busy slots from free ones. */
+  /** The item of every thread, including items that aren't mine. */
   itemOfThread: Map<string, number | null>;
 }
 

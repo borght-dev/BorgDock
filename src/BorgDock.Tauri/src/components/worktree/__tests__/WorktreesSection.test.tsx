@@ -128,7 +128,27 @@ describe('WorktreesSection', () => {
       }
       if (cmd === 'list_worktrees') return Promise.resolve(STATUSES);
       if (cmd === 'list_worktree_changes') return Promise.resolve(CHANGES);
-      if (cmd === 't3_open_thread') return Promise.resolve({ tier: 2, threadId: 't1' });
+      if (cmd === 't3_snapshot') {
+        return Promise.resolve({
+          changed: true,
+          sequence: 1,
+          threads: [],
+          projects: [
+            {
+              id: 'p-repo',
+              title: 'repo',
+              workspaceRoot: 'C:/code/repo',
+              repository: {
+                key: 'github.com/org/repo',
+                displayName: 'org/repo',
+                owner: 'org',
+                name: 'repo',
+              },
+            },
+          ],
+        });
+      }
+      if (cmd === 't3_open_pr_thread') return Promise.resolve('t1');
       return Promise.resolve(null);
     });
     useSettingsStore.setState({
@@ -244,8 +264,14 @@ describe('WorktreesSection', () => {
     // The launch guard reads the CI failure store first.
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(
-        't3_open_thread',
-        expect.objectContaining({ workspaceRoot: PATH_B, branch: 'feature/482', prNumber: 482 }),
+        't3_open_pr_thread',
+        expect.objectContaining({
+          request: expect.objectContaining({
+            projectId: 'p-repo',
+            prNumber: 482,
+            workspace: { type: 'existingWorktree', worktreePath: PATH_B, branch: 'feature/482' },
+          }),
+        }),
       ),
     );
 

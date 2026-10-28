@@ -215,7 +215,7 @@ describe('evidenceOf', () => {
   it('lists the open and the merged pull request, the agent and the due date', () => {
     const open = pr({ number: 4928, checks: RED });
     const merged = pr({ number: 4871, state: 'merged', mergedAt: '2026-10-12T13:24:00Z' });
-    const thread = makeThread({ id: 't', status: 'running', slot: 'W4' });
+    const thread = makeThread({ id: 't', status: 'running', place: 'W4' });
     expect(
       evidenceOf(
         facts(
@@ -272,7 +272,7 @@ describe('latestMessage', () => {
   it('takes the agent when it spoke last', () => {
     const thread = makeThread({
       id: 't',
-      slot: 'W4',
+      place: 'W4',
       lastActivityAt: '2026-10-13T11:22:00Z',
       lastAgentMessage: 'Found a semantic\n\nmerge conflict.',
     });
@@ -345,7 +345,7 @@ describe('driftOf', () => {
   });
 
   it('moves a new item an agent stopped on to Development In Progress', () => {
-    const stopped = makeThread({ id: 't', status: 'your-turn', slot: 'W3' });
+    const stopped = makeThread({ id: 't', status: 'your-turn', place: 'W3' });
     expect(drift('New', { threads: [stopped] })).toMatchObject({
       to: 'Development In Progress',
       reason: 'An agent works on it in W3. ADO still says New.',

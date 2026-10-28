@@ -3,10 +3,10 @@
  * a pull request in its Fix / Resolve prompt, and the vault's path in every
  * prompt so an agent can read and write notes with its own file tools.
  */
-import { configuredHosts, rawId, scopedId } from '@/services/dispatch/hosts';
-import type { LaunchModel } from '@/services/dispatch/launch';
-import type { Slot } from '@/services/dispatch/types';
-import { t3Environment, t3LaunchThread, t3ShowThread } from '@/services/t3/api';
+import { rawId } from '@/services/dispatch/hosts';
+import { hostRefOf, type LaunchModel, launchAt, rememberTarget } from '@/services/dispatch/launch';
+import type { LaunchTarget } from '@/services/dispatch/launch-target';
+import { t3Environment, t3ShowThread } from '@/services/t3/api';
 import { refKey } from '@/services/workstreams/identity';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { useNotesStore } from '@/stores/notes-store';
@@ -64,8 +64,9 @@ export function notePrompt(path: string, text: string): string {
 
 export interface NoteThreadRequest {
   path: string;
-  slot: Slot;
-  model: LaunchModel;
+  target: LaunchTarget;
+  /** Absent when the target continues a thread: it keeps its own model. */
+  model: LaunchModel | undefined;
   effort: string | null;
   title: string;
   prompt: string;
@@ -79,30 +80,25 @@ const TITLE_LIMIT = 120;
  * in the note, and its results are written back when it stops.
  */
 export async function startThreadFromNote(request: NoteThreadRequest): Promise<string> {
-  const { slot, model } = request;
-  const prompt = request.prompt.trim();
-  if (!prompt) throw new Error('The first message is empty.');
-  if (prompt.length > NOTE_PROMPT_LIMIT) {
+  const { target } = request;
+  if (request.prompt.trim().length > NOTE_PROMPT_LIMIT) {
     throw new Error('The first message is longer than 20,000 characters.');
   }
-  if (!slot.available) throw new Error(`${slot.hostLabel} is offline.`);
-  if (slot.state !== 'free') {
-    throw new Error(`${slot.name} already has an open thread. Settle it or pick another slot.`);
-  }
-  const settings = useSettingsStore.getState().settings;
-  const host = configuredHosts(settings).find((h) => h.id === slot.hostId);
-  const hostRef = { id: slot.hostId, baseUrl: host?.baseUrl };
+  const hostRef = hostRefOf(target.hostId);
   const title = request.title.trim().slice(0, TITLE_LIMIT) || titleOf(request.path);
-  const rawThreadId = await t3LaunchThread(hostRef, {
-    projectId: rawId(slot.hostId, slot.id),
+  const threadId = await launchAt({
+    target,
+    model: request.model,
+    effort: request.effort,
     title,
-    modelSelection: model.selection(model.efforts.length > 0 ? request.effort : null),
-    prompt: withVault(prompt),
+    prompt: request.prompt,
   });
-  const threadId = scopedId(slot.hostId, rawThreadId);
-  useDispatchStore.getState().linkThread(threadId, null);
+  const rawThreadId = rawId(target.hostId, threadId);
+  rememberTarget(target);
+  // A continued thread keeps the item it belongs to.
+  if (target.kind !== 'continue') useDispatchStore.getState().linkThread(threadId, null);
   const environmentId =
-    useDispatchStore.getState().hosts.find((h) => h.id === slot.hostId)?.environmentId ??
+    useDispatchStore.getState().hosts.find((h) => h.id === target.hostId)?.environmentId ??
     (await t3Environment(hostRef));
 
   const label = title.replace(/[[\]]/g, '');
@@ -121,13 +117,17 @@ export async function startThreadFromNote(request: NoteThreadRequest): Promise<s
     );
   trackThread({
     path: request.path,
-    hostId: slot.hostId,
+    hostId: target.hostId,
     threadId: rawThreadId,
     label,
     startedAt: Date.now(),
   });
   if (request.openInT3) {
-    await t3ShowThread(hostRef, rawThreadId, settings.agents?.t3Path).catch(() => {});
+    await t3ShowThread(
+      hostRef,
+      rawThreadId,
+      useSettingsStore.getState().settings.agents?.t3Path,
+    ).catch(() => {});
   }
   return threadId;
 }

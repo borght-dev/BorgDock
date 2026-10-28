@@ -59,7 +59,7 @@ export async function showGroupPrs(request: ShowGroupRequest): Promise<void> {
   await showSection('prs');
 }
 
-/** Opens a related-failure sheet in the main window, where Dispatch's slots live. */
+/** Opens a related-failure sheet in the main window, where Dispatch's T3 data lives. */
 export async function openSheet(sheet: CiSheet): Promise<void> {
   if (!isMainWindow()) {
     const { emitTo } = await import('@tauri-apps/api/event');

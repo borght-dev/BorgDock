@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
+  LAUNCH_BRANCHES,
   LAUNCH_CATALOGUE,
   makeDispatchScene,
 } from '@/components/dispatch/__fixtures__/dispatch-data';
@@ -148,14 +149,16 @@ export const GroupDetails: StoryObj = {
   },
 };
 
-/** Investigate: evidence picked, a free slot and model, the first message to read. */
+/** Investigate: evidence picked, where it runs and the model, the first message to read. */
 export const Investigate: StoryObj = {
   render: () => {
     seed();
     const scene = makeDispatchScene();
+    getControl().invokeResponses.t3_list_branches = LAUNCH_BRANCHES;
     useDispatchStore.setState({
       threads: scene.threads,
       projects: scene.projects,
+      hosts: scene.hosts,
       overview: scene.overview,
     });
     return <InvestigateSheet groupId="g-shared" onClose={() => {}} />;

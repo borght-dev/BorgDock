@@ -82,9 +82,9 @@ export function candidates(sources: CandidateSources): Candidate[] {
       key: environmentId ? refKey(ref) : `pending:${thread.id}`,
       ref,
       label: thread.title,
-      identity: `${thread.hostLabel} · ${thread.slot}`,
+      identity: `${thread.hostLabel} · ${thread.place}`,
       kind: 'thread',
-      text: `${thread.title} ${thread.slot} ${thread.branch ?? ''} ${thread.hostLabel}`.toLowerCase(),
+      text: `${thread.title} ${thread.place} ${thread.branch ?? ''} ${thread.hostLabel}`.toLowerCase(),
       unavailable: environmentId
         ? undefined
         : `${thread.hostLabel} has not told BorgDock which T3 it runs yet.`,

@@ -21,6 +21,17 @@ export interface T3Project {
   id: string;
   title: string;
   workspaceRoot: string | null;
+  repository: T3Repository | null;
+}
+
+/** The git repository a project checks out. */
+export interface T3Repository {
+  /** The same for every checkout of the repository, e.g. `github.com/acme/shop`. */
+  key: string;
+  /** `owner/name` as the host names it. */
+  displayName: string;
+  owner: string | null;
+  name: string | null;
 }
 
 export interface T3Thread {
@@ -178,6 +189,13 @@ export interface T3ModelSelection {
   options: { id: string; value: string | boolean }[];
 }
 
+/** Where a new thread works in its project. */
+export type T3Workspace =
+  | { type: 'root' }
+  /** A new checkout from `baseRef`; the repository's default branch when null. */
+  | { type: 'worktree'; baseRef: string | null }
+  | { type: 'existingWorktree'; worktreePath: string; branch: string | null };
+
 export interface T3LaunchRequest {
   /** Null uses T3's No project workspace, with a fresh folder for the thread. */
   projectId: string | null;
@@ -185,6 +203,47 @@ export interface T3LaunchRequest {
   modelSelection: T3ModelSelection;
   /** The first message; the agent starts on it at once. */
   prompt: string;
+  /** The project's own checkout when absent. */
+  workspace?: T3Workspace;
+}
+
+export interface T3Branch {
+  name: string;
+  isDefault: boolean;
+  isRemote: boolean;
+}
+
+/** The branches a new worktree of the checkout at `checkout` can start from. */
+export function t3ListBranches(host: T3HostRef, checkout: string): Promise<T3Branch[]> {
+  return commandData(commands.t3ListBranches(host, checkout));
+}
+
+/** Where a pull request thread works: T3 checks the branch out, or an earlier thread's checkout. */
+export type T3PrWorkspace =
+  | { type: 'checkOut' }
+  | { type: 'root' }
+  | { type: 'existingWorktree'; worktreePath: string; branch: string | null };
+
+export interface T3PrThreadRequest {
+  projectId: string;
+  workspace: T3PrWorkspace;
+  title: string;
+  /** `owner/name`. */
+  repository: string;
+  prNumber: number;
+  prUrl: string;
+  /** Used when neither the project nor an earlier thread names a model. */
+  model: string;
+  modelInstance: string;
+}
+
+/** Open a new, empty thread for a pull request and bring T3 to the front on it. Resolves with its id. */
+export function t3OpenPrThread(
+  host: T3HostRef,
+  request: T3PrThreadRequest,
+  executable: string | undefined,
+): Promise<string> {
+  return commandData(commands.t3OpenPrThread(host, request, executable ?? null));
 }
 
 export function t3Catalogue(host: T3HostRef): Promise<T3Catalogue> {

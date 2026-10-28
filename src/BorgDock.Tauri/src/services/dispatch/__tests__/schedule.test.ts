@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { localDay, scheduleDue, scheduledSlot } from '../schedule';
-import type { Slot } from '../types';
+import { localDay, scheduleDue, scheduledTarget } from '../schedule';
+import type { AgentProject } from '../types';
 
 const MON_TO_THU = { enabled: true, time: '08:30', weekdays: [1, 2, 3, 4] };
 /** Tuesday 13 October 2026, local time. */
@@ -40,31 +40,37 @@ describe('localDay', () => {
   });
 });
 
-function slot(id: string, state: Slot['state'], available = true): Slot {
+function project(id: string, root: string, available = true): AgentProject {
   return {
     id,
     hostId: 'local',
     hostLabel: 'This machine',
     available,
-    name: id,
-    workspaceRoot: null,
-    state,
-    itemId: null,
-    running: false,
-    needsYou: false,
+    title: id,
+    workspaceRoot: root,
+    repository: {
+      key: 'github.com/acme/shop',
+      displayName: 'acme/shop',
+      owner: 'acme',
+      name: 'shop',
+    },
   };
 }
 
-describe('scheduledSlot', () => {
-  it('takes the last run slot when it is free', () => {
-    expect(scheduledSlot([slot('W0', 'free'), slot('W3', 'free')], 'W3')?.id).toBe('W3');
+describe('scheduledTarget', () => {
+  const last = { hostId: 'local', repository: 'github.com/acme/shop' };
+
+  it("starts a new worktree of the last run's repository from its own checkout", () => {
+    const target = scheduledTarget(
+      [project('W3', 'D:/Shop/.worktrees/three'), project('W0', 'D:/Shop')],
+      last,
+    );
+    expect(target).toMatchObject({ kind: 'worktree', hostId: 'local', baseRef: null });
+    expect(target?.project.id).toBe('W0');
   });
 
-  it('takes the first free one otherwise', () => {
-    expect(scheduledSlot([slot('W0', 'busy'), slot('W1', 'free')], 'W0')?.id).toBe('W1');
-  });
-
-  it('finds none when every slot is busy or offline', () => {
-    expect(scheduledSlot([slot('W0', 'busy'), slot('W1', 'free', false)], null)).toBeNull();
+  it('finds none before a run was started by hand, or when the repository is gone', () => {
+    expect(scheduledTarget([project('W0', 'D:/Shop')], null)).toBeNull();
+    expect(scheduledTarget([project('W0', 'D:/Shop', false)], last)).toBeNull();
   });
 });

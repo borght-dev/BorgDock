@@ -101,7 +101,7 @@ describe('settings-store', () => {
             defaultPostFixAction: 'none',
             t3Model: 'default',
             t3ModelInstance: 'claudeAgent',
-            t3SlotPattern: '^W',
+            t3Path: 'C:/T3/T3.exe',
           },
         }),
       });
@@ -111,10 +111,10 @@ describe('settings-store', () => {
           defaultPostFixAction: 'none',
           t3Model: 'default',
           t3ModelInstance: 'claudeAgent',
-          t3SlotPattern: undefined,
+          t3Path: undefined,
         },
       });
-      expect(useSettingsStore.getState().settings.agents?.t3SlotPattern).toBeUndefined();
+      expect(useSettingsStore.getState().settings.agents?.t3Path).toBeUndefined();
     });
     it('merges partial settings into current settings', () => {
       useSettingsStore.getState().updateSettings({ setupComplete: true });
@@ -151,18 +151,18 @@ describe('settings-store', () => {
           defaultPostFixAction: 'none',
           t3Model: 'default',
           t3ModelInstance: 'claudeAgent',
-          t3SlotPattern: '^W',
+          t3Path: 'C:/T3/T3.exe',
           t3Hosts: [{ id: 'mac', label: 'Mac', baseUrl: 'http://mac:3773' }],
         },
       });
       useSettingsStore.setState({ settings: initial });
-      const saved = { ...initial, agents: { ...initial.agents!, t3SlotPattern: '^M' } };
+      const saved = { ...initial, agents: { ...initial.agents!, t3Path: 'D:/T3/T3.exe' } };
       vi.mocked(invoke).mockImplementation(async (command) =>
         command === 'load_settings' ? structuredClone(saved) : null,
       );
       await useSettingsStore.getState().loadSettings();
       const applied = useSettingsStore.getState().settings;
-      expect(applied.agents?.t3SlotPattern).toBe('^M');
+      expect(applied.agents?.t3Path).toBe('D:/T3/T3.exe');
       expect(applied.agents?.t3Hosts).toBe(initial.agents?.t3Hosts);
       expect(applied.azureDevOps).toBe(initial.azureDevOps);
       expect(applied.ui).toBe(initial.ui);
@@ -254,7 +254,7 @@ describe('settings-store', () => {
             defaultPostFixAction: 'none',
             t3Model: 'default',
             t3ModelInstance: 'claudeAgent',
-            t3SlotPattern: '^M',
+            t3Path: 'D:/T3/T3.exe',
           },
         }),
       );

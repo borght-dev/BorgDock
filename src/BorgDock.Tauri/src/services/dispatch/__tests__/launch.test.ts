@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const t3 = vi.hoisted(() => ({ t3LaunchThread: vi.fn(), t3ShowThread: vi.fn() }));
+const t3 = vi.hoisted(() => ({
+  t3LaunchThread: vi.fn(),
+  t3ShowThread: vi.fn(),
+  t3SendMessage: vi.fn(),
+}));
 const sync = vi.hoisted(() => ({ syncAll: vi.fn(), dispatchAdoClient: vi.fn() }));
 const items = vi.hoisted(() => ({ moveItemState: vi.fn(), assignItemToMe: vi.fn() }));
 
@@ -22,7 +26,6 @@ import {
   configuredPrompts,
   DEFAULT_LAUNCH_PROMPTS,
   type LaunchModel,
-  lastSlotOf,
   launchModels,
   launchPrompt,
   PLAN_FIRST,
@@ -31,7 +34,8 @@ import {
   startThread,
   stateOnStart,
 } from '../launch';
-import type { Slot } from '../types';
+import type { LaunchTarget } from '../launch-target';
+import type { AgentProject } from '../types';
 import { makeItem, makeThread } from './fixtures';
 
 const CATALOGUE: T3Catalogue = {
@@ -89,20 +93,27 @@ const CATALOGUE: T3Catalogue = {
 
 const NOW = Date.parse('2026-10-12T12:00:00Z');
 
-function slot(overrides: Partial<Slot> = {}): Slot {
+function project(overrides: Partial<AgentProject> = {}): AgentProject {
   return {
-    id: 'p-w4',
+    id: 'p-shop',
     hostId: 'local',
     hostLabel: 'This machine',
     available: true,
-    name: 'W4',
-    workspaceRoot: '/work/W4',
-    state: 'free',
-    itemId: null,
-    running: false,
-    needsYou: false,
+    title: 'Shop',
+    workspaceRoot: '/work/shop',
+    repository: {
+      key: 'github.com/acme/shop',
+      displayName: 'acme/shop',
+      owner: 'acme',
+      name: 'shop',
+    },
     ...overrides,
   };
+}
+
+function newWorktree(overrides: Partial<AgentProject> = {}): LaunchTarget {
+  const p = project(overrides);
+  return { kind: 'worktree', hostId: p.hostId, project: p, baseRef: 'main' };
 }
 
 describe('branchName', () => {
@@ -239,20 +250,11 @@ describe('launchModels', () => {
   });
 });
 
-describe('lastSlotOf', () => {
-  it('finds the free slot the last thread ran in', () => {
-    const threads = [makeThread({ id: 't', projectId: 'p-w4', open: false, status: 'settled' })];
-    expect(lastSlotOf(threads, [slot()])?.name).toBe('W4');
-    expect(lastSlotOf(threads, [slot({ state: 'busy' })])).toBeUndefined();
-    expect(lastSlotOf([], [slot()])).toBeUndefined();
-  });
-});
-
 describe('startThread', () => {
   const model = launchModels(CATALOGUE, [], NOW)[0] as LaunchModel;
   const request = (overrides: Partial<StartRequest> = {}): StartRequest => ({
     item: makeItem({ id: 60201, title: 'Search ignores accents' }),
-    slot: slot(),
+    target: newWorktree(),
     model,
     effort: 'high',
     mode: 'plan',
@@ -271,20 +273,21 @@ describe('startThread', () => {
     sync.dispatchAdoClient.mockReturnValue({});
     useDispatchStore.setState({
       manualLinks: new Map(),
-      launchPreferences: { model: null, efforts: {}, mode: 'plan' },
+      launchPreferences: { model: null, efforts: {}, mode: 'plan', target: null },
     });
   });
 
-  it('launches on the slot with the item in the title and the plan line in the prompt', async () => {
+  it('starts a new worktree with the item in the title and the plan line in the prompt', async () => {
     const result = await startThread(request());
 
     expect(t3.t3LaunchThread).toHaveBeenCalledWith(
       { id: 'local', baseUrl: undefined },
       {
-        projectId: 'p-w4',
+        projectId: 'p-shop',
         title: 'AB#60201 Search ignores accents',
         modelSelection: model.selection('high'),
         prompt: `Pick up AB#60201\n\n${PLAN_FIRST}`,
+        workspace: { type: 'worktree', baseRef: 'main' },
       },
     );
     expect(result).toEqual({ threadId: 'thread-1', warnings: [] });
@@ -300,11 +303,53 @@ describe('startThread', () => {
       model: 'codex/default',
       efforts: { 'codex/default': 'high' },
       mode: 'work',
+      target: { hostId: 'local', repository: 'github.com/acme/shop' },
     });
   });
 
+  it("starts a new thread in an earlier thread's checkout, or in its project's own", async () => {
+    const worked = makeThread({
+      id: 'old',
+      projectId: 'p-shop',
+      branch: 'fix/60201',
+      worktreePath: '/work/shop-t3-1',
+      status: 'settled',
+      open: false,
+    });
+    await startThread(
+      request({ target: { kind: 'thread-worktree', hostId: 'local', thread: worked } }),
+    );
+    expect(t3.t3LaunchThread.mock.calls[0]?.[1].workspace).toEqual({
+      type: 'existingWorktree',
+      worktreePath: '/work/shop-t3-1',
+      branch: 'fix/60201',
+    });
+
+    const inRoot = { ...worked, worktreePath: null };
+    await startThread(
+      request({ target: { kind: 'thread-worktree', hostId: 'local', thread: inRoot } }),
+    );
+    expect(t3.t3LaunchThread.mock.calls[1]?.[1].workspace).toEqual({ type: 'root' });
+  });
+
+  it('continues a stopped thread with the message and keeps its model', async () => {
+    const stopped = makeThread({ id: 'old', status: 'your-turn' });
+    const result = await startThread(
+      request({ target: { kind: 'continue', hostId: 'local', thread: stopped }, model: undefined }),
+    );
+
+    expect(t3.t3SendMessage).toHaveBeenCalledWith(
+      { id: 'local', baseUrl: undefined },
+      'old',
+      `Pick up AB#60201\n\n${PLAN_FIRST}`,
+      false,
+    );
+    expect(t3.t3LaunchThread).not.toHaveBeenCalled();
+    expect(result.threadId).toBe('old');
+  });
+
   it('starts on a remote host with the id that host knows', async () => {
-    await startThread(request({ slot: slot({ id: 'mac:p-m1', hostId: 'mac', name: 'M1' }) }));
+    await startThread(request({ target: newWorktree({ id: 'mac:p-m1', hostId: 'mac' }) }));
 
     expect(t3.t3LaunchThread.mock.calls[0]?.[0]).toEqual({
       id: 'mac',
@@ -342,14 +387,13 @@ describe('startThread', () => {
     );
   });
 
-  it('refuses an empty message, a busy slot and an offline host before touching T3', async () => {
+  it('refuses an empty message and a thread still at work before touching T3', async () => {
     await expect(startThread(request({ prompt: '   ' }))).rejects.toThrow('first message is empty');
-    await expect(startThread(request({ slot: slot({ state: 'mine' }) }))).rejects.toThrow(
-      'already has an open thread',
-    );
-    await expect(startThread(request({ slot: slot({ available: false }) }))).rejects.toThrow(
-      'is offline',
-    );
+    const running = makeThread({ id: 'busy', status: 'running' });
+    await expect(
+      startThread(request({ target: { kind: 'continue', hostId: 'local', thread: running } })),
+    ).rejects.toThrow('still at work');
     expect(t3.t3LaunchThread).not.toHaveBeenCalled();
+    expect(t3.t3SendMessage).not.toHaveBeenCalled();
   });
 });

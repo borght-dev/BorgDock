@@ -15,8 +15,8 @@ export interface DispatchActions {
   /** Have an agent move the item to `to`, filling in what the move needs. */
   move: (item: DispatchItem, to: string) => void;
   hideSuggestion: (overview: ItemOverview) => void;
-  /** Open the launch sheet for the item, on `slotId` when given. */
-  start: (item: DispatchItem, slotId?: string) => void;
+  /** Open the launch sheet for the item. */
+  start: (item: DispatchItem) => void;
   queue: (item: DispatchItem) => void;
   unqueue: (item: DispatchItem) => void;
   openInAdo: (item: DispatchItem) => void;

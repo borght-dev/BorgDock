@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const t3 = vi.hoisted(() => ({ t3Catalogue: vi.fn() }));
+const t3 = vi.hoisted(() => ({
+  t3Catalogue: vi.fn(),
+  t3ListBranches: vi.fn(async () => [{ name: 'main', isDefault: true, isRemote: false }]),
+}));
 
 vi.mock('@/services/t3/api', () => ({ LOCAL_T3_HOST_ID: 'local', ...t3 }));
 vi.mock('@/services/dispatch/sync', () => ({ syncAll: vi.fn(), dispatchAdoClient: vi.fn() }));
@@ -60,9 +63,11 @@ function renderSheet() {
   const scene = makeDispatchScene(NOW);
   useDispatchStore.setState({
     threads: [],
+    projects: scene.projects,
+    hosts: scene.hosts,
     overview: scene.overview,
     runSheet: { kind: 'sync', scope: { kind: 'all' } },
-    launchPreferences: { model: null, efforts: {}, mode: 'plan' },
+    launchPreferences: { model: null, efforts: {}, mode: 'plan', target: null },
   });
   render(<RunSheet intent={{ kind: 'sync', scope: { kind: 'all' } }} overview={scene.overview} />);
   return scene;
@@ -132,7 +137,9 @@ describe('RunSheet', () => {
     ]);
     fireEvent.click(screen.getByRole('button', { name: 'Max' }));
     expect(screen.getByRole('button', { name: 'Max' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('contentinfo')).toHaveTextContent('Sol · Outlook · Max');
+    expect(screen.getByRole('contentinfo')).toHaveTextContent(
+      'This machine · shop · new worktree from main · Sol · Outlook · Max',
+    );
   });
 
   it('picks a model by account, and its Esc leaves the sheet open', async () => {

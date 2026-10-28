@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
 import { type ReactNode, useMemo } from 'react';
-import type { ItemOverview, Slot, Tone } from '@/services/dispatch/types';
+import type { ItemOverview, Tone } from '@/services/dispatch/types';
 import { type BriefFilter, briefing, matchesBrief } from '@/services/dispatch/walk';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { useRunningItems } from './WalkRuns';
@@ -13,10 +13,32 @@ export interface BriefCount {
   label: string;
 }
 
+/** Agents at work on the items, and Dispatch's own runs still going: what "agents working" counts. */
+export function agentsWorking(
+  items: readonly ItemOverview[],
+  runningRunThreadIds: readonly string[],
+): number {
+  const ids = new Set(runningRunThreadIds);
+  for (const overview of items) {
+    for (const thread of overview.threads) {
+      if (thread.open && thread.status === 'running') ids.add(thread.id);
+    }
+  }
+  return ids.size;
+}
+
+export function useAgentsWorking(items: readonly ItemOverview[]): number {
+  const runs = useDispatchStore((s) => s.runs);
+  const threads = useDispatchStore((s) => s.threads);
+  const running = runs
+    .filter((run) => threads.some((t) => t.id === run.threadId && t.status === 'running'))
+    .map((run) => run.threadId);
+  return agentsWorking(items, running);
+}
+
 /** The counts the briefing leads with, in its order; worth a look only when there is one. */
-export function briefCounts(items: readonly ItemOverview[], slots: readonly Slot[]): BriefCount[] {
+export function briefCounts(items: readonly ItemOverview[], working: number): BriefCount[] {
   const counts = briefing(items);
-  const working = slots.filter((slot) => slot.running).length;
   return [
     { filter: 'needsYou', tone: 'bad', count: counts.needsYou, label: 'need you' },
     { filter: 'outOfSync', tone: 'warn', count: counts.outOfSync, label: 'out of sync' },
@@ -152,20 +174,13 @@ function BriefChip({ count }: { count: BriefCount }) {
  * BriefChips — the briefing's counts as a row of toggles, for the list and the
  * board, which have no briefing. While one is on, what shows and Clear follow.
  */
-export function BriefChips({
-  items,
-  slots,
-  shown,
-}: {
-  items: readonly ItemOverview[];
-  slots: readonly Slot[];
-  shown: number;
-}) {
+export function BriefChips({ items, shown }: { items: readonly ItemOverview[]; shown: number }) {
   const filter = useDispatchStore((s) => s.briefFilter);
   const setFilter = useDispatchStore((s) => s.setBriefFilter);
+  const working = useAgentsWorking(items);
   return (
     <div className="bd-dp-briefchips" role="group" aria-label="Filter by count">
-      {briefCounts(items, slots).map((count) => (
+      {briefCounts(items, working).map((count) => (
         <BriefChip key={count.filter} count={count} />
       ))}
       {filter && (

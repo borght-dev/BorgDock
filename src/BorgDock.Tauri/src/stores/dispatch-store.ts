@@ -35,8 +35,13 @@ const VIEW_MODES: readonly DispatchViewMode[] = ['walk', 'list', 'board'];
 /** What the launch sheet opens on. */
 export interface LaunchIntent {
   itemId: number;
-  /** The slot to preselect, e.g. the one an item was dropped on. */
-  slotId?: string;
+}
+
+/** The environment and repository a launch went to: where the next sheet starts. */
+export interface RememberedTarget {
+  hostId: string;
+  /** The repository's key (`github.com/acme/shop`); null for a project outside git. */
+  repository: string | null;
 }
 
 /** What the launch sheet preselects: the choices made last time. */
@@ -45,9 +50,15 @@ export interface LaunchPreferences {
   /** Reasoning effort per model id. */
   efforts: Record<string, string>;
   mode: 'plan' | 'work';
+  target: RememberedTarget | null;
 }
 
-const DEFAULT_LAUNCH_PREFERENCES: LaunchPreferences = { model: null, efforts: {}, mode: 'plan' };
+const DEFAULT_LAUNCH_PREFERENCES: LaunchPreferences = {
+  model: null,
+  efforts: {},
+  mode: 'plan',
+  target: null,
+};
 
 /** `sync`: one agent brings items up to date. `suggest`: one agent recommends the next item. */
 export type RunKind = 'sync' | 'suggest';
@@ -63,8 +74,8 @@ export interface AgentRun {
   itemIds: number[];
   /** Each item's state when the run started, by id: what tells a move apart. */
   fromStates?: Record<string, string>;
-  /** The slot it runs in, by name. */
-  slot: string;
+  /** Where it runs, as "Agent working in …" names it. */
+  where: string;
   startedAt: string;
   /** Started by the schedule, not by hand. */
   scheduled?: boolean;
@@ -73,14 +84,14 @@ export interface AgentRun {
 /** What the run sheet opens for. */
 export type RunIntent = { kind: 'sync'; scope: SyncScope } | { kind: 'suggest' };
 
-/** The slot, model and effort of the last run: what a scheduled run starts with. */
+/** Where the last run went, with its model and effort: what a scheduled run starts with. */
 export interface RunChoice {
-  slotId: string | null;
+  target: RememberedTarget | null;
   model: string | null;
   effort: string | null;
 }
 
-const NO_RUN_CHOICE: RunChoice = { slotId: null, model: null, effort: null };
+const NO_RUN_CHOICE: RunChoice = { target: null, model: null, effort: null };
 /** Runs older than this are forgotten. */
 const RUN_MEMORY_MS = 7 * 86_400_000;
 
@@ -162,6 +173,7 @@ interface DispatchState {
   closeLaunch: () => void;
   /** Remember the model, effort and way of beginning for the next launch. */
   rememberLaunch: (model: string, effort: string | null, mode: string) => void;
+  rememberTarget: (target: RememberedTarget) => void;
   hideSuggestion: (suggestionId: string) => void;
   addRun: (run: AgentRun) => void;
   dismissRun: (threadId: string) => void;
@@ -286,11 +298,18 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
   rememberLaunch: (model, effort, mode) => {
     const previous = get().launchPreferences;
     const launchPreferences: LaunchPreferences = {
+      ...previous,
       model,
       efforts: effort ? { ...previous.efforts, [model]: effort } : previous.efforts,
       // QA and Done are one-off handoffs, not how the next item should begin.
       mode: mode === 'plan' || mode === 'work' ? mode : previous.mode,
     };
+    set({ launchPreferences });
+    persistToTauriStore(STORE_FILE, LAUNCH_PREFERENCES_KEY, launchPreferences).catch(() => {});
+  },
+
+  rememberTarget: (target) => {
+    const launchPreferences: LaunchPreferences = { ...get().launchPreferences, target };
     set({ launchPreferences });
     persistToTauriStore(STORE_FILE, LAUNCH_PREFERENCES_KEY, launchPreferences).catch(() => {});
   },
@@ -345,9 +364,10 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
         readFromTauriStore<string>(STORE_FILE, SCHEDULE_LAST_RUN_KEY),
         readFromTauriStore<Record<string, string>>(STORE_FILE, REPOSITORIES_KEY),
       ]).catch(() => Array.from({ length: 8 }, () => undefined) as never[]);
-    const recent = (runs ?? []).filter(
-      (run) => Date.now() - Date.parse(run.startedAt) < RUN_MEMORY_MS,
-    );
+    const recent = (runs ?? [])
+      .filter((run) => Date.now() - Date.parse(run.startedAt) < RUN_MEMORY_MS)
+      // Runs from before targets named their slot.
+      .map((run) => ({ ...run, where: run.where ?? (run as { slot?: string }).slot ?? '' }));
     // What changed this session wins over what was stored.
     set((state) => ({
       hiddenSuggestions: new Set([...(hidden ?? []), ...state.hiddenSuggestions]),
@@ -358,7 +378,8 @@ export const useDispatchStore = create<DispatchState>()((set, get) => ({
         ...state.runs,
         ...recent.filter((run) => !state.runs.some((r) => r.threadId === run.threadId)),
       ],
-      runChoice: state.runChoice === NO_RUN_CHOICE ? (runChoice ?? NO_RUN_CHOICE) : state.runChoice,
+      runChoice:
+        state.runChoice === NO_RUN_CHOICE ? { ...NO_RUN_CHOICE, ...runChoice } : state.runChoice,
       scheduleLastRun: state.scheduleLastRun ?? lastRun ?? null,
       linkedRepositories: { ...repositories, ...state.linkedRepositories },
     }));

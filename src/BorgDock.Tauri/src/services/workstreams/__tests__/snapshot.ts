@@ -1,9 +1,4 @@
-import {
-  makeItem,
-  makeKnownPr,
-  makeThread,
-  PROJECTS,
-} from '@/services/dispatch/__tests__/fixtures';
+import { makeItem, makeKnownPr, makeThread } from '@/services/dispatch/__tests__/fixtures';
 import { buildOverview } from '@/services/dispatch/engine';
 import type {
   AgentThread,
@@ -30,12 +25,10 @@ export function overviews(
   const { overview } = buildOverview({
     items,
     threads,
-    projects: PROJECTS,
     pullRequests,
     queued: new Set(),
     hiddenSuggestions: new Set(),
     manualLinks: new Map(),
-    slotPattern: null,
     contextItems,
     now: new Date(SNAPSHOT_NOW),
   });

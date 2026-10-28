@@ -4,7 +4,6 @@ import { WorkItemTypePill } from '@/components/work-items/WorkItemTypePill';
 import { ItemTitleWithChips } from '@/components/workstreams/Membership';
 import { type ItemOverview, NEEDS_YOU } from '@/services/dispatch/types';
 import type { PrDensity } from '@/types';
-import { DISPATCH_ITEM_MIME } from './SlotStrip';
 import { whyLine } from './unit-copy';
 
 /** `flip()` key of a Dispatch row. */
@@ -12,25 +11,20 @@ export function dispatchRowKey(id: number): string {
   return `dp-${id}`;
 }
 
-/** An item an agent can be started on: nothing of its own is running. */
-export function canStart(overview: ItemOverview): boolean {
-  return !overview.threads.some((thread) => thread.open);
-}
-
-/** What a row or card ends with: the slot its agent runs in, else the state of its pull request. */
+/** What a row or card ends with: where its agent works, else the state of its pull request. */
 export function UnitAside({ overview }: { overview: ItemOverview }) {
   const thread = overview.threads.find((t) => t.open);
   if (thread) {
     const needsYou = NEEDS_YOU.includes(thread.status);
     return (
       <span
-        className="bd-dp-slotchip"
+        className="bd-dp-agentchip"
         data-needs-you={needsYou ? 'true' : undefined}
         data-running={thread.status === 'running' ? 'true' : undefined}
         data-offline={thread.available ? undefined : 'true'}
-        title={`${thread.slot}, ${thread.hostLabel}`}
+        title={`${thread.place}, ${thread.hostLabel}`}
       >
-        {thread.slot}
+        {thread.place}
       </span>
     );
   }
@@ -60,8 +54,7 @@ export interface DispatchRowProps {
 /**
  * DispatchRow — one work item in the Dispatch list, in the shape of every
  * Workbench row: type pill, the title over the reason it sits in its group,
- * and at the end the slot its agent runs in or the state of its pull request.
- * A row without a running agent can be dragged onto a free slot.
+ * and at the end where its agent works or the state of its pull request.
  */
 export const DispatchRow = memo(function DispatchRow({
   overview,
@@ -72,7 +65,6 @@ export const DispatchRow = memo(function DispatchRow({
   onOpen,
 }: DispatchRowProps) {
   const { item } = overview;
-  const draggable = canStart(overview);
   return (
     <div
       className="bd-wb-rowwrap"
@@ -88,11 +80,6 @@ export const DispatchRow = memo(function DispatchRow({
         tabIndex={0}
         aria-label={`${item.title}, AB#${item.id}`}
         aria-current={selected ? 'true' : undefined}
-        draggable={draggable}
-        onDragStart={(e) => {
-          e.dataTransfer.setData(DISPATCH_ITEM_MIME, String(item.id));
-          e.dataTransfer.effectAllowed = 'move';
-        }}
         onClick={() => onSelect(item.id)}
         onDoubleClick={() => onOpen(item.id)}
         onKeyDown={(e) => {

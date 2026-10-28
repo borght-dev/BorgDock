@@ -291,11 +291,12 @@ export const commands = {
 	/**  Settle a thread: it is done, and its project is free for other work. */
 	t3Settle: (host: HostRef_Deserialize, threadId: string) => typedError<null, string>(__TAURI_INVOKE("t3_settle", { host, threadId })),
 	/**
-	 *  Open a fresh, empty T3 thread on `workspace_root` for a pull request and
-	 *  bring T3 to the front on it. Not paired: T3 is only brought forward
-	 *  (tier 1) so the user can start the thread by hand.
+	 *  Open a fresh, empty T3 thread for a pull request on `host` and bring T3 to
+	 *  the front on it. Returns the new thread's id.
 	 */
-	t3OpenThread: (workspaceRoot: string, branch: string, title: string, repository: string, prNumber: number, prUrl: string, model: string, modelInstance: string, executable: string | null) => typedError<T3LaunchResult_Serialize, string>(__TAURI_INVOKE("t3_open_thread", { workspaceRoot, branch, title, repository, prNumber, prUrl, model, modelInstance, executable })),
+	t3OpenPrThread: (host: HostRef_Deserialize, request: PrThreadRequest_Deserialize, executable: string | null) => typedError<string, string>(__TAURI_INVOKE("t3_open_pr_thread", { host, request, executable })),
+	/**  The branches a new worktree of the checkout at `checkout` can start from. */
+	t3ListBranches: (host: HostRef_Deserialize, checkout: string) => typedError<BranchDto[], string>(__TAURI_INVOKE("t3_list_branches", { host, checkout })),
 	/**  The threads on this machine, for the T3 strip on pull requests. */
 	t3ListSessions: () => typedError<T3Session_Serialize[], string>(__TAURI_INVOKE("t3_list_sessions")),
 	/**
@@ -1090,11 +1091,6 @@ export type AgentSettings_Deserialize = {
 	t3Path?: string | null,
 	t3Model?: string,
 	t3ModelInstance?: string,
-	/**
-	 *  Regular expression a T3 project's title must match to count as a
-	 *  Dispatch slot. Absent or empty: every project is one.
-	 */
-	t3SlotPattern?: string | null,
 	/**  First messages Dispatch starts an agent with; an absent one uses the default. */
 	dispatchPrompts?: DispatchPrompts_Deserialize | null,
 	/**  When Dispatch's "Sync all" runs by itself. Absent: never. */
@@ -1118,11 +1114,6 @@ export type AgentSettings_Serialize = {
 	t3Path: string | null,
 	t3Model: string,
 	t3ModelInstance: string,
-	/**
-	 *  Regular expression a T3 project's title must match to count as a
-	 *  Dispatch slot. Absent or empty: every project is one.
-	 */
-	t3SlotPattern?: string,
 	/**  First messages Dispatch starts an agent with; an absent one uses the default. */
 	dispatchPrompts?: DispatchPrompts_Serialize,
 	/**  When Dispatch's "Sync all" runs by itself. Absent: never. */
@@ -1230,6 +1221,12 @@ export type BinaryMarker_Deserialize = {
 export type BinaryMarker_Serialize = {
 	oldSize: number | null,
 	newSize: number | null,
+};
+
+export type BranchDto = {
+	name: string,
+	isDefault: boolean,
+	isRemote: boolean,
 };
 
 export type CacheClearResult = {
@@ -2206,6 +2203,7 @@ export type LaunchRequest_Deserialize = {
 	modelSelection: Value,
 	/**  The first message; the agent starts on it at once. */
 	prompt: string,
+	workspace?: Workspace_Deserialize,
 };
 
 /**  What the frontend asks for when it starts an agent on a project. */
@@ -2216,6 +2214,7 @@ export type LaunchRequest_Serialize = {
 	modelSelection: Value,
 	/**  The first message; the agent starts on it at once. */
 	prompt: string,
+	workspace: Workspace_Serialize,
 };
 
 export type LimitRecoveryDto = LimitRecoveryDto_Serialize | LimitRecoveryDto_Deserialize;
@@ -2370,18 +2369,74 @@ export type PendingRequestDto_Serialize = {
 
 export type PrDetailSettings = Record<string, never>;
 
+/**  A new, empty thread for a pull request. */
+export type PrThreadRequest = PrThreadRequest_Serialize | PrThreadRequest_Deserialize;
+
+/**  A new, empty thread for a pull request. */
+export type PrThreadRequest_Deserialize = {
+	projectId: string,
+	workspace: PrWorkspace_Deserialize,
+	title: string,
+	/**  `owner/name`. */
+	repository: string,
+	prNumber: number,
+	prUrl: string,
+	/**  Used when neither the project nor an earlier thread names a model. */
+	model: string,
+	modelInstance: string,
+};
+
+/**  A new, empty thread for a pull request. */
+export type PrThreadRequest_Serialize = {
+	projectId: string,
+	workspace: PrWorkspace_Serialize,
+	title: string,
+	/**  `owner/name`. */
+	repository: string,
+	prNumber: number,
+	prUrl: string,
+	/**  Used when neither the project nor an earlier thread names a model. */
+	model: string,
+	modelInstance: string,
+};
+
+/**  Where a pull request thread works. */
+export type PrWorkspace = PrWorkspace_Serialize | PrWorkspace_Deserialize;
+
+/**  Where a pull request thread works. */
+export type PrWorkspace_Deserialize =
+/**  T3 checks the pull request out in a worktree, or reuses one that has its branch. */
+{ type: "checkOut" } |
+/**  The project's own checkout, where an earlier thread worked. */
+{ type: "root" } |
+/**  The checkout another thread works in. */
+{ type: "existingWorktree"; worktreePath: string; branch?: string | null };
+
+/**  Where a pull request thread works. */
+export type PrWorkspace_Serialize =
+/**  T3 checks the pull request out in a worktree, or reuses one that has its branch. */
+{ type: "checkOut" } |
+/**  The project's own checkout, where an earlier thread worked. */
+{ type: "root" } |
+/**  The checkout another thread works in. */
+{ type: "existingWorktree"; worktreePath: string; branch: string | null };
+
 export type ProjectDto = ProjectDto_Serialize | ProjectDto_Deserialize;
 
 export type ProjectDto_Deserialize = {
 	id: string,
 	title: string,
 	workspaceRoot?: string | null,
+	/**  The git repository the project checks out; `None` outside one. */
+	repository?: RepositoryDto_Deserialize | null,
 };
 
 export type ProjectDto_Serialize = {
 	id: string,
 	title: string,
 	workspaceRoot: string | null,
+	/**  The git repository the project checks out; `None` outside one. */
+	repository: RepositoryDto_Serialize | null,
 };
 
 export type ProviderDto = {
@@ -2610,6 +2665,26 @@ export type RepoSettings_Serialize = {
 	githubAccount?: string,
 	/**  Deployments the activity journal follows for this repository. */
 	deployments?: RepoDeployments_Serialize,
+};
+
+export type RepositoryDto = RepositoryDto_Serialize | RepositoryDto_Deserialize;
+
+export type RepositoryDto_Deserialize = {
+	/**  The same for every checkout of the repository, e.g. `github.com/acme/shop`. */
+	key: string,
+	/**  `owner/name` as the host names it. */
+	displayName: string,
+	owner?: string | null,
+	name?: string | null,
+};
+
+export type RepositoryDto_Serialize = {
+	/**  The same for every checkout of the repository, e.g. `github.com/acme/shop`. */
+	key: string,
+	/**  `owner/name` as the host names it. */
+	displayName: string,
+	owner: string | null,
+	name: string | null,
 };
 
 export type ResultSet = {
@@ -2889,20 +2964,6 @@ export type T3HostSettings = {
 	baseUrl: string,
 };
 
-export type T3LaunchResult = T3LaunchResult_Serialize | T3LaunchResult_Deserialize;
-
-export type T3LaunchResult_Deserialize = {
-	/**  1: T3 was only brought forward (not paired). 2: the thread was created. */
-	tier: number,
-	threadId?: string | null,
-};
-
-export type T3LaunchResult_Serialize = {
-	/**  1: T3 was only brought forward (not paired). 2: the thread was created. */
-	tier: number,
-	threadId: string | null,
-};
-
 export type T3Probe = T3Probe_Serialize | T3Probe_Deserialize;
 
 export type T3Probe_Deserialize = {
@@ -3162,6 +3223,33 @@ export type UpdateSettings_Serialize = {
 };
 
 export type Value = null | boolean | number | string | Value[] | { [key in string]: Value };
+
+/**  Where a new thread works. */
+export type Workspace = Workspace_Serialize | Workspace_Deserialize;
+
+/**  Where a new thread works. */
+export type Workspace_Deserialize =
+/**  The project's own checkout. */
+{ type: "root" } |
+/**
+ *  A new checkout cut from `base_ref`, the repository's default branch
+ *  when absent. The base is fetched from its remote first.
+ */
+{ type: "worktree"; baseRef?: string | null } |
+/**  A checkout that exists already, such as the one another thread works in. */
+{ type: "existingWorktree"; worktreePath: string; branch?: string | null };
+
+/**  Where a new thread works. */
+export type Workspace_Serialize =
+/**  The project's own checkout. */
+{ type: "root" } |
+/**
+ *  A new checkout cut from `base_ref`, the repository's default branch
+ *  when absent. The base is fetched from its remote first.
+ */
+{ type: "worktree"; baseRef: string | null } |
+/**  A checkout that exists already, such as the one another thread works in. */
+{ type: "existingWorktree"; worktreePath: string; branch: string | null };
 
 export type WorkstreamFile = {
 	/**  The workstream id this file belongs to. */

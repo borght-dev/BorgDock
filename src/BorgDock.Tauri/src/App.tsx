@@ -5,7 +5,7 @@ import { LaunchGuardDialog } from '@/components/ci-failures/LaunchGuardDialog';
 import { MergeToast } from '@/components/focus';
 import { MainWindow } from '@/components/layout/MainWindow';
 import { ViewStack } from '@/components/layout/ViewStack';
-import { T3CheckoutDialog } from '@/components/pr/T3CheckoutDialog';
+import { T3PrThreadDialog } from '@/components/pr/T3PrThreadDialog';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ToastViewport } from '@/components/shared/Toast';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
@@ -305,7 +305,7 @@ export default function App() {
         </Suspense>
       )}
       <ToastViewport />
-      <T3CheckoutDialog />
+      <T3PrThreadDialog />
       <WorkstreamSheets />
       <LaunchGuardDialog />
       <CiSheetHost />

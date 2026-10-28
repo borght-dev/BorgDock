@@ -1,7 +1,5 @@
-import { LOCAL_T3_HOST_ID } from '@/services/t3/api';
 import { guessItem, linkThreads } from './link';
 import {
-  type AgentProject,
   type AgentThread,
   type Bay,
   type DispatchItem,
@@ -10,7 +8,6 @@ import {
   NEEDS_YOU,
   type Overview,
   type PullRequestState,
-  type Slot,
   type Suggestion,
   THREAD_STATUS_LABEL,
   type ThreadPullRequest,
@@ -21,7 +18,6 @@ import { type Drift, driftOf, evidenceOf, latestMessage, verdictOf } from './ver
 export interface EngineInput {
   items: readonly DispatchItem[];
   threads: readonly AgentThread[];
-  projects: readonly AgentProject[];
   /** Pull requests BorgDock polls from GitHub; they carry live checks. */
   pullRequests: readonly KnownPullRequest[];
   /** Items marked Up next (the track star). */
@@ -30,8 +26,6 @@ export interface EngineInput {
   hiddenSuggestions: ReadonlySet<string>;
   /** Thread id to item id, for links made or removed by hand. */
   manualLinks: ReadonlyMap<string, number | null>;
-  /** Only projects whose title matches count as slots; `null` takes every project. */
-  slotPattern: RegExp | null;
   /**
    * Items only a workstream needs. They get an overview of their own in
    * `overview.context`, linked in a pass of their own, so they never change
@@ -134,7 +128,7 @@ function suggestionOf(item: DispatchItem, drift: Drift | null): Suggestion | nul
 function waitingFor(item: DispatchItem, threads: readonly AgentThread[]): string | null {
   if (HUMAN_NEEDED_STATES.has(item.state)) return `ADO says ${item.state}`;
   const thread = threads.find(needsYou);
-  return thread ? `${THREAD_STATUS_LABEL[thread.status]} in ${thread.slot}` : null;
+  return thread ? `${THREAD_STATUS_LABEL[thread.status]} in ${thread.place}` : null;
 }
 
 /**
@@ -177,27 +171,15 @@ function bayOf(
   return threads.length > 0 ? 'paused' : 'idle';
 }
 
-const naturalOrder = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
-
-/** This machine's slots come first, then the other hosts by name. */
-function slotOrder(a: AgentProject, b: AgentProject): number {
-  const localFirst = Number(b.hostId === LOCAL_T3_HOST_ID) - Number(a.hostId === LOCAL_T3_HOST_ID);
-  return localFirst || naturalOrder(a.hostLabel, b.hostLabel) || naturalOrder(a.title, b.title);
-}
-
 /**
  * The overview: every item with its threads, pull request, suggestion and bay,
- * plus the slots and the open threads that belong to no item. `dequeue` lists
+ * plus the open threads that belong to no item. `dequeue` lists
  * the Up next items an agent has picked up, so the caller can take them off
  * the queue.
  */
 export function buildOverview(input: EngineInput): { overview: Overview; dequeue: number[] } {
   const now = input.now ?? new Date();
-  const slotProjects = input.projects.filter(
-    (project) => input.slotPattern === null || input.slotPattern.test(project.title),
-  );
-  const slotIds = new Set(slotProjects.map((project) => project.id));
-  const threads = input.threads.filter((thread) => slotIds.has(thread.projectId));
+  const { threads } = input;
   const links = linkThreads(input.items, threads, input.manualLinks);
   const dequeue: number[] = [];
 
@@ -218,29 +200,11 @@ export function buildOverview(input: EngineInput): { overview: Overview; dequeue
     return itemOverview(item, itemThreads, pullRequestsOf.get(item) ?? [], queued, input, now);
   });
 
-  const myItemIds = new Set(input.items.map((item) => item.id));
-  const slots = [...slotProjects].sort(slotOrder).map((project): Slot => {
-    const open = threads.filter((t) => t.open && t.projectId === project.id);
-    const mine = open.find((t) => myItemIds.has(links.itemOfThread.get(t.id) ?? -1));
-    return {
-      id: project.id,
-      hostId: project.hostId,
-      hostLabel: project.hostLabel,
-      available: project.available,
-      name: project.title,
-      workspaceRoot: project.workspaceRoot,
-      state: open.length === 0 ? 'free' : mine ? 'mine' : 'busy',
-      itemId: mine ? (links.itemOfThread.get(mine.id) ?? null) : null,
-      running: open.some((t) => t.status === 'running'),
-      needsYou: mine !== undefined && needsYou(mine),
-    };
-  });
-
   const unlinkedThreads = [...links.unlinked]
     .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))
     .map((thread) => ({ ...thread, guessItemId: guessItem(thread, input.items) }));
 
-  const overview: Overview = { generatedAt: now.toISOString(), items, unlinkedThreads, slots };
+  const overview: Overview = { generatedAt: now.toISOString(), items, unlinkedThreads };
   const { context, combined } = contextOverviews(input, threads, pullRequestsOf, now);
   if (context.length > 0) overview.context = context;
   if (Object.keys(combined).length > 0) overview.combinedPullRequests = combined;

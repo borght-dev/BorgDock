@@ -6,11 +6,11 @@ import {
   configuredPrompts,
   LAUNCH_MODES,
   type LaunchMode,
-  lastSlotOf,
   launchPrompt,
   startThread,
   stateOnStart,
 } from '@/services/dispatch/launch';
+import { repositoryOfUrl, targetPlace } from '@/services/dispatch/launch-target';
 import type { ItemOverview, Overview } from '@/services/dispatch/types';
 import { type LaunchIntent, useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -32,8 +32,9 @@ interface LaunchSheetProps {
 }
 
 /**
- * LaunchSheet — starts an agent on a work item. Pick a free slot, the model
- * and its reasoning effort, and how the agent begins; the first message is
+ * LaunchSheet — starts an agent on a work item. Pick where it runs (a new
+ * worktree, or an earlier thread and its checkout), the model and its
+ * reasoning effort, and how the agent begins; the first message is
  * prefilled for that and can be edited. Starting moves the item in ADO only
  * when its box is ticked.
  */
@@ -43,14 +44,21 @@ export function LaunchSheet({ intent, overview }: LaunchSheetProps) {
   const customPrompts = useSettingsStore((s) => s.settings.agents?.dispatchPrompts);
   const unit = overview.items.find((o) => o.item.id === intent.itemId);
 
-  const choice = useLaunchChoice(overview.slots, intent.slotId);
   const [mode, setMode] = useState<LaunchMode>(preferences.mode);
+  const handoff = mode === 'qa' || mode === 'done';
+  const ownThreadIds = unit?.threads.map((t) => t.id) ?? [];
+  // A handoff goes back to where the work was done.
+  const choice = useLaunchChoice({
+    repository: repositoryOfUrl(unit?.pullRequest?.url),
+    threadIds: ownThreadIds,
+    preferThread: handoff ? (unit?.threads[0]?.id ?? null) : null,
+  });
   /** The first message once the user edited it; null follows the template. */
   const [editedPrompt, setEditedPrompt] = useState<string | null>(null);
   const [moveState, setMoveState] = useState(true);
   const [assign, setAssign] = useState(true);
   const [starting, setStarting] = useState(false);
-  const { slot, model, effort } = choice;
+  const { target, model, effort, ready } = choice;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -89,7 +97,6 @@ export function LaunchSheet({ intent, overview }: LaunchSheetProps) {
   }
   const { item } = unit;
 
-  const handoff = mode === 'qa' || mode === 'done';
   const branch = handoff ? (existingBranch(unit) ?? branchName(item)) : branchName(item);
   const prompts = configuredPrompts(customPrompts);
   const prompt = editedPrompt ?? launchPrompt(mode, item, branch, prompts);
@@ -98,18 +105,15 @@ export function LaunchSheet({ intent, overview }: LaunchSheetProps) {
   const pickMode = (next: LaunchMode) => {
     setMode(next);
     setEditedPrompt(null);
-    // A handoff goes back to where the work was done, when that slot is free.
-    const home = lastSlotOf(unit.threads, overview.slots);
-    if ((next === 'qa' || next === 'done') && home && !intent.slotId) choice.setSlotId(home.id);
   };
 
   const start = async (openInT3: boolean) => {
-    if (!slot || !model) return;
+    if (!target || !ready) return;
     setStarting(true);
     try {
       const { warnings } = await startThread({
         item,
-        slot,
+        target,
         model,
         effort,
         mode,
@@ -121,7 +125,7 @@ export function LaunchSheet({ intent, overview }: LaunchSheetProps) {
       useDispatchStore.getState().selectItem(item.id);
       showToast({
         tone: warnings.length > 0 ? 'info' : 'success',
-        message: [`Started ${item.id} in ${slot.name}.`, ...warnings].join(' '),
+        message: [`Started ${item.id} in ${targetPlace(target)}.`, ...warnings].join(' '),
       });
       close();
     } catch (error) {
@@ -146,7 +150,7 @@ export function LaunchSheet({ intent, overview }: LaunchSheetProps) {
         </header>
 
         <div className="bd-dp-sheet__body">
-          <LaunchChoiceFields choice={choice} />
+          <LaunchChoiceFields choice={choice} ownThreadIds={ownThreadIds} />
 
           <section aria-label="Begin with">
             <h3 className="bd-dp-sheet__label">Begin with</h3>
@@ -210,7 +214,7 @@ export function LaunchSheet({ intent, overview }: LaunchSheetProps) {
           <Button
             variant="secondary"
             size="md"
-            disabled={!slot || !model || starting}
+            disabled={!ready || starting}
             onClick={() => void start(true)}
           >
             Start and open T3
@@ -218,7 +222,7 @@ export function LaunchSheet({ intent, overview }: LaunchSheetProps) {
           <Button
             variant="primary"
             size="md"
-            disabled={!slot || !model}
+            disabled={!ready}
             loading={starting}
             onClick={() => void start(false)}
           >

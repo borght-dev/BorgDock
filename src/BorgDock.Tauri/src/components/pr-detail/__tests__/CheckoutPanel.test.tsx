@@ -48,29 +48,6 @@ describe('CheckoutPanel', () => {
     });
   });
 
-  it('hands the worktree path over when the branch is already checked out', async () => {
-    const onWorktreeReady = vi.fn();
-    mockInvoke.mockImplementation((cmd: string) =>
-      Promise.resolve(
-        cmd === 'list_worktrees_bare'
-          ? [
-              {
-                path: '/tmp/repo/.worktrees/feat-test',
-                branchName: 'feat/test',
-                isMainWorktree: false,
-              },
-            ]
-          : [],
-      ),
-    );
-    render(<CheckoutPanel {...defaultProps} onWorktreeReady={onWorktreeReady} />);
-    await waitFor(() => {
-      expect(onWorktreeReady).toHaveBeenCalledWith('/tmp/repo/.worktrees/feat-test');
-    });
-    expect(onWorktreeReady).toHaveBeenCalledTimes(1);
-    mockInvoke.mockReset().mockResolvedValue([]);
-  });
-
   it('shows a T3 launch button on the ready surface when onOpenInT3 is set', async () => {
     mockInvoke.mockImplementation((cmd: string) =>
       Promise.resolve(

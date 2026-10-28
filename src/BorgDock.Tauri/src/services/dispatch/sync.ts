@@ -44,7 +44,7 @@ import {
 export function toAgentThread(
   host: DispatchHost,
   thread: T3Thread,
-  slot: string,
+  projectTitle: string,
   previous: AgentThread | undefined,
 ): AgentThread {
   const subagentOf = thread.subagentOf ? scopedId(host.id, thread.subagentOf) : null;
@@ -57,9 +57,10 @@ export function toAgentThread(
     hostLabel: host.label,
     available: true,
     projectId: scopedId(host.id, thread.projectId),
-    slot,
+    place: thread.worktreePath && thread.branch ? thread.branch : projectTitle,
     title: thread.title,
     branch: subagentOf ? null : thread.branch,
+    worktreePath: thread.worktreePath,
     createdAt: thread.createdAt,
     lastActivityAt: thread.lastActivityAt,
     updatedAt: thread.updatedAt,
@@ -129,17 +130,6 @@ export function mergePullRequests(
   return [...byUrl.values()];
 }
 
-/** The slot pattern as a regular expression; `null` for none, or one that does not compile. */
-export function compileSlotPattern(pattern: string | undefined): RegExp | null {
-  const trimmed = pattern?.trim();
-  if (!trimmed) return null;
-  try {
-    return new RegExp(trimmed);
-  } catch {
-    return null;
-  }
-}
-
 function sameOverview(a: Overview | null, b: Overview): boolean {
   if (!a) return false;
   const { generatedAt: _a, ...left } = a;
@@ -159,18 +149,15 @@ export function recomputeOverview(): void {
   const dispatch = useDispatchStore.getState();
   const prs = usePrStore.getState();
   const tracked = useWorkItemsStore.getState().trackedWorkItemIds;
-  const slotPattern = useSettingsStore.getState().settings.agents?.t3SlotPattern;
   const inputs = [
     dispatch.items,
     dispatch.threads,
-    dispatch.projects,
     prs.pullRequests,
     prs.closedPullRequests,
     dispatch.linkedPullRequests,
     tracked,
     dispatch.hiddenSuggestions,
     dispatch.manualLinks,
-    slotPattern,
     dispatch.contextItems,
     Math.floor(Date.now() / 60_000),
   ];
@@ -184,7 +171,6 @@ export function recomputeOverview(): void {
   const { overview, dequeue } = buildOverview({
     items: dispatch.items,
     threads: dispatch.threads,
-    projects: dispatch.projects,
     pullRequests: mergePullRequests(
       [...prs.pullRequests, ...prs.closedPullRequests].map(toKnownPullRequest),
       dispatch.linkedPullRequests,
@@ -192,7 +178,6 @@ export function recomputeOverview(): void {
     queued: tracked,
     hiddenSuggestions: dispatch.hiddenSuggestions,
     manualLinks: dispatch.manualLinks,
-    slotPattern: compileSlotPattern(slotPattern),
     contextItems: dispatch.contextItems,
   });
   if (!sameOverview(dispatch.overview, overview)) {
@@ -419,6 +404,7 @@ async function pollHost(host: DispatchHost, state: HostState, force: boolean): P
         available: true,
         title: project.title,
         workspaceRoot: project.workspaceRoot,
+        repository: project.repository,
       }),
     );
     store().setHostSnapshot(host.id, threads, projects);

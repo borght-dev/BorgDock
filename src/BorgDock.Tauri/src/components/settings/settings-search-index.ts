@@ -190,12 +190,6 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
   },
   {
     sectionId: 'agents',
-    anchorId: 't3-slot-pattern',
-    label: 'Dispatch slots',
-    keywords: ['t3', 'project', 'regex', 'pattern'],
-  },
-  {
-    sectionId: 'agents',
     anchorId: 't3-hosts',
     label: 'T3 on other machines',
     keywords: ['dispatch', 'remote', 'host', 'pair'],

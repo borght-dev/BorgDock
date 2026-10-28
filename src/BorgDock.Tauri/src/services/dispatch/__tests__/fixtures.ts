@@ -1,5 +1,4 @@
 import type {
-  AgentProject,
   AgentThread,
   DispatchItem,
   KnownPullRequest,
@@ -48,7 +47,7 @@ export function makeThread(overrides: Partial<AgentThread> & { id: string }): Ag
     hostLabel: 'This machine',
     available: true,
     projectId: 'p-w1',
-    slot: 'W1',
+    place: 'W1',
     title: 'Some thread',
     branch: null,
     createdAt: '2026-10-01T08:00:00Z',
@@ -97,12 +96,3 @@ export function makeKnownPr(
     ...overrides,
   };
 }
-
-export const PROJECTS: AgentProject[] = ['W0', 'W1', 'W2'].map((title) => ({
-  id: `p-${title.toLowerCase()}`,
-  hostId: 'local',
-  hostLabel: 'This machine',
-  available: true,
-  title,
-  workspaceRoot: `/work/${title}`,
-}));

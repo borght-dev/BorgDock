@@ -487,7 +487,12 @@ describe('assessWorkstream', () => {
   });
 
   it('asks you first when a member thread waits on you', () => {
-    const asking = makeThread({ id: 't1', status: 'question', slot: 'W2', title: 'Queue rewrite' });
+    const asking = makeThread({
+      id: 't1',
+      status: 'question',
+      place: 'W2',
+      title: 'Queue rewrite',
+    });
     const document = workstream({ members: [member(thread('t1'))] });
     const assessment = assessWorkstream(
       document,

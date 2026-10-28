@@ -1,10 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { userEvent, waitFor, within } from 'storybook/test';
-import { LAUNCH_CATALOGUE } from '@/components/dispatch/__fixtures__/dispatch-data';
+import {
+  LAUNCH_BRANCHES,
+  LAUNCH_CATALOGUE,
+  makeDispatchScene,
+} from '@/components/dispatch/__fixtures__/dispatch-data';
 import { MainWindow } from '@/components/layout/MainWindow';
 import { ViewStack } from '@/components/layout/ViewStack';
 import { rememberCaptureContext } from '@/services/notes/capture';
+import { useDispatchStore } from '@/stores/dispatch-store';
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
 import { getControl } from '../../../.storybook/mocks/control';
 import { type NotesScene, seedNotes } from './__fixtures__/notes-data';
@@ -23,7 +28,16 @@ interface HarnessProps extends NotesScene {
 function Harness({ section = 'notes', prNotes, threadSheet, ...scene }: HarnessProps) {
   useState(() => {
     getControl().invokeResponses.t3_catalogue = LAUNCH_CATALOGUE;
+    getControl().invokeResponses.t3_list_branches = LAUNCH_BRANCHES;
     seedNotes(scene);
+    if (threadSheet) {
+      const dispatch = makeDispatchScene();
+      useDispatchStore.setState({
+        threads: dispatch.threads,
+        projects: dispatch.projects,
+        hosts: dispatch.hosts,
+      });
+    }
     useUiStore.setState({
       activeSection: prNotes ? 'prs' : section,
       viewStack: prNotes

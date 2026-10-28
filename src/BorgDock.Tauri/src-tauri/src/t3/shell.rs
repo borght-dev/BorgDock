@@ -26,6 +26,8 @@ struct ShellProject {
     title: String,
     workspace_root: Option<String>,
     default_model_selection: Option<Value>,
+    /// Read leniently: a project with an identity we can't read still lists.
+    repository_identity: Option<Value>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -154,6 +156,42 @@ pub struct ProjectDto {
     pub id: String,
     pub title: String,
     pub workspace_root: Option<String>,
+    /// The git repository the project checks out; `None` outside one.
+    pub repository: Option<RepositoryDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct RepositoryDto {
+    /// The same for every checkout of the repository, e.g. `github.com/acme/shop`.
+    pub key: String,
+    /// `owner/name` as the host names it.
+    pub display_name: String,
+    pub owner: Option<String>,
+    pub name: Option<String>,
+}
+
+fn repository_of(identity: &Value) -> Option<RepositoryDto> {
+    let text = |field: &str| {
+        identity[field]
+            .as_str()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+    };
+    let key = text("canonicalKey")?;
+    let owner = text("owner");
+    let name = text("name");
+    let display_name = text("displayName")
+        .or_else(|| Some(format!("{}/{}", owner.as_deref()?, name.as_deref()?)))
+        .unwrap_or_else(|| key.clone());
+    Some(RepositoryDto {
+        key,
+        display_name,
+        owner,
+        name,
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -641,6 +679,7 @@ pub fn read_snapshot(shell: &Value) -> Snapshot {
         projects: parse_projects(shell)
             .into_iter()
             .map(|project| ProjectDto {
+                repository: project.repository_identity.as_ref().and_then(repository_of),
                 id: project.id,
                 title: project.title,
                 workspace_root: project.workspace_root,
@@ -686,25 +725,12 @@ pub fn thread_defaults(shell: &Value, project_id: &str) -> (Option<Value>, Optio
     (project_default.or(latest_selection), runtime_mode)
 }
 
-/// The project whose workspace root is `workspace`, compared the way Windows
-/// compares paths.
-pub fn project_for_workspace(shell: &Value, workspace: &str) -> Option<String> {
-    let wanted = comparable_path(workspace);
+/// The checkout `project_id` works in.
+pub fn project_root(shell: &Value, project_id: &str) -> Option<String> {
     parse_projects(shell)
         .into_iter()
-        .find(|project| {
-            project
-                .workspace_root
-                .as_deref()
-                .is_some_and(|root| comparable_path(root) == wanted)
-        })
-        .map(|project| project.id)
-}
-
-fn comparable_path(path: &str) -> String {
-    path.replace('\\', "/")
-        .trim_end_matches('/')
-        .to_ascii_lowercase()
+        .find(|project| project.id == project_id)
+        .and_then(|project| project.workspace_root)
 }
 
 fn clipped(text: &str, limit: usize) -> String {
@@ -884,7 +910,9 @@ mod tests {
             "schemaVersion": 2,
             "snapshotSequence": 41,
             "projects": [
-                { "id": "p1", "title": "W1", "workspaceRoot": "D:\\Work\\Shop", "defaultModelSelection": null },
+                { "id": "p1", "title": "W1", "workspaceRoot": "D:\\Work\\Shop", "defaultModelSelection": null,
+                  "repositoryIdentity": { "canonicalKey": "github.com/acme/shop", "displayName": "acme/shop",
+                      "owner": "acme", "name": "shop", "locator": { "source": "git-remote" } } },
                 { "id": "p2", "title": "W2", "workspaceRoot": "D:\\Work\\Shop\\.worktrees\\two",
                   "defaultModelSelection": { "instanceId": "codex", "model": "default" } }
             ],
@@ -932,6 +960,10 @@ mod tests {
             snapshot.projects[0].workspace_root.as_deref(),
             Some("D:\\Work\\Shop")
         );
+        let repository = snapshot.projects[0].repository.as_ref().unwrap();
+        assert_eq!(repository.key, "github.com/acme/shop");
+        assert_eq!(repository.name.as_deref(), Some("shop"));
+        assert_eq!(snapshot.projects[1].repository, None);
         let ids: Vec<&str> = snapshot.threads.iter().map(|t| t.id.as_str()).collect();
         assert_eq!(ids, ["open"]);
     }
@@ -1065,16 +1097,6 @@ mod tests {
         assert_eq!(runtime_mode.as_deref(), Some("full-access"));
         let (fallback, _) = thread_defaults(&shell, "p1");
         assert_eq!(fallback.unwrap()["options"][0]["value"], "high");
-    }
-
-    #[test]
-    fn projects_are_found_by_workspace_root_whatever_the_slashes_or_case() {
-        let shell = shell();
-        assert_eq!(
-            project_for_workspace(&shell, "d:/work/shop/.worktrees/two/").as_deref(),
-            Some("p2")
-        );
-        assert_eq!(project_for_workspace(&shell, "D:\\Elsewhere"), None);
     }
 
     #[test]

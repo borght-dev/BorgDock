@@ -400,10 +400,10 @@ function attentionOf(
       id: `needs-you:${member.member.key}`,
       tone: 'bad',
       reason: thread
-        ? `${member.stateLabel} in ${thread.slot}: ${member.title}`
+        ? `${member.stateLabel} in ${thread.place}: ${member.title}`
         : `${member.item?.verdict.label ?? member.stateLabel}: ${member.identity} ${member.title}`,
       action: thread
-        ? `${THREAD_ASK[thread.status] ?? 'Look at the agent'} in ${thread.slot} (${member.title}).`
+        ? `${THREAD_ASK[thread.status] ?? 'Look at the agent'} in ${thread.place} (${member.title}).`
         : `${member.item?.verdict.label ?? 'Look at'}: ${member.identity}.`,
       target: member.member.key,
     });

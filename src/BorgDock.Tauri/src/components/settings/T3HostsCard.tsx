@@ -149,9 +149,9 @@ export function T3HostsCard({ hosts, onChange }: Props) {
         T3 on other machines
       </h3>
       <p className="mb-3 text-[11.5px] leading-relaxed text-[var(--color-text-muted)]">
-        Dispatch also follows T3 Code on other machines. Their slots and agents show beside the ones
-        on this machine. To pair, run <code className="font-mono">t3 pair</code> on that machine and
-        paste the link it prints.
+        Dispatch also follows T3 Code on other machines. Their agents show beside the ones on this
+        machine, and you can start agents there. To pair, run{' '}
+        <code className="font-mono">t3 pair</code> on that machine and paste the link it prints.
       </p>
 
       {hosts.length > 0 && (

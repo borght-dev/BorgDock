@@ -10,6 +10,7 @@ import {
   suggestPrompt,
   syncPrompt,
 } from '@/services/dispatch/launch';
+import { targetPlace, targetSummary } from '@/services/dispatch/launch-target';
 import type { ItemOverview, Overview, SyncScope } from '@/services/dispatch/types';
 import {
   groupByTarget,
@@ -98,7 +99,7 @@ function ScheduleFields() {
         })}
       </div>
       <p className="bd-dp-sheet__hint">
-        Runs while BorgDock is open, in the slot and model you start this one with. Settings →
+        Runs while BorgDock is open, where and with the model you start this one with. Settings →
         Agents holds the message it sends.
       </p>
     </section>
@@ -130,7 +131,7 @@ function candidateWhy(overview: ItemOverview, scope: SyncScope): { label: string
   if (suggestion && syncTarget(overview, scope) === suggestion.to)
     return { label: suggestion.reason };
   const agent = ownAgent(overview);
-  if (agent) return { label: `Its own agent works on it in ${agent.slot}.`, tone: 'run' };
+  if (agent) return { label: `Its own agent works on it in ${agent.place}.`, tone: 'run' };
   return { label: overview.verdict.label, tone: overview.verdict.tone };
 }
 
@@ -246,12 +247,14 @@ interface RunSheetProps {
 
 /**
  * RunSheet — starts one agent that works through several items (a sync) or
- * recommends what to pick up next (a suggestion). Pick the items, a slot and
+ * recommends what to pick up next (a suggestion). Pick the items, where it runs and
  * a model; the first message is prefilled and can be edited.
  */
 export function RunSheet({ intent, overview }: RunSheetProps) {
   const close = useDispatchStore((s) => s.closeRunSheet);
   const runChoice = useDispatchStore((s) => s.runChoice);
+  const runs = useDispatchStore((s) => s.runs);
+  const runThreadIds = runs.map((run) => run.threadId);
   const customPrompts = useSettingsStore((s) => s.settings.agents?.dispatchPrompts);
   const prompts = configuredPrompts(customPrompts);
   const scope = intent.kind === 'sync' ? intent.scope : null;
@@ -260,7 +263,10 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
   const [picked, setPicked] = useState<Set<number>>(
     () => new Set(scope ? preselected(candidates, scope) : []),
   );
-  const choice = useLaunchChoice(overview.slots, runChoice.slotId, runChoice.model);
+  const choice = useLaunchChoice(
+    { hostId: runChoice.target?.hostId, threadIds: runThreadIds },
+    runChoice.model,
+  );
   const [editedPrompt, setEditedPrompt] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [showingAll, setShowingAll] = useState(false);
@@ -282,8 +288,10 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
   const prompt =
     editedPrompt ?? (scope ? syncPrompt(chosen, prompts, scope) : suggestPrompt(items, prompts));
   const label = scope ? syncLabel(scope, chosen.length) : 'Suggest my next item';
-  const { slot, model, effort } = choice;
-  const ready = slot && model && (!sync || chosen.length > 0);
+  const { target, model, effort } = choice;
+  const ready = choice.ready && (!sync || chosen.length > 0);
+  const hostLabel = choice.place.environments.find((e) => e.id === target?.hostId)?.label ?? '';
+  const where = target ? targetSummary(target, hostLabel) : null;
   const effortLabel = model?.efforts.find((e) => e.id === effort)?.label;
   const groups = scope && scope.kind !== 'item' ? groupByTarget(candidates, scope) : null;
 
@@ -314,7 +322,7 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
   };
 
   const start = async (openInT3: boolean) => {
-    if (!slot || !model) return;
+    if (!target || !ready) return;
     setStarting(true);
     try {
       const threadId = await startRun({
@@ -323,7 +331,7 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
         scope: scope?.kind,
         states: [...new Set(chosen.map((o) => o.item.state))],
         itemIds: chosen.map((o) => o.item.id),
-        slot,
+        target,
         model,
         effort,
         prompt,
@@ -331,8 +339,8 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
       });
       const what = [
         sync ? `${chosen.length} ${chosen.length === 1 ? 'item' : 'items'}` : null,
-        slot.name,
-        model.label,
+        targetPlace(target),
+        model?.label,
       ]
         .filter(Boolean)
         .join(' · ');
@@ -345,7 +353,7 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
         actionLabel: openInT3 ? undefined : 'Open in T3',
         onAction: openInT3
           ? undefined
-          : () => dispatchActions.openInT3({ id: threadId, hostId: slot.hostId }),
+          : () => dispatchActions.openInT3({ id: threadId, hostId: target.hostId }),
         secondaryLabel: 'Show me',
         onSecondary: () => revealRun(threadId),
         durationMs: 8000,
@@ -462,7 +470,7 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
           )}
 
           <div className="bd-dp-sheet__side">
-            <LaunchChoiceFields choice={choice} />
+            <LaunchChoiceFields choice={choice} ownThreadIds={runThreadIds} />
             {instructions}
             {scope?.kind === 'all' && <ScheduleFields />}
           </div>
@@ -475,14 +483,14 @@ export function RunSheet({ intent, overview }: RunSheetProps) {
           <span className="bd-dp-sheet__spacer" />
           <span
             className="bd-dp-sheet__what"
-            title={[slot?.name, model?.label, effortLabel].filter(Boolean).join(' · ')}
+            title={[where, model?.label, effortLabel].filter(Boolean).join(' · ')}
           >
             {sync && (
               <strong>
                 {chosen.length} {chosen.length === 1 ? 'item' : 'items'}
               </strong>
             )}
-            {[slot?.name, model?.label, effortLabel].filter(Boolean).map((part, i) => (
+            {[where, model?.label, effortLabel].filter(Boolean).map((part, i) => (
               <span key={part}>
                 {sync || i > 0 ? ' · ' : ''}
                 {part}

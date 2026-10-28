@@ -2,11 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { SearchSelect, type SearchSelectSection, Seg2 } from '@/components/shared/primitives';
 import { configuredHosts } from '@/services/dispatch/hosts';
 import { type LaunchModel, launchModels, preferredModel } from '@/services/dispatch/launch';
-import type { Slot } from '@/services/dispatch/types';
+import type { LaunchTarget } from '@/services/dispatch/launch-target';
 import { type T3Catalogue, t3Catalogue } from '@/services/t3/api';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import { groupSlotsByHost, SlotTile } from './SlotStrip';
+import {
+  type LaunchTargetChoice,
+  LaunchTargetFields,
+  type TargetContext,
+  useLaunchTarget,
+} from './LaunchTarget';
 
 /** A catalogue is read again after this long; providers rarely change. */
 const CATALOGUE_TTL_MS = 60_000;
@@ -53,10 +58,6 @@ function useCatalogue(hostId: string | null): CatalogueState {
   return state;
 }
 
-export function freeSlots(slots: readonly Slot[]): Slot[] {
-  return slots.filter((slot) => slot.available && slot.state === 'free');
-}
-
 /** The effort to preselect for `model`: last picked here, else its own default. */
 function effortFor(
   model: LaunchModel | undefined,
@@ -68,12 +69,12 @@ function effortFor(
   return model.defaultEffort;
 }
 
-/** The slot, model and reasoning effort a sheet starts an agent with. */
+/** Where a sheet starts an agent, with the model and reasoning effort. */
 export interface LaunchChoice {
-  slots: readonly Slot[];
-  /** The picked slot while it is still free. */
-  slot: Slot | undefined;
-  setSlotId: (id: string | null) => void;
+  place: LaunchTargetChoice;
+  target: LaunchTarget | undefined;
+  /** A continued thread keeps its own model, so the sheet asks for none. */
+  needsModel: boolean;
   models: LaunchModel[];
   modelId: string;
   model: LaunchModel | undefined;
@@ -81,38 +82,33 @@ export interface LaunchChoice {
   effort: string | null;
   setEffort: (id: string) => void;
   catalogueError: string | null;
+  /** Everything a start needs is picked. */
+  ready: boolean;
 }
 
-/** Slot, model and effort, preselected from what was picked last time. */
+/** Target, model and effort, preselected from the work and from what was picked last time. */
 export function useLaunchChoice(
-  slots: readonly Slot[],
-  initialSlotId: string | null | undefined,
+  context: TargetContext = {},
   lastModel: string | null = null,
 ): LaunchChoice {
   const threads = useDispatchStore((s) => s.threads);
   const preferences = useDispatchStore((s) => s.launchPreferences);
-  const [slotId, setSlotId] = useState<string | null>(
-    () =>
-      (initialSlotId && freeSlots(slots).some((s) => s.id === initialSlotId)
-        ? initialSlotId
-        : null) ??
-      freeSlots(slots)[0]?.id ??
-      null,
-  );
+  const place = useLaunchTarget(context);
   const [pickedModel, setPickedModel] = useState<string | null>(null);
   const [pickedEffort, setPickedEffort] = useState<string | null>(null);
 
-  const slot = slots.find((s) => s.id === slotId && s.available && s.state === 'free');
-  const { catalogue, error: catalogueError } = useCatalogue(slot?.hostId ?? null);
+  const { target, hostId } = place;
+  const needsModel = target?.kind !== 'continue';
+  const { catalogue, error: catalogueError } = useCatalogue(needsModel ? hostId : null);
   const models = useMemo(
     () =>
       catalogue
         ? launchModels(
             catalogue,
-            threads.filter((t) => t.hostId === slot?.hostId),
+            threads.filter((t) => t.hostId === hostId),
           )
         : [],
-    [catalogue, threads, slot?.hostId],
+    [catalogue, threads, hostId],
   );
   const modelId = models.some((m) => m.id === pickedModel)
     ? (pickedModel ?? '')
@@ -124,12 +120,12 @@ export function useLaunchChoice(
       : effortFor(model, preferences.efforts);
 
   return {
-    slots,
-    slot,
-    setSlotId,
+    place,
+    target,
+    needsModel,
     models,
     modelId,
-    model,
+    model: needsModel ? model : undefined,
     setModel: (id) => {
       setPickedModel(id);
       setPickedEffort(null);
@@ -137,6 +133,7 @@ export function useLaunchChoice(
     effort,
     setEffort: setPickedEffort,
     catalogueError,
+    ready: !!target && (!needsModel || !!model),
   };
 }
 
@@ -166,88 +163,70 @@ export function modelSections(models: readonly LaunchModel[]): SearchSelectSecti
   ];
 }
 
-/** LaunchChoiceFields — the slot tiles, the model and the reasoning effort. */
-export function LaunchChoiceFields({ choice }: { choice: LaunchChoice }) {
-  const { slots, slot, models, modelId, model, effort, catalogueError } = choice;
-  const free = freeSlots(slots);
+/** LaunchChoiceFields — where the agent starts, the model and the reasoning effort. */
+export function LaunchChoiceFields({
+  choice,
+  ownThreadIds,
+}: {
+  choice: LaunchChoice;
+  ownThreadIds?: readonly string[];
+}) {
+  const { models, modelId, model, effort, catalogueError, needsModel, place } = choice;
   return (
     <>
-      <section aria-label="Slot">
-        <h3 className="bd-dp-sheet__label">
-          <span>Slot</span>
-          <span>
-            {free.length} free
-            {slot ? '' : ' · pick one'}
-          </span>
-        </h3>
-        {groupSlotsByHost(slots).map((group) => (
-          <div key={group.hostLabel} className="bd-dp-sheet__slots">
-            <span className="bd-dp-sheet__host">{group.hostLabel}</span>
-            {group.slots.map((s) => (
-              <SlotTile
-                key={s.id}
-                slot={s}
-                detailed
-                selected={s.id === slot?.id}
-                onStartIn={(picked) => choice.setSlotId(picked.id)}
-              />
-            ))}
-          </div>
-        ))}
-        {free.length === 0 && (
-          <p className="bd-dp-sheet__hint">Every slot is busy. Settle a thread to free one.</p>
-        )}
-      </section>
+      <LaunchTargetFields choice={place} ownThreadIds={ownThreadIds} />
 
-      <div className="bd-dp-sheet__row">
-        <section aria-label="Model" className="bd-dp-sheet__model">
-          <h3 className="bd-dp-sheet__label">Model</h3>
-          <SearchSelect
-            ariaLabel="Model"
-            value={modelId}
-            sections={modelSections(models)}
-            onChange={choice.setModel}
-            filterPlaceholder="Filter models"
-            disabled={models.length === 0}
-            placeholder={
-              catalogueError
-                ? 'T3 did not list its models'
-                : slot
-                  ? 'Loading models…'
-                  : 'Pick a slot first'
-            }
-          />
-        </section>
-        {model && model.efforts.length > 0 && (
-          <section aria-label="Reasoning">
-            <h3 className="bd-dp-sheet__label">Reasoning</h3>
-            {model.efforts.length <= MAX_SEGMENTED_EFFORTS ? (
-              <Seg2
-                ariaLabel="Reasoning effort"
-                size="sm"
-                value={effort ?? ''}
-                options={model.efforts.map((e) => ({ value: e.id, label: e.label }))}
-                onChange={choice.setEffort}
-              />
-            ) : (
-              <div className="bd-dp-sheet__efforts" role="group" aria-label="Reasoning effort">
-                {model.efforts.map((e) => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    aria-pressed={e.id === effort}
-                    className="bd-dp-sheet__effort"
-                    onClick={() => choice.setEffort(e.id)}
-                  >
-                    {e.label}
-                  </button>
-                ))}
-              </div>
-            )}
+      {needsModel && (
+        <div className="bd-dp-sheet__row">
+          <section aria-label="Model" className="bd-dp-sheet__model">
+            <h3 className="bd-dp-sheet__label">Model</h3>
+            <SearchSelect
+              ariaLabel="Model"
+              value={modelId}
+              sections={modelSections(models)}
+              onChange={choice.setModel}
+              filterPlaceholder="Filter models"
+              disabled={models.length === 0}
+              placeholder={
+                catalogueError
+                  ? 'T3 did not list its models'
+                  : place.hostId
+                    ? 'Loading models…'
+                    : 'Pick an environment first'
+              }
+            />
           </section>
-        )}
-      </div>
-      {catalogueError && <p className="bd-dp-sheet__hint">{catalogueError}</p>}
+          {model && model.efforts.length > 0 && (
+            <section aria-label="Reasoning">
+              <h3 className="bd-dp-sheet__label">Reasoning</h3>
+              {model.efforts.length <= MAX_SEGMENTED_EFFORTS ? (
+                <Seg2
+                  ariaLabel="Reasoning effort"
+                  size="sm"
+                  value={effort ?? ''}
+                  options={model.efforts.map((e) => ({ value: e.id, label: e.label }))}
+                  onChange={choice.setEffort}
+                />
+              ) : (
+                <div className="bd-dp-sheet__efforts" role="group" aria-label="Reasoning effort">
+                  {model.efforts.map((e) => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      aria-pressed={e.id === effort}
+                      className="bd-dp-sheet__effort"
+                      onClick={() => choice.setEffort(e.id)}
+                    >
+                      {e.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+        </div>
+      )}
+      {needsModel && catalogueError && <p className="bd-dp-sheet__hint">{catalogueError}</p>}
     </>
   );
 }

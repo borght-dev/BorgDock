@@ -116,7 +116,7 @@ export const dispatchActions: DispatchActions = {
     if (!requestId) return;
     void act('Answer not sent', async () => {
       await t3Respond(hostOf(thread), rawId(thread.hostId, thread.id), requestId, answers);
-      return `Sent. The agent in ${thread.slot} is working again.`;
+      return `Sent. The agent in ${thread.place} is working again.`;
     });
   },
 
@@ -128,14 +128,14 @@ export const dispatchActions: DispatchActions = {
         GO_AHEAD_MESSAGE,
         thread.interactionMode === 'plan',
       );
-      return `Go-ahead sent. The agent in ${thread.slot} is working again.`;
+      return `Go-ahead sent. The agent in ${thread.place} is working again.`;
     });
   },
 
   settle: (thread) => {
     void act('Thread not settled', async () => {
       await t3Settle(hostOf(thread), rawId(thread.hostId, thread.id));
-      return `Thread settled. ${thread.slot} is free again.`;
+      return `Thread settled. The agent in ${thread.place} stopped.`;
     });
   },
 
@@ -160,8 +160,8 @@ export const dispatchActions: DispatchActions = {
     showToast({ message: 'Suggestion hidden' });
   },
 
-  start: (item, slotId) => {
-    useDispatchStore.getState().openLaunch({ itemId: item.id, slotId });
+  start: (item) => {
+    useDispatchStore.getState().openLaunch({ itemId: item.id });
   },
 
   queue: (item) => setQueued(item, true),

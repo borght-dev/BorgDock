@@ -85,13 +85,15 @@ describe('DispatchSection', () => {
     configureAdo();
   });
 
-  it('shows the bays, the slots and the first item that waits on you', () => {
+  it('shows the bays, the agents at work and the first item that waits on you', () => {
     seed();
     render(<DispatchSection />);
 
     expect(screen.getByRole('button', { name: /Waiting on you/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /In review or QA/ })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Slots' })).toHaveTextContent('5 free, 4 need you');
+    expect(screen.getByRole('group', { name: 'Filter by count' })).toHaveTextContent(
+      /2\s*agents working/,
+    );
 
     const detail = screen.getByRole('article');
     expect(detail).toHaveAccessibleName('Order list loses its scroll position after refresh');
@@ -204,6 +206,6 @@ describe('DispatchSection', () => {
     }));
     render(<DispatchSection />);
 
-    expect(screen.queryByRole('group', { name: 'Slots' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Filter by count' })).not.toBeInTheDocument();
   });
 });
