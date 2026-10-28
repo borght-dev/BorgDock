@@ -376,10 +376,24 @@ describe('PrRow with a shared CI failure', () => {
     const marker = document.querySelector('[data-ci-marker]');
     expect(marker).toHaveAttribute('data-not-caused', 'true');
     expect(marker).toHaveTextContent('Not caused by this PR');
-    expect(marker?.getAttribute('title')).toContain(
+    expect(marker?.getAttribute('aria-label')).toContain(
       'CI red, not caused by this PR: also fails on main',
     );
     expect(screen.getByRole('button', { name: 'Review #7' })).toBeInTheDocument();
+  });
+
+  it('shows the whole failure when its name is cut off', async () => {
+    seed([4812]);
+    render(<PrRow prWithChecks={first} />);
+    const name = document.querySelector<HTMLElement>('.bd-ci-marker__name')!;
+    Object.defineProperty(name, 'scrollWidth', { configurable: true, value: 600 });
+    Object.defineProperty(name, 'clientWidth', { configurable: true, value: 90 });
+    fireEvent.mouseEnter(name);
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('checkout > pays with card');
+    expect(tooltip).toHaveTextContent('fails 2 open PRs and main');
+    expect(tooltip).toHaveTextContent('Not caused by this PR: also fails on main');
+    expect(tooltip).toHaveTextContent('Click to show the 2 PRs it fails');
   });
 
   it('narrows the list to the failure on a marker click without opening the PR', () => {

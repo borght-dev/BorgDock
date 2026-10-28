@@ -5,6 +5,7 @@ const store = vi.hoisted(() => ({
   knownOccurrences: vi.fn(),
   record: vi.fn(),
   loadScope: vi.fn(),
+  setGroup: vi.fn(),
   usage: vi.fn(),
   countUsage: vi.fn(),
   branchWatch: vi.fn(),
@@ -23,7 +24,7 @@ import type { CiRecordBatch } from '@/services/ci-failures/types';
 import type { GitHubClient } from '@/services/github/client';
 import type { CiJob, PullRequestWithChecks } from '@/types';
 import { makeEvidence, makeSignal } from '../__fixtures__/evidence';
-import { makeDetail } from '../__fixtures__/store';
+import { makeDetail, makeGroup } from '../__fixtures__/store';
 import type { Collected, CollectTarget } from '../collect';
 import { pendingOccurrence } from '../collect';
 import { FINGERPRINT_VERSION } from '../fingerprint';
@@ -376,5 +377,44 @@ describe('CiFailureSync', () => {
     await make().upgradeFingerprints();
     expect(store.loadGroup).not.toHaveBeenCalled();
     expect(store.record).not.toHaveBeenCalled();
+  });
+
+  describe('repairClippedTitles', () => {
+    const full =
+      'src/pages/workspace-designer/preview/widgetPreviewRendering.test.tsx > populated widget previews render every chart type';
+    const clipped = `${full.slice(0, 89)}…`;
+    const detail = makeDetail({ scope: context.scope }, [
+      { signal: makeSignal({ kind: 'test', parser: 'vitest', testId: full, message: 'boom' }) },
+    ]);
+    const withGroup = (title: string) =>
+      store.loadScope.mockResolvedValueOnce({
+        index: [],
+        links: [],
+        groups: [makeGroup({ id: 'g-long', title, revision: 4 })],
+      });
+    const groupDetail = {
+      summary: {},
+      occurrences: [detail],
+      candidates: [],
+      decisions: [],
+      claimEvents: [],
+    };
+
+    it('gives a group cut at 90 characters its full title back', async () => {
+      withGroup(clipped);
+      store.loadGroup.mockResolvedValueOnce(groupDetail);
+      await make().repairClippedTitles();
+      expect(store.setGroup).toHaveBeenCalledWith('g-long', { title: full }, 4);
+    });
+
+    it('leaves short and renamed titles alone', async () => {
+      withGroup('checkout > pays with card');
+      await make().repairClippedTitles();
+      withGroup(`${'Renamed by hand '.repeat(6).slice(0, 89)}…`);
+      store.loadGroup.mockResolvedValueOnce(groupDetail);
+      await make().repairClippedTitles();
+      expect(store.loadGroup).toHaveBeenCalledTimes(1);
+      expect(store.setGroup).not.toHaveBeenCalled();
+    });
   });
 });

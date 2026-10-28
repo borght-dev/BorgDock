@@ -151,7 +151,7 @@ export const PrRow = memo(function PrRow({
     if (!lens || !group) return undefined;
     const base = pr.baseRef || 'the base branch';
     return {
-      title: group.title,
+      group,
       prCount: lens.blockedCount,
       alsoOn: group.defaultBranchRuns.length > 0 ? base : null,
       notCausedBy: lens.outsideCause ? outsideCauseText(lens.outsideCause, base) : null,

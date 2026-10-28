@@ -1,41 +1,24 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
+import { HoverPopover, isTextClipped } from '@/components/shared/primitives';
 import { useBranchStory } from '@/hooks/useBranchStory';
 import { openOwner, openSheet, showGroupPrs } from '@/services/ci-failures/actions';
 import { isBlocking, outsideCauseOf, outsideCauseText } from '@/services/ci-failures/lens';
-import { ownerLabel, ownerStatusOf } from '@/services/ci-failures/ownership';
 import { healModeOf } from '@/services/ci-failures/rerun';
 import type { CiGroupSummary } from '@/services/ci-failures/types';
 import { useBlockedPrs, useCiBranch, useCiFailuresStore } from '@/stores/ci-failures-store';
-import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
-import { useT3SessionStore } from '@/stores/t3-session-store';
 import type { PullRequestWithChecks } from '@/types';
 import { parseError } from '@/utils/parse-error';
 import { formatAgo } from '@/utils/relative-time';
 import { BranchStoryLine } from './BranchStoryLine';
+import { CiFailureTooltip, OwnerText } from './CiFailureTooltip';
 
 /** Rows shown before "and N more". */
 const SHOWN = 3;
 
 function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
-}
-
-function OwnerText({ group }: { group: CiGroupSummary }) {
-  const threads = useDispatchStore((s) => s.threads);
-  const sessions = useT3SessionStore((s) => s.sessions);
-  if (!group.claim) return <span data-tone="warn">No owner</span>;
-  const status = ownerStatusOf(group.claim, { threads, sessions, now: new Date() });
-  const label = ownerLabel(group.claim);
-  // A claim of yours reports "you" as its status; saying it twice reads like a stutter.
-  const detail = status.label.toLowerCase() === label.toLowerCase() ? '' : ` · ${status.label}`;
-  return (
-    <span data-tone={status.stale ? 'warn' : undefined}>
-      Owner {label}
-      {detail}
-    </span>
-  );
 }
 
 interface StripRowProps {
@@ -70,9 +53,15 @@ function StripRow({ group, blocked, selected }: StripRowProps) {
     <li className="bd-ci-strip__row" data-group-id={group.id} data-selected={selected || undefined}>
       <div className="bd-ci-strip__head">
         <span className="bd-ci-group__dot" data-tone="shared" aria-hidden />
-        <span className="bd-ci-strip__title" title={group.title}>
+        <HoverPopover
+          variant="tooltip"
+          maxWidth={520}
+          when={isTextClipped}
+          triggerClassName="bd-ci-strip__title"
+          content={<CiFailureTooltip group={group} />}
+        >
           {group.title}
-        </span>
+        </HoverPopover>
         <span className="bd-ci-strip__meta">
           Fails {plural(blocked.length, 'open PR')}
           {onBranch ? ` and ${branch}` : ''} · first failed {formatAgo(group.firstObservedAt)}

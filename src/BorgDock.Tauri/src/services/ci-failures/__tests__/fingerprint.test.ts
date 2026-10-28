@@ -93,6 +93,13 @@ describe('fingerprintOf', () => {
     expect(a.title).toBe('checkout > pays');
   });
 
+  it('keeps a long title whole, on one line', () => {
+    const testId =
+      'tests/planboard/planboard-drag-create-engineer-address.spec.ts › Planboard drag-create\n  with an engineer address keeps the address';
+    expect(fingerprint(test({ testId, message: 'boom' })).title).toBe(testId.replace(/\s+/g, ' '));
+    expect(fingerprint(test({ testId: 'x'.repeat(300), message: 'boom' })).title).toHaveLength(240);
+  });
+
   it('ignores matrix values, durations and temp paths, but not assertion values', () => {
     const base = { testId: 'api.spec.ts › health', errorClass: 'AssertionError' };
     const linux = fingerprint(
