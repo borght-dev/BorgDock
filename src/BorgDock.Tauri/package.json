@@ -26,7 +26,9 @@
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.2",
     "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/lang-sql": "^6.10.0",
+    "@codemirror/language": "^6.13.1",
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.42.0",
     "@fontsource-variable/instrument-sans": "^5.3.0",

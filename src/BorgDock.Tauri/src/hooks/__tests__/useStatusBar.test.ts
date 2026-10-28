@@ -17,7 +17,7 @@ describe('useStatusBar', () => {
   it('returns PRs copy with rate', () => {
     const { result } = renderHook(() => useStatusBar('prs'));
     expect(result.current.left).toMatch(/synced/i);
-    expect(result.current.right).toMatch(/F7|F8|F9/);
+    expect(result.current.right).toMatch(/F7|F9/);
   });
   it('returns Work Items copy', () => {
     const { result } = renderHook(() => useStatusBar('workitems'));
@@ -50,7 +50,7 @@ describe('useStatusBar', () => {
     it('shows / search and R refresh on the PR list', () => {
       const { result } = renderHook(() => useStatusBar('prs'));
       expect(result.current.right).toBe(
-        '/ search · R refresh · Ctrl+F7 worktrees · Ctrl+F8 files · Ctrl+F9 ADO',
+        '/ search · R refresh · Ctrl+F7 worktrees · Ctrl+F8 quick note · Ctrl+F9 ADO',
       );
     });
     it('names the row keys on Work items', () => {

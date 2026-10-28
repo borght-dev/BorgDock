@@ -507,7 +507,7 @@ function isPlainKey(e: KeyboardEvent): boolean {
   return !e.ctrlKey && !e.metaKey && !e.altKey;
 }
 
-/** `1`–`7` pick the rail's sections. */
+/** `1`–`8` pick the rail's sections. */
 function railSectionForKey(e: KeyboardEvent) {
   if (e.shiftKey || !/^[1-9]$/.test(e.key)) return null;
   return SECTION_ORDER[Number(e.key) - 1] ?? null;

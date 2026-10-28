@@ -25,6 +25,7 @@ import {
 import { tags } from '@lezer/highlight';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import type { SqlSchemaPayload } from '@/types/sql-schema';
+import { readCspNonce } from '@/utils/csp-nonce';
 import { toCmSchema } from './to-cm-schema';
 
 export interface SqlEditorHandle {
@@ -48,19 +49,6 @@ interface SqlEditorProps {
   onRunQuery: (textToRun: string) => void;
   schema: SqlSchemaPayload | null;
   height: number;
-}
-
-/**
- * Tauri stamps a per-load nonce onto the inline `<script>`/`<style>` tags it
- * serves and whitelists it in the CSP. Any stylesheet a library injects at
- * runtime has to carry the same nonce or the packaged app refuses it.
- * Returns '' outside Tauri (dev server, Storybook, vitest) where no CSP is
- * enforced — CodeMirror treats an empty nonce as "none".
- */
-function readCspNonce(): string {
-  if (typeof document === 'undefined') return '';
-  const el = document.querySelector<HTMLElement>('style[nonce], script[nonce]');
-  return el?.nonce ?? el?.getAttribute('nonce') ?? '';
 }
 
 function readRunText(view: EditorView | null): string | null {

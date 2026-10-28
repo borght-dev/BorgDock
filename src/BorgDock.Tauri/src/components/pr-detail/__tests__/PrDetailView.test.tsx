@@ -139,6 +139,7 @@ describe('PrDetailView', () => {
       'Files',
       'Commits',
       'Discussion',
+      'Notes',
     ]);
     // Reading font root, no pop-out chrome.
     expect(document.querySelector('.bd-detail')).toBeInTheDocument();

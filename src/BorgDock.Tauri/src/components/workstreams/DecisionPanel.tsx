@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button, Checkbox, Input, Pill } from '@/components/shared/primitives';
+import { recordDecisionNote } from '@/services/notes/decisions';
 import { type MemberAction, memberActions, runMemberAction } from '@/services/workstreams/actions';
 import type { Assessment } from '@/services/workstreams/attention';
 import { decide, openDecision, removeDecision, reopenDecision } from '@/services/workstreams/edits';
@@ -12,6 +13,7 @@ import {
   type RefKey,
   type WorkstreamDocument,
 } from '@/services/workstreams/types';
+import { toastError } from '@/stores/toast-store';
 import { nodeLabel } from './labels';
 import { Sheet } from './Sheet';
 import { stamp, TONE_PILL, wsEdit, wsEditUndoable } from './ws-ui';
@@ -111,7 +113,12 @@ function DecideSheet({
   const [rationale, setRationale] = useState('');
   const others = decision.options.filter((key) => key !== chosen);
   const go = () => {
-    if (wsEdit(document.id, (d, c) => decide(d, decision.id, chosen, rationale, c))) onClose();
+    if (!wsEdit(document.id, (d, c) => decide(d, decision.id, chosen, rationale, c))) return;
+    onClose();
+    // The decision record lands in Decisions/ in the notes vault, linked from the workstream.
+    recordDecisionNote(document.id, decision.id, chosen, rationale).catch((error) =>
+      toastError('Decision note not written', error),
+    );
   };
   return (
     <Sheet

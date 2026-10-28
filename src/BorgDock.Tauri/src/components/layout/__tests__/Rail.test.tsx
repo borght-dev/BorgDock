@@ -66,7 +66,7 @@ describe('Rail', () => {
     vi.useRealTimers();
   });
 
-  it('renders the workspace name and the seven sections in order', () => {
+  it('renders the workspace name and the eight sections in order', () => {
     render(<Rail />);
     expect(screen.getByText('BorgDock')).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Sections' });
@@ -81,6 +81,7 @@ describe('Rail', () => {
       'Work items',
       'Worktrees',
       'Activity',
+      'Notes',
     ]);
   });
 

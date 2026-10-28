@@ -14,6 +14,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { SinceLastCheckedCard } from '@/components/activity/SinceLastCheckedCard';
 import { CiFailuresFocusCard } from '@/components/ci-failures/CiFailuresFocusCard';
 import { DispatchFocusCard } from '@/components/dispatch/DispatchFocusCard';
+import { NotesFocusCard } from '@/components/notes/NotesFocusCard';
 import { PrRow } from '@/components/pr/PrRow';
 import { prRowKey } from '@/components/pr/pr-card-data';
 import { Button, SlidingHighlight } from '@/components/shared/primitives';
@@ -469,6 +470,7 @@ export function FocusList() {
       <DispatchFocusCard />
       <WorkstreamsFocusCard />
       <CiFailuresFocusCard />
+      <NotesFocusCard />
       <div className="bd-focus-body">
         {outgoing !== null && (
           <div

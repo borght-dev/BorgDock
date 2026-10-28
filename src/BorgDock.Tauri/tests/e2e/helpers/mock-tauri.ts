@@ -132,10 +132,6 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   checkout_pr: null,
   diff_worktree_vs_base: '',
   diff_worktree_vs_head: '',
-  git_changed_files: { local: [], vsBase: [], baseRef: 'master', inRepo: false },
-  git_file_diff: '',
-  list_root_files: { entries: [], truncated: false },
-  read_text_file: '',
   search_content: [],
   cache_load_sql_schema: null,
   fetch_sql_schema: null,
@@ -153,7 +149,6 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   run_self_test: { ok: true },
   get_cache_size: 0,
   generate_pr_summary: '',
-  open_file_viewer_window: null,
   open_in_editor: null,
   open_in_terminal: null,
   reveal_in_file_manager: null,
@@ -278,6 +273,51 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   workstreams_trash: (args: Record<string, unknown>) => {
     const w = window as unknown as { __wsFiles?: Record<string, unknown> };
     if (w.__wsFiles) delete w.__wsFiles[args.fileName as string];
+    return null;
+  },
+  // Notes: an in-page vault (window.__notes) with the same write rule as the
+  // Rust storage: a write over text the writer didn't read is a conflict.
+  notes_folder_path: 'C:/Vault/BorgDock Notes',
+  notes_list: () => {
+    const notes =
+      (window as unknown as { __notes?: Record<string, { text: string; modifiedMs: number }> })
+        .__notes ?? {};
+    return Object.entries(notes).map(([path, note]) => ({
+      path,
+      modifiedMs: note.modifiedMs,
+      size: note.text.length,
+    }));
+  },
+  notes_read_many: (args: Record<string, unknown>) => {
+    const notes = (window as unknown as { __notes?: Record<string, { text: string }> }).__notes ?? {};
+    return (args.paths as string[]).map((path) => ({ path, contents: notes[path]?.text ?? null }));
+  },
+  notes_write: (args: Record<string, unknown>) => {
+    const w = window as unknown as {
+      __notes?: Record<string, { text: string; modifiedMs: number }>;
+      __notesClock?: number;
+    };
+    w.__notes = w.__notes ?? {};
+    const path = args.path as string;
+    const disk = w.__notes[path]?.text ?? null;
+    if (disk !== (args.base ?? null)) return { status: 'conflict', disk };
+    w.__notesClock = (w.__notesClock ?? 0) + 1;
+    w.__notes[path] = { text: args.contents as string, modifiedMs: w.__notesClock };
+    return { status: 'written' };
+  },
+  notes_rename: (args: Record<string, unknown>) => {
+    const w = window as unknown as { __notes?: Record<string, { text: string; modifiedMs: number }> };
+    const notes = w.__notes ?? {};
+    const from = notes[args.from as string];
+    if (!from) throw `${args.from as string} is gone.`;
+    if (notes[args.to as string]) throw `${args.to as string} already exists.`;
+    delete notes[args.from as string];
+    notes[args.to as string] = from;
+    return null;
+  },
+  notes_trash: (args: Record<string, unknown>) => {
+    const w = window as unknown as { __notes?: Record<string, unknown> };
+    if (w.__notes) delete w.__notes[args.path as string];
     return null;
   },
 };

@@ -243,6 +243,7 @@ test('tabs switch by click and with J / K; Checks groups by suite', async ({ pag
     'Files',
     'Commits',
     'Discussion',
+    'Notes',
   ]);
 
   await tab(/^Checks/).click();

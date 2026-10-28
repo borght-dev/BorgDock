@@ -21,8 +21,7 @@ const ENTRIES: { name: string; path: string }[] = [
   { name: 'sql', path: 'sql.html' },
   { name: 'worktree', path: 'worktree.html' },
   { name: 'whats-new', path: 'whats-new.html' },
-  { name: 'file-palette', path: 'file-palette.html' },
-  { name: 'file-viewer', path: 'file-viewer.html' },
+  { name: 'note-capture', path: 'note-capture.html' },
   { name: 'agent-overview', path: 'agent-overview.html' },
   { name: 'settings', path: 'settings.html' },
 ];

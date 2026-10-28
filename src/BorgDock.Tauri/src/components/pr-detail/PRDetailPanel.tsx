@@ -10,6 +10,7 @@ const QuickReviewOverlay = lazy(() =>
   })),
 );
 
+import { NotesTab, useNoteCount } from '@/components/notes/NotesTab';
 import { passedOfCounted } from '@/components/pr/pr-card-data';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { WindowControls } from '@/components/shared/chrome';
@@ -20,8 +21,10 @@ import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
 import { createLogger } from '@/services/logger';
 import { computeMergeScore } from '@/services/merge-score';
 import { popView } from '@/services/navigation';
+import { rememberCaptureContext } from '@/services/notes/capture';
 import { guardT3Launch, openT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
+import { refKey } from '@/services/workstreams/identity';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
 import { type PrDetailTab, useUiStore } from '@/stores/ui-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
@@ -84,11 +87,18 @@ function initialsFor(login: string): string {
   return trimmed.slice(0, 2).toUpperCase();
 }
 
-const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Discussion'] as const;
+const tabs = ['Overview', 'Commits', 'Files', 'Checks', 'Discussion', 'Notes'] as const;
 type Tab = (typeof tabs)[number];
 
 /** Tab order of the full-screen view: what you check first comes first. */
-const EMBEDDED_TAB_ORDER: readonly Tab[] = ['Overview', 'Checks', 'Files', 'Commits', 'Discussion'];
+const EMBEDDED_TAB_ORDER: readonly Tab[] = [
+  'Overview',
+  'Checks',
+  'Files',
+  'Commits',
+  'Discussion',
+  'Notes',
+];
 
 const TAB_FOR_VIEW: Record<PrDetailTab, Tab> = {
   overview: 'Overview',
@@ -96,6 +106,7 @@ const TAB_FOR_VIEW: Record<PrDetailTab, Tab> = {
   files: 'Files',
   checks: 'Checks',
   discussion: 'Discussion',
+  notes: 'Notes',
 };
 
 interface PrDetailPanelProps {
@@ -233,6 +244,16 @@ export function PrDetailPanel({
 
   const reviewActive = useQuickReviewStore((s) => s.state !== 'idle');
   const p = pr.pullRequest;
+
+  // The PR on screen is what a quick note (Ctrl+F8) refers to.
+  const { repoOwner: owner, repoName: repo, number: prNumber, title: prTitle } = p;
+  useEffect(() => {
+    const remember = () =>
+      rememberCaptureContext({ kind: 'pr', owner, repo, number: prNumber, title: prTitle });
+    remember();
+    window.addEventListener('focus', remember);
+    return () => window.removeEventListener('focus', remember);
+  }, [owner, repo, prNumber, prTitle]);
   const isMerged = Boolean(p.mergedAt);
   const isTerminal = isMerged || p.state === 'closed';
   const score = computeMergeScore(pr);
@@ -243,6 +264,13 @@ export function PrDetailPanel({
     total: pr.totalCheckCount,
   });
 
+  const noteKey = refKey({
+    kind: 'github-pr',
+    owner: p.repoOwner,
+    repo: p.repoName,
+    number: p.number,
+  });
+  const noteCount = useNoteCount(noteKey);
   const tabDefs: TabDef[] = [
     { id: 'Overview', label: 'Overview' },
     { id: 'Commits', label: 'Commits', count: p.commitCount },
@@ -257,6 +285,7 @@ export function PrDetailPanel({
         ) : undefined,
     },
     { id: 'Discussion', label: 'Discussion' },
+    { id: 'Notes', label: 'Notes', count: noteCount || undefined },
   ];
   const shownTabs = embedded
     ? EMBEDDED_TAB_ORDER.map((id) => tabDefs.find((t) => t.id === id)).filter(
@@ -531,6 +560,15 @@ export function PrDetailPanel({
                 usePrDetailJumpStore.getState().setJumpTarget({ ...target, ts: Date.now() });
                 setActiveTab('Files');
               }}
+            />
+          </div>
+        )}
+        {mountedTabs.has('Notes') && (
+          <div className={pane('Notes', embedded ? 'bd-detail__pane--inset' : undefined)}>
+            <NotesTab
+              refKey={noteKey}
+              newTitle={p.title}
+              newFirstLine={`${p.repoOwner}/${p.repoName}#${p.number} · ${p.title}`}
             />
           </div>
         )}

@@ -23,6 +23,7 @@ export const SECTION_LABELS: Record<ActiveSection, string> = {
   workitems: 'Work items',
   worktrees: 'Worktrees',
   activity: 'Activity',
+  notes: 'Notes',
 };
 
 /** How often the "Synced … ago" line re-renders. */
@@ -126,7 +127,7 @@ function SyncBlock() {
  * Rail — the main window's left navigation (plans/ui-overhaul-workbench.md,
  * phase 1): workspace name, the five sections with their counts and a
  * sliding highlight behind the active one, and the sync state with the
- * GitHub rate meter at the bottom. Keys `1`–`7` pick the same sections
+ * GitHub rate meter at the bottom. Keys `1`–`8` pick the same sections
  * (wired in useKeyboardNav). Dispatch counts the items waiting on you,
  * Workstreams the workstreams that need you, Activity the unread entries
  * that need you.

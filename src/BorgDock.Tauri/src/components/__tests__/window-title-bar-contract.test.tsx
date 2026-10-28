@@ -25,7 +25,7 @@ import type { PullRequestWithChecks } from '@/types';
  * defeats the flex row and stacks min/max/close below the title text. This
  * test fails if any of those windows reintroduce a wrapper.
  *
- * Palette windows (file palette, worktree palette, work-item palette) all
+ * Palette windows (worktree palette, work-item palette) all
  * render the shared <WindowTitleBar/> too, so they automatically satisfy the
  * structural rules above by virtue of using the same primitive. They're not
  * re-tested here to keep this file scoped to consumers that compose the title

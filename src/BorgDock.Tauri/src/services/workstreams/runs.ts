@@ -2,6 +2,7 @@ import { configuredHosts, rawId, scopedId } from '@/services/dispatch/hosts';
 import type { LaunchModel } from '@/services/dispatch/launch';
 import { PLAN_FIRST } from '@/services/dispatch/launch';
 import type { Slot } from '@/services/dispatch/types';
+import { withVault } from '@/services/notes/vault-line';
 import { t3Environment, t3LaunchThread, t3ShowThread } from '@/services/t3/api';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -69,7 +70,7 @@ export async function startWorkstreamRun(request: WorkstreamRunRequest): Promise
     projectId: rawId(slot.hostId, slot.id),
     title: title.slice(0, TITLE_LIMIT),
     modelSelection: model.selection(model.efforts.length > 0 ? request.effort : null),
-    prompt,
+    prompt: withVault(prompt),
   });
   const threadId = scopedId(slot.hostId, rawThreadId);
   // A review names many items; it belongs to none of them in Dispatch. Work

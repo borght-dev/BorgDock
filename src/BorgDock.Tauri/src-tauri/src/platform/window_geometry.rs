@@ -62,9 +62,6 @@ pub fn kind_of(label: &str) -> &str {
     if label.starts_with("pr-detail-") {
         return "pr-detail";
     }
-    if label.starts_with("file-viewer-") {
-        return "file-viewer";
-    }
     if label.starts_with("workitem-detail-") {
         return "workitem-detail";
     }
@@ -298,7 +295,7 @@ mod tests {
     fn kind_of_static_labels_pass_through() {
         assert_eq!(kind_of("main"), "main");
         assert_eq!(kind_of("sql"), "sql");
-        assert_eq!(kind_of("file-palette"), "file-palette");
+        assert_eq!(kind_of("work-item-palette"), "work-item-palette");
         assert_eq!(kind_of("agent-overview"), "agent-overview");
     }
 
@@ -308,7 +305,6 @@ mod tests {
             kind_of("pr-detail-Gomocha-FSP-fsp-horizon-1571"),
             "pr-detail"
         );
-        assert_eq!(kind_of("file-viewer-abc123def456"), "file-viewer");
         assert_eq!(kind_of("workitem-detail-7777"), "workitem-detail");
     }
 
@@ -317,7 +313,7 @@ mod tests {
         assert_eq!(min_logical_size_for_kind("main"), Some((1200.0, 720.0)));
         assert!(min_logical_size_for_kind("sql").is_none());
         assert!(min_logical_size_for_kind("pr-detail").is_none());
-        assert!(min_logical_size_for_kind("file-palette").is_none());
+        assert!(min_logical_size_for_kind("work-item-palette").is_none());
     }
 
     #[test]

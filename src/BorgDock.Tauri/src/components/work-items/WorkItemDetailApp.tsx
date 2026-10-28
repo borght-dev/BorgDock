@@ -20,7 +20,7 @@ import { useAdjacentNav } from './WorkItemDetailPanel/useAdjacentNav';
  */
 async function preparePopOut(): Promise<AzureDevOpsSettings> {
   const settings = await invoke<AppSettings>('load_settings');
-  useSettingsStore.setState({ settings, isLoading: false });
+  useSettingsStore.setState({ settings, isLoading: false, hasLoaded: true });
   return settings.azureDevOps;
 }
 

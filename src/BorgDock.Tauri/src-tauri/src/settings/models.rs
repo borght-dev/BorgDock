@@ -39,8 +39,6 @@ pub struct AppSettings {
     #[serde(default)]
     pub repo_priority: std::collections::HashMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub file_palette_roots: Option<Vec<FilePaletteRoot>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workstreams: Option<WorkstreamSettings>,
 }
 
@@ -58,15 +56,6 @@ pub struct WorkstreamSettings {
     /// `workstream.*` activity categories replaced it.
     #[serde(default, skip_serializing)]
     pub notifications: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(test, derive(specta::Type))]
-#[serde(rename_all = "camelCase")]
-pub struct FilePaletteRoot {
-    pub path: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub label: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,23 +181,6 @@ pub struct UiSettings {
     pub run_at_startup: bool,
     #[serde(default)]
     pub worktree_palette_favorites_only: bool,
-    #[serde(default)]
-    pub file_palette_favorites_only: bool,
-    #[serde(default)]
-    pub file_palette_roots_collapsed: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub file_palette_active_root_path: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub file_palette_changes_collapsed: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub file_palette_changes_mode: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub file_palette_scope: Option<String>,
-    /// Remembered diff layout for file-viewer windows ("unified" | "split").
-    /// Users pick this via the Split/Unified toolbar or Ctrl+Shift+M; the
-    /// next viewer window opens in the same layout.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub file_viewer_default_view_mode: Option<String>,
     /// Override for the Windows Terminal profile used when launching "Claude"
     /// or similar wt-based shells. Empty/None = auto-detect from wt settings.json.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -258,13 +230,6 @@ impl Default for UiSettings {
             editor_command: "code".to_string(),
             run_at_startup: false,
             worktree_palette_favorites_only: false,
-            file_palette_favorites_only: false,
-            file_palette_roots_collapsed: false,
-            file_palette_active_root_path: None,
-            file_palette_changes_collapsed: None,
-            file_palette_changes_mode: None,
-            file_palette_scope: None,
-            file_viewer_default_view_mode: None,
             windows_terminal_profile: None,
             quick_review_hotkey: String::new(),
             start_minimized_to_tray: false,

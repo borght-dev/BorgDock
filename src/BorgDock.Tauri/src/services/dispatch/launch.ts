@@ -1,3 +1,4 @@
+import { withVault } from '@/services/notes/vault-line';
 import {
   type T3Catalogue,
   type T3ModelOption,
@@ -341,7 +342,7 @@ export async function launchInSlot(request: SlotLaunch): Promise<string> {
       projectId: rawId(slot.hostId, slot.id),
       title: request.title.slice(0, TITLE_LIMIT),
       modelSelection: model.selection(model.efforts.length > 0 ? request.effort : null),
-      prompt: written,
+      prompt: withVault(written),
     },
   );
   return scopedId(slot.hostId, rawThreadId);

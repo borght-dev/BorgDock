@@ -277,6 +277,28 @@ export async function showWorkstream(id: string, tab?: WorkstreamTab): Promise<v
   });
 }
 
+/** Event another window sends the main window to open a note. */
+export const OPEN_NOTE_EVENT = 'open-note';
+
+/**
+ * Open a note in the Notes section. From another window (a PR pop-out, the
+ * quick note) the main window is asked, and comes to the front.
+ */
+export async function showNote(path: string): Promise<void> {
+  if (!isMainWindow()) {
+    try {
+      const { emitTo } = await import('@tauri-apps/api/event');
+      await emitTo(MAIN_WINDOW_LABEL, OPEN_NOTE_EVENT, { path });
+    } catch (err) {
+      log.error('open-note emit failed', err, { path });
+    }
+    return;
+  }
+  const { useNotesStore } = await import('@/stores/notes-store');
+  useNotesStore.getState().open(path);
+  await showSection('notes');
+}
+
 /** True when `document.startViewTransition` exists, so push and pop use it. */
 export function supportsViewTransitions(): boolean {
   return (

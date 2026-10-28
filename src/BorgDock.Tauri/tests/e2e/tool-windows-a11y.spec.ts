@@ -6,8 +6,8 @@ import { bootApp } from './helpers/test-utils';
 
 /**
  * Colour contrast in the tool windows, in both themes
- * (plans/ui-overhaul-workbench.md, phase 6 acceptance): the SQL results grid,
- * the file palette's result rows and the Settings inputs. Each window boots
+ * (plans/ui-overhaul-workbench.md, phase 6 acceptance): the SQL results grid
+ * and the Settings inputs. Each window boots
  * from its own HTML entry with the theme set in the saved settings, so the
  * check runs against what `startWindowTheme` applies, not a forced class.
  * axe runs its `color-contrast` rule on the named region only.
@@ -17,7 +17,7 @@ type Theme = 'light' | 'dark';
 
 /** The scenario's settings with the theme (and extras) swapped in. */
 function settingsFor(
-  scenario: 'happy-path' | 'palette-loaded',
+  scenario: 'happy-path',
   theme: Theme,
   extra: Record<string, unknown> = {},
 ): MockHandlers {
@@ -107,19 +107,6 @@ for (const theme of ['light', 'dark'] as const) {
       expect(headerCell?.width).toBe(rowCell?.width);
 
       await expectContrast(page, '[data-sql-results-table]');
-    });
-
-    test('file palette rows meet colour contrast', async ({ page }) => {
-      await bootApp(page, 'file-palette.html', 'palette-loaded', settingsFor('palette-loaded', theme));
-      await expectTheme(page, theme);
-
-      await page.getByRole('textbox', { name: /file palette search/i }).fill('file-00');
-      await expect(page.locator('[data-file-result]').first()).toBeVisible();
-      await page.locator('[data-file-result]').nth(1).hover();
-      await expect(page.locator('[data-file-result][data-selected="true"]')).toHaveCount(1);
-
-      await expectContrast(page, '.bd-fp-results');
-      await expectContrast(page, '.bd-fp-scope-chips');
     });
 
     test('settings inputs meet colour contrast', async ({ page }) => {

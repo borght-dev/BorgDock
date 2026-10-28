@@ -1,8 +1,12 @@
 import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { NotesTab, useNoteCount } from '@/components/notes/NotesTab';
 import { Button, Kbd, Tabs } from '@/components/shared/primitives';
 import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
 import type { ProcessTab } from '@/services/ado/layout';
+import { rememberCaptureContext } from '@/services/notes/capture';
+import { refKey } from '@/services/workstreams/identity';
+import { useSettingsStore } from '@/stores/settings-store';
 import type { DynamicFieldItem, WorkItemAttachment, WorkItemComment } from '@/types';
 import { ActivityTab } from './WorkItemDetailPanel/ActivityTab';
 import { AttachmentsTab } from './WorkItemDetailPanel/AttachmentsTab';
@@ -195,6 +199,29 @@ export function WorkItemDetailPanel(props: Props) {
   const linkedPRs = useMemo(() => item.linkedPRs ?? [], [item.linkedPRs]);
   // GitHub pull requests in the main window's list that mention AB#<id>.
   const mentioningPrs = useMentioningPrs(item.id);
+  const adoOrganization = useSettingsStore((s) => s.settings.azureDevOps.organization);
+  const adoProject = useSettingsStore((s) => s.settings.azureDevOps.project);
+  const noteKey =
+    item.id && adoOrganization
+      ? refKey({
+          kind: 'ado-item',
+          organization: adoOrganization,
+          project: adoProject,
+          id: item.id,
+        })
+      : null;
+  const noteCount = useNoteCount(noteKey ?? '');
+
+  // The item on screen is what a quick note (Ctrl+F8) refers to.
+  const itemId = item.id;
+  const itemTitle = item.title;
+  useEffect(() => {
+    if (!itemId) return;
+    const remember = () => rememberCaptureContext({ kind: 'item', id: itemId, title: itemTitle });
+    remember();
+    window.addEventListener('focus', remember);
+    return () => window.removeEventListener('focus', remember);
+  }, [itemId, itemTitle]);
 
   const savedLabel = useMemo(() => {
     if (auto.error) return `Save failed — ${auto.error}`;
@@ -241,13 +268,20 @@ export function WorkItemDetailPanel(props: Props) {
       tab !== 'activity' &&
       tab !== 'links' &&
       tab !== 'files' &&
+      tab !== 'notes' &&
       !detailSlices.some((s) => s.id === tab)
     ) {
       setTab('overview');
     }
   }, [detailSlices, tab]);
 
-  const tabOrder = [...detailSlices.map((s) => s.id), 'activity', 'links', 'files'];
+  const tabOrder = [
+    ...detailSlices.map((s) => s.id),
+    'activity',
+    'links',
+    'files',
+    ...(noteKey ? ['notes'] : []),
+  ];
   const stepTab = (delta: number) => {
     const index = tabOrder.indexOf(tab);
     const next = tabOrder[(index + delta + tabOrder.length) % tabOrder.length];
@@ -268,6 +302,7 @@ export function WorkItemDetailPanel(props: Props) {
     { id: 'activity', label: 'Activity' },
     { id: 'links', label: 'Links', count: linkedPRs.length + mentioningPrs.length || undefined },
     { id: 'files', label: 'Attachments', count: attachments.length || undefined },
+    ...(noteKey ? [{ id: 'notes', label: 'Notes', count: noteCount || undefined }] : []),
   ];
 
   const activeSlice = detailSlices.find((s) => s.id === tab);
@@ -308,6 +343,13 @@ export function WorkItemDetailPanel(props: Props) {
       {tab === 'links' && <LinksTab linkedPRs={linkedPRs} mentioningPrs={mentioningPrs} />}
       {tab === 'files' && (
         <AttachmentsTab attachments={attachments} onDownload={onDownloadAttachment} />
+      )}
+      {tab === 'notes' && noteKey && item.id && (
+        <NotesTab
+          refKey={noteKey}
+          newTitle={item.title}
+          newFirstLine={`AB#${item.id} · ${item.title}`}
+        />
       )}
     </>
   );

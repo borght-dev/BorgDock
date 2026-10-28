@@ -10,7 +10,6 @@ export type Scenario =
   | 'happy-path'
   | 'failing-checks'
   | 'merged-pr-celebration'
-  | 'palette-loaded'
   | 'first-run';
 
 /**
@@ -274,26 +273,6 @@ export function seedScenario(scenario: Scenario): MockHandlers {
         check_github_auth: { authenticated: true, login: 'test-user' },
         cache_load_prs: [MERGED_PR],
         get_flyout_data: { prs: [MERGED_PR], workItems: [] },
-      };
-
-    case 'palette-loaded':
-      return {
-        // Add a custom palette root so an activeRoot resolves and
-        // list_root_files actually fires.
-        load_settings: {
-          ...HAPPY_SETTINGS,
-          filePaletteRoots: [{ path: '/tmp/test-root', label: 'test-root' }],
-          ui: { ...HAPPY_SETTINGS.ui, filePaletteActiveRootPath: '/tmp/test-root' },
-        },
-        check_github_auth: { authenticated: true, login: 'test-user' },
-        list_root_files: {
-          entries: Array.from({ length: 200 }, (_, i) => ({
-            rel_path: `src/file-${i.toString().padStart(3, '0')}.ts`,
-            size: 100,
-          })),
-          truncated: false,
-        },
-        cache_load_prs: SAMPLE_PRS,
       };
 
     case 'first-run':
