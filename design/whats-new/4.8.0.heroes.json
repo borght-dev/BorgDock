@@ -1,0 +1,57 @@
+[
+  {
+    "slug": "notes",
+    "storyId": "notes-notes--section",
+    "viewport": { "width": 1360, "height": 860 },
+    "delay": 2500
+  },
+  {
+    "slug": "notes-tab",
+    "storyId": "notes-notes--pull-request-notes",
+    "viewport": { "width": 1360, "height": 760 },
+    "delay": 2500
+  },
+  {
+    "slug": "daily-note",
+    "storyId": "notes-notes--daily-note",
+    "viewport": { "width": 1360, "height": 760 },
+    "delay": 2500
+  },
+  {
+    "slug": "quick-note",
+    "storyId": "notes-notes--quick-note",
+    "viewport": { "width": 760, "height": 420 },
+    "selector": ".bd-notes-capture",
+    "delay": 2500
+  },
+  {
+    "slug": "note-to-agent",
+    "storyId": "notes-notes--start-thread",
+    "viewport": { "width": 1360, "height": 860 },
+    "delay": 2500
+  },
+  {
+    "slug": "tasks",
+    "storyId": "notes-notes--tasks",
+    "viewport": { "width": 1360, "height": 640 },
+    "delay": 2500
+  },
+  {
+    "slug": "review-in-view",
+    "storyId": "focus-quick-review--walk-with-proof",
+    "viewport": { "width": 1440, "height": 900 },
+    "delay": 3000
+  },
+  {
+    "slug": "decide-in-place",
+    "storyId": "focus-quick-review--all-files-reviewed",
+    "viewport": { "width": 1440, "height": 900 },
+    "delay": 3000
+  },
+  {
+    "slug": "re-review",
+    "storyId": "focus-quick-review--re-review-since-last-review",
+    "viewport": { "width": 1440, "height": 900 },
+    "delay": 3000
+  }
+]

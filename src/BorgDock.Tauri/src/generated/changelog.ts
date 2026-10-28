@@ -4,6 +4,105 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.8.0",
+    "date": "2026-10-28",
+    "summary": "Notes, right inside BorgDock, Notes that know your work, A daily note that writes itself, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Notes, right inside BorgDock",
+        "description": "The new Notes section keeps your notes next to your pull requests and work items. Write in a live preview that shows formatting as you type, link notes with `[[Title]]`, and see every note that links back. Notes are plain Markdown files in a folder, so Obsidian and VS Code open the same files, and with a sync folder set your other machine sees them too. Ctrl+O opens a note by title and Ctrl+Shift+F searches all of them.",
+        "hero": {
+          "src": "/whats-new/4.8.0/notes.png",
+          "alt": "The Notes section with a note in live preview, its links and its local graph"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Notes that know your work",
+        "description": "Type AB#60102 or shop#3712 in a note and it becomes a chip that shows what the work item or pull request says right now: its state, its checks, whether it's approved. T3 threads and workstreams show up the same way. Pull requests, work items and workstreams get a Notes tab with every note that mentions them, and a button to start a new one.",
+        "hero": {
+          "src": "/whats-new/4.8.0/notes-tab.png",
+          "alt": "A pull request's Notes tab listing the notes that mention it"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "A daily note that writes itself",
+        "description": "Press Today and BorgDock starts the day's note with what happened since yesterday: merges, items that moved, threads that finished, checks that failed. You add the why.",
+        "hero": {
+          "src": "/whats-new/4.8.0/daily-note.png",
+          "alt": "Today's note with yesterday's activity written in"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Jot it down from anywhere",
+        "description": "Press Ctrl+F8 in any app for a quick note. It lands in today's note and links the pull request or work item you last had open. Ctrl+F8 used to open the Files window, which is gone.",
+        "hero": {
+          "src": "/whats-new/4.8.0/quick-note.png",
+          "alt": "The quick note window linked to a pull request"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Hand a note to an agent",
+        "description": "Start a T3 thread from a note, and when the agent stops, its answer is added to the note. Fix with Claude and Resolve conflicts bring along your notes about that pull request, and every agent BorgDock starts knows where your notes live. Decisions you make in a workstream are written up as notes too.",
+        "hero": {
+          "src": "/whats-new/4.8.0/note-to-agent.png",
+          "alt": "Starting a T3 thread from a note"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Every open task in one list",
+        "description": "Every `- [ ]` task from every note shows up in one list where you can tick it off, and Focus tells you how many are still open.",
+        "hero": {
+          "src": "/whats-new/4.8.0/tasks.png",
+          "alt": "The open tasks across all notes"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Review with the pull request in view",
+        "description": "Quick Review keeps the pull request above the files while you walk them: its description, its labels in their GitHub colours, CI and the linked work item. Its proof, checks, work item and comments sit in a panel beside the diff.",
+        "hero": {
+          "src": "/whats-new/4.8.0/review-in-view.png",
+          "alt": "Quick Review with the pull request above the diff and its proof beside it"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Decide the moment you're done",
+        "description": "Marking the last file reviewed turns the footer into your decision: request changes, comment, approve, or approve and auto-merge. You move straight on to the next pull request, with five seconds to undo.",
+        "hero": {
+          "src": "/whats-new/4.8.0/decide-in-place.png",
+          "alt": "The decision bar after the last file is reviewed"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Re-review only what changed",
+        "description": "Back at a pull request you reviewed before, Quick Review shows only the files that changed since your last review. Press S to see them all.",
+        "hero": {
+          "src": "/whats-new/4.8.0/re-review.png",
+          "alt": "A re-review showing only the files changed since the last review"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.7.2",
     "date": "2026-10-28",
     "summary": "See the whole failure.",
