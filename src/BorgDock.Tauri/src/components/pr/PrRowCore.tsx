@@ -143,7 +143,18 @@ export interface PrRowCoreProps extends Omit<HTMLAttributes<HTMLDivElement>, 'ch
    * shape then stays the same whether or not there is an action right now.
    */
   action?: ReactNode;
+  /**
+   * The checks hover card (`ChecksHoverCard`): shown when the pointer rests
+   * on the check bar, which then also takes its own click (`onChecksClick`)
+   * instead of the row's. Rows that pass none keep the plain bar.
+   */
+  checksCard?: ReactNode;
+  /** Click on the check bar while it has a card: open the PR on its Checks tab. */
+  onChecksClick?: (event: MouseEvent<HTMLSpanElement>) => void;
 }
+
+/** The hover card's size on a check bar (`ChecksHoverCard`). */
+const CHECKS_CARD_SIZE = { maxWidth: 420, maxHeight: 640 } as const;
 
 /** What the meta line dates: the merge or close of a closed PR, else the last update. */
 function metaEvent(pr: PrCardData): { verb: string; at: string } | null {
@@ -210,6 +221,8 @@ export function PrRowCore({
   sharedFailure,
   animateKey = true,
   action,
+  checksCard,
+  onChecksClick,
   className,
   style,
   onClick,
@@ -281,15 +294,39 @@ export function PrRowCore({
             />
           ))}
       </span>
-      <CheckBar
-        className="bd-wb-row__checks"
-        ok={checks.ok}
-        fail={checks.fail}
-        run={checks.run}
-        total={checks.total}
-        unavailable={checks.unavailable}
-        title={checkLabel}
-      />
+      {checksCard && checks.total > 0 ? (
+        <HoverPopover
+          variant="card"
+          triggerClassName="bd-checks-trigger"
+          content={checksCard}
+          {...CHECKS_CARD_SIZE}
+        >
+          <CheckBar
+            className="bd-wb-row__checks"
+            ok={checks.ok}
+            fail={checks.fail}
+            run={checks.run}
+            total={checks.total}
+            unavailable={checks.unavailable}
+            aria-label={checkLabel}
+            data-checks-trigger=""
+            onClick={(event) => {
+              event.stopPropagation();
+              onChecksClick?.(event);
+            }}
+          />
+        </HoverPopover>
+      ) : (
+        <CheckBar
+          className="bd-wb-row__checks"
+          ok={checks.ok}
+          fail={checks.fail}
+          run={checks.run}
+          total={checks.total}
+          unavailable={checks.unavailable}
+          title={checkLabel}
+        />
+      )}
       <span className={clsx('bd-wb-chip', `bd-wb-chip--${chip}`)} data-chip={chip}>
         {ROW_CHIP_LABEL[chip]}
       </span>

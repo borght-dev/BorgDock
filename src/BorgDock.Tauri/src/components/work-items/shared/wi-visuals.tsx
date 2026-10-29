@@ -26,6 +26,8 @@ export const WI_STATES: Record<string, StateMeta> = {
   'Development In Progress': { tone: 'neutral', dot: STATE_DOT.active },
   Committed: { tone: 'neutral', dot: STATE_DOT.active },
   'In Progress': { tone: 'neutral', dot: STATE_DOT.active },
+  'Plan Review': { tone: 'neutral', dot: STATE_DOT.active },
+  'Code Review': { tone: 'neutral', dot: STATE_DOT.active },
   'Testing Failed': { tone: 'warning', dot: STATE_DOT.failed },
   Resolved: { tone: 'success', dot: STATE_DOT.done },
   Done: { tone: 'success', dot: STATE_DOT.done },

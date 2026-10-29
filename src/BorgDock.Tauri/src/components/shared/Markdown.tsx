@@ -3,6 +3,8 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import { WorkItemRef } from '@/components/work-items/WorkItemRef';
+import { rehypeWorkItemRefs, workItemIdFromHref } from '@/services/work-item-peek';
 import { ImagePreview } from './ImageViewer';
 import { MarkdownImage } from './MarkdownImage';
 
@@ -12,7 +14,8 @@ import { MarkdownImage } from './MarkdownImage';
  * browser — so clicking a link in a PR comment would replace the whole detail
  * view with github.com. Intercept the click: hand real web/mail links to the OS
  * opener, and swallow in-page / relative hrefs so they can never blow away the
- * window either.
+ * window either. A link to an Azure DevOps work item, or a plain `AB#123`
+ * (see `rehypeWorkItemRefs`), becomes a `WorkItemRef` with its hover card.
  */
 function MarkdownLink({
   href,
@@ -31,6 +34,15 @@ function MarkdownLink({
     },
     [href],
   );
+
+  const workItemId = workItemIdFromHref(href);
+  if (workItemId !== null) {
+    return (
+      <WorkItemRef id={workItemId} href={href}>
+        {children}
+      </WorkItemRef>
+    );
+  }
 
   return (
     <a {...rest} href={href} onClick={onClick} rel="noopener noreferrer">
@@ -79,7 +91,11 @@ export function Markdown({
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={allowRawHtml ? [rehypeRaw, rehypeSanitize] : [rehypeSanitize]}
+      rehypePlugins={
+        allowRawHtml
+          ? [rehypeRaw, rehypeWorkItemRefs, rehypeSanitize]
+          : [rehypeWorkItemRefs, rehypeSanitize]
+      }
       components={
         onImagePreview
           ? {

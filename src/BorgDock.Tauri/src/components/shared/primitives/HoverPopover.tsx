@@ -41,9 +41,10 @@ export interface HoverPopoverProps {
   when?: (trigger: HTMLElement) => boolean;
   /**
    * `panel` (default): a card for rich content. `tooltip`: compact, as wide
-   * as its content, with an arrow pointing at the trigger.
+   * as its content, with an arrow pointing at the trigger. `card`: no chrome
+   * of its own, for content that draws its own card (`.bd-hover-card`).
    */
-  variant?: 'panel' | 'tooltip';
+  variant?: 'panel' | 'tooltip' | 'card';
   /** Class on the trigger wrapper. With one, the class sets its display instead of `inline-block`. */
   triggerClassName?: string;
   /** Optional extra style on the trigger wrapper. */
@@ -90,7 +91,7 @@ export function HoverPopover({
   maxHeight = 360,
   hideDelayMs = 120,
   variant = 'panel',
-  showDelayMs = variant === 'tooltip' ? TOOLTIP_DELAY_MS : 0,
+  showDelayMs = variant === 'panel' ? 0 : TOOLTIP_DELAY_MS,
   when,
   triggerClassName,
   triggerStyle,
@@ -184,6 +185,10 @@ export function HoverPopover({
   );
 
   const tooltip = variant === 'tooltip';
+  const size = {
+    width: Math.min(maxWidth, window.innerWidth - GAP * 2),
+    maxHeight: Math.min(maxHeight, window.innerHeight - GAP * 2),
+  };
   const position: CSSProperties = {
     position: 'fixed',
     left: placement?.left ?? 0,
@@ -212,7 +217,7 @@ export function HoverPopover({
           <div
             ref={popoverRef}
             role="tooltip"
-            className={tooltip ? 'bd-tooltip' : undefined}
+            className={tooltip ? 'bd-tooltip' : variant === 'card' ? 'bd-hover-card' : undefined}
             data-side={tooltip ? (placement?.above ? 'above' : 'below') : undefined}
             onClick={(event) => event.stopPropagation()}
             onMouseEnter={() => clearTimer(hideTimer)}
@@ -224,12 +229,9 @@ export function HoverPopover({
                     maxWidth: Math.min(maxWidth, window.innerWidth - GAP * 2),
                     '--bd-tooltip-arrow-x': `${placement?.arrowX ?? ARROW_INSET}px`,
                   } as CSSProperties)
-                : {
-                    ...position,
-                    ...PANEL_STYLE,
-                    width: Math.min(maxWidth, window.innerWidth - GAP * 2),
-                    maxHeight: Math.min(maxHeight, window.innerHeight - GAP * 2),
-                  }
+                : variant === 'card'
+                  ? { ...position, ...size }
+                  : { ...position, ...PANEL_STYLE, ...size }
             }
           >
             {content}

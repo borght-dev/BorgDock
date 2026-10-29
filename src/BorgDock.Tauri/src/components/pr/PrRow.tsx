@@ -15,6 +15,7 @@ import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity, PullRequestWithChecks } from '@/types';
+import { ChecksHoverCard } from './ChecksHoverCard';
 import { PrRowCore, type SharedFailureMarker } from './PrRowCore';
 import { PrRowOverlays } from './PrRowOverlays';
 import { prRowKey, toPrCardData } from './pr-card-data';
@@ -118,6 +119,8 @@ interface PrRowProps {
  *   (`navigation.showPr`) at once.
  * - Ctrl/Cmd+click, Ctrl/Cmd+Enter and middle-click open the pop-out window
  *   (`openPrDetail`); so does "Open in window" in the context menu.
+ * - Hovering the check bar shows `ChecksHoverCard`; clicking it opens the
+ *   detail on its Checks tab.
  * - Right-click opens `PrContextMenu`; its confirm dialogs mount here too.
  * - A trailing action on hover, focus and selection when the PR's primary
  *   action is Review (opens Quick Review) or Merge (progress fill, then the
@@ -174,6 +177,11 @@ export const PrRow = memo(function PrRow({
     void showPr(keepSection ? { owner, repo, number, keepSection } : { owner, repo, number });
   }, [owner, repo, number, keepSection]);
 
+  const openChecks = useCallback(() => {
+    useUiStore.getState().selectPrKey(key, number);
+    void showPr({ owner, repo, number, tab: 'checks', ...(keepSection ? { keepSection } : {}) });
+  }, [key, owner, repo, number, keepSection]);
+
   const openPopOut = useCallback(() => {
     void openPrDetail({ owner, repo, number });
   }, [owner, repo, number]);
@@ -210,6 +218,8 @@ export const PrRow = memo(function PrRow({
         meta={meta}
         sharedFailure={sharedFailure}
         animateKey={animateKey}
+        checksCard={<ChecksHoverCard pr={prWithChecks} />}
+        onChecksClick={openChecks}
         onClick={handleClick}
         onAuxClick={handleAuxClick}
         onMouseDown={(e) => {
