@@ -4,6 +4,18 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.4",
+    "date": "2026-10-29",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "The Proof tab now uses the PR description only, keeping review bot banners and legacy proof comments out of your evidence.",
+      "PR description text now uses the available width alongside tables and screenshots.",
+      "Dispatch checks linked PRs in repositories outside your polled list, so an old thread cannot keep a merged PR looking open."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.9.3",
     "date": "2026-10-29",
     "summary": "Approve only once you've seen every file, Decide with your comment right there, and See the clock on an approval.",

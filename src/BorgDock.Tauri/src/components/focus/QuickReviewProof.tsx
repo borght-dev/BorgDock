@@ -23,13 +23,10 @@ function short(sha: string) {
   return sha.slice(0, 7);
 }
 
-/** Every proof of `pr`: its description's proof section and the comments that read as proof. */
-export function proofsFor(pr: PullRequest, conversation: PrConversation): ReviewProof[] {
+/** Proof comes from the PR description. */
+export function proofsFor(pr: PullRequest): ReviewProof[] {
   const description = descriptionProof(pr);
-  return reviewProofs(
-    description ? [description, ...conversation.items] : conversation.items,
-    pr.headSha,
-  );
+  return reviewProofs(description ? [description] : [], pr.headSha);
 }
 
 /** The Proof tab's count: screenshots when there are any, otherwise proofs. */
@@ -145,7 +142,7 @@ interface Props {
 
 /**
  * The context panel's Proof tab: screenshots and verification text from the
- * description and the comments, each marked current or outdated against the
+ * description, marked current or outdated against the
  * head commit; the description's checklist; and, on a re-review, the
  * viewer's last review with the author's replies since.
  */
@@ -190,8 +187,7 @@ export function QuickReviewProof({ pr, proofs, conversation, since, onAskForProo
           </p>
         ) : (
           <p className="qr-muted">
-            No proof yet. A description section or comment with screenshots, or the words proof,
-            verification or evidence, shows up here.
+            No proof yet. Add screenshots or a verification section to the PR description.
           </p>
         ))}
       {checklist.length > 0 && (

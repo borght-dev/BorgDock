@@ -554,7 +554,7 @@ function QuickReviewWorkspace({
   const detail = snapshot?.pr ?? pr.pullRequest;
   const client = getClientForRepo(detail.repoOwner, detail.repoName);
   const conversation = usePrConversation(detail, true);
-  const proofs = proofsFor(detail, conversation);
+  const proofs = proofsFor(detail);
   const links = useWorkItemLinks(detail);
   const workItems = new Map(links.workItems.map((item) => [item.id, item]));
   const since = useReviewSince(snapshot);

@@ -271,19 +271,48 @@ test('skims screenshot comments by author and returns to the same diff position'
 });
 
 
-test('shows description images in Proof and excludes generated badges', async ({ page }) => {
+test('shows description proof only and uses the full description width', async ({ page }) => {
+  test.slow();
   await setup(page, detail.state, false);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.route('https://api.github.com/repos/test-org/borgdock/issues/42/comments?*', (route) =>
+    route.fulfill({ json: [{
+      id: 123, user: { login: 'coderabbitai[bot]' },
+      body: 'Verified review. ![Review in Change Stack](https://example.com/promo.svg)',
+      body_html: '<p>Verified review.</p><img src="https://example.com/promo.svg" alt="Review in Change Stack">',
+      created_at: '2026-10-29T12:00:00Z', html_url: pr.pullRequest.htmlUrl,
+    }] }),
+  );
   const image = 'https://example.com/before.png';
+  await page.route('https://example.com/badge.png', (route) => route.fulfill({
+    contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20"><rect width="100" height="20" fill="#eee"/><text x="5" y="14" font-size="11">Generated badge</text></svg>',
+  }));
   await page.route(image, (route) => route.fulfill({
     contentType: 'image/png', body: readFileSync('../../docs/whats-new/1.0.11/close-pr.png'),
   }));
   await page.route('https://api.github.com/repos/test-org/borgdock/pulls/42', (route) =>
     route.fulfill({ json: { ...detail, body: `## Changes
+This description should use the same available width as its table. The paragraph contains enough text to wrap across the page and demonstrate that the old narrow reading measure has been removed.
+
+| Change | Result |
+| --- | --- |
+| Description | Full width |
+
 ![Before](${image})
 Generated with [Claude Code](https://claude.ai)
 ![Blacksmith](https://example.com/badge.png)` } }),
   );
   await openReview(page);
+  const description = page.locator('.qr-card__desc .markdown-body');
+  const paragraph = description.locator('p').first();
+  expect(await paragraph.evaluate((el) => getComputedStyle(el).maxWidth)).toBe('none');
+  expect(await paragraph.evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThan(800);
+  await page.screenshot({ path: '../../docs/proof/4.9.4/description-wide.png' });
+  await page.setViewportSize({ width: 600, height: 900 });
+  expect(await description.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.screenshot({ path: '../../docs/proof/4.9.4/description-narrow.png' });
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await openWalk(page);
   await page.getByRole('tab', { name: /^Proof/ }).click();
   const panel = page.getByRole('tabpanel', { name: 'Proof' });
@@ -291,7 +320,10 @@ Generated with [Claude Code](https://claude.ai)
   await expect(shot).toBeVisible();
   await expect.poll(() => shot.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
   await expect(panel.getByAltText('Blacksmith')).toHaveCount(0);
-  await page.screenshot({ path: '../../docs/proof/pr-description-proof-images/proof-tab.png' });
+  await expect(page.getByRole('tab', { name: /^Comments/ })).toContainText('1');
+  await expect(panel.getByText('coderabbitai[bot]')).toHaveCount(0);
+  await expect(panel.getByAltText('Review in Change Stack')).toHaveCount(0);
+  await page.screenshot({ path: '../../docs/proof/4.9.4/proof-description-only.png' });
   await shot.click();
   await expect(page.getByRole('dialog', { name: /image/i })).toBeVisible();
 });

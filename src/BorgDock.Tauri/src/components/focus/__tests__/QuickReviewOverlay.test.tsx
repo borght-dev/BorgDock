@@ -830,7 +830,7 @@ describe('Quick review walk (v2)', () => {
     );
   });
 
-  it('shows proof from the comments, marked against the head commit', async () => {
+  it('excludes legacy proof comments from the proof tab', async () => {
     onTestFinished(() => {
       vi.mocked(getAllComments).mockResolvedValue([]);
     });
@@ -847,14 +847,15 @@ describe('Quick review walk (v2)', () => {
     ]);
     await start();
     openFiles();
-    const proof = await within(walk()).findByRole('article', {
-      name: 'Proof from the comment by vera',
-    });
-    expect(within(proof).getByText(/Matches the head commit/)).toBeInTheDocument();
-    expect(within(proof).getByText('The flow passed.')).toBeInTheDocument();
+    await waitFor(() => expect(getAllComments).toHaveBeenCalled());
     expect(
-      within(proof).getByRole('button', { name: 'Preview image: Passing flow' }),
-    ).toBeVisible();
+      within(walk()).queryByRole('article', {
+        name: 'Proof from the comment by vera',
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(walk()).queryByRole('button', { name: 'Preview image: Passing flow' }),
+    ).not.toBeInTheDocument();
   });
 
   it('on a re-review lists only the files changed since my last review and keeps the rest reviewed', async () => {

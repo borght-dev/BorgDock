@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.9.4 — 2026-10-29
+
+### Bug Fixes
+
+- The Proof tab now uses the PR description only, keeping review bot banners and legacy proof comments out of your evidence.
+- PR description text now uses the available width alongside tables and screenshots.
+- Dispatch checks linked PRs in repositories outside your polled list, so an old thread cannot keep a merged PR looking open.
+
 ## 4.9.3 — 2026-10-29
 
 ### Improvements
