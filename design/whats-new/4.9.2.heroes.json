@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "work-item-hover",
+    "storyId": "work-items-hover-card--in-description",
+    "viewport": { "width": 760, "height": 600 },
+    "delay": 3000
+  },
+  {
+    "slug": "checks-hover",
+    "storyId": "pr-checks-hover-card--in-row-failing",
+    "viewport": { "width": 760, "height": 820 },
+    "delay": 3000
+  }
+]

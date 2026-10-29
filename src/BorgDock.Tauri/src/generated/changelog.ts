@@ -4,6 +4,35 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.2",
+    "date": "2026-10-29",
+    "summary": "See a work item without leaving the pull request and Know why a check failed before you open the PR.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "See a work item without leaving the pull request",
+        "description": "Rest your pointer on an AB#61021 in a PR description or comment and a card shows what the work item is: its type and state, the title, who has it, the sprint, the priority and the start of its description, plus its pull requests and the T3 thread working on it. Click to read the whole item, or Ctrl+click to open it in Azure DevOps.",
+        "hero": {
+          "src": "/whats-new/4.9.2/work-item-hover.png",
+          "alt": "A work item card over the AB# reference in a pull request description"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Know why a check failed before you open the PR",
+        "description": "Rest your pointer on a pull request's checks in the list and you see every check of its latest commit: the failing ones first, each with the step that broke and the test or error that failed (expected against received, and the file and line), then what's still running, what passed and what was skipped. A failure that's also red on master says it isn't this PR's fault and who's on it. Rerun the failed checks or hand them to Claude right from the card, or click the checks to open the Checks tab.",
+        "hero": {
+          "src": "/whats-new/4.9.2/checks-hover.png",
+          "alt": "The checks card on a pull request row, with a failing test, a build error that also fails on master, and what passed"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.9.1",
     "date": "2026-10-29",
     "summary": "",
