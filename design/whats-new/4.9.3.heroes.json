@@ -1,0 +1,20 @@
+[
+  {
+    "slug": "locked-approve",
+    "storyId": "focus-quick-review--walk-with-proof",
+    "viewport": { "width": 1400, "height": 900 },
+    "delay": 3000
+  },
+  {
+    "slug": "decide-beside-comment",
+    "storyId": "focus-quick-review--all-files-reviewed",
+    "viewport": { "width": 1400, "height": 900 },
+    "delay": 3000
+  },
+  {
+    "slug": "undo-countdown",
+    "storyId": "focus-quick-review--re-review-since-last-review",
+    "viewport": { "width": 1400, "height": 900 },
+    "delay": 3000
+  }
+]

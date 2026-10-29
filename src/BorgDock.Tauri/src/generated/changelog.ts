@@ -4,6 +4,45 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.3",
+    "date": "2026-10-29",
+    "summary": "Approve only once you've seen every file, Decide with your comment right there, and See the clock on an approval.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "Approve only once you've seen every file",
+        "description": "Quick Review puts the pull request on two calm rows: the title and labels, then who, where and the branch, with CI, conflicts and the work item as chips. Approve shows a lock and how many files are left until you've reviewed them all, so it never looks ready when it isn't. The comment button now waits in the line numbers until you hover a line, so a diff reads as `+` and `−` again, and code shows `=>` and `!==` exactly as typed.",
+        "hero": {
+          "src": "/whats-new/4.9.3/locked-approve.png",
+          "alt": "The Quick Review file walk with the locked Approve button and the two-row header"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Decide with your comment right there",
+        "description": "Review the last file and the footer becomes your decision: the overall comment sits next to Request changes, Comment, Approve and Approve & auto-merge, and Enter approves. Your draft comments open from the same bar, each with a Jump to its line.",
+        "hero": {
+          "src": "/whats-new/4.9.3/decide-beside-comment.png",
+          "alt": "The decision bar with the overall comment beside the buttons after the last file"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "See the clock on an approval",
+        "description": "The Undo toast now says \"Approving…\" until the review is actually posted, drains a bar so you see how long you have, and Z takes it back. Re-reviews stay calm too: only stale proof is flagged in amber.",
+        "hero": {
+          "src": "/whats-new/4.9.3/undo-countdown.png",
+          "alt": "A re-review with the Approving toast counting down and Undo on Z"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.9.2",
     "date": "2026-10-29",
     "summary": "See a work item without leaving the pull request and Know why a check failed before you open the PR.",

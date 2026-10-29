@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.9.3 — 2026-10-29
+
+### Improvements
+
+- **Approve only once you've seen every file** — Quick Review puts the pull request on two calm rows: the title and labels, then who, where and the branch, with CI, conflicts and the work item as chips. Approve shows a lock and how many files are left until you've reviewed them all, so it never looks ready when it isn't. The comment button now waits in the line numbers until you hover a line, so a diff reads as `+` and `−` again, and code shows `=>` and `!==` exactly as typed. ![The Quick Review file walk with the locked Approve button and the two-row header](whats-new/4.9.3/locked-approve.png)
+- **Decide with your comment right there** — Review the last file and the footer becomes your decision: the overall comment sits next to Request changes, Comment, Approve and Approve & auto-merge, and Enter approves. Your draft comments open from the same bar, each with a Jump to its line. ![The decision bar with the overall comment beside the buttons after the last file](whats-new/4.9.3/decide-beside-comment.png)
+- **See the clock on an approval** — The Undo toast now says "Approving…" until the review is actually posted, drains a bar so you see how long you have, and Z takes it back. Re-reviews stay calm too: only stale proof is flagged in amber. ![A re-review with the Approving toast counting down and Undo on Z](whats-new/4.9.3/undo-countdown.png)
+- The overview shows your review progress once instead of four times, and only problems get a colour.
+- The file tree has a reviewed box you can click, quieter line counts, and long names that keep their ending.
+- A pull request whose files fail to load says so instead of "loading" in three places, and "PR 1 / 1" no longer shows for a single pull request.
+- Quick Review uses Inter for all its text, with a narrower measure for long descriptions.
+
 ## 4.9.2 — 2026-10-29
 
 ### New Features
