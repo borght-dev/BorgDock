@@ -2,7 +2,7 @@ import './fonts';
 import { Composition, Folder } from 'remotion';
 import { Launch, LaunchHero, LaunchPoster } from './Launch';
 import { metadataFor, posterMetadataFor, type VideoProps } from './props';
-import { dispatchScenes, launchScenes, shortScenes } from './recordings';
+import { dispatchScenes, launchScenes, quickReviewScenes, shortScenes } from './recordings';
 import { Short, ShortPoster } from './Short';
 import { FPS, heroPacing, launchPacing, shortPacing } from './timeline';
 
@@ -12,6 +12,11 @@ import { FPS, heroPacing, launchPacing, shortPacing } from './timeline';
 const launchDefaults: VideoProps = { theme: 'dark', recordings: launchScenes, scenes: null };
 const shortDefaults: VideoProps = { theme: 'dark', recordings: shortScenes, scenes: null };
 const dispatchDefaults: VideoProps = { theme: 'dark', recordings: dispatchScenes, scenes: null };
+const quickReviewDefaults: VideoProps = {
+  theme: 'dark',
+  recordings: quickReviewScenes,
+  scenes: null,
+};
 
 export const RemotionRoot: React.FC = () => (
   <>
@@ -47,6 +52,16 @@ export const RemotionRoot: React.FC = () => (
         calculateMetadata={metadataFor(heroPacing)}
       />
       <Composition
+        id="QuickReviewHero"
+        component={LaunchHero}
+        width={1920}
+        height={1080}
+        fps={FPS}
+        durationInFrames={1}
+        defaultProps={quickReviewDefaults}
+        calculateMetadata={metadataFor(heroPacing)}
+      />
+      <Composition
         id="Short"
         component={Short}
         width={1080}
@@ -76,6 +91,16 @@ export const RemotionRoot: React.FC = () => (
         fps={FPS}
         durationInFrames={1}
         defaultProps={dispatchDefaults}
+        calculateMetadata={posterMetadataFor(launchPacing, 84)}
+      />
+      <Composition
+        id="QuickReviewPoster"
+        component={LaunchPoster}
+        width={1920}
+        height={1080}
+        fps={FPS}
+        durationInFrames={1}
+        defaultProps={quickReviewDefaults}
         calculateMetadata={posterMetadataFor(launchPacing, 84)}
       />
       <Composition

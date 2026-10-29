@@ -11,8 +11,27 @@ import recordingsManifest from '../../../design/site/recordings.json';
 import screensManifest from '../../../design/site/screens.json';
 
 export type Theme = 'light' | 'dark';
-export type GalleryPage = 'Pull requests' | 'Focus' | 'Dispatch' | 'Detail' | 'Quick review' | 'Tools';
-export const GALLERY_PAGES: GalleryPage[] = ['Pull requests', 'Focus', 'Dispatch', 'Detail', 'Quick review', 'Tools'];
+export type GalleryPage =
+  | 'Pull requests'
+  | 'Focus'
+  | 'Dispatch'
+  | 'Workstreams'
+  | 'Detail'
+  | 'Quick review'
+  | 'Notes'
+  | 'Activity'
+  | 'Tools';
+export const GALLERY_PAGES: GalleryPage[] = [
+  'Pull requests',
+  'Focus',
+  'Dispatch',
+  'Workstreams',
+  'Detail',
+  'Quick review',
+  'Notes',
+  'Activity',
+  'Tools',
+];
 
 interface ManifestEntry {
   slug: string;
@@ -175,14 +194,21 @@ function heroVideo(name: string, alt: string): Recording | null {
 export const launchVideo = heroVideo(
   'launch-hero',
   'BorgDock in a minute: open a pull request full screen, filter to what needs you, ' +
-    'review file by file, merge from Focus, then walk your work in Dispatch and start an agent',
+    'review file by file and approve on the last one, merge from Focus, then walk your work in Dispatch and start an agent',
 );
 
 /** The Dispatch page's hero: composition `DispatchHero`. */
 export const dispatchVideo = heroVideo(
   'dispatch-hero',
   'Dispatch in a minute: switch between States, List and Board, filter the briefing, move an item ' +
-    'with an agent, fix everything out of sync at once, start an agent from a free slot and open a card',
+    'with an agent, fix everything out of sync at once, start an agent in a fresh worktree and open a card',
+);
+
+/** The Quick review page's hero: composition `QuickReviewHero`. */
+export const quickReviewVideo = heroVideo(
+  'quick-review-hero',
+  'Quick review in a minute: open the next pull request, walk its files with the description and proof in view, ' +
+    'compare a changed image, then approve on the last file and move straight on to the next one',
 );
 
 export function getCapture(slug: string): Capture {

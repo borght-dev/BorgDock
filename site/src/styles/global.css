@@ -806,6 +806,67 @@ html.dark .recording__variant--light {
   color: var(--color-text-primary);
 }
 
+/* ---- Keys (Quick review) ---- */
+
+.keys {
+  max-width: var(--site-max);
+  margin: 128px auto 0;
+  padding: 0 var(--site-gutter);
+}
+
+.keys__groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.keys__group {
+  padding: 20px 22px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-subtle-border);
+  background: var(--color-surface);
+}
+
+.keys__list {
+  margin: 4px 0 0;
+  display: grid;
+  gap: 10px;
+}
+
+.keys__row {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.keys__row dt,
+.keys__row dd {
+  margin: 0;
+}
+
+.keys__row dd {
+  color: var(--color-text-secondary);
+}
+
+kbd {
+  display: inline-block;
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-subtle-border);
+  background: var(--color-code-block-bg);
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+}
+
 /* ---- Download block and teaser (home) ---- */
 
 .download-block {
@@ -1444,7 +1505,8 @@ html.dark .recording__variant--light {
   }
 
   .also__grid,
-  .needs__list {
+  .needs__list,
+  .keys__groups {
     grid-template-columns: 1fr;
   }
 
@@ -1475,6 +1537,7 @@ html.dark .recording__variant--light {
   .page-heading,
   .also,
   .needs,
+  .keys,
   .dispatch-toc,
   .download-block,
   .teaser,

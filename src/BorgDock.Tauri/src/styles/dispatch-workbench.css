@@ -104,8 +104,13 @@
     font-size: 10.5px;
     font-weight: 600;
     color: var(--color-text-primary);
-    text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* A branch is longer than the chip: cut its end, not both sides. */
+  .bd-dp-agentchip__place {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .bd-dp-agentchip[data-needs-you="true"] {
     border-color: var(--color-warning-badge-border);

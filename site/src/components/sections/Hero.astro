@@ -1,6 +1,6 @@
 ---
 // A page's hero: the job in one line, one video, one button. The home page
-// uses the defaults; the Dispatch page passes its own copy and video. Its
+// uses the defaults; the Dispatch and Quick review pages pass their own copy and video. Its
 // entrance is the only orchestrated motion on the site (see `.reveal` in
 // global.css); reduced motion skips it.
 //
@@ -24,7 +24,7 @@ interface Props {
 }
 
 const {
-  badge = { href: '/dispatch', text: 'New: Dispatch, your work items and the agents on them' },
+  badge = { href: '/quick-review', text: 'New: Quick review with the pull request in view' },
   title = 'Every pull request, one window.',
   lede = 'BorgDock watches your checks, tells you what needs you, keeps your work items next to the agents on them, and lets you review and merge without opening a browser tab.',
   secondary = { href: '/features', label: 'See how it works' },

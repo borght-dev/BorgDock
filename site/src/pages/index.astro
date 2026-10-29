@@ -21,7 +21,10 @@ import Recording from '~/components/ui/Recording.astro';
           Every open pull request gets one row: who opened it, where it stands, and its checks as a
           single bar. Red means something failed, amber means it is still running.
         </p>
-        <p>Pick Needs you, Mine or Failing and the list rearranges itself in place.</p>
+        <p>
+          Pick Needs you, Mine or Failing and the list rearranges itself in place. When one failure
+          breaks several pull requests, it gets its own row on top, with who is on it.
+        </p>
         <Recording slot="media" slug="filter-flip" />
       </Job>
 
@@ -31,27 +34,50 @@ import Recording from '~/components/ui/Recording.astro';
           there. Switch to the board to see them in Needs you, Waiting on others, Ready to merge and
           Stale.
         </p>
+        <p>
+          Been away? Activity lists what changed since you last looked: an agent's question, a failed
+          check, a new review.
+        </p>
         <Capture slot="media" slug="focus-board" />
       </Job>
 
-      <Job id="dispatch" eyebrow="Dispatch" title="See your work and the agents on it">
+      <Job id="review" eyebrow="Quick review" title="Review file by file, decide on the last one">
+        <p>
+          Quick review keeps the pull request above the diff and its proof beside it. Press V to mark a
+          file reviewed and move to the next.
+        </p>
+        <p>
+          On the last file the footer becomes your decision. Approve & auto-merge, and the next pull
+          request is already open.
+        </p>
+        <p><a class="link" href="/quick-review">See everything Quick review does</a></p>
+        <Recording slot="media" slug="quick-review-decide" />
+      </Job>
+
+      <Job id="dispatch" eyebrow="Dispatch" title="See your work and the agents on it" reverse>
         <p>
           Dispatch puts your Azure DevOps items next to the T3 Code threads and pull requests that
           belong to them, and opens on a briefing: what needs you, what fell out of sync and what an
           agent is working on.
         </p>
-        <p>Click a number to see just those items, or start an agent on the next one from a free slot.</p>
+        <p>
+          Click a number to see just those items, or start an agent on the next one, in a fresh
+          worktree on any machine that runs T3.
+        </p>
         <p><a class="link" href="/dispatch">Take the tour of Dispatch</a></p>
         <Recording slot="media" slug="dispatch-briefing" />
       </Job>
 
-      <Job id="act" eyebrow="Act" title="Review, fix and merge in the same place" reverse>
+      <Job id="notes" eyebrow="Notes" title="Keep your notes next to the work">
         <p>
-          Press Review to open Quick review, which walks you through the changes one file at a time,
-          images included. A failing check goes to Claude with Fix with Claude.
+          Notes are Markdown files that Obsidian and VS Code open as they are. Type AB#60102 or
+          shop#3712 and it turns into a chip that shows the item or pull request as it is right now.
         </p>
-        <p>Approve & auto merge approves and lets GitHub merge the moment the checks pass.</p>
-        <Recording slot="media" slug="quick-review" />
+        <p>
+          Press Today for a note that already lists what happened since yesterday, or Ctrl+F8 in any
+          app to jot something down.
+        </p>
+        <Capture slot="media" slug="notes" />
       </Job>
     </div>
 

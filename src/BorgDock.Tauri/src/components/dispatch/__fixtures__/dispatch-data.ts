@@ -418,7 +418,8 @@ function toThread(spec: ThreadSpec, now: number): AgentThread {
     ...host,
     available: true,
     projectId: `p-${spec.project.toLowerCase()}`,
-    place: spec.project,
+    // As sync.ts names it: the branch of the worktree T3 made, else the project.
+    place: spec.branch ?? spec.project,
     title: spec.title,
     branch: spec.branch ?? null,
     createdAt: new Date(now - spec.idleMinutes * MINUTE - 40 * MINUTE).toISOString(),
