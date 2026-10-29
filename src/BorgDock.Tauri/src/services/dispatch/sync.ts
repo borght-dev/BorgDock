@@ -500,7 +500,10 @@ function refreshLinkedPullRequests(): Promise<void> {
   const job = (async () => {
     const store = useDispatchStore.getState;
     const generation = syncGeneration;
-    const candidates = candidateRepositories(useSettingsStore.getState().settings.repos);
+    const candidates = candidateRepositories(
+      useSettingsStore.getState().settings.repos,
+      store().threads.flatMap((thread) => thread.pullRequests.map((pr) => pr.url)),
+    );
     try {
       const { pullRequests, repositories } = await lookUpLinkedPullRequests(
         [...store().items, ...store().contextItems],

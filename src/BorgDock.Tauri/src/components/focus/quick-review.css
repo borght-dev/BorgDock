@@ -380,13 +380,6 @@
   line-height: 1.62;
   overflow-wrap: anywhere;
 }
-/* A reading measure for the text blocks; tables and screenshots keep the column. */
-.qr-overlay
-  .qr-card__desc
-  .markdown-body
-  > :is(p:not(:has(img)), ul, ol, blockquote, h1, h2, h3, h4, h5, h6) {
-  max-width: 60ch;
-}
 .qr-clamp {
   max-height: 6.4em;
   overflow: hidden;

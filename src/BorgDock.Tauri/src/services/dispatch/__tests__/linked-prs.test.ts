@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildOverview } from '../engine';
 import {
   candidateRepositories,
   type FetchedPullRequest,
@@ -6,7 +7,7 @@ import {
   resetLinkedPullRequests,
 } from '../linked-prs';
 import { mergePullRequests } from '../sync';
-import { makeItem, makeKnownPr } from './fixtures';
+import { makeItem, makeKnownPr, makeThread, makeThreadPr } from './fixtures';
 
 vi.mock('@/services/github/singleton', () => ({ getClientForRepo: () => null }));
 
@@ -109,6 +110,42 @@ describe('lookUpLinkedPullRequests', () => {
 });
 
 describe('candidateRepositories', () => {
+  it('resolves a merged PR outside the polled repositories instead of retaining a stale thread state', async () => {
+    resetLinkedPullRequests();
+    const url = 'https://github.com/Gomocha-FSP/FSP/pull/1183';
+    const item = makeItem({
+      id: 53748,
+      state: 'Code Review',
+      linkedPullRequests: [{ repositoryId: 'fsp-id', number: 1183 }],
+    });
+    const threadPr = makeThreadPr({ number: 1183, url, title: 'AB#53748 Display users' });
+    const candidates = candidateRepositories([], [url]);
+    const { fetch } = gitHub({
+      'Gomocha-FSP/FSP': [
+        fetched({
+          number: 1183,
+          url,
+          title: threadPr.title,
+          state: 'MERGED',
+          mergedAt: '2026-10-20T13:38:06Z',
+        }),
+      ],
+    });
+    await lookUpLinkedPullRequests([item], [], {}, fetch, NOW);
+    const found = await lookUpLinkedPullRequests([item], candidates, {}, fetch, NOW + 60_000);
+    const { overview } = buildOverview({
+      items: [item],
+      threads: [
+        makeThread({ id: 'old', title: 'AB#53748', open: false, pullRequests: [threadPr] }),
+      ],
+      pullRequests: found.pullRequests,
+      queued: new Set(),
+      hiddenSuggestions: new Set(),
+      manualLinks: new Map(),
+    });
+    expect(found.pullRequests[0]?.state).toBe('merged');
+    expect(overview.items[0]?.pullRequests[0]?.state).toBe('merged');
+  });
   it('takes the enabled repositories with a plain owner and name', () => {
     const repo = { worktreeBasePath: '', worktreeSubfolder: '' };
     expect(

@@ -145,12 +145,17 @@ export async function lookUpLinkedPullRequests(
 ): Promise<LinkedLookup> {
   const repositories = { ...known };
   const pullRequests: KnownPullRequest[] = [];
+  const candidateKey = candidates
+    .map((repo) => repo.toLowerCase())
+    .sort()
+    .join(',');
   for (const [repositoryId, links] of linksByRepository(items)) {
     if (!repositories[repositoryId]) {
-      if (now - (unmatched.get(repositoryId) ?? -Infinity) < RETRY_UNMATCHED_MS) continue;
+      const unmatchedKey = `${repositoryId}:${candidateKey}`;
+      if (now - (unmatched.get(unmatchedKey) ?? -Infinity) < RETRY_UNMATCHED_MS) continue;
       const learned = await learnRepository(links, candidates, fetch);
       if (!learned) {
-        unmatched.set(repositoryId, now);
+        unmatched.set(unmatchedKey, now);
         continue;
       }
       repositories[repositoryId] = learned;
@@ -177,11 +182,20 @@ export async function lookUpLinkedPullRequests(
   return { pullRequests, repositories };
 }
 
-/** The repositories BorgDock follows, as `owner/name`. */
-export function candidateRepositories(repos: readonly RepoSettings[]): string[] {
-  return repos
+/** Polled repositories and repositories named by linked T3 pull requests. */
+export function candidateRepositories(
+  repos: readonly RepoSettings[],
+  pullRequestUrls: readonly string[] = [],
+): string[] {
+  const candidates = repos
     .filter((repo) => repo.enabled && /^[\w.-]+$/.test(repo.owner) && /^[\w.-]+$/.test(repo.name))
     .map((repo) => `${repo.owner}/${repo.name}`);
+  for (const url of pullRequestUrls) {
+    const match = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/pull\/\d+\/?$/i.exec(url);
+    if (match && !candidates.some((repo) => repo.toLowerCase() === match[1]!.toLowerCase()))
+      candidates.push(match[1]!);
+  }
+  return candidates;
 }
 
 const FIELDS = 'number url title state isDraft mergedAt headRefName reviewDecision';
