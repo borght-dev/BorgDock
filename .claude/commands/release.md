@@ -30,8 +30,9 @@ Invoking `/release <version>` authorizes the generated release notes, release co
    - `src/BorgDock.Tauri/src-tauri/tauri.conf.json` — `"version": "<VERSION>"`
    - `src/BorgDock.Tauri/package.json` — `"version": "<VERSION>"`
    - `src/BorgDock.Tauri/src-tauri/Cargo.toml` — `version = "<VERSION>"`
+   - `src/BorgDock.Tauri/src-tauri/Cargo.lock` — the `version` under `name = "borgdock"`. CI runs cargo with `--locked`, so a lock left at the old version fails every Rust job (4.9.1 shipped that way).
 
-   **Why all three?** The Tauri build uses `tauri.conf.json` to name the installer (e.g. `BorgDock_1.0.11_x64-setup.exe`). The CI generates `latest.json` from the git tag. If the tag says `v1.0.11` but `tauri.conf.json` says `1.0.10`, the installer is named `1.0.10` but `latest.json` points to `1.0.11` — causing a 404 and breaking auto-updates.
+   **Why the first three?** The Tauri build uses `tauri.conf.json` to name the installer (e.g. `BorgDock_1.0.11_x64-setup.exe`). The CI generates `latest.json` from the git tag. If the tag says `v1.0.11` but `tauri.conf.json` says `1.0.10`, the installer is named `1.0.10` but `latest.json` points to `1.0.11` — causing a 404 and breaking auto-updates.
 
 4. **Attach hero images** for any `### New Features`, `### Improvements`, or bulletted `### Bug Fixes` entries that start with `**Bold Title**`:
    - Heroes are **real screenshots captured from Storybook** (large, ~16:10 — not hand-mocked banners). To produce them:
@@ -54,6 +55,7 @@ Invoking `/release <version>` authorizes the generated release notes, release co
      src/BorgDock.Tauri/src-tauri/tauri.conf.json \
      src/BorgDock.Tauri/package.json \
      src/BorgDock.Tauri/src-tauri/Cargo.toml \
+     src/BorgDock.Tauri/src-tauri/Cargo.lock \
      src/BorgDock.Tauri/src/generated/changelog.ts \
      docs/whats-new/<VERSION>
    git commit -m "chore: release <VERSION>"
