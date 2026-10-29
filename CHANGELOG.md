@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.9.1 — 2026-10-29
+
+### Bug Fixes
+
+- Quick Review's Proof tab now shows images from every section of the PR description, while keeping generated Claude and bot badges out.
+
 ## 4.9.0 — 2026-10-28
 
 ### New Features

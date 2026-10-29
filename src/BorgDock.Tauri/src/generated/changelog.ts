@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.1",
+    "date": "2026-10-29",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Quick Review's Proof tab now shows images from every section of the PR description, while keeping generated Claude and bot badges out."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.9.0",
     "date": "2026-10-28",
     "summary": "Start an agent on any machine, in a fresh worktree, Pick up where an agent left off, and Open a pull request in T3 on any machine.",
