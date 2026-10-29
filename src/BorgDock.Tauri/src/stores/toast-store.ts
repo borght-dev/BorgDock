@@ -15,6 +15,13 @@ export interface ToastInput {
   actionLabel?: string;
   /** Runs when the action is clicked; the toast then goes away. */
   onAction?: () => void;
+  /** The key that also runs the action (Quick Review's Z for Undo), drawn on its button. */
+  actionKey?: string;
+  /**
+   * Something happens when the toast runs out (`onExpire`): it is drawn as a
+   * pending action with the time left draining along its edge.
+   */
+  countdown?: boolean;
   /** A quieter second action, e.g. "Show me". Needs `onSecondary`. */
   secondaryLabel?: string;
   /** Runs when the second action is clicked; the toast then goes away. */

@@ -1,30 +1,54 @@
-import {
-  isGeneratedPath,
-  reviewFolderOf,
-  reviewFolderSummary,
-  reviewProgress,
-} from '@/services/quick-review';
+import type { ReactNode } from 'react';
+import { isGeneratedPath, reviewFolderOf, reviewFolderSummary } from '@/services/quick-review';
 
 export function QuickReviewFolders({
   files,
+  failed,
+  onRetry,
   reviewed,
+  scope,
   onFileSelect,
 }: {
   onFileSelect?: (path: string) => void;
+  /** Changed file paths; `null` while they load or when they failed to load. */
   files: readonly string[] | null;
+  /** The files failed to load. */
+  failed?: boolean;
+  onRetry?: () => void;
   reviewed: readonly string[];
+  /** The PR's size, on the line under the heading. */
+  scope?: ReactNode;
 }) {
+  const heading = (
+    <h4>
+      Files by folder
+      {scope && <span className="qr-left">{scope}</span>}
+    </h4>
+  );
   if (files === null) {
     return (
       <section className="qr-files" aria-label="Files by folder">
-        <h4>Files by folder</h4>
-        <p className="qr-muted" role="status">
-          Loading changed files…
-        </p>
+        {heading}
+        {failed ? (
+          <p className="qr-muted" role="status">
+            Couldn't load files
+            {onRetry && (
+              <>
+                {' · '}
+                <button type="button" className="qr-link" onClick={onRetry}>
+                  Retry
+                </button>
+              </>
+            )}
+          </p>
+        ) : (
+          <p className="qr-muted" role="status">
+            Loading changed files…
+          </p>
+        )}
       </section>
     );
   }
-  const progress = reviewProgress(files, reviewed);
   const done = new Set(reviewed);
   const pathsByFolder = new Map<string, string[]>();
   for (const path of files) {
@@ -35,12 +59,7 @@ export function QuickReviewFolders({
   }
   return (
     <section className="qr-files" aria-label="Files by folder">
-      <h4>
-        Files by folder
-        <span className="qr-left" data-quick-review-left="">
-          {progress.left} of {progress.toReview} to review, {progress.generated} generated
-        </span>
-      </h4>
+      {heading}
       {files.length === 0 ? (
         <p className="qr-muted">No changed files in this PR.</p>
       ) : (

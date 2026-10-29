@@ -680,7 +680,7 @@ export const AllFilesReviewed: Story = {
       LAST_TEST,
     );
     const canvas = await continueReviewing(canvasElement);
-    await canvas.findByText('That was the last file');
+    await canvas.findByText(/That was the last file/);
   },
 };
 

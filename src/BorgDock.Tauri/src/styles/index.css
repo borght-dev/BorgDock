@@ -3879,6 +3879,50 @@ body.sql-resizing-v .sql-resize-handle {
     outline: 2px solid var(--color-accent);
     outline-offset: 1px;
   }
+  /* A toast that acts when it runs out (an approval waiting for Undo):
+     inverse, so it reads as a pending action, with the time left draining
+     along its bottom edge. */
+  .bd-toast[data-countdown] {
+    position: relative;
+    overflow: hidden;
+    border: 0;
+    background: var(--color-text-primary);
+    box-shadow: var(--elevation-3);
+    font-weight: 500;
+    color: var(--color-background);
+  }
+  .bd-toast[data-countdown] .bd-toast__action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-color: color-mix(in srgb, var(--color-background) 35%, transparent);
+    color: var(--color-background);
+  }
+  .bd-toast[data-countdown] .bd-toast__action:hover {
+    background: color-mix(in srgb, var(--color-background) 14%, transparent);
+  }
+  .bd-toast__countdown {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--color-status-green);
+    transform-origin: left;
+    animation: bd-toast-countdown linear forwards;
+  }
+  @keyframes bd-toast-countdown {
+    to {
+      transform: scaleX(0);
+    }
+  }
+  .bd-toast__key {
+    padding: 0 4px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    font: 10px / 14px var(--font-code);
+    opacity: 0.7;
+  }
   @keyframes bd-toast-in {
     from {
       opacity: 0;

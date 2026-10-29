@@ -1,43 +1,59 @@
 import clsx from 'clsx';
+import { Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { avatarInitials } from '@/components/pr/pr-card-data';
-import { PrLabels } from '@/components/shared/PrLabels';
-import { Avatar, Button } from '@/components/shared/primitives';
+import {
+  ROW_CHIP_LABEL,
+  type RowChipKind,
+  rowChipFor,
+  toPrCardData,
+} from '@/components/pr/pr-card-data';
+import { Button, Pill } from '@/components/shared/primitives';
+import { useReviewReadiness } from '@/hooks/useReviewReadiness';
+import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
 import type { PullRequest, PullRequestWithChecks } from '@/types';
-import { formatAgo } from '@/utils/relative-time';
 import { QuickReviewOverview } from './QuickReviewOverview';
+import { QuickReviewPrHeader } from './QuickReviewPrHeader';
 
 export { ciNote } from './quick-review-status';
 
-interface HeaderProps {
-  pr: PullRequest;
-  now?: number;
-  /** Right-hand extras on the "over" line, e.g. Open in GitHub. */
-  extra?: ReactNode;
-}
+type Readiness = ReturnType<typeof useReviewReadiness>;
 
-/** Author, repository, number and age over the title and labels: every card of the deck has it. */
-export function QuickReviewCardHeader({ pr, now, extra }: HeaderProps) {
-  const ago = formatAgo(pr.updatedAt, now);
+/**
+ * What only the card says about the PR, as chips beside the header's shared
+ * ones: the review state and the required checks as facts, in grey; a
+ * required check that needs attention and a stacked PR in colour, since
+ * those need you.
+ */
+/** The shared header draws these itself. */
+const HEADER_PILLS: ReadonlySet<RowChipKind> = new Set(['conflicts', 'draft']);
+
+function StatusChips({
+  pr,
+  detail: p,
+  readiness,
+}: {
+  pr: PullRequestWithChecks;
+  detail: PullRequest;
+  readiness: Readiness;
+}) {
+  const requiredIssues =
+    readiness.result?.checks.filter((check) => !['success', 'neutral'].includes(check.state)) ?? [];
+  const parent = /stacked\s+on\s+(?:\[)?#(\d+)/i.exec(p.body)?.[1];
+  const chip = rowChipFor(toPrCardData({ ...pr, pullRequest: p }, false));
   return (
-    <header className="qr-card__head">
-      <div className="qr-card__over">
-        <Avatar initials={avatarInitials(pr.authorLogin)} size="sm" aria-hidden="true" />
-        <span>{pr.authorLogin}</span>
-        <span>
-          {pr.repoOwner}/{pr.repoName}
-        </span>
-        <span>#{pr.number}</span>
-        {ago && <span>updated {ago}</span>}
-        {extra && <span className="qr-card__over-extra">{extra}</span>}
-      </div>
-      <div className="qr-card__titlerow">
-        <h2 data-pr-title="" className="qr-card__title">
-          {pr.title}
-        </h2>
-        <PrLabels pr={pr} className="qr-card__labels" />
-      </div>
-    </header>
+    <>
+      {!!requiredIssues.length && (
+        <Pill tone="warning">
+          {requiredIssues.length} required{' '}
+          {requiredIssues.length === 1 ? 'check needs' : 'checks need'} attention
+        </Pill>
+      )}
+      {parent && <Pill tone="warning">Stacked on #{parent}</Pill>}
+      {!HEADER_PILLS.has(chip) && <Pill tone="ghost">{ROW_CHIP_LABEL[chip]}</Pill>}
+      {!readiness.loading && !readiness.result?.complete && (
+        <Pill tone="ghost">Required checks unverified</Pill>
+      )}
+    </>
   );
 }
 
@@ -46,8 +62,11 @@ export interface QuickReviewCardProps {
   pr: PullRequestWithChecks;
   /** The freshly loaded PR, when there is one (title, body, sizes). */
   detail?: PullRequest;
-  /** Changed file paths; `null` while they load. */
+  /** Changed file paths; `null` while they load or when they failed to load. */
   files: readonly string[] | null;
+  /** The files failed to load: the overview says so instead of "loading". */
+  filesFailed?: boolean;
+  onReloadFiles?: () => void;
   /** Paths marked reviewed. */
   reviewed: readonly string[];
   /** Load, stale or submission problems, drawn above the body. */
@@ -59,8 +78,10 @@ export interface QuickReviewCardProps {
   onFileSelect?: (path: string) => void;
   /** One line under the actions, e.g. why Approve is not possible yet. */
   actionsNote?: ReactNode;
-  /** Right-hand extras on the header's "over" line. */
-  headerExtra?: ReactNode;
+  commentCount?: number;
+  reReview?: boolean;
+  onOpenComments?: () => void;
+  onOpenGitHub?: () => void;
   now?: number;
 }
 
@@ -68,30 +89,54 @@ export function QuickReviewCard({
   pr,
   detail,
   files,
+  filesFailed,
+  onReloadFiles,
   reviewed,
   alert,
   body,
   actions,
   actionsNote,
-  headerExtra,
+  commentCount,
+  reReview,
+  onOpenComments,
+  onOpenGitHub,
   now,
   onFileSelect,
 }: QuickReviewCardProps) {
   const p = detail ?? pr.pullRequest;
+  const links = useWorkItemLinks(p);
+  const workItems = new Map(links.workItems.map((item) => [item.id, item]));
+  const readiness = useReviewReadiness(p);
   return (
     <article
       className={clsx('qr-card', !body && 'qr-card--overview')}
       data-i="0"
       aria-label={`Pull request #${p.number}`}
     >
-      <QuickReviewCardHeader pr={p} now={now} extra={headerExtra} />
+      <QuickReviewPrHeader
+        pr={pr}
+        detail={p}
+        workItemIds={links.workItemIds}
+        workItems={workItems}
+        commentCount={commentCount}
+        reReview={reReview}
+        statusChips={body ? undefined : <StatusChips pr={pr} detail={p} readiness={readiness} />}
+        onOpenComments={onOpenComments}
+        onOpenGitHub={onOpenGitHub}
+        now={now}
+      />
       {alert}
       {body ?? (
         <QuickReviewOverview
           pr={pr}
           detail={p}
           files={files}
+          filesFailed={filesFailed}
+          onReloadFiles={onReloadFiles}
           reviewed={reviewed}
+          readiness={readiness}
+          linkedWorkItemIds={links.workItemIds}
+          linkedWorkItems={workItems}
           onFileSelect={onFileSelect}
         />
       )}
@@ -119,7 +164,8 @@ export interface ApproveButtonProps {
  * the review can be submitted). Blocked means `aria-disabled`, not
  * `disabled`: the button stays focusable, so a keyboard user reaches it and
  * hears the reason (`reasonId`, the line under the actions); a click does
- * nothing. Hovering shows the same reason as a tooltip.
+ * nothing. A blocked button is dashed with a lock and stays that way on
+ * hover, which shows the reason as a tooltip.
  */
 export function ApproveButton({
   issue,
@@ -142,7 +188,8 @@ export function ApproveButton({
         aria-disabled={issue ? true : undefined}
         loading={busy}
         aria-describedby={issue ? reasonId : undefined}
-        aria-keyshortcuts={shortcut ? 'A ArrowRight' : undefined}
+        aria-keyshortcuts={shortcut && !issue ? 'Enter A ArrowRight' : undefined}
+        leading={issue ? <Lock size={13} strokeWidth={2.25} aria-hidden="true" /> : undefined}
         onClick={() => {
           if (!issue) onApprove();
         }}

@@ -5,6 +5,7 @@ import { FocusTrap } from 'focus-trap-react';
 import {
   ChevronLeft,
   ChevronRight,
+  CircleCheck,
   GitCommitHorizontal,
   History,
   Maximize2,
@@ -56,13 +57,12 @@ import {
   getReviewDraftStorageWarning,
   subscribeReviewDraftStorage,
 } from '@/utils/review-draft-storage';
-import { ApproveButton, QuickReviewCard, QuickReviewCardHeader } from './QuickReviewCard';
+import { ApproveButton, QuickReviewCard } from './QuickReviewCard';
 import { QuickReviewChecks } from './QuickReviewChecks';
 import { QuickReviewComment } from './QuickReviewComment';
 import { type ContextTab, QuickReviewContext } from './QuickReviewContext';
 import { QuickReviewDecisionBar } from './QuickReviewDecisionBar';
 import { QuickReviewDiscussion } from './QuickReviewDiscussion';
-import { QuickReviewEndCard } from './QuickReviewEndCard';
 import { QuickReviewFinish } from './QuickReviewFinish';
 import { QuickReviewNavigation } from './QuickReviewNavigation';
 import { QuickReviewPrHeader } from './QuickReviewPrHeader';
@@ -80,6 +80,16 @@ const WRAP_LINES_KEY = 'borgdock-quick-review-wrap-lines';
 const RICH_DIFF_KEY = 'borgdock-quick-review-rich-diff';
 const SPLIT_DIFF_KEY = 'borgdock-quick-review-split-diff';
 const CONTEXT_OPEN_KEY = 'borgdock-quick-review-context-open';
+/**
+ * Below this window width the walk opens with its context panel folded to
+ * the rail, so the diff keeps room for the file name and the code; the same
+ * width as the narrow layout in quick-review.css.
+ */
+const NARROW_WALK = '(max-width: 1280px)';
+
+function narrowWindow(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia(NARROW_WALK).matches;
+}
 
 function readReviewPreference(key: string, fallback = false): boolean {
   try {
@@ -213,7 +223,7 @@ function GhostCard({
       data-i={gone ? 'x' : String(depth)}
       aria-hidden="true"
     >
-      <QuickReviewCardHeader pr={pr.pullRequest} />
+      <QuickReviewPrHeader pr={pr} detail={pr.pullRequest} />
     </div>
   );
 }
@@ -368,14 +378,16 @@ export function QuickReviewOverlay() {
                 </b>
               </span>
             )}
-            <span className="qr-prog">
-              <span>
-                PR {Math.min(index + 1, queue.length)} / {queue.length}
+            {queue.length > 1 && (
+              <span className="qr-prog">
+                <span>
+                  PR {Math.min(index + 1, queue.length)} / {queue.length}
+                </span>
+                <span className="qr-bar" aria-hidden="true">
+                  <i style={{ width: `${(decided / Math.max(queue.length, 1)) * 100}%` }} />
+                </span>
               </span>
-              <span className="qr-bar" aria-hidden="true">
-                <i style={{ width: `${(decided / Math.max(queue.length, 1)) * 100}%` }} />
-              </span>
-            </span>
+            )}
             {index > 0 && !complete && (
               <Button
                 variant="ghost"
@@ -518,8 +530,8 @@ function QuickReviewWorkspace({
   const [wrapLines, setWrapLines] = useState(() => readReviewPreference(WRAP_LINES_KEY));
   const [richDiff, setRichDiff] = useState(() => readReviewPreference(RICH_DIFF_KEY, true));
   const [splitDiff, setSplitDiff] = useState(() => readReviewPreference(SPLIT_DIFF_KEY));
-  const [contextOpen, setContextOpen] = useState(() =>
-    readReviewPreference(CONTEXT_OPEN_KEY, true),
+  const [contextOpen, setContextOpen] = useState(
+    () => !narrowWindow() && readReviewPreference(CONTEXT_OPEN_KEY, true),
   );
   const [contextTab, setContextTab] = useState<ContextTab>('proof');
   const [describing, setDescribing] = useState(false);
@@ -607,8 +619,8 @@ function QuickReviewWorkspace({
    * predicate the button and the → key both read.
    */
   function approveBlocker(): string | null {
+    if (loadError) return "Files didn't load";
     if (!snapshot || loading) return 'Files are still loading';
-    if (loadError) return 'Reload the files first';
     if (stale) return 'New changes: reload the files';
     if (progress.left > 0) return unreviewedLabel(progress.left);
     if (unreadyComments) return 'Unsaved or outdated drafts';
@@ -730,13 +742,13 @@ function QuickReviewWorkspace({
     if (next) go(next.filename);
     else if (reviewProgress(paths, [...done]).left === 0) focusDecision.current = true;
   }
-  function toggleReviewed() {
-    if (!ready || !prFile || busy) return;
+  function toggleReviewed(path: string) {
+    if (!ready || busy) return;
     update((d) => ({
       ...d,
-      reviewed: d.reviewed.includes(prFile.filename)
-        ? d.reviewed.filter((p) => p !== prFile.filename)
-        : [...d.reviewed, prFile.filename],
+      reviewed: d.reviewed.includes(path)
+        ? d.reviewed.filter((p) => p !== path)
+        : [...d.reviewed, path],
     }));
   }
   function skipGenerated() {
@@ -814,7 +826,9 @@ function QuickReviewWorkspace({
         : {
             ArrowRight: () => approve(),
             ArrowLeft: later,
-            Enter: openWalk,
+            // Once Approve can go it is the card's next step, so Enter takes
+            // it, as in the walk's decision bar.
+            Enter: approveIssue ? openWalk : () => approve(),
             a: () => approve(),
             w: () => setMode('compose'),
             z: undoHeldApproval,
@@ -895,7 +909,7 @@ function QuickReviewWorkspace({
 
   const problem = loadError || error || (stale ? 'New changes are available.' : null);
   const alert = problem ? (
-    <div className="qr-warning" role="alert">
+    <div className="qr-warning" role="alert" data-tone={stale && !loadError ? undefined : 'error'}>
       {problem}
       <Button variant="secondary" size="md" onClick={reload} disabled={loading}>
         Reload files
@@ -938,10 +952,10 @@ function QuickReviewWorkspace({
     ) : (
       <>
         <Button
-          variant="primary"
+          variant={approveIssue ? 'primary' : 'secondary'}
           size="lg"
           className="qr-files-btn"
-          aria-keyshortcuts="Enter"
+          aria-keyshortcuts={approveIssue ? 'Enter' : undefined}
           disabled={!ready || files.length === 0}
           onClick={openWalk}
         >
@@ -978,7 +992,7 @@ function QuickReviewWorkspace({
               issue={approveIssue}
               busy={busy}
               onApprove={() => approve(true)}
-              label="Approve & auto merge"
+              label="Approve & auto-merge"
               reasonId={approveReasonId}
             />
           )}
@@ -1026,10 +1040,12 @@ function QuickReviewWorkspace({
       : mode === 'compose'
         ? [['Esc', 'back to the card'] as const]
         : [
-            ['A/→', detail.autoMergeEnabled ? 'approve' : 'approve & auto merge'] as const,
+            // While Approve is blocked its keys do nothing, so they are not offered.
+            approveIssue
+              ? (['Enter', 'review files'] as const)
+              : (['Enter/A/→', autoMergeLabel] as const),
             ['W', 'write review'] as const,
             ['←', 'review later'] as const,
-            ['Enter', 'review files'] as const,
             ['Esc', 'close'] as const,
           ]),
     ...(heldApproval ? [['Z', 'undo approval'] as const] : []),
@@ -1087,6 +1103,8 @@ function QuickReviewWorkspace({
                 update((doc) => ({ ...doc, walked: true }));
               }}
               files={snapshot ? paths : null}
+              filesFailed={!!loadError && !snapshot}
+              onReloadFiles={reload}
               reviewed={doc.reviewed}
               alert={alert}
               body={
@@ -1108,16 +1126,10 @@ function QuickReviewWorkspace({
                   </p>
                 ) : null
               }
-              headerExtra={
-                <>
-                  <Button variant="ghost" size="sm" onClick={() => setCommentsPopup(true)}>
-                    All comments · {conversation.items.length}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => void openGitHub()}>
-                    Open in GitHub
-                  </Button>
-                </>
-              }
+              commentCount={conversation.items.length}
+              reReview={!!since}
+              onOpenComments={() => setCommentsPopup(true)}
+              onOpenGitHub={() => void openGitHub()}
             />
             {leaving && <GhostCard key={leaving.id} pr={leaving.pr} gone={leaving.dir} />}
           </div>
@@ -1185,6 +1197,7 @@ function QuickReviewWorkspace({
               groups={walkGroups}
               currentPath={prFile?.filename ?? null}
               onNavigate={go}
+              onToggleReviewed={toggleReviewed}
               progress={walkProgress}
               changed={changed ?? undefined}
               unchanged={
@@ -1286,7 +1299,7 @@ function QuickReviewWorkspace({
                     <input
                       type="checkbox"
                       checked={reviewed.has(prFile.filename)}
-                      onChange={toggleReviewed}
+                      onChange={() => toggleReviewed(prFile.filename)}
                       disabled={!ready}
                     />
                     {reviewed.has(prFile.filename)
@@ -1346,14 +1359,13 @@ function QuickReviewWorkspace({
                     />
                     {!inlineDrafts && !richDiffVisible && fileDrafts.map(commentView)}
                     {allReviewed ? (
-                      <QuickReviewEndCard
-                        document={doc}
-                        update={update}
-                        last={fileIndex === walkFiles.length - 1}
-                        notice={endNotice}
-                        bodyRef={endBodyRef}
-                        onJump={jumpTo}
-                      />
+                      <p className="qr-notice qr-notice--done">
+                        <CircleCheck size={16} strokeWidth={2.25} aria-hidden="true" />
+                        {fileIndex === walkFiles.length - 1
+                          ? 'That was the last file.'
+                          : 'Every file is reviewed.'}{' '}
+                        <span className="qr-muted">Add an overall comment and decide below.</span>
+                      </p>
                     ) : (
                       <p className="qr-notice qr-muted">
                         {richDiffVisible
@@ -1385,7 +1397,12 @@ function QuickReviewWorkspace({
             </QuickReviewContext>
             <QuickReviewDecisionBar
               progress={progress}
-              draftCount={doc.comments.length}
+              drafts={doc.comments}
+              body={doc.body}
+              onBodyChange={(body) => update((d) => ({ ...d, body }))}
+              bodyRef={endBodyRef}
+              notice={endNotice}
+              onJump={jumpTo}
               ready={ready}
               approveIssue={approveIssue}
               autoMergeEnabled={!!detail.autoMergeEnabled}

@@ -37,6 +37,24 @@ describe('Toast', () => {
     render(<Toast message="Merge failed" tone="error" />);
     expect(screen.getByRole('alert')).toHaveTextContent('Merge failed');
   });
+
+  it('draws a pending action with its key and the time left draining', () => {
+    render(
+      <Toast
+        message="Approving #4"
+        actionLabel="Undo"
+        onAction={() => {}}
+        actionKey="Z"
+        countdownMs={5000}
+      />,
+    );
+    const toast = screen.getByRole('status');
+    expect(toast).toHaveAttribute('data-countdown');
+    expect(screen.getByRole('button', { name: 'Undo' })).toHaveAttribute('aria-keyshortcuts', 'Z');
+    expect(toast.querySelector('.bd-toast__countdown')).toHaveStyle({
+      animationDuration: '5000ms',
+    });
+  });
 });
 
 describe('ToastViewport', () => {

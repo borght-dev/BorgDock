@@ -1,4 +1,4 @@
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Plus } from 'lucide-react';
 import type { DiffLine, HighlightSpan, InlineChange } from '@/types';
 import { DiffLineContent } from './DiffLineContent';
 
@@ -71,6 +71,7 @@ export function DiffLineRow({
 
   return (
     <tr
+      className="group/line"
       data-line-kind={lineKind}
       data-line-no={line.newLineNumber ?? line.oldLineNumber ?? ''}
       onClick={hasThread ? onToggleThread : undefined}
@@ -81,9 +82,24 @@ export function DiffLineRow({
       }}
     >
       <td
-        className="select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
+        className="relative select-none text-right pr-1 text-[12px] text-[var(--color-diff-line-number)]"
         style={{ backgroundColor: gutterBg, userSelect: 'none' }}
       >
+        {/* Over the line numbers, shown on hover or focus: beside the code it read as a diff marker. */}
+        {onAddComment && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAddComment(line);
+            }}
+            aria-label={`Comment on ${line.type === 'delete' ? 'old' : 'new'} line ${line.type === 'delete' ? line.oldLineNumber : line.newLineNumber}`}
+            className="absolute top-1/2 left-1 inline-flex h-[18px] w-[18px] -translate-y-1/2 items-center justify-center rounded bg-[var(--color-accent)] text-[var(--color-accent-foreground)] opacity-0 transition-opacity group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:outline"
+            data-diff-comment
+          >
+            <Plus size={12} strokeWidth={2.75} aria-hidden="true" />
+          </button>
+        )}
         {line.oldLineNumber ?? ''}
       </td>
       <td
@@ -93,19 +109,6 @@ export function DiffLineRow({
         {line.newLineNumber ?? ''}
       </td>
       <td className="pl-2 whitespace-pre overflow-x-auto" data-diff-code>
-        {onAddComment && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onAddComment(line);
-            }}
-            aria-label={`Comment on ${line.type === 'delete' ? 'old' : 'new'} line ${line.type === 'delete' ? line.oldLineNumber : line.newLineNumber}`}
-            className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded text-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)] focus-visible:outline"
-          >
-            +
-          </button>
-        )}
         <span className="select-none text-[var(--color-diff-line-number)] mr-1">{prefix}</span>
         <DiffLineContent
           content={line.content}

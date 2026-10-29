@@ -209,7 +209,7 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   await page.keyboard.press('Escape');
   await page.keyboard.press('a');
 
-  await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Review complete', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('region', { name: 'Next review' })).toContainText('Quick review change 4');
   await page.screenshot({ path: test.info().outputPath('review-complete-next-pr.png') });
   await expect(dialog.getByRole('button', { name: 'Review next PR' })).toHaveAttribute('aria-keyshortcuts', 'Enter');
@@ -220,7 +220,7 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   await expect(dialog.getByRole('button', { name: 'Review next PR' })).toHaveCount(0);
   await dialog.focus();
   await page.keyboard.press('Enter');
-  await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Review complete', { exact: true })).toBeVisible();
   await expect
     .poll(() => reviews, UNDO_WINDOW)
     .toEqual([{ number: 3, body: { event: 'APPROVE', body: '', commit_id: 'sha3', comments: [] } }]);
@@ -256,14 +256,16 @@ for (const alreadyEnabled of [false, true]) {
     // The overlay is a lazy chunk: on a cold dev server its first compile takes a while.
     await expect(dialog).toBeVisible({ timeout: 20_000 });
     const primary = dialog.getByRole('button', {
-      name: alreadyEnabled ? 'Approve' : 'Approve & auto merge', exact: true,
+      name: alreadyEnabled ? 'Approve' : 'Approve & auto-merge', exact: true,
     });
     await expect(primary).toBeDisabled();
-    await expect(primary).toHaveAttribute('aria-keyshortcuts', 'A ArrowRight');
+    // A blocked Approve offers no keys.
+    await expect(primary).not.toHaveAttribute('aria-keyshortcuts');
     await reviewAllFiles(page);
     await expect(primary).toBeEnabled();
+    await expect(primary).toHaveAttribute('aria-keyshortcuts', 'Enter A ArrowRight');
     await page.keyboard.press('a');
-    await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Review complete', { exact: true })).toBeVisible();
     await expect
       .poll(() => reviews, UNDO_WINDOW)
       .toEqual([{ number: 3, body: { event: 'APPROVE', body: '', commit_id: 'sha3', comments: [] } }]);
@@ -310,7 +312,7 @@ test('full screen preserves the file walk and remembers the size across reloads'
   await openReview();
   await expect.poll(() => dialog.boundingBox()).toEqual(fullBounds);
   await dialog.getByRole('button', { name: 'Review later' }).click();
-  await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Review complete', { exact: true })).toBeVisible();
   await expect.poll(() => dialog.boundingBox()).toEqual(fullBounds);
   await dialog.getByRole('button', { name: 'Exit full screen' }).click();
   await expect.poll(async () => (await dialog.boundingBox())?.width).toBe(760);
@@ -475,7 +477,7 @@ test('approving the top card of a queue flings it right and the next card rises'
 
   // Review later flings the last card left and ends on the summary.
   await page.keyboard.press('ArrowLeft');
-  await expect(dialog.getByText('Review Complete', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Review complete', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Review next PR' })).toHaveCount(0);
 });
 
@@ -519,7 +521,7 @@ test('overview shows description screenshots, required-check gaps and a read-onl
   await page.locator('.bd-wb-rowwrap[data-key="test-org/borgdock#3"]').getByRole('button', { name: 'Review #3' }).click();
   const review = page.getByRole('dialog', { name: 'Quick Review' });
   await expect(review.getByText('1 required check needs attention')).toBeVisible();
-  await expect(review.getByText('Targets fix/parent')).toBeVisible();
+  await expect(review.getByText('fix/questionnaire → fix/parent')).toBeVisible();
   await expect(review.getByRole('region', { name: 'Developer proof' })).toHaveCount(0);
   const description = review.getByRole('region', { name: 'PR description' });
   await expect(description.getByRole('heading', { name: 'Verification' })).toBeVisible();
@@ -528,9 +530,11 @@ test('overview shows description screenshots, required-check gaps and a read-onl
   await expect.poll(() => description.locator('img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
   await description.getByAltText('First').scrollIntoViewIfNeeded();
   await page.screenshot({ path: test.info().outputPath('overview-description-light.png') });
-  await review.getByRole('link', { name: /Read AB#59671/ }).hover();
+  // The header carries the item too; the preview is read from the linked items.
+  const linkedItem = review.getByRole('region', { name: 'Linked work items' }).getByRole('link', { name: /Read AB#59671/ });
+  await linkedItem.hover();
   await expect(page.getByRole('tooltip')).toContainText('The questionnaire must remain on the live activity.');
-  await review.getByRole('link', { name: /Read AB#59671/ }).click();
+  await linkedItem.click();
   const workItem = page.getByRole('dialog', { name: 'AB#59671', exact: true });
   await expect(workItem.getByText('Read-only preview')).toBeVisible();
   await expect(workItem.getByText('The questionnaire must remain on the live activity.')).toBeVisible();
@@ -539,8 +543,8 @@ test('overview shows description screenshots, required-check gaps and a read-onl
   await page.keyboard.press('Escape');
   await expect(workItem).toHaveCount(0);
   await expect(review).toBeVisible();
-  await expect(review.getByText('0/3 reviewed', { exact: true })).toBeVisible();
-  await review.getByRole('button', { name: /All comments/ }).click();
+  await expect(review.locator('[data-quick-review-left]')).toContainText('3 of 3 to review');
+  await review.getByRole('button', { name: /^Comments · / }).click();
   const comment = page.getByRole('dialog', { name: 'PR comments', exact: true });
   await expect(comment).toContainText('Vera CLI: browser verification passed.');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
