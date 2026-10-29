@@ -44,7 +44,7 @@ export function reviewProofs(
       const text = `${source}\n${body}`;
       if (
         !/\b(proof|verification|verified|evidence)\b|\bvera\s+(cli|proof|verify)\b/i.test(text) &&
-        !(images.length && /\bscreenshots?\b/i.test(text))
+        !(images.length && (entry.id === 'description' || /\bscreenshots?\b/i.test(text)))
       )
         return [];
       const commits = [
@@ -100,32 +100,43 @@ const PROOF_HEADING =
   /\b(proof|verification|verified|evidence|screenshots?|before|after|test plan)\b/i;
 
 /**
- * The proof section of a PR description as a conversation entry: from the
- * first heading that names proof, verification, evidence or screenshots to
- * the next heading of the same or a higher level. Null when there is none.
+ * Description proof text and images, excluding the generated Claude footer.
  */
 export function descriptionProof(
   pr: Pick<PullRequest, 'authorLogin' | 'body' | 'createdAt'>,
 ): ConversationEntry | null {
-  const lines = pr.body.split(/\r?\n/);
+  const body = pr.body.split(
+    /^[ \t]*(?:\u{1f916}[ \t]*)?generated[ \t]+with[ \t]+\[?claude\b/imu,
+  )[0]!;
+  const lines = body.split(/\r?\n/);
   const start = lines.findIndex((line) => {
     const heading = /^\s{0,3}(#{1,6})\s+(.*)$/.exec(line);
     return !!heading && PROOF_HEADING.test(heading[2]!);
   });
-  if (start < 0) return null;
-  const level = /^\s{0,3}(#{1,6})/.exec(lines[start]!)![1]!.length;
+  const images = proofImages(body);
+  if (start < 0 && !images.length) return null;
+  const level = start < 0 ? 0 : /^\s{0,3}(#{1,6})/.exec(lines[start]!)![1]!.length;
   const end = lines.findIndex((line, index) => {
     const heading = /^\s{0,3}(#{1,6})\s/.exec(line);
     return index > start && !!heading && heading[1]!.length <= level;
   });
-  const section = lines.slice(start, end < 0 ? undefined : end).join('\n');
+  const section = start < 0 ? '' : lines.slice(start, end < 0 ? undefined : end).join('\n');
+  const included = new Set(proofImages(section).map((image) => image.src));
+  const extraImages = images
+    .filter((image) => !included.has(image.src))
+    .map(
+      (image) =>
+        `<img src="${image.src.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" alt="${image.alt.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}">`,
+    )
+    .join('\n');
+  const proofBody = extraImages ? `${section}\n${extraImages}` : section;
   return {
     kind: 'comment',
     id: 'description',
     author: pr.authorLogin,
     authorIsBot: false,
-    body: section,
-    sourceBody: section,
+    body: proofBody,
+    sourceBody: proofBody,
     createdAt: pr.createdAt,
   };
 }

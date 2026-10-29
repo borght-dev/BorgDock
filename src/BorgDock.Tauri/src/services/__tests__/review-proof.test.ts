@@ -96,6 +96,55 @@ describe('the description as proof', () => {
     expect(descriptionProof({ ...pr, body: '## Summary\n\nVerified by hand.' })).toBeNull();
   });
 
+  it('includes unlabelled description images before the Claude footer only', () => {
+    const entry = descriptionProof({
+      ...pr,
+      body: `## Summary
+![Before](https://example.com/before.png)
+## Result
+<img src="https://example.com/after.png" alt="After">
+Generated with [Claude Code](https://claude.ai)
+![Blacksmith](https://example.com/blacksmith.png)
+## Proof
+![Bot](https://example.com/bot.png)`,
+    });
+    const [proof] = reviewProofs([entry!]);
+    expect(proof?.images.map((image) => image.src)).toEqual([
+      'https://example.com/after.png',
+      'https://example.com/before.png',
+    ]);
+    expect(proof?.entry.body).not.toContain('blacksmith');
+    expect(proof?.entry.body).not.toContain('bot.png');
+  });
+
+  it('preserves Claude mentions in prose and image alt text', () => {
+    const entry = descriptionProof({
+      ...pr,
+      body: `The fixture was generated with Claude Code.
+![Generated with Claude Code](https://example.com/fixture.png)
+## Proof
+Verified by hand.
+![After](https://example.com/after.png)
+\u{1f916} Generated with [Claude Code](https://claude.ai)
+![Badge](https://example.com/badge.png)`,
+    });
+    const [proof] = reviewProofs([entry!]);
+    expect(proof?.excerpt).toContain('Verified by hand.');
+    expect(proof?.images.map((image) => image.src)).toEqual([
+      'https://example.com/fixture.png',
+      'https://example.com/after.png',
+    ]);
+  });
+
+  it('ignores a description containing only generated images', () => {
+    expect(
+      descriptionProof({
+        ...pr,
+        body: 'Generated with Claude Code\n![Badge](https://example.com/badge.png)',
+      }),
+    ).toBeNull();
+  });
+
   it('reads the task list as a checklist', () => {
     expect(
       descriptionChecklist(

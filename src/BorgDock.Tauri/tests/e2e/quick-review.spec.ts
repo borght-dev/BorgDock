@@ -269,3 +269,29 @@ test('skims screenshot comments by author and returns to the same diff position'
   );
   await page.screenshot({ path: test.info().outputPath('comments-mobile.png') });
 });
+
+
+test('shows description images in Proof and excludes generated badges', async ({ page }) => {
+  await setup(page, detail.state, false);
+  const image = 'https://example.com/before.png';
+  await page.route(image, (route) => route.fulfill({
+    contentType: 'image/png', body: readFileSync('../../docs/whats-new/1.0.11/close-pr.png'),
+  }));
+  await page.route('https://api.github.com/repos/test-org/borgdock/pulls/42', (route) =>
+    route.fulfill({ json: { ...detail, body: `## Changes
+![Before](${image})
+Generated with [Claude Code](https://claude.ai)
+![Blacksmith](https://example.com/badge.png)` } }),
+  );
+  await openReview(page);
+  await openWalk(page);
+  await page.getByRole('tab', { name: /^Proof/ }).click();
+  const panel = page.getByRole('tabpanel', { name: 'Proof' });
+  const shot = panel.getByAltText('Before', { exact: true });
+  await expect(shot).toBeVisible();
+  await expect.poll(() => shot.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  await expect(panel.getByAltText('Blacksmith')).toHaveCount(0);
+  await page.screenshot({ path: '../../docs/proof/pr-description-proof-images/proof-tab.png' });
+  await shot.click();
+  await expect(page.getByRole('dialog', { name: /image/i })).toBeVisible();
+});
