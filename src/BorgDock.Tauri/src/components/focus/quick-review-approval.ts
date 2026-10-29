@@ -40,10 +40,14 @@ export function holdApproval(
     if (pending.get(key) === id) pending.delete(key);
     if (held === id) setHeld(null);
   };
+  const number = pr.pullRequest.number;
   const id = showToast({
     tone: 'success',
-    message: `Approved #${pr.pullRequest.number}${autoMerge ? ', auto-merge on' : ''}`,
+    // Nothing is posted yet: the toast says so until it runs out.
+    message: `Approving #${number}${autoMerge ? ' · auto-merge on' : ''}`,
     actionLabel: 'Undo',
+    actionKey: 'Z',
+    countdown: true,
     // Only Undo takes it back: a close button would look like it did.
     dismissible: false,
     durationMs: APPROVAL_UNDO_MS,
@@ -53,12 +57,14 @@ export function holdApproval(
     },
     onExpire: () => {
       settle();
-      send().catch((error) => {
-        toastError(`Approval of #${pr.pullRequest.number} not submitted`, error);
-        const store = useQuickReviewStore.getState();
-        if (store.state !== 'idle')
-          store.reopen(pr, `Review not submitted: ${parseError(error).message}`);
-      });
+      send()
+        .then(() => showToast({ tone: 'success', message: `Approved #${number}` }))
+        .catch((error) => {
+          toastError(`Approval of #${number} not submitted`, error);
+          const store = useQuickReviewStore.getState();
+          if (store.state !== 'idle')
+            store.reopen(pr, `Review not submitted: ${parseError(error).message}`);
+        });
     },
   });
   pending.set(key, id);

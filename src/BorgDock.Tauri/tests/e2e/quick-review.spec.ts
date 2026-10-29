@@ -114,7 +114,7 @@ test('reviews every file in the walk, then approves from the card', async ({ pag
   await expect(approve).toBeEnabled();
   await page.screenshot({ path: test.info().outputPath('card-approve-enabled.png') });
   await approve.click();
-  await expect(page.getByText('Review Complete', { exact: true })).toBeVisible();
+  await expect(page.getByText('Review complete', { exact: true })).toBeVisible();
   // The approval is posted once its Undo toast runs out.
   await expect
     .poll(() => reviews, { timeout: 10_000 })
@@ -167,7 +167,7 @@ test('persists drafts through reload and submits the whole review against the vi
   await page.getByRole('button', { name: 'Write review · 1' }).click();
   await page.getByPlaceholder('Add overall feedback...').fill('Please fix the comment.');
   await page.locator('.qr-submit').click();
-  await expect(page.getByText('Review Complete', { exact: true })).toBeVisible();
+  await expect(page.getByText('Review complete', { exact: true })).toBeVisible();
   expect(reviews).toEqual([
     {
       event: 'COMMENT',

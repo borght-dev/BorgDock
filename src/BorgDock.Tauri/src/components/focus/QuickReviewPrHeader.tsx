@@ -45,35 +45,41 @@ function ciPill(pr: PullRequestWithChecks): { tone: PillTone; icon: ReactNode; l
 interface Props {
   pr: PullRequestWithChecks;
   detail: PullRequest;
-  workItemIds: readonly number[];
-  workItems: ReadonlyMap<number, WorkItem>;
-  commentCount: number;
+  workItemIds?: readonly number[];
+  workItems?: ReadonlyMap<number, WorkItem>;
+  /** Shown as the comments chip when `onOpenComments` is given. */
+  commentCount?: number;
   /** A re-review: the PR changed since the viewer's last review. */
-  reReview: boolean;
+  reReview?: boolean;
+  /** Chips that only the card shows, before the shared ones. */
+  statusChips?: ReactNode;
   /** The description is open in full. */
-  expanded: boolean;
-  onToggleDescription: () => void;
-  onOpenComments: () => void;
-  onOpenGitHub: () => void;
-  /** Under the description: the re-review banner. */
+  expanded?: boolean;
+  /** Without it the header has no description toggle (the card shows the description itself). */
+  onToggleDescription?: () => void;
+  onOpenComments?: () => void;
+  onOpenGitHub?: () => void;
+  /** Under the header: the re-review banner. */
   children?: ReactNode;
   now?: number;
 }
 
 /**
- * The PR above the file walk: who, where and what (author, repository,
- * number, branch), status chips, the title with its labels, and the first
- * two lines of the description, opened in full in place with "Full
- * description" (D).
+ * The PR on the card and above the file walk, drawn the same in both so
+ * switching between them only swaps the body. Row one: the title with its
+ * labels, and "Full description" (D) in the walk. Row two: author,
+ * repository, number, age and branch, with the status chips on the right.
+ * The description opens in place under it.
  */
 export function QuickReviewPrHeader({
   pr,
   detail: p,
-  workItemIds,
+  workItemIds = [],
   workItems,
-  commentCount,
-  reReview,
-  expanded,
+  commentCount = 0,
+  reReview = false,
+  statusChips,
+  expanded = false,
   onToggleDescription,
   onOpenComments,
   onOpenGitHub,
@@ -82,8 +88,29 @@ export function QuickReviewPrHeader({
 }: Props) {
   const ci = ciPill(pr);
   const ago = formatAgo(p.updatedAt, now);
+  const hasBody = !!p.body.trim();
   return (
     <header className="qr-prhead" data-expanded={expanded || undefined}>
+      <div className="qr-prhead__top">
+        <div className="qr-prhead__title">
+          <h2 data-pr-title="">{p.title}</h2>
+          <PrLabels pr={p} className="qr-prhead__labels" />
+        </div>
+        {onToggleDescription && hasBody && (
+          <button
+            type="button"
+            className="qr-prhead__more"
+            aria-expanded={expanded}
+            aria-keyshortcuts="D"
+            onClick={onToggleDescription}
+          >
+            {expanded ? 'Hide description' : 'Full description'}
+            <kbd className="qr-key" aria-hidden="true">
+              D
+            </kbd>
+          </button>
+        )}
+      </div>
       <div className="qr-prhead__over">
         <Avatar initials={avatarInitials(p.authorLogin)} size="sm" aria-hidden="true" />
         <span>{p.authorLogin}</span>
@@ -96,6 +123,7 @@ export function QuickReviewPrHeader({
           {p.headRef} → {p.baseRef}
         </code>
         <span className="qr-prhead__chips">
+          {statusChips}
           <Pill tone={ci.tone} icon={ci.icon}>
             {ci.label}
           </Pill>
@@ -112,76 +140,46 @@ export function QuickReviewPrHeader({
           )}
           {p.isDraft && <Pill tone="draft">Draft</Pill>}
           {reReview && (
-            <Pill tone="warning" icon={<History {...ICON} />}>
+            <Pill tone="ghost" icon={<History {...ICON} />}>
               Re-review
             </Pill>
           )}
           {workItemIds.map((id) => (
-            <LinkedWorkItemBadge key={id} workItemId={id} workItem={workItems.get(id)} compact />
+            <LinkedWorkItemBadge key={id} workItemId={id} workItem={workItems?.get(id)} compact />
           ))}
-          <button
-            type="button"
-            className="bd-pill bd-pill--ghost qr-prhead__chip-btn"
-            aria-label={`Comments · ${commentCount}`}
-            onClick={onOpenComments}
-          >
-            <MessageSquare {...ICON} />
-            {commentCount}
-          </button>
-          <button
-            type="button"
-            className="bd-pill bd-pill--ghost qr-prhead__chip-btn"
-            onClick={onOpenGitHub}
-          >
-            <ExternalLink {...ICON} />
-            GitHub
-          </button>
+          {onOpenComments && (
+            <button
+              type="button"
+              className="bd-pill bd-pill--ghost qr-prhead__chip-btn"
+              aria-label={`Comments · ${commentCount}`}
+              onClick={onOpenComments}
+            >
+              <MessageSquare {...ICON} />
+              {commentCount}
+            </button>
+          )}
+          {onOpenGitHub && (
+            <button
+              type="button"
+              className="bd-pill bd-pill--ghost qr-prhead__chip-btn"
+              onClick={onOpenGitHub}
+            >
+              <ExternalLink {...ICON} />
+              GitHub
+            </button>
+          )}
         </span>
       </div>
-      <div className="qr-prhead__title">
-        <h2 data-pr-title="">{p.title}</h2>
-        <PrLabels pr={p} className="qr-prhead__labels" />
-      </div>
-      {p.body.trim() ? (
-        <div className="qr-prhead__desc">
-          {expanded ? (
-            <div className="qr-prhead__full">
-              <PrDescription body={p.body} />
-            </div>
+      {onToggleDescription && expanded && (
+        <div className="qr-prhead__full">
+          {hasBody ? (
+            <PrDescription body={p.body} />
           ) : (
-            <p className="qr-prhead__excerpt">{descriptionExcerpt(p.body)}</p>
+            <p className="qr-muted">No description provided.</p>
           )}
-          <button
-            type="button"
-            className="qr-prhead__more"
-            aria-expanded={expanded}
-            aria-keyshortcuts="D"
-            onClick={onToggleDescription}
-          >
-            {expanded ? 'Less' : 'Full description'}
-          </button>
         </div>
-      ) : (
-        <p className="qr-prhead__excerpt qr-muted">No description provided.</p>
       )}
       {children}
     </header>
   );
-}
-
-/** The description as one line of plain text: headings, images, markup and links dropped. */
-export function descriptionExcerpt(body: string): string {
-  return body
-    .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-    .replace(/<img[^>]*>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/^\s{0,3}#{1,6}\s+.*$/gm, ' ')
-    .replace(/^\s*\|.*\|\s*$/gm, ' ')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/gm, '')
-    .replace(/^\s*(?:[-*+]|\d+\.)\s+/gm, '')
-    .replace(/[*_`>~]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 }

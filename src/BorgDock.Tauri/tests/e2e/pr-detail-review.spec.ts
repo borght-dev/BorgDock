@@ -113,7 +113,8 @@ test('detail file navigator groups readable names and launches a single PR revie
   await expect(page.getByRole('dialog', { name: 'Quick Review', exact: true })).toBeVisible({
     timeout: 20_000,
   });
-  await expect(page.getByText('PR 1 / 1', { exact: true })).toBeVisible();
+  // One PR in review: no queue position to show.
+  await expect(page.getByText('PR 1 / 1', { exact: true })).toHaveCount(0);
   // Quick Review opens on the PR's card; its files are one click away.
   await expect(page.getByRole('button', { name: 'Review files', exact: true })).toBeEnabled();
   await expect(page.locator('[data-overlay="quick-review"]')).toHaveCount(1);

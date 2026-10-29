@@ -1,7 +1,12 @@
 import clsx from 'clsx';
 import { Check, Info, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { type ToastTone, useToastStore, visibleToasts } from '@/stores/toast-store';
+import {
+  TOAST_DURATION_MS,
+  type ToastTone,
+  useToastStore,
+  visibleToasts,
+} from '@/stores/toast-store';
 
 export interface ToastProps {
   title?: string;
@@ -10,6 +15,10 @@ export interface ToastProps {
   leading?: ReactNode;
   actionLabel?: string;
   onAction?: () => void;
+  /** Drawn on the action button: the key that also runs it. */
+  actionKey?: string;
+  /** Draws the toast as a pending action whose time drains over this many ms. */
+  countdownMs?: number;
   secondaryLabel?: string;
   onSecondary?: () => void;
   onDismiss?: () => void;
@@ -42,6 +51,8 @@ export function Toast({
   leading,
   actionLabel,
   onAction,
+  actionKey,
+  countdownMs,
   secondaryLabel,
   onSecondary,
   onDismiss,
@@ -89,16 +100,34 @@ export function Toast({
       className={clsx('bd-toast', `bd-toast--${tone}`)}
       data-toast=""
       data-tone={tone}
+      data-countdown={countdownMs ? '' : undefined}
       role={tone === 'error' ? 'alert' : 'status'}
     >
       {leading}
       <span className="bd-toast__message">{message}</span>
       {actionLabel && onAction && (
-        <button type="button" className="bd-toast__action" onClick={onAction}>
+        <button
+          type="button"
+          className="bd-toast__action"
+          aria-keyshortcuts={actionKey}
+          onClick={onAction}
+        >
           {actionLabel}
+          {actionKey && (
+            <kbd className="bd-toast__key" aria-hidden="true">
+              {actionKey}
+            </kbd>
+          )}
         </button>
       )}
       {onDismiss && <CloseButton onDismiss={onDismiss} />}
+      {countdownMs ? (
+        <span
+          className="bd-toast__countdown"
+          style={{ animationDuration: `${countdownMs}ms` }}
+          aria-hidden="true"
+        />
+      ) : null}
     </div>
   );
 }
@@ -125,6 +154,8 @@ export function ToastViewport() {
           leading={toast.leading}
           actionLabel={toast.actionLabel}
           onAction={toast.onAction ? () => act(toast.id) : undefined}
+          actionKey={toast.actionKey}
+          countdownMs={toast.countdown ? (toast.durationMs ?? TOAST_DURATION_MS) : undefined}
           secondaryLabel={toast.secondaryLabel}
           onSecondary={toast.onSecondary ? () => act(toast.id, 'secondary') : undefined}
           onDismiss={toast.dismissible === false ? undefined : () => dismiss(toast.id)}

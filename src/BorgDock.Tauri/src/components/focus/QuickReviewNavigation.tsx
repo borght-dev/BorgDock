@@ -19,15 +19,34 @@ interface Props {
   changed?: ReadonlySet<string>;
   /** On a re-review limited to changed files: how many are left out, and since when. */
   unchanged?: { count: number; reviewedAgo: string; onShowAll: () => void };
+  /** The file's checkbox marks it reviewed, or takes the mark back. */
+  onToggleReviewed?: (path: string) => void;
+}
+
+/** Characters a long file name keeps at its end when it is cut in the middle. */
+const NAME_TAIL = 12;
+
+/**
+ * A file name that is cut in the middle when it does not fit, so the end
+ * that tells similar names apart (`…Workspace.test.tsx`) stays readable.
+ */
+function FileName({ name }: { name: string }) {
+  if (name.length <= NAME_TAIL * 2) return <span className="qr-path">{name}</span>;
+  return (
+    <span className="qr-path qr-path--split">
+      <span className="qr-path__head">{name.slice(0, -NAME_TAIL)}</span>
+      <span className="qr-path__tail">{name.slice(-NAME_TAIL)}</span>
+    </span>
+  );
 }
 
 /**
  * The file walk's tree (the iteration 2 mockup's `.qr-tree`): progress over
  * the files listed, then the files grouped by folder (tests, docs and
  * generated files in their own groups, tests last), each folder with how
- * many of its files are done. A checkbox per file draws its checkmark once
- * the file is marked reviewed; the current file is highlighted. Clicking a
- * file opens it.
+ * many of its files are done. Each file's checkbox marks it reviewed (like
+ * GitHub's "Viewed"); the current file is highlighted. Clicking a file opens
+ * it. The line counts stay muted so the checkmarks are the tree's one green.
  */
 export function QuickReviewNavigation({
   document: doc,
@@ -37,6 +56,7 @@ export function QuickReviewNavigation({
   progress,
   changed,
   unchanged,
+  onToggleReviewed,
 }: Props) {
   const [open, setOpen] = useState(false);
   const reviewed = new Set(doc.reviewed);
@@ -94,47 +114,54 @@ export function QuickReviewNavigation({
               {group.files.map((file) => {
                 const isDone = reviewed.has(file.filename);
                 const current = currentPath === file.filename;
+                const name = file.filename.split('/').pop() ?? file.filename;
                 return (
-                  <button
-                    key={file.filename}
-                    ref={current ? currentRef : undefined}
-                    type="button"
-                    className="qr-file"
-                    data-done={isDone ? 'true' : undefined}
-                    data-generated={isGeneratedPath(file.filename) ? 'true' : undefined}
-                    aria-current={current ? 'step' : undefined}
-                    title={file.filename}
-                    onClick={() => {
-                      setOpen(false);
-                      onNavigate(file.filename);
-                    }}
-                  >
-                    <span
+                  <div key={file.filename} className="qr-file-row">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={isDone}
+                      aria-label={`Reviewed: ${name}`}
                       className="qr-cb"
-                      role="img"
-                      aria-label={isDone ? 'Reviewed' : 'Not reviewed'}
+                      data-done={isDone || undefined}
+                      disabled={!onToggleReviewed}
+                      onClick={() => onToggleReviewed?.(file.filename)}
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="m5 12 5 5L20 7" />
                       </svg>
-                    </span>
-                    <span className="qr-path">{file.filename.split('/').pop()}</span>
-                    <span className="qr-delta">
-                      {commented.has(file.filename) && (
-                        <span className="qr-has-draft" role="img" aria-label="Has draft comment">
-                          •
-                        </span>
-                      )}
-                      {changed?.has(file.filename) && (
-                        <span
-                          className="qr-changed"
-                          role="img"
-                          aria-label="Changed since your review"
-                        />
-                      )}
-                      <em>+{file.additions}</em> <i>−{file.deletions}</i>
-                    </span>
-                  </button>
+                    </button>
+                    <button
+                      ref={current ? currentRef : undefined}
+                      type="button"
+                      className="qr-file"
+                      data-done={isDone ? 'true' : undefined}
+                      data-generated={isGeneratedPath(file.filename) ? 'true' : undefined}
+                      aria-current={current ? 'step' : undefined}
+                      title={file.filename}
+                      onClick={() => {
+                        setOpen(false);
+                        onNavigate(file.filename);
+                      }}
+                    >
+                      <FileName name={name} />
+                      <span className="qr-delta">
+                        {commented.has(file.filename) && (
+                          <span className="qr-has-draft" role="img" aria-label="Has draft comment">
+                            •
+                          </span>
+                        )}
+                        {changed?.has(file.filename) && (
+                          <span
+                            className="qr-changed"
+                            role="img"
+                            aria-label="Changed since your review"
+                          />
+                        )}
+                        <em>+{file.additions}</em> <i>−{file.deletions}</i>
+                      </span>
+                    </button>
+                  </div>
                 );
               })}
             </div>

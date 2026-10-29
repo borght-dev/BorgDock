@@ -1,6 +1,7 @@
-import { CircleCheck, GitMerge } from 'lucide-react';
+import { ChevronUp, CircleCheck, GitMerge, Lock } from 'lucide-react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/shared/primitives';
-import type { ReviewProgress } from '@/services/quick-review';
+import type { ReviewCommentDraft, ReviewProgress } from '@/services/quick-review';
 
 /** A shortcut drawn on its button; the button's `aria-keyshortcuts` names it. */
 function Key({ children }: { children: string }) {
@@ -11,13 +12,84 @@ function Key({ children }: { children: string }) {
   );
 }
 
-function drafts(count: number) {
-  return count === 0 ? 'No drafts' : `${count} draft ${count === 1 ? 'comment' : 'comments'}`;
+function draftsLabel(count: number) {
+  return `${count} draft ${count === 1 ? 'comment' : 'comments'}`;
+}
+
+function fileName(path: string) {
+  return path.split('/').pop() ?? path;
+}
+
+/** "2 draft comments": opens the list of drafts, each with a Jump to its line. */
+function Drafts({
+  drafts,
+  onJump,
+}: {
+  drafts: readonly ReviewCommentDraft[];
+  onJump: (comment: ReviewCommentDraft) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  if (drafts.length === 0) return <span className="qr-drafts qr-muted">No drafts</span>;
+  return (
+    <span
+      ref={rootRef}
+      className="qr-drafts"
+      onKeyDown={(event) => {
+        // Escape closes the list, not the walk.
+        if (event.key === 'Escape' && open) {
+          event.stopPropagation();
+          setOpen(false);
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="qr-drafts__btn"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {draftsLabel(drafts.length)}
+        <ChevronUp size={13} strokeWidth={2.25} aria-hidden="true" />
+      </button>
+      {open && (
+        <ul className="qr-drafts__list" aria-label="Draft comments">
+          {drafts.map((comment) => (
+            <li key={comment.id}>
+              <code title={comment.path}>
+                {fileName(comment.path)}:{comment.line}
+              </code>
+              <span>{comment.body.trim() || 'Empty draft'}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onJump(comment);
+                }}
+              >
+                Jump
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </span>
+  );
 }
 
 interface Props {
   progress: ReviewProgress;
-  draftCount: number;
+  drafts: readonly ReviewCommentDraft[];
   ready: boolean;
   /** Why Approve is not possible, or null. */
   approveIssue: string | null;
@@ -25,6 +97,13 @@ interface Props {
   canGoBack: boolean;
   canGoOn: boolean;
   hasFile: boolean;
+  /** The overall comment posted with the review. */
+  body: string;
+  onBodyChange: (body: string) => void;
+  bodyRef?: Ref<HTMLTextAreaElement>;
+  /** Why the chosen decision cannot be posted yet, e.g. a missing overall comment. */
+  notice?: string;
+  onJump: (comment: ReviewCommentDraft) => void;
   onSkipGenerated: () => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -37,19 +116,25 @@ interface Props {
 /**
  * The file walk's footer. While files are left: drafts, Previous, Next file,
  * Mark reviewed & next, and Approve held back with how many files are left.
- * Once every file is reviewed it turns into the decision bar (Request
- * changes, Comment, Approve, Approve & auto-merge) — no Finish step. Its
- * primary button (`.qr-decide--go`) takes focus when the last file is marked.
+ * Once every file is reviewed it turns into the decision bar: the overall
+ * comment right beside Request changes, Comment, Approve and Approve &
+ * auto-merge, so writing and deciding happen in one place. Its primary
+ * button (`.qr-decide--go`) takes focus when the last file is marked.
  */
 export function QuickReviewDecisionBar({
   progress,
-  draftCount,
+  drafts,
   ready,
   approveIssue,
   autoMergeEnabled,
   canGoBack,
   canGoOn,
   hasFile,
+  body,
+  onBodyChange,
+  bodyRef,
+  notice,
+  onJump,
   onSkipGenerated,
   onPrevious,
   onNext,
@@ -59,26 +144,28 @@ export function QuickReviewDecisionBar({
   onComment,
 }: Props) {
   const done = ready && progress.left === 0;
-  if (done)
+  if (done) {
+    const issue = notice || approveIssue;
     return (
       <div className="qr-foot" data-done="true" data-quick-review-actions="">
-        <span className="qr-foot__stat" data-tone={approveIssue ? 'warning' : 'done'}>
-          {approveIssue ? (
-            approveIssue
-          ) : (
+        <span className="qr-foot__stat" data-tone={issue ? 'warning' : 'done'} role="status">
+          {issue || (
             <>
               <CircleCheck size={16} strokeWidth={2.25} aria-hidden="true" />
               All {progress.toReview} files reviewed
-              <span className="qr-muted">
-                {' '}
-                ·{' '}
-                {draftCount
-                  ? `${drafts(draftCount)} ${draftCount === 1 ? 'goes' : 'go'} with your review`
-                  : 'no draft comments'}
-              </span>
             </>
           )}
         </span>
+        <textarea
+          ref={bodyRef}
+          className="qr-foot__comment"
+          rows={1}
+          aria-label="Overall comment"
+          value={body}
+          onChange={(e) => onBodyChange(e.target.value)}
+          placeholder="Overall comment (optional)"
+        />
+        <Drafts drafts={drafts} onJump={onJump} />
         <Button
           variant="ghost"
           size="md"
@@ -135,9 +222,12 @@ export function QuickReviewDecisionBar({
         )}
       </div>
     );
+  }
   return (
     <div className="qr-foot" data-quick-review-actions="">
-      <span className="qr-foot__stat">{drafts(draftCount)}</span>
+      <span className="qr-foot__stat">
+        <Drafts drafts={drafts} onJump={onJump} />
+      </span>
       {progress.generatedLeft > 0 && (
         <Button variant="ghost" size="md" className="qr-skip-gen" onClick={onSkipGenerated}>
           Skip generated
@@ -180,6 +270,7 @@ export function QuickReviewDecisionBar({
         className="qr-foot__approve"
         aria-disabled="true"
         title={approveIssue ?? undefined}
+        leading={<Lock size={13} strokeWidth={2.25} aria-hidden="true" />}
       >
         Approve · {progress.left} left
       </Button>

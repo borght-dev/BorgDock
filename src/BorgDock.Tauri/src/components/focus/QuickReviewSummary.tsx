@@ -33,7 +33,7 @@ export function QuickReviewSummary({
     <div data-quick-review-summary="" className="space-y-4">
       <div className="text-center">
         <div className="text-lg font-semibold text-[var(--color-text-primary)]">
-          Review Complete
+          Review complete
         </div>
         <div className="mt-1 text-xs text-[var(--color-text-tertiary)]">
           {queue.length} PR{queue.length !== 1 ? 's' : ''} reviewed

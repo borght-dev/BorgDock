@@ -120,7 +120,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
           autoMerge && !current.pr.autoMergeEnabled,
         );
         useQuickReviewStore.getState().discardDocument(key);
-        merging?.catch((error) => toastError('Approved; auto merge not enabled', error));
+        merging?.catch((error) => toastError('Approved; auto-merge not enabled', error));
         return doc.event === 'APPROVE' ? 'approved' : 'commented';
       } finally {
         submitting.current = false;

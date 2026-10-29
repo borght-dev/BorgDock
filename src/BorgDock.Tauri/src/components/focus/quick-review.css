@@ -1,7 +1,9 @@
 /*
  * Quick Review (plans/ui-overhaul-workbench.md, phase 4; the iteration 2
  * mockup's "Quick review, for large PRs"). Tokens only. The overlay reads in
- * Instrument Sans (`--font-reading`) at 14 px; code stays in the diff's mono.
+ * Inter, one family for every piece of text (`--font-reading` is pointed at
+ * `--font-ui`), at 14 px; code stays in JetBrains Mono, without ligatures,
+ * so `=>` and `!==` show as typed.
  *
  * Motion: the dialog scales in from 0.96 and fades (`--motion-base`,
  * `--ease-out`) and reverses with `--ease-in` on close; the deck and the file
@@ -15,9 +17,34 @@
   position: fixed;
   inset: 0;
   z-index: 80;
+  --font-reading: var(--font-ui);
   color: var(--color-text-primary);
   font-family: var(--font-reading);
   font-size: 14px;
+}
+.qr-overlay :is([data-diff-scroll], code, kbd, pre) {
+  font-variant-ligatures: none;
+}
+.qr-overlay [data-hunk-header] > td {
+  font-size: 12px;
+}
+.qr-overlay .markdown-body code {
+  font-size: 0.875em;
+}
+/* Headings inside a description never outrank the section they sit in, and
+   read as text, not as disabled grey. */
+.qr-overlay .markdown-body :is(h1, h2) {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.006em;
+  color: var(--color-text-primary);
+}
+.qr-overlay .markdown-body :is(h3, h4, h5, h6) {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-text-primary);
 }
 .qr-backdrop {
   position: absolute;
@@ -110,6 +137,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .qr-prog {
   display: flex;
@@ -130,7 +158,7 @@
 .qr-bar i {
   display: block;
   height: 100%;
-  background: var(--color-text-primary);
+  background: var(--color-status-green);
   transition: width var(--motion-move) var(--ease-std);
 }
 
@@ -166,9 +194,11 @@
 }
 .qr-positive {
   color: var(--color-status-green);
+  font-variant-numeric: tabular-nums;
 }
 .qr-negative {
   color: var(--color-status-red);
+  font-variant-numeric: tabular-nums;
 }
 .qr-path {
   min-width: 0;
@@ -190,8 +220,36 @@
   color: var(--color-text-primary);
   font-size: 12.5px;
 }
+.qr-warning[data-tone="error"] {
+  border-color: var(--color-error-badge-border);
+  background: var(--color-error-badge-bg);
+}
 .qr-notice {
   padding: 16px;
+}
+.qr-notice--done {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--color-success-badge-fg);
+}
+.qr-notice--done .qr-muted {
+  font-weight: 400;
+}
+/* A link inside a line of text, e.g. "Couldn't load files · Retry". */
+.qr-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+.qr-link:hover {
+  text-decoration: underline;
 }
 
 /* ── The deck ─────────────────────────────────────────────────────────── */
@@ -306,30 +364,11 @@
   }
 }
 
-/* The card's content. */
-.qr-card__over {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  font-size: 12.5px;
-  color: var(--color-text-tertiary);
-}
-.qr-card__over .bd-avatar {
-  width: 20px;
-  height: 20px;
-  font-size: 8px;
-}
-.qr-card__over-extra {
-  margin-left: auto;
-}
-.qr-card__title {
-  margin: 10px 0 0;
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
+/* The card's content: the shared PR header runs edge to edge at the top, as
+   it does over the walk, so Enter and Esc only swap what is under it. */
+.qr-card > .qr-prhead {
+  flex: none;
+  margin: -26px -30px 0;
 }
 
 .qr-card__desc {
@@ -338,8 +377,15 @@
 }
 .qr-card__desc .markdown-body {
   font-size: 13.5px;
-  line-height: 1.6;
+  line-height: 1.62;
   overflow-wrap: anywhere;
+}
+/* A reading measure for the text blocks; tables and screenshots keep the column. */
+.qr-overlay
+  .qr-card__desc
+  .markdown-body
+  > :is(p:not(:has(img)), ul, ol, blockquote, h1, h2, h3, h4, h5, h6) {
+  max-width: 60ch;
 }
 .qr-clamp {
   max-height: 6.4em;
@@ -360,27 +406,6 @@
   font-size: 12.5px;
   color: var(--color-accent);
   cursor: pointer;
-}
-.qr-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 22px;
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--color-text-secondary);
-}
-.qr-card__meta dt {
-  margin-bottom: 2px;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-}
-.qr-card__meta dd {
-  margin: 0;
-}
-.qr-card__meta code {
-  font-family: var(--font-code);
-  font-size: 12.5px;
 }
 .qr-files {
   display: grid;
@@ -484,15 +509,15 @@
   background: color-mix(in srgb, var(--color-status-green) 85%, var(--color-text-primary));
 }
 .qr-act .qr-approve:disabled,
-.qr-act .qr-approve[aria-disabled="true"] {
+.qr-act .qr-approve[aria-disabled="true"],
+.qr-act .qr-approve[aria-disabled="true"]:hover,
+.qr-act .qr-approve-wrap[data-default="false"] .qr-approve[aria-disabled="true"]:hover {
   opacity: 1;
+  border-style: dashed;
   border-color: var(--color-strong-border);
-  background: var(--color-surface-raised);
-  color: var(--color-text-secondary);
+  background: transparent;
+  color: var(--color-text-tertiary);
   cursor: not-allowed;
-}
-.qr-act .qr-approve[aria-disabled="true"]:hover {
-  background: var(--color-status-green);
 }
 .qr-act .qr-approve:focus-visible {
   outline: 2px solid var(--color-accent);
@@ -511,7 +536,7 @@
   padding: 5px 9px;
   border: 1px solid var(--color-strong-border);
   border-radius: 7px;
-  background: var(--color-surface-raised);
+  background: var(--color-modal-bg);
   box-shadow: var(--elevation-2);
   font-size: 11.5px;
   white-space: nowrap;
@@ -665,13 +690,25 @@
 .qr-fold__count[data-done] {
   color: var(--color-status-green);
 }
+/* The checkbox sits over the row's left edge: a sibling of the row's button,
+   since a button cannot hold another. */
+.qr-file-row {
+  position: relative;
+}
+.qr-file-row > .qr-cb {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 8px;
+  transform: translateY(-50%);
+}
 .qr-file {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 5px 8px;
+  padding: 5px 8px 5px 32px;
   border: 0;
   border-radius: 7px;
   background: transparent;
@@ -684,7 +721,8 @@
     background-color var(--motion-fast) var(--ease-std),
     color var(--motion-fast) var(--ease-std);
 }
-.qr-file:hover {
+.qr-file:hover,
+.qr-file-row:hover > .qr-file {
   background: var(--color-surface-hover);
 }
 .qr-file[aria-current] {
@@ -700,6 +738,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-feature-settings: "ss04";
+}
+/* A long name gives way in the middle: its end tells similar names apart. */
+.qr-file .qr-path--split {
+  display: flex;
+}
+.qr-path__head {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qr-path__tail {
+  flex: none;
 }
 .qr-file[data-generated="true"] .qr-path {
   font-style: italic;
@@ -713,8 +764,11 @@
   place-items: center;
   width: 15px;
   height: 15px;
+  padding: 0;
   border: 1.5px solid var(--color-strong-border);
   border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
   transition:
     background-color var(--motion-fast) var(--ease-std),
     border-color var(--motion-fast) var(--ease-std);
@@ -731,12 +785,20 @@
   stroke-dashoffset: 14;
   transition: stroke-dashoffset var(--motion-base) var(--ease-out);
 }
-.qr-file[data-done="true"] .qr-cb,
+button.qr-cb:not(:disabled):hover {
+  border-color: var(--color-status-green);
+}
+button.qr-cb:disabled {
+  cursor: default;
+}
+.qr-cb:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
 .qr-cb[data-done] {
   border-color: var(--color-status-green);
   background: var(--color-status-green);
 }
-.qr-file[data-done="true"] .qr-cb svg,
 .qr-cb[data-done] svg {
   stroke-dashoffset: 0;
 }
@@ -748,11 +810,18 @@
 }
 .qr-delta em {
   font-style: normal;
-  color: var(--color-status-green);
 }
 .qr-delta i {
   font-style: normal;
   color: var(--color-status-red);
+}
+/* Line counts stay muted; the split shows on the current and hovered file. */
+.qr-file:not(:hover, [aria-current]) .qr-delta i {
+  display: none;
+}
+.qr-file[aria-current] .qr-delta em,
+.qr-file:hover .qr-delta em {
+  color: var(--color-status-green);
 }
 .qr-has-draft {
   margin-right: 4px;
@@ -872,6 +941,7 @@
   gap: 8px;
   margin-right: auto;
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
 }
 .qr-foot__stat[data-tone="done"] {
@@ -894,17 +964,112 @@
   height: 34px;
   white-space: nowrap;
 }
-.qr-foot .bd-btn[aria-disabled="true"] {
-  border-color: var(--color-subtle-border);
-  background: var(--color-surface-raised);
-  color: var(--color-text-faint);
+.qr-foot .bd-btn[aria-disabled="true"],
+.qr-foot .bd-btn[aria-disabled="true"]:hover {
+  border-style: dashed;
+  border-color: var(--color-strong-border);
+  background: transparent;
+  color: var(--color-text-tertiary);
   cursor: not-allowed;
+}
+.qr-foot[data-done] .qr-foot__stat {
+  margin-right: 0;
+}
+/* The overall comment sits beside the decision: one line until you write. */
+.qr-workspace .qr-foot__comment {
+  flex: 1 1 220px;
+  min-width: 180px;
+  min-height: 34px;
+  max-height: 140px;
+  margin: 0;
+  padding: 7px 10px;
+  resize: none;
+  field-sizing: content;
+  background: var(--color-input-bg);
+  font-size: 13px;
+  line-height: 18px;
+}
+.qr-workspace .qr-foot__comment:focus {
+  min-height: 64px;
+}
+.qr-drafts {
+  position: relative;
+  font-size: 13px;
+}
+.qr-drafts__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.qr-drafts__btn:hover,
+.qr-drafts__btn[aria-expanded="true"] {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+.qr-drafts__list {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  gap: 4px;
+  width: min(440px, 80vw);
+  max-height: 280px;
+  overflow: auto;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--color-modal-border);
+  border-radius: 10px;
+  background: var(--color-modal-bg);
+  box-shadow: var(--elevation-2);
+  list-style: none;
+}
+.qr-drafts__list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+.qr-drafts__list li:hover {
+  background: var(--color-surface-hover);
+}
+.qr-drafts__list code {
+  flex: none;
+  font-family: var(--font-code);
+  font-size: 11.5px;
+  color: var(--color-accent);
+}
+.qr-drafts__list span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qr-drafts__list button {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--color-accent);
+  cursor: pointer;
 }
 .qr-key {
   padding: 0 5px;
   border: 1px solid currentColor;
   border-radius: 4px;
-  font: 10.5px / 15px var(--font-code);
+  font: 11px / 15px var(--font-code);
   opacity: 0.6;
 }
 .qr-decide--changes {
@@ -941,7 +1106,7 @@
   min-width: 0;
 }
 .qr-shortcuts kbd {
-  font: 10.5px var(--font-code);
+  font: 11px var(--font-code);
   color: var(--color-text-primary);
 }
 .qr-main[data-wrap-lines="true"] [data-diff-scroll] > table {
@@ -1030,6 +1195,9 @@
   .qr-card {
     padding: 20px 18px 18px;
   }
+  .qr-card > .qr-prhead {
+    margin: -20px -18px 0;
+  }
   .qr-walk {
     grid-template-columns: 200px minmax(0, 1fr) 48px;
   }
@@ -1107,23 +1275,8 @@
   overflow: hidden;
   gap: 16px;
 }
-.qr-card--overview > .qr-card__head,
-.qr-overview-status,
 .qr-card--overview > .qr-card__actions {
   flex: none;
-}
-.qr-card--overview .qr-card__over {
-  color: var(--color-text-secondary);
-}
-.qr-overview-status {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.qr-overview-status .bd-pill {
-  max-width: 100%;
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 .qr-overview-grid {
   display: grid;
@@ -1153,18 +1306,28 @@
   border-left: 1px solid var(--color-separator);
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
-.qr-overview-section h3 {
-  margin: 0 0 12px;
-  font-size: 14px;
+/* Section labels read as chrome, so the description's own headings lead. */
+.qr-overview-section h3,
+.qr-card--overview .qr-files h4 {
+  margin: 0 0 10px;
+  font-size: 11px;
   font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-feature-settings: "case";
+  color: var(--color-text-secondary);
 }
-.qr-overview-section h3 small {
+.qr-overview-section h3 small,
+.qr-card--overview .qr-files h4 .qr-left {
   display: block;
   margin-top: 3px;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--color-text-secondary);
 }
 .qr-linked-items {
@@ -1180,21 +1343,27 @@
   order: 1;
   white-space: normal;
 }
-.qr-progress-number {
-  display: block;
-  font-size: 25px;
-  font-weight: 600;
-}
-.qr-progress-number span {
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--color-text-secondary);
-}
+/* 0 % is an empty track, not a full grey bar; green means reviewed. */
 .qr-overview-section progress {
   width: 100%;
-  height: 6px;
-  margin: 8px 0;
-  accent-color: var(--color-accent);
+  height: 4px;
+  margin: 2px 0 0;
+  appearance: none;
+  border: 0;
+  border-radius: 2px;
+  background: var(--color-separator);
+}
+.qr-overview-section progress::-webkit-progress-bar {
+  border-radius: 2px;
+  background: var(--color-separator);
+}
+.qr-overview-section progress::-webkit-progress-value {
+  border-radius: 2px;
+  background: var(--color-status-green);
+}
+.qr-progress p {
+  margin: 0 0 6px;
+  font-variant-numeric: tabular-nums;
 }
 .qr-overview-section p {
   margin: 6px 0 12px;
@@ -1202,29 +1371,13 @@
   line-height: 1.55;
   color: var(--color-text-secondary);
 }
-.qr-overview-branch {
-  overflow-wrap: anywhere;
-}
-.qr-card--overview .qr-card__meta {
-  gap: 20px;
-  margin-top: 14px;
-}
 .qr-card--overview .qr-card__desc .markdown-body {
   color: var(--color-text-primary);
   font-size: 14px;
-  line-height: 1.75;
+  line-height: 1.62;
 }
 .qr-card--overview .qr-files h4 {
-  flex-direction: column;
-  gap: 4px;
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 600;
-}
-.qr-card--overview .qr-left {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--color-text-secondary);
+  display: block;
 }
 .qr-folder-groups {
   display: grid;
@@ -1348,9 +1501,6 @@
     border-top: 1px solid var(--color-separator);
     padding-top: 20px;
   }
-  .qr-card--overview .qr-card__title {
-    font-size: 20px;
-  }
 }
 
 /* ── The file walk, v2 (design/quick-review-v2) ───────────────────────── */
@@ -1371,32 +1521,28 @@
   margin-left: auto;
 }
 
-.qr-card__titlerow {
-  margin-top: 10px;
-}
-.qr-card__titlerow .qr-card__title {
-  display: inline;
-  margin: 0;
-}
-.qr-card__labels {
-  margin-left: 10px;
-  vertical-align: 4px;
-}
-
-/* The PR above the walk: over line with chips, title and labels, excerpt. */
+/* The PR on the card and above the walk: the title with its labels (and
+   "Full description" in the walk), then who and where with the chips. */
 .qr-prhead {
   grid-area: head;
   display: grid;
   gap: 4px;
   max-height: 46vh;
-  padding: 12px 20px;
+  padding: 11px 20px 10px;
   border-bottom: 1px solid var(--color-separator);
   background: linear-gradient(var(--color-review-head-bg), var(--color-surface));
+}
+.qr-prhead__top {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  min-width: 0;
 }
 .qr-prhead__over {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   min-width: 0;
   font-size: 12px;
   color: var(--color-text-secondary);
@@ -1413,6 +1559,7 @@
   font-size: 8px;
 }
 .qr-prhead__branch {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   font-family: var(--font-code);
@@ -1424,6 +1571,7 @@
   display: flex;
   flex: none;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   margin-left: auto;
 }
@@ -1442,71 +1590,64 @@
   color: var(--color-text-primary);
 }
 .qr-prhead__title {
-  margin-top: 2px;
+  flex: 1;
+  min-width: 0;
 }
+/* One title style for card and walk. */
 .qr-prhead__title h2 {
   display: inline;
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: -0.01em;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
   overflow-wrap: anywhere;
 }
 .qr-prhead__labels {
   margin-left: 10px;
-  vertical-align: 2px;
-}
-.qr-prhead__desc {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  min-height: 0;
-}
-.qr-prhead__excerpt {
-  display: -webkit-box;
-  max-width: 1000px;
-  margin: 0;
-  overflow: hidden;
-  line-height: 1.5;
-  color: var(--color-text-secondary);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  vertical-align: 3px;
 }
 .qr-prhead__full {
-  flex: 1;
   min-width: 0;
   max-height: 34vh;
+  margin-top: 6px;
   overflow: auto;
-  padding-right: 8px;
+  padding: 10px 8px 0 0;
+  border-top: 1px solid var(--color-separator);
   scrollbar-gutter: stable;
 }
 .qr-prhead__more {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  gap: 6px;
   padding: 0;
   border: 0;
   background: none;
   font: inherit;
   font-size: 12.5px;
   font-weight: 500;
+  white-space: nowrap;
   color: var(--color-accent);
   cursor: pointer;
 }
+/* A re-review is a mode, not a warning: neutral, so the one real caution
+   (proof for an old commit) keeps the amber. */
 .qr-rereview {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-top: 6px;
   padding: 7px 10px;
-  border: 1px solid var(--color-warning-badge-border);
+  border: 1px solid var(--color-strong-border);
   border-radius: 8px;
-  background: var(--color-warning-badge-bg);
+  background: var(--color-surface);
   font-size: 12.5px;
   color: var(--color-text-primary);
 }
 .qr-rereview > svg {
   flex: none;
-  color: var(--color-warning-badge-fg);
+  color: var(--color-accent);
 }
 .qr-rereview code {
   font-family: var(--font-code);
@@ -1559,7 +1700,7 @@
   height: 7px;
   margin-right: 6px;
   border-radius: 50%;
-  background: var(--color-warning-badge-fg);
+  background: var(--color-accent);
   vertical-align: 1px;
 }
 .qr-unchanged {
@@ -1589,86 +1730,21 @@
   gap: 8px;
   flex-shrink: 0;
   padding: 6px 14px;
-  border-bottom: 1px solid var(--color-warning-badge-border);
-  background: var(--color-warning-badge-bg);
+  border-bottom: 1px solid var(--color-separator);
+  background: var(--color-review-head-bg);
   font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.qr-interdiff > svg {
+  flex: none;
+  color: var(--color-accent);
+}
+.qr-interdiff code {
   color: var(--color-text-primary);
 }
 .qr-interdiff code {
   font-family: var(--font-code);
   font-size: 11.5px;
-}
-
-/* Under the last diff once every file is reviewed. */
-.qr-endcard {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-  margin: 14px;
-  padding: 14px 16px;
-  border: 1px solid var(--color-success-badge-border);
-  border-radius: 10px;
-  background: var(--color-review-done-bg);
-}
-.qr-endcard h3 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-success-badge-fg);
-}
-.qr-workspace .qr-endcard textarea {
-  min-height: 64px;
-  margin: 0;
-  background: var(--color-modal-bg);
-}
-.qr-endcard__label {
-  margin: 0;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-.qr-endcard__drafts {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.qr-endcard__drafts li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border: 1px solid var(--color-separator);
-  border-radius: 7px;
-  background: var(--color-modal-bg);
-  font-size: 12.5px;
-}
-.qr-endcard__drafts code {
-  flex: none;
-  font-family: var(--font-code);
-  font-size: 11.5px;
-  color: var(--color-accent);
-}
-.qr-endcard__drafts span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.qr-endcard__drafts button {
-  flex: none;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-weight: 500;
-  color: var(--color-accent);
-  cursor: pointer;
 }
 
 /* The context panel and its rail. */
@@ -1941,28 +2017,28 @@
 .qr-checklist li[data-done] > svg {
   color: var(--color-status-green);
 }
-.qr-prev {
+.qr-prev-review {
   padding: 9px 10px;
   border: 1px solid var(--color-separator);
   border-radius: 8px;
   background: var(--color-modal-bg);
   line-height: 1.45;
 }
-.qr-prev + .qr-prev {
+.qr-prev-review + .qr-prev-review {
   margin-top: 6px;
 }
-.qr-prev p {
+.qr-prev-review p {
   margin: 0;
 }
-.qr-prev .qr-prev__who {
+.qr-prev-review .qr-prev-review__who {
   margin-bottom: 3px;
   font-size: 11.5px;
   color: var(--color-text-tertiary);
 }
-.qr-prev__who b[data-state="CHANGES_REQUESTED"] {
+.qr-prev-review__who b[data-state="CHANGES_REQUESTED"] {
   color: var(--color-status-red);
 }
-.qr-prev__who b[data-state="APPROVED"] {
+.qr-prev-review__who b[data-state="APPROVED"] {
   color: var(--color-status-green);
 }
 
@@ -1974,6 +2050,36 @@ body:has(.qr-overlay) .bd-toasts {
   align-items: flex-start;
 }
 
+/* Narrow windows (the walk also opens with the panel folded to its rail,
+   NARROW_WALK in QuickReviewOverlay.tsx): the file name stays whole; the
+   position ("2 of 10"), the folder, Mark reviewed (V and the tree's
+   checkbox) and the tab counts (on the rail) give way. */
+@media (max-width: 1280px) {
+  .qr-walk {
+    grid-template-columns: 220px minmax(0, 1fr) 270px;
+  }
+  .qr-walk[data-context="rail"] {
+    grid-template-columns: 220px minmax(0, 1fr) 48px;
+  }
+  .qr-pane__head {
+    gap: 6px;
+    padding: 6px 10px;
+  }
+  .qr-pane__head > .qr-pane__path {
+    flex: 0 0 auto;
+  }
+  .qr-pane__count,
+  .qr-pane__dir,
+  .qr-pane__check {
+    display: none;
+  }
+  .qr-side__tabs > :first-child {
+    gap: 8px;
+  }
+  .qr-side__tabs .bd-tab__count {
+    display: none;
+  }
+}
 @media (max-width: 1000px) {
   .qr-walk {
     grid-template-columns: 220px minmax(0, 1fr) 260px;

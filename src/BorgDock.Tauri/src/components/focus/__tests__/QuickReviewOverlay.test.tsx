@@ -165,9 +165,9 @@ describe('Quick review card', () => {
   it('A defaults to approval and auto merge when auto merge is off', async () => {
     await start();
     reviewEverything();
-    expect(screen.getByRole('button', { name: 'Approve & auto merge' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Approve & auto-merge' })).toHaveAttribute(
       'aria-keyshortcuts',
-      'A ArrowRight',
+      'Enter A ArrowRight',
     );
     press('a');
     expect(submitReview).not.toHaveBeenCalled();
@@ -180,8 +180,8 @@ describe('Quick review card', () => {
     pr.pullRequest.autoMergeEnabled = true;
     await start();
     reviewEverything();
-    expect(screen.queryByRole('button', { name: 'Approve & auto merge' })).not.toBeInTheDocument();
-    expect(approveButton()).toHaveAttribute('aria-keyshortcuts', 'A ArrowRight');
+    expect(screen.queryByRole('button', { name: 'Approve & auto-merge' })).not.toBeInTheDocument();
+    expect(approveButton()).toHaveAttribute('aria-keyshortcuts', 'Enter A ArrowRight');
     press('a');
     sendHeldApproval();
     await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
@@ -214,9 +214,12 @@ describe('Quick review card', () => {
     press('a');
     sendHeldApproval();
     await waitFor(() =>
-      expect(useToastStore.getState().toasts.map((t) => t.message)).toEqual([
-        'Approved; auto merge not enabled: Merge conflict',
-      ]),
+      expect(useToastStore.getState().toasts.map((t) => t.message)).toEqual(
+        expect.arrayContaining([
+          `Approved #${pr.pullRequest.number}`,
+          'Approved; auto-merge not enabled: Merge conflict',
+        ]),
+      ),
     );
     expect(useQuickReviewStore.getState().currentIndex).toBe(1);
   });
@@ -354,11 +357,37 @@ describe('Quick review card', () => {
     vi.mocked(getPRFiles).mockRejectedValueOnce(new Error('Files unavailable'));
     useQuickReviewStore.getState().startSinglePr(pr);
     render(<QuickReviewOverlay />);
-    await screen.findByRole('alert');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveAttribute('data-tone', 'error');
     expect(screen.getByText('All details are visible.')).toBeInTheDocument();
     expectApproveBlocked();
-    fireEvent.click(screen.getByRole('button', { name: 'Reload files' }));
+    // One failure state: nothing claims the files are still loading.
+    const sidebar = within(screen.getByRole('complementary', { name: 'Review overview' }));
+    expect(sidebar.queryByText(/loading/i)).toBeNull();
+    expect(sidebar.getByText(/Couldn't load files/)).toBeInTheDocument();
+    expect(sidebar.getByText("Files didn't load")).toBeInTheDocument();
+    expect(document.querySelector('.qr-act-note')).toHaveTextContent("Files didn't load");
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => expect(filesButton()).toBeEnabled());
+  });
+
+  it('hides the queue position when only one PR is in review', async () => {
+    useQuickReviewStore.getState().startSinglePr(pr);
+    render(<QuickReviewOverlay />);
+    await waitFor(() => expect(filesButton()).toBeEnabled());
+    expect(screen.queryByText(/PR 1 \/ 1/)).toBeNull();
+  });
+
+  it('makes Approve the one primary once every file is reviewed, and Enter takes it', async () => {
+    await start();
+    expect(filesButton()).toHaveAttribute('aria-keyshortcuts', 'Enter');
+    reviewEverything();
+    expect(filesButton()).not.toHaveAttribute('aria-keyshortcuts');
+    expect(filesButton()).not.toHaveClass('bd-btn--primary');
+    press('Enter');
+    expect(useQuickReviewStore.getState().currentIndex).toBe(1);
+    sendHeldApproval();
+    await waitFor(() => expect(enableAutoMerge).toHaveBeenCalledTimes(1));
   });
 });
 
@@ -378,7 +407,14 @@ describe('Quick review file walk', () => {
     expect(currentFile()).toBe('bun.lock');
     const done = within(tree).getByRole('button', { name: /Service\.cs/, current: false });
     expect(done).toHaveAttribute('data-done', 'true');
-    expect(within(done).getByRole('img', { name: 'Reviewed' })).toBeInTheDocument();
+    expect(within(tree).getByRole('checkbox', { name: 'Reviewed: Service.cs' })).toBeChecked();
+
+    // The tree's checkbox takes the mark back, without leaving the current file.
+    fireEvent.click(within(tree).getByRole('checkbox', { name: 'Reviewed: Service.cs' }));
+    expect(treeProgress()).toBe('0 of 4 reviewed3 left');
+    expect(currentFile()).toBe('bun.lock');
+    fireEvent.click(within(tree).getByRole('checkbox', { name: 'Reviewed: Service.cs' }));
+    expect(treeProgress()).toBe('1 of 4 reviewed2 left');
 
     press('n');
     expect(currentFile()).toBe('App.Tests/ServiceTests.cs');
@@ -428,7 +464,7 @@ describe('Quick review file walk', () => {
     press('v');
     press('v');
     expect(treeProgress()).toBe('4 of 4 revieweddone');
-    expect(screen.getByText('That was the last file')).toBeVisible();
+    expect(screen.getByText(/That was the last file/)).toBeVisible();
     const go = screen.getByRole('button', { name: 'Approve & auto-merge' });
     expect(document.activeElement).toBe(go);
     expect(screen.queryByRole('button', { name: 'Mark reviewed & next' })).toBeNull();
@@ -688,7 +724,7 @@ describe('Quick review walk (v2)', () => {
     return screen.getByRole('region', { name: 'File walk' });
   }
 
-  it('shows the PR above the walk: title, labels, excerpt, and the full description with D', async () => {
+  it('shows the PR above the walk: title, labels, and the full description only with D', async () => {
     pr.pullRequest.labels = ['bug', 'payroll'];
     pr.pullRequest.labelColors = { bug: 'd73a4a', payroll: 'not-a-colour' };
     await start();
@@ -698,10 +734,15 @@ describe('Quick review walk (v2)', () => {
     const labels = head.getByRole('list', { name: 'Labels' });
     expect(within(labels).getByText('bug').getAttribute('style')).toContain('--label: #d73a4a');
     expect(within(labels).getByText('payroll').getAttribute('style')).toBeNull();
-    expect(head.getByText('All details are visible.')).toHaveClass('qr-prhead__excerpt');
+    // The diff gets the room: the description waits for D.
+    expect(head.queryByText('All details are visible.')).toBeNull();
     press('d');
-    expect(head.getByRole('button', { name: 'Less' })).toHaveAttribute('aria-expanded', 'true');
+    expect(head.getByRole('button', { name: 'Hide description' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
     expect(head.getByRole('heading', { name: 'Full description' })).toBeInTheDocument();
+    expect(head.getByText('All details are visible.')).toBeVisible();
   });
 
   it('approves from the walk with Enter, opens the next PR in the walk, and Z takes it back', async () => {
@@ -710,8 +751,9 @@ describe('Quick review walk (v2)', () => {
     expect(screen.getByText('All 3 files reviewed')).toBeInTheDocument();
     press('Enter');
     expect(useQuickReviewStore.getState().currentIndex).toBe(1);
+    // Nothing is posted until the toast runs out, and it says so.
     expect(useToastStore.getState().toasts.map((t) => t.message)).toEqual([
-      `Approved #${pr.pullRequest.number}, auto-merge on`,
+      `Approving #${pr.pullRequest.number} · auto-merge on`,
     ]);
     await waitFor(() => expect(screen.getByRole('region', { name: 'File walk' })).toBeVisible());
     press('z');
@@ -721,6 +763,20 @@ describe('Quick review walk (v2)', () => {
     expect(submitReview).not.toHaveBeenCalled();
     // The draft survived Undo: every file is still marked.
     await waitFor(() => expect(screen.getByText('All 3 files reviewed')).toBeInTheDocument());
+  });
+
+  it('lists the drafts from the footer and jumps to one', async () => {
+    await start();
+    await addDraft();
+    press('n');
+    expect(currentFile()).not.toBe('src/Service.cs');
+    fireEvent.click(screen.getByRole('button', { name: '1 draft comment' }));
+    const list = screen.getByRole('list', { name: 'Draft comments' });
+    expect(within(list).getByText('Service.cs:10')).toBeInTheDocument();
+    expect(within(list).getByText('Please handle failure.')).toBeInTheDocument();
+    fireEvent.click(within(list).getByRole('button', { name: 'Jump' }));
+    expect(currentFile()).toBe('src/Service.cs');
+    expect(screen.queryByRole('list', { name: 'Draft comments' })).toBeNull();
   });
 
   it('A approves without auto merge from the decision bar', async () => {

@@ -50,7 +50,7 @@ describe('QuickReviewCard', () => {
     expect(screen.getByRole('article', { name: 'Pull request #42' })).toBeInTheDocument();
   });
 
-  it('shows branch, size and lines', () => {
+  it('shows the branch in the header and the size over the files', () => {
     card({
       headRef: 'feature/login',
       baseRef: 'develop',
@@ -59,12 +59,19 @@ describe('QuickReviewCard', () => {
       changedFiles: 8,
       commitCount: 1,
     });
-    expect(screen.getByText('feature/login')).toBeInTheDocument();
-    expect(screen.getByText('Targets develop')).toBeInTheDocument();
-    expect(screen.getByText('8 files')).toBeInTheDocument();
-    expect(screen.getByText('1 commit')).toBeInTheDocument();
-    expect(screen.getByText('+100')).toBeInTheDocument();
-    expect(screen.getByText('−50')).toBeInTheDocument();
+    expect(screen.getByText('feature/login → develop')).toBeInTheDocument();
+    const files = screen.getByRole('region', { name: 'Files by folder' });
+    expect(files.querySelector('h4 .qr-left')).toHaveTextContent('8 files · +100 −50 · 1 commit');
+  });
+
+  it('shows facts as grey chips and keeps colour for what needs you', () => {
+    const { container } = card({ body: 'Stacked on #12. Retarget after it merges.' });
+    const header = within(container.querySelector<HTMLElement>('.qr-prhead')!);
+    expect(header.getByText('Stacked on #12').closest('.bd-pill')).toHaveClass('bd-pill--warning');
+    expect(header.getByText('Required checks unverified').closest('.bd-pill')).toHaveClass(
+      'bd-pill--ghost',
+    );
+    expect(screen.queryByText(/\d+\/\d+ reviewed/)).toBeNull();
   });
 
   it('counts files per folder, biggest first, with generated files pooled last', () => {
@@ -119,8 +126,8 @@ describe('QuickReviewCard', () => {
 
   it.each([
     [{ failed: 0, pending: 1, passed: 3, total: 4 }, 'CI still running'],
-    [{ failed: 0, pending: 0, passed: 4, total: 4 }, 'reported checks passing'],
-    [{ failed: 0, pending: 0, passed: 0, total: 0 }, 'no checks on this PR'],
+    [{ failed: 0, pending: 0, passed: 4, total: 4 }, 'Reported checks passing'],
+    [{ failed: 0, pending: 0, passed: 0, total: 0 }, 'No checks on this PR'],
   ])('CI note for %o is "%s"', (c, note) => {
     const pr = {
       ...makePr(),

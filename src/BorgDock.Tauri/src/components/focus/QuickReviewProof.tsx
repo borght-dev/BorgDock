@@ -212,8 +212,8 @@ export function QuickReviewProof({ pr, proofs, conversation, since, onAskForProo
       {since && (
         <section className="qr-side-sec" aria-label="Since your last review">
           <h4>Since your last review</h4>
-          <div className="qr-prev">
-            <p className="qr-prev__who">
+          <div className="qr-prev-review">
+            <p className="qr-prev-review__who">
               You · {formatAgo(since.review.submittedAt, now)} ·{' '}
               <b data-state={since.review.state}>{reviewVerb(since.review.state)}</b>
             </p>
@@ -224,8 +224,8 @@ export function QuickReviewProof({ pr, proofs, conversation, since, onAskForProo
             )}
           </div>
           {replies.map((reply) => (
-            <div key={reply.id} className="qr-prev">
-              <p className="qr-prev__who">
+            <div key={reply.id} className="qr-prev-review">
+              <p className="qr-prev-review__who">
                 {reply.author} · {formatAgo(reply.createdAt, now)}
               </p>
               <p>{plainText(reply.body ?? '')}</p>

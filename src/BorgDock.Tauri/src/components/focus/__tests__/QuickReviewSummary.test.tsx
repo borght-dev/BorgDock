@@ -17,11 +17,11 @@ describe('QuickReviewSummary', () => {
     onNext.mockClear();
   });
 
-  it('renders the "Review Complete" heading', () => {
+  it('renders the "Review complete" heading', () => {
     render(
       <QuickReviewSummary queue={[]} decisions={new Map()} onNext={onNext} onClose={onClose} />,
     );
-    expect(screen.getByText('Review Complete')).toBeDefined();
+    expect(screen.getByText('Review complete')).toBeDefined();
   });
 
   it('marks the outer container with data-quick-review-summary', () => {

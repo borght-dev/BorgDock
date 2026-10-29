@@ -11,8 +11,8 @@ export function ciNote(pr: PullRequestWithChecks): string {
     case 'run':
       return 'CI still running';
     case 'ok':
-      return 'reported checks passing';
+      return 'Reported checks passing';
     default:
-      return 'no checks on this PR';
+      return 'No checks on this PR';
   }
 }
