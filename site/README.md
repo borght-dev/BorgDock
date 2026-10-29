@@ -9,7 +9,33 @@ React island (the theme toggle), deployed to GitHub Pages from `master` by
 Every picture and video on the site is captured from BorgDock's own Storybook stories with sample
 data. Nothing is drawn by hand, and nothing comes from a real account.
 
-## Commands
+## Search visibility
+
+`bun run site:build` checks canonical URLs, unique branded titles, descriptions, Open Graph and
+Twitter metadata, share-image files, homepage structured data, robots.txt and sitemap coverage
+for every built HTML page. The Astro sitemap integration includes generated release posts.
+Canonical URLs use the production hostname and trailing slashes, matching GitHub Pages directories.
+
+After deploying SEO changes:
+
+1. Verify `https://borgdock.koenvdborght.nl/robots.txt` and
+   `https://borgdock.koenvdborght.nl/sitemap-index.xml` return HTTP 200.
+2. Add `https://borgdock.koenvdborght.nl/` as a URL-prefix property in
+   [Google Search Console](https://search.google.com/search-console/). Complete its ownership
+   verification using the offered HTML file or DNS record.
+3. Submit `sitemap-index.xml` in Sitemaps. Inspect the homepage URL, run Test live URL, then
+   Request indexing. Repeat for `/download/`, `/features/` and `/dispatch/`.
+4. Read Page indexing for Google's reason if a URL remains excluded. Check impressions and clicks
+   in Performance after Google has crawled the site.
+5. Link the site from the GitHub repository's About website field and the author's public website.
+   The repository README also links to the homepage, downloads and features.
+
+Missing robots.txt does not block indexing, and sitemaps do not guarantee it. Search Console
+provides Google's actual crawl/indexing evidence. Crawling can take days to weeks. See
+[Google's indexing guidance](https://developers.google.com/search/docs/crawling-indexing/ask-google-to-recrawl)
+and [sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap).
+
+## Build commands
 
 Run these from the repo root.
 

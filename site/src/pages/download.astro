@@ -21,12 +21,13 @@ import {
 
 const oses: Os[] = ['win', 'mac', 'linux'];
 const missing = oses.filter((os) => !installers.some((i) => i.os === os));
+const availablePlatforms = [...new Set(installers.map((installer) => OS_NAME[installer.os]))].join(', ');
 const notesHref = whatsNewPosts[latestRelease.version] ?? `/changelog#v${latestRelease.version}`;
 ---
 
 <Layout
-  title="Download BorgDock"
-  description={`Download BorgDock ${latestRelease.version}. Install it once and it keeps itself up to date.`}
+  title={`Download BorgDock${availablePlatforms ? ` for ${availablePlatforms}` : ''}`}
+  description={`Download BorgDock ${latestRelease.version}, a free GitHub pull request manager${availablePlatforms ? ` for ${availablePlatforms}` : ''}. Monitor checks, review code and merge from your desktop.`}
 >
   <SiteNav current="download" />
   <main id="main" class="download">
