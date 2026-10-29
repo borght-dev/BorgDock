@@ -1,6 +1,7 @@
 ---
 import '~/styles/tokens.css';
 import '~/styles/global.css';
+import { OS_NAME, REPO_URL, installers, latestRelease } from '~/data/site';
 
 interface Props {
   title: string;
@@ -9,8 +10,27 @@ interface Props {
 
 const {
   title,
-  description = 'BorgDock keeps every pull request in one window: it watches your checks, tells you what needs you, keeps your work items next to the agents on them, and lets you review and merge without a browser tab.',
+  description = 'BorgDock is a free desktop app for GitHub pull requests and Azure DevOps work items. Monitor CI checks, review code and merge PRs in one window.',
 } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+canonical.search = '';
+canonical.hash = '';
+const image = new URL('/screens/focus-board-dark@2x.png', Astro.site);
+const home = new URL('/', Astro.site).href;
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'WebSite', '@id': `${home}#website`, name: 'BorgDock', url: home, inLanguage: 'en' },
+    {
+      '@type': 'SoftwareApplication', '@id': `${home}#app`, name: 'BorgDock', url: home,
+      description, applicationCategory: 'DeveloperApplication',
+      operatingSystem: [...new Set(installers.map((installer) => OS_NAME[installer.os]))].join(', '),
+      softwareVersion: latestRelease.version, downloadUrl: new URL('/download/', Astro.site).href,
+      isAccessibleForFree: true, license: `${REPO_URL}/blob/master/LICENSE`, sameAs: [REPO_URL],
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    },
+  ],
+};
 ---
 
 <!doctype html>
@@ -21,6 +41,20 @@ const {
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical.href} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BorgDock" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical.href} />
+    <meta property="og:image" content={image.href} />
+    <meta property="og:image:alt" content="BorgDock Focus board showing GitHub pull requests by status" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image.href} />
+    {Astro.url.pathname === '/' && <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData).replace(/</g, '\\u003c')} />}
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 

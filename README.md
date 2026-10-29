@@ -1,5 +1,7 @@
 # BorgDock
 
+[BorgDock website](https://borgdock.dev/) · [Download BorgDock](https://borgdock.dev/download/) · [Features](https://borgdock.dev/features/)
+
 A desktop app for keeping on top of GitHub pull requests, Azure DevOps work items and local worktrees. BorgDock shows what needs you, CI and review state at a glance, lets you review and merge without leaving it, and hands failing builds to Claude Code or Codex with one click.
 
 ## Screenshots

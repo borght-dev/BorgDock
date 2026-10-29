@@ -18,7 +18,7 @@
     "tauri": "cd src/BorgDock.Tauri && bun run tauri",
     "storybook": "cd src/BorgDock.Tauri && bun run storybook",
     "site:dev": "cd site && bun run dev",
-    "site:build": "bun scripts/site-tokens-check.ts && cd site && bun run build && bun scripts/check-links.mjs",
+    "site:build": "bun scripts/site-tokens-check.ts && cd site && bun run build && bun scripts/check-links.mjs && bun scripts/check-seo.mjs",
     "site:tokens-check": "bun scripts/site-tokens-check.ts",
     "site:release": "cd site && bun scripts/fetch-release.mjs",
     "site:assets": "cd site && node scripts/assets.mjs",

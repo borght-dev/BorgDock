@@ -43,7 +43,7 @@ jobs:
           # GitHub release body stays text + links.
           sed -i -E 's/!\[[^]]*\]\([^)]*\)//g' section.md
           {
-            echo "👉 **[Full release notes & screenshots](https://borgdock.koenvdborght.nl/changelog/)**"
+            echo "👉 **[Full release notes & screenshots](https://borgdock.dev/changelog/)**"
             echo
             cat section.md
             echo
