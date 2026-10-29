@@ -6,6 +6,7 @@ import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestFileChange } from '@/types';
+import type { ClaudeReviewComment } from '@/types/claude-review';
 import beforeDispatch from '../../../../../docs/whats-new/4.0.0/dispatch.png?inline';
 import afterDispatch from '../../../../../docs/whats-new/4.0.1/dispatch-width.png?inline';
 import { getControl } from '../../../.storybook/mocks/control';
@@ -564,32 +565,34 @@ const planboard = {
   totalCheckCount: 14,
 };
 
+const planboardComments = (): ClaudeReviewComment[] => [
+  {
+    id: 'vera-proof-4812',
+    author: 'vera',
+    severity: 'unknown',
+    createdAt: ago(HOUR),
+    sourceBody: `## Vera proof\n\nHead SHA: ${PLANBOARD_HEAD}`,
+    body: `## Vera proof\n\nSaved search with a hidden **Region** filter now shows "Hidden fields in use" with the hint. API regression tests and the Playwright planboard suite passed.\n\n![Hidden fields in use · nl](${shot('2.0.0/main-window-focus.png')})\n\n![Hint tooltip](${shot('2.0.0/pr-detail.png')})\n\n![Saved search](${shot('2.0.0/main-window-prs.png')})\n\n![Translations](${shot('2.0.0/pr-discussion.png')})`,
+    htmlUrl: `${planboard.pullRequest.htmlUrl}#issuecomment-4812`,
+  },
+  {
+    id: 'review-agent-4812',
+    author: 'review-agent[bot]',
+    severity: 'unknown',
+    createdAt: ago(3 * HOUR),
+    body: 'The hook memoises on the layout object; saved searches recreate it on every load.',
+    htmlUrl: planboard.pullRequest.htmlUrl,
+    filePath: 'FSP/FSP.Portal/src/hooks/planboard/usePlanboardFilterLayout.ts',
+    lineNumber: 14,
+  },
+];
+
 const planboardDecorator: Decorator = (Story) => {
   const control = getControl();
   control.githubResponses.getPRReviewDetails = { pr: planboard.pullRequest, baseSha: 'develop' };
   control.githubResponses.getPRFiles = PLANBOARD_FILES;
   control.githubResponses.getReviews = [];
-  control.githubResponses.getAllComments = [
-    {
-      id: 'vera-proof-4812',
-      author: 'vera',
-      severity: 'unknown',
-      createdAt: ago(HOUR),
-      sourceBody: `## Vera proof\n\nHead SHA: ${PLANBOARD_HEAD}`,
-      body: `## Vera proof\n\nSaved search with a hidden **Region** filter now shows "Hidden fields in use" with the hint. API regression tests and the Playwright planboard suite passed.\n\n![Hidden fields in use · nl](${shot('2.0.0/main-window-focus.png')})\n\n![Hint tooltip](${shot('2.0.0/pr-detail.png')})\n\n![Saved search](${shot('2.0.0/main-window-prs.png')})\n\n![Translations](${shot('2.0.0/pr-discussion.png')})`,
-      htmlUrl: `${planboard.pullRequest.htmlUrl}#issuecomment-4812`,
-    },
-    {
-      id: 'review-agent-4812',
-      author: 'review-agent[bot]',
-      severity: 'unknown',
-      createdAt: ago(3 * HOUR),
-      body: 'The hook memoises on the layout object; saved searches recreate it on every load.',
-      htmlUrl: planboard.pullRequest.htmlUrl,
-      filePath: 'FSP/FSP.Portal/src/hooks/planboard/usePlanboardFilterLayout.ts',
-      lineNumber: 14,
-    },
-  ];
+  control.githubResponses.getAllComments = planboardComments();
   return (
     <>
       <Story />
@@ -705,71 +708,77 @@ const timesheets = {
   totalCheckCount: 9,
 };
 
+/** #4812 then #4815, which was reviewed before at TIMESHEET_REVIEWED. */
+const sessionDecorator: Decorator = (Story) => {
+  const control = getControl();
+  control.githubResponses.getPRReviewDetails = ({ prNumber }) => ({
+    pr: prNumber === timesheets.pullRequest.number ? timesheets.pullRequest : planboard.pullRequest,
+    baseSha: 'develop',
+  });
+  control.githubResponses.getPRFiles = ({ prNumber }) =>
+    prNumber === timesheets.pullRequest.number ? TIMESHEET_FILES : PLANBOARD_FILES;
+  control.githubResponses.getRepositoryObject = (path) =>
+    path.includes('/compare/') ? TIMESHEET_COMPARE : null;
+  control.githubResponses.getReviews = ({ prNumber }) =>
+    prNumber !== timesheets.pullRequest.number
+      ? []
+      : [
+          {
+            id: 7,
+            state: 'CHANGES_REQUESTED',
+            body: 'Split shifts still round once per day; a 2×7 min break becomes 15 instead of 0.',
+            submitted_at: ago(48 * HOUR),
+            user: { login: 'koen' },
+            commit_id: TIMESHEET_REVIEWED,
+          },
+        ];
+  control.githubResponses.getAllComments = ({ prNumber }) =>
+    prNumber !== timesheets.pullRequest.number
+      ? planboardComments()
+      : [
+          {
+            id: 'reply-4815',
+            author: 'sbakker',
+            severity: 'unknown',
+            createdAt: ago(2 * HOUR),
+            body: 'Fixed in 9c1d2e0: each part rounds on its own now, test added.',
+            htmlUrl: timesheets.pullRequest.htmlUrl,
+          },
+          {
+            id: 'vera-proof-4815',
+            author: 'vera',
+            severity: 'unknown',
+            createdAt: ago(30 * HOUR),
+            sourceBody: `## Vera proof\n\nHead SHA: ${TIMESHEET_REVIEWED}`,
+            body: `## Vera proof\n\nTimesheet week 43 with a split shift: breaks of 7 and 7 minutes.\n\n![Timesheet week 43 · split shift](${shot('2.0.0/sql-results.png')})`,
+            htmlUrl: timesheets.pullRequest.htmlUrl,
+          },
+        ];
+  return (
+    <>
+      <Story />
+      <ToastViewport />
+    </>
+  );
+};
+
+function startPlanboardSession() {
+  resetReviewDisplayPreferences();
+  usePrStore.setState({ username: 'koen' });
+  useQuickReviewStore.setState({ documents: {} });
+  useQuickReviewStore
+    .getState()
+    .startSession([
+      planboard,
+      timesheets,
+      makePr({ number: 4821, title: 'Planboard: keyboard focus on resource rows' }),
+    ]);
+}
+
 /** design/quick-review-v2 frame C: approve #4812 in the walk, straight on to re-reviewing #4815. */
 export const ReReviewSinceLastReview: Story = {
-  decorators: [
-    (Story) => {
-      const control = getControl();
-      control.githubResponses.getPRReviewDetails = ({ prNumber }) => ({
-        pr:
-          prNumber === timesheets.pullRequest.number
-            ? timesheets.pullRequest
-            : planboard.pullRequest,
-        baseSha: 'develop',
-      });
-      control.githubResponses.getPRFiles = ({ prNumber }) =>
-        prNumber === timesheets.pullRequest.number ? TIMESHEET_FILES : PLANBOARD_FILES;
-      control.githubResponses.getRepositoryObject = (path) =>
-        path.includes('/compare/') ? TIMESHEET_COMPARE : null;
-      control.githubResponses.getReviews = [
-        {
-          id: 7,
-          state: 'CHANGES_REQUESTED',
-          body: 'Split shifts still round once per day; a 2×7 min break becomes 15 instead of 0.',
-          submitted_at: ago(48 * HOUR),
-          user: { login: 'koen' },
-          commit_id: TIMESHEET_REVIEWED,
-        },
-      ];
-      control.githubResponses.getAllComments = [
-        {
-          id: 'reply-4815',
-          author: 'sbakker',
-          severity: 'unknown',
-          createdAt: ago(2 * HOUR),
-          body: 'Fixed in 9c1d2e0: each part rounds on its own now, test added.',
-          htmlUrl: timesheets.pullRequest.htmlUrl,
-        },
-        {
-          id: 'vera-proof-4815',
-          author: 'vera',
-          severity: 'unknown',
-          createdAt: ago(30 * HOUR),
-          sourceBody: `## Vera proof\n\nHead SHA: ${TIMESHEET_REVIEWED}`,
-          body: `## Vera proof\n\nTimesheet week 43 with a split shift: breaks of 7 and 7 minutes.\n\n![Timesheet week 43 · split shift](${shot('2.0.0/sql-results.png')})`,
-          htmlUrl: timesheets.pullRequest.htmlUrl,
-        },
-      ];
-      return (
-        <>
-          <Story />
-          <ToastViewport />
-        </>
-      );
-    },
-  ],
-  beforeEach: () => {
-    resetReviewDisplayPreferences();
-    usePrStore.setState({ username: 'koen' });
-    useQuickReviewStore.setState({ documents: {} });
-    useQuickReviewStore
-      .getState()
-      .startSession([
-        planboard,
-        timesheets,
-        makePr({ number: 4821, title: 'Planboard: keyboard focus on resource rows' }),
-      ]);
-  },
+  decorators: [sessionDecorator],
+  beforeEach: startPlanboardSession,
   play: async ({ canvasElement }) => {
     await seedPlanboard(
       PLANBOARD_FILES.map((file) => file.filename),
@@ -778,5 +787,21 @@ export const ReReviewSinceLastReview: Story = {
     const canvas = await continueReviewing(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Approve & auto-merge' }));
     await canvas.findByText(/2 commits/);
+  },
+};
+
+/** One file left on #4812 with #4815 next: the site's recording marks it and decides from the footer. */
+export const LastFileThenNext: Story = {
+  decorators: [sessionDecorator],
+  beforeEach: () => {
+    startPlanboardSession();
+    localStorage.setItem('borgdock-quick-review-context-open', 'false');
+  },
+  play: async ({ canvasElement }) => {
+    await seedPlanboard(
+      PLANBOARD_FILES.map((file) => file.filename).filter((name) => name !== LAST_TEST),
+      LAST_TEST,
+    );
+    await continueReviewing(canvasElement);
   },
 };

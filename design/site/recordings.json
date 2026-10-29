@@ -77,7 +77,7 @@
     },
     "theme": "both",
     "delay": 2500,
-    "alt": "Quick review opens on the next pull request; Review files walks the changes and V marks two files reviewed",
+    "alt": "Quick review opens on the next pull request; Review files walks the changes with the pull request above them, and V marks two files reviewed",
     "page": "Quick review",
     "fallback": "quick-review-card",
     "steps": [
@@ -99,6 +99,105 @@
         "do": "press",
         "key": "v",
         "ms": 1500
+      }
+    ]
+  },
+  {
+    "slug": "quick-review-walk",
+    "storyId": "focus-quick-review--walk-with-proof",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "theme": "both",
+    "delay": 3500,
+    "alt": "The file walk: V marks a file and opens the next, D opens the whole description in place, 2 shows the checks and ] folds the panel into a rail",
+    "page": "Quick review",
+    "fallback": "quick-review-walk",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 800
+      },
+      {
+        "do": "press",
+        "key": "v",
+        "ms": 1300
+      },
+      {
+        "do": "press",
+        "key": "v",
+        "ms": 1300
+      },
+      {
+        "do": "press",
+        "key": "d",
+        "ms": 2200
+      },
+      {
+        "do": "press",
+        "key": "d",
+        "ms": 900
+      },
+      {
+        "do": "press",
+        "key": "2",
+        "ms": 1300
+      },
+      {
+        "do": "press",
+        "key": "1",
+        "ms": 900
+      },
+      {
+        "do": "press",
+        "key": "]",
+        "ms": 1300
+      },
+      {
+        "do": "press",
+        "key": "]",
+        "ms": 1000
+      }
+    ]
+  },
+  {
+    "slug": "quick-review-decide",
+    "storyId": "focus-quick-review--last-file-then-next",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "theme": "both",
+    "delay": 3500,
+    "alt": "V marks the last file and the footer becomes the decision; Approve & auto-merge moves straight on to the next pull request, a re-review of only what changed, with Undo",
+    "page": "Quick review",
+    "fallback": "quick-review-decide",
+    "steps": [
+      {
+        "do": "wait",
+        "ms": 800
+      },
+      {
+        "do": "press",
+        "key": "v",
+        "ms": 1800
+      },
+      {
+        "do": "type",
+        "selector": "textarea[placeholder^=\"Overall comment\"]",
+        "text": "Clear hint, nice tests.",
+        "ms": 1200
+      },
+      {
+        "do": "hover",
+        "selector": "role=button[name=\"Approve & auto-merge\"]",
+        "ms": 600
+      },
+      {
+        "do": "click",
+        "selector": "role=button[name=\"Approve & auto-merge\"]",
+        "ms": 3200
       }
     ]
   },
@@ -257,7 +356,7 @@
     },
     "theme": "both",
     "delay": 3000,
-    "alt": "Dispatch as a list with an agent's question beside it; a free slot opens the launch sheet for the next item, with its slot, model, how to begin and the first message",
+    "alt": "Dispatch as a list; an item with no agent yet gets Start in T3: the launch sheet asks for the machine, the repository, a new worktree, the model, how to begin and the first message",
     "page": "Dispatch",
     "fallback": "dispatch-launch",
     "steps": [
@@ -267,18 +366,33 @@
       },
       {
         "do": "hover",
-        "selector": ".bd-dp-slot[data-state=\"free\"]:not([disabled]) >> nth=0",
-        "ms": 600
+        "selector": "text=Search ignores accents in customer names",
+        "ms": 500
       },
       {
         "do": "click",
-        "selector": ".bd-dp-slot[data-state=\"free\"]:not([disabled]) >> nth=0",
+        "selector": "text=Search ignores accents in customer names",
+        "ms": 1000
+      },
+      {
+        "do": "hover",
+        "selector": "role=button[name=\"Start in T3\"]",
+        "ms": 500
+      },
+      {
+        "do": "click",
+        "selector": "role=button[name=\"Start in T3\"]",
         "ms": 1800
       },
       {
         "do": "click",
+        "selector": "role=radio[name=/^Mac/]",
+        "ms": 1100
+      },
+      {
+        "do": "click",
         "selector": "role=radio[name=\"Straight to work\"]",
-        "ms": 1200
+        "ms": 1100
       },
       {
         "do": "click",

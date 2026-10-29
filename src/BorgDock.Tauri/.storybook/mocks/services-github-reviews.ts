@@ -15,10 +15,10 @@ export async function getReviews(
   _client: unknown,
   _owner: string,
   _repo: string,
-  _prNumber: number,
+  prNumber: number,
 ): Promise<RawReview[]> {
   const r = getControl().githubResponses.getReviews;
-  if (typeof r === 'function') return r();
+  if (typeof r === 'function') return r({ prNumber });
   return r ?? [];
 }
 
@@ -44,10 +44,10 @@ export async function getAllComments(
   _client: unknown,
   _owner: string,
   _repo: string,
-  _prNumber: number,
+  prNumber: number,
 ): Promise<import('../../src/types/claude-review').ClaudeReviewComment[]> {
   const r = getControl().githubResponses.getAllComments;
-  if (typeof r === 'function') return r();
+  if (typeof r === 'function') return r({ prNumber });
   return r ?? [];
 }
 

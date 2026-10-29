@@ -10,10 +10,14 @@ import Recording from '~/components/ui/Recording.astro';
 
 const toc = [
   { id: 'watch', label: 'Pull requests' },
+  { id: 'failures', label: 'Shared failures' },
   { id: 'decide', label: 'Focus' },
-  { id: 'dispatch', label: 'Dispatch' },
-  { id: 'fix', label: 'Fix with Claude' },
+  { id: 'activity', label: 'Activity' },
   { id: 'review', label: 'Quick review' },
+  { id: 'dispatch', label: 'Dispatch' },
+  { id: 'workstreams', label: 'Workstreams' },
+  { id: 'notes', label: 'Notes' },
+  { id: 'fix', label: 'Fix with Claude' },
   { id: 'work', label: 'Worktrees and Work items' },
   { id: 'tools', label: 'Tools' },
 ];
@@ -30,9 +34,19 @@ const tools = [
     text: 'Press Ctrl+F7 from anywhere for every worktree in a small window. Enter opens a terminal in the one you picked.',
   },
   {
+    slug: 'notes-quick',
+    name: 'Quick note',
+    text: "Press Ctrl+F8 in any app and type. The note lands in today's note, linked to the pull request or work item you last had open.",
+  },
+  {
     slug: 'sql',
     name: 'SQL',
     text: 'Press Ctrl+F10, write a query and read the results in a grid you can copy straight from.',
+  },
+  {
+    slug: 'open-in-t3',
+    name: 'Open in T3',
+    text: "Pick the machine, and T3 checks out the pull request's branch, reusing the worktree that already has it. Works from the list, the detail window and the tray.",
   },
   {
     slug: 'settings-agents',
@@ -44,14 +58,14 @@ const tools = [
 
 <Layout
   title="Features: BorgDock"
-  description="What BorgDock does for you: watch your pull requests, decide what needs you, walk your work items with the agents on them, hand failures to Claude, review and merge, and keep your worktrees close."
+  description="What BorgDock does for you: watch your pull requests and the failures they share, decide what needs you, review and merge, walk your work items with the agents on them, keep goals and notes next to the work, and hand failures to an agent."
 >
   <SiteNav current="features" />
   <main id="main">
     <PageHeading
       eyebrow="Features"
-      title="Six jobs, one window."
-      lede="BorgDock sits beside your editor and does the parts of pull request and agent work that usually cost you a browser tab."
+      title="Everything around a pull request, one window."
+      lede="BorgDock does the parts of pull request and agent work that usually cost you a browser tab: checks, reviews, work items, notes and the agents on them."
     >
       <nav class="toc" aria-label="On this page">
         {toc.map((t) => <a href={`#${t.id}`}>{t.label}</a>)}
@@ -66,7 +80,8 @@ const tools = [
         </p>
         <p>
           Filter to Needs you, Mine or Failing, or group by repository or author, and the rows slide
-          to their new place.
+          to their new place. Hide failing leaves out every pull request with a failing check, so what
+          is left is green or still running.
         </p>
         <p>
           Click a row and the pull request opens full screen in the same window, with its whole
@@ -75,7 +90,24 @@ const tools = [
         <Recording slot="media" slug="pr-detail-push" />
       </Job>
 
-      <Job id="decide" eyebrow="Focus" title="Decide what needs you" reverse reading>
+      <Job id="failures" eyebrow="Shared failures" title="Fix a broken test once, not on every pull request" reverse reading>
+        <p>
+          When the same CI failure breaks several pull requests, it gets one row above the list: the
+          failing test, how many pull requests it blocks and who is on it. A pull request that is red
+          only because of master, a flaky test or the runners says Not caused by this PR.
+        </p>
+        <p>
+          Failing on master too? BorgDock compares the last passing run with the first failing one and
+          names the pull request merged in between, so you can ask its author or open a revert.
+        </p>
+        <p>
+          Investigate hands one agent the evidence from every affected pull request. Once the fix is on
+          master, Update affected merges master into each of them, so their checks run again.
+        </p>
+        <Capture slot="media" slug="ci-shared" />
+      </Job>
+
+      <Job id="decide" eyebrow="Focus" title="Decide what needs you" reading>
         <p>
           Focus shows only the pull requests that need something from you, and says why: a review
           request, a failing check, a conflict.
@@ -91,7 +123,35 @@ const tools = [
         <Recording slot="media" slug="focus-merge" />
       </Job>
 
-      <Job id="dispatch" eyebrow="Dispatch" title="Walk your work every morning" reading>
+      <Job id="activity" eyebrow="Activity" title="Catch up on what changed while you were away" reverse reading>
+        <p>
+          Activity lists what happened since you last looked: questions from your agents, plans waiting
+          for your approval, failed checks, new reviews and your merged work reaching an environment.
+        </p>
+        <p>
+          What needs you comes first, and every row has the action that fits. Focus opens with a Since
+          you last checked card, and the tray icon shows how much is waiting.
+        </p>
+        <Capture slot="media" slug="activity" />
+      </Job>
+
+      <Job id="review" eyebrow="Quick review" title="Review file by file, decide on the last one" reading>
+        <p>
+          Press Start Quick Review in Focus and every pull request that waits for your review lines up.
+          The pull request stays above the diff, with its labels, CI and work item, and its proof sits
+          in a panel beside the code.
+        </p>
+        <p>
+          Press V to mark a file reviewed and open the next. On the last file the footer becomes your
+          decision, and the next pull request opens as soon as you make it. Approvals wait five seconds,
+          so you can still undo one.
+        </p>
+        <p>Back at a pull request you reviewed before? You see only the files that changed since.</p>
+        <p><a class="link" href="/quick-review">Everything Quick review does</a></p>
+        <Recording slot="media" slug="quick-review-walk" />
+      </Job>
+
+      <Job id="dispatch" eyebrow="Dispatch" title="Walk your work every morning" reverse reading>
         <p>
           Dispatch puts every Azure DevOps item assigned to you next to the T3 Code threads and the
           pull request that belong to it. It opens on a briefing: how many items need you, are out of
@@ -109,50 +169,72 @@ const tools = [
         <Recording slot="media" slug="dispatch-briefing" />
       </Job>
 
-      <Job id="agents" eyebrow="Dispatch" title="Start and answer your agents" reverse reading>
+      <Job id="agents" eyebrow="Dispatch" title="Start and answer your agents" reading>
         <p>
-          Click a free slot or press S, then pick the model and how the agent begins: a plan for you
-          to approve, straight to work, an update for QA or closing as done.
+          Start in T3 asks where the agent works: the machine T3 runs on, the repository and the branch
+          to start from. T3 makes a fresh worktree for the thread, so there is nothing to keep free.
+        </p>
+        <p>
+          Or pick Existing thread to continue one that already worked on the item. Handing an item to
+          QA goes back to the agent that knows what it changed.
         </p>
         <p>
           When an agent asks a question you see its options next to the item. A plan gets Approve
           plan, and Open in T3 is one key away when you want the whole conversation.
         </p>
-        <p>
-          Run T3 Code on a Mac mini or a build machine too? Add it under Settings → Agents and its
-          agents show beside yours.
-        </p>
         <p><a class="link" href="/dispatch">Everything Dispatch does</a></p>
         <Recording slot="media" slug="dispatch-start" />
       </Job>
 
-      <Job id="fix" eyebrow="Fix with Claude" title="Hand a failure to an agent" reading>
+      <Job id="workstreams" eyebrow="Workstreams" title="Keep a goal together across items, threads and pull requests" reverse reading>
+        <p>
+          Some goals take several work items, a couple of agent threads and a handful of pull requests.
+          A workstream keeps them under one goal, with the outcomes it needs and a next action you set.
+        </p>
+        <p>
+          BorgDock checks each outcome against the real records. When the pull request merges or the
+          item reaches Done, the outcome turns green, and you hear about it if the item is reopened.
+        </p>
+        <p>
+          Review with agent sends everything to a T3 thread, which comes back with proposals you accept
+          or reject. Point Settings → Workstreams at a synced folder and your other machine sees the
+          same workstreams.
+        </p>
+        <Capture slot="media" slug="workstreams" />
+      </Job>
+
+      <Job id="notes" eyebrow="Notes" title="Write it down where your work is" reading>
+        <p>
+          Notes are Markdown files in a folder that Obsidian and VS Code open as they are. Link them
+          with [[Title]] and see every note that links back.
+        </p>
+        <p>
+          Type AB#60102 or shop#3712 and it becomes a chip with the item's state or the pull request's
+          checks. Pull requests, work items and workstreams get a Notes tab with every note that
+          mentions them.
+        </p>
+        <p>
+          Today starts the day's note with what happened since yesterday. Start a T3 thread from a note
+          and the agent's answer lands in it when it stops.
+        </p>
+        <Capture slot="media" slug="notes" />
+      </Job>
+
+      <Job id="fix" eyebrow="Fix with Claude" title="Hand a failure to an agent" reverse reading>
         <p>
           When a check fails, the pull request shows the first error from its log, so you see what
           broke without scrolling.
         </p>
         <p>
           Fix with Claude starts Claude Code on that branch with the error as its prompt, in its own
-          worktree, so your checkout stays as it is.
+          worktree, so your checkout stays as it is. If someone already owns that failure, BorgDock
+          offers their thread first.
         </p>
-        <p>Prefer T3 Code? Open in T3 starts a new thread that is linked to the pull request.</p>
+        <p>
+          Prefer T3 Code? Open in T3 starts a thread linked to the pull request, on whichever machine
+          you pick.
+        </p>
         <Capture slot="media" slug="pr-detail-failing" />
-      </Job>
-
-      <Job id="review" eyebrow="Quick review" title="Review and merge without a browser" reverse reading>
-        <p>
-          Review opens Quick review: read the description with its screenshots, then go through the
-          changes one file at a time. A changed image shows Before and After.
-        </p>
-        <p>
-          Press V to mark a file reviewed and leave comments beside the code. Give it the whole
-          window when a pull request is large, and press W to wrap long lines.
-        </p>
-        <p>
-          Once every file is reviewed, Approve & auto merge approves and lets GitHub merge the moment
-          the checks pass.
-        </p>
-        <Recording slot="media" slug="quick-review" />
       </Job>
 
       <Job id="work" eyebrow="Worktrees and Work items" title="Keep the rest of your work close" reading>

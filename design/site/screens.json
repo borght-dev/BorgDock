@@ -84,7 +84,7 @@
     },
     "theme": "both",
     "delay": 3500,
-    "alt": "Fix out of sync: the items grouped by the state they move to, each with its reason and pull request, and the slot and model for the agent",
+    "alt": "Fix out of sync: the items grouped by the state they move to, each with its reason and pull request, and where the agent runs: the machine, the repository and a fresh worktree",
     "page": "Dispatch"
   },
   {
@@ -120,7 +120,19 @@
     },
     "theme": "both",
     "delay": 3500,
-    "alt": "The launch sheet: pick a slot, a model and how the agent begins, and edit its first message",
+    "alt": "The launch sheet: the machine T3 runs on, the repository, a new worktree from a branch or an existing thread, the model, how the agent begins and its first message",
+    "page": "Dispatch"
+  },
+  {
+    "slug": "dispatch-handoff",
+    "storyId": "main-window-mainwindow--rail-dispatch-launch-handoff",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 4000,
+    "alt": "Update for QA goes back to the thread that did the work: Existing thread, with that agent's checkout",
     "page": "Dispatch"
   },
   {
@@ -157,7 +169,7 @@
     },
     "theme": "both",
     "delay": 3500,
-    "alt": "The sheet for one move: the item, the slot and model for the agent, and the first message that tells it to follow your repository's ADO skills",
+    "alt": "The sheet for one move: the item, where the agent runs and its model, and the first message that tells it to follow your repository's ADO skills",
     "page": "Dispatch"
   },
   {
@@ -185,6 +197,54 @@
     "page": "Dispatch"
   },
   {
+    "slug": "workstreams",
+    "storyId": "workstreams-workstreams--overview",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "A workstream: its goal, the outcomes it needs with the evidence behind each, and the next action",
+    "page": "Workstreams"
+  },
+  {
+    "slug": "workstreams-map",
+    "storyId": "workstreams-workstreams--relation-map",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "The relation map: which pull request blocks which outcome, which one replaced an earlier attempt, and the decisions still open",
+    "page": "Workstreams"
+  },
+  {
+    "slug": "workstreams-review",
+    "storyId": "workstreams-workstreams--review-with-agent",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "An agent's proposals for a workstream, each to accept or reject",
+    "page": "Workstreams"
+  },
+  {
+    "slug": "workstreams-chips",
+    "storyId": "workstreams-workstreams--dispatch-chips",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Dispatch rows with the workstream each item belongs to",
+    "page": "Workstreams"
+  },
+  {
     "slug": "activity",
     "storyId": "activity-activity--unread",
     "viewport": {
@@ -195,6 +255,79 @@
     "delay": 2500,
     "alt": "Activity: what changed since you last checked, one row per change with the action that fits, grouped by day",
     "page": "Activity"
+  },
+  {
+    "slug": "notes",
+    "storyId": "notes-notes--section",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "The Notes section: folders, a note in live preview with chips for pull requests and work items, its backlinks, tags and local graph",
+    "page": "Notes"
+  },
+  {
+    "slug": "notes-daily",
+    "storyId": "notes-notes--daily-note",
+    "viewport": {
+      "width": 1360,
+      "height": 760
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Today's note, with what happened since yesterday written in: merges, items that moved, threads that finished, checks that failed",
+    "page": "Notes"
+  },
+  {
+    "slug": "notes-pr",
+    "storyId": "notes-notes--pull-request-notes",
+    "viewport": {
+      "width": 1360,
+      "height": 760
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "A pull request's Notes tab: every note that mentions it, and New note",
+    "page": "Notes"
+  },
+  {
+    "slug": "notes-tasks",
+    "storyId": "notes-notes--tasks",
+    "viewport": {
+      "width": 1360,
+      "height": 640
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Every open task from every note in one list",
+    "page": "Notes"
+  },
+  {
+    "slug": "notes-quick",
+    "storyId": "notes-notes--quick-note",
+    "viewport": {
+      "width": 760,
+      "height": 420
+    },
+    "theme": "both",
+    "delay": 2500,
+    "selector": ".bd-notes-capture",
+    "alt": "The quick note window on Ctrl+F8, linked to the pull request you last had open",
+    "page": "Notes"
+  },
+  {
+    "slug": "notes-thread",
+    "storyId": "notes-notes--start-thread",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Starting a T3 thread from a note",
+    "page": "Notes"
   },
   {
     "slug": "t3-hosts",
@@ -208,6 +341,86 @@
     "alt": "T3 Code on three machines in Settings → Agents: this machine, a Mac mini and a build machine",
     "page": "Tools",
     "selector": "#field-t3-hosts"
+  },
+  {
+    "slug": "ci-shared",
+    "storyId": {
+      "light": "ci-failures-pr-list--shared-failures-light",
+      "dark": "ci-failures-pr-list--shared-failures"
+    },
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Shared CI failures above the pull request list: the failing test, how many pull requests it blocks, who's on it and the next step",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "ci-investigate",
+    "storyId": "ci-failures-sheets--investigate",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "theme": "both",
+    "delay": 2500,
+    "selector": "[role=\"dialog\"]",
+    "alt": "The Investigate sheet: the failure, the evidence from every affected pull request and what is still unknown, for one agent",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "open-in-t3",
+    "storyId": "pull-requests-open-in-t3--check-out",
+    "viewport": {
+      "width": 1000,
+      "height": 620
+    },
+    "theme": "both",
+    "delay": 2500,
+    "selector": "[role=\"dialog\"]",
+    "alt": "Open in T3: pick the machine, and T3 checks out the pull request's branch, reusing the worktree that already has it",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "ci-related",
+    "storyId": "ci-failures-relatedfailurescard--shared-and-owned",
+    "viewport": {
+      "width": 1000,
+      "height": 640
+    },
+    "theme": "both",
+    "delay": 1500,
+    "selector": "div:has(> .bd-ci-related)",
+    "alt": "Related failures above a pull request's checks: the same failure on other pull requests, the likely cause and who owns it",
+    "page": "Detail"
+  },
+  {
+    "slug": "ci-broke",
+    "storyId": "ci-failures-relatedfailurescard--broke-on-master",
+    "viewport": {
+      "width": 1000,
+      "height": 640
+    },
+    "theme": "both",
+    "delay": 1500,
+    "selector": "div:has(> .bd-ci-related)",
+    "alt": "A failure on master traced to the pull request merged between the last passing run and the first failing one",
+    "page": "Detail"
+  },
+  {
+    "slug": "ci-guard",
+    "storyId": "ci-failures-relatedfailurescard--guard-owned",
+    "viewport": {
+      "width": 1000,
+      "height": 640
+    },
+    "theme": "both",
+    "delay": 1500,
+    "selector": ".bd-ci-dialog",
+    "alt": "BorgDock asking before a second fix: someone already owns this failure",
+    "page": "Detail"
   },
   {
     "slug": "pr-detail-failing",
@@ -256,19 +469,19 @@
     },
     "theme": "both",
     "delay": 2500,
-    "alt": "Quick review showing the next pull request as a card, with its files grouped by folder",
+    "alt": "Quick review opens on the pull request: its description, review progress and checks, with Review files, Write review and Review later",
     "page": "Quick review"
   },
   {
     "slug": "quick-review-walk",
-    "storyId": "focus-quick-review--large-pr-walk",
+    "storyId": "focus-quick-review--walk-with-proof",
     "viewport": {
-      "width": 1360,
-      "height": 880
+      "width": 1440,
+      "height": 900
     },
     "theme": "both",
     "delay": 3500,
-    "alt": "Quick review walking through the changes one file at a time, with reviewed files ticked off",
+    "alt": "The file walk with the pull request above the diff: author, branch, CI, the work item and labels in their GitHub colours, and the proof beside the changes",
     "page": "Quick review"
   },
   {
@@ -284,15 +497,39 @@
     "page": "Quick review"
   },
   {
-    "slug": "quick-review-approve",
-    "storyId": "focus-quick-review--ready-to-approve",
+    "slug": "quick-review-overview",
+    "storyId": "focus-quick-review--overview-with-proof",
     "viewport": {
-      "width": 1100,
+      "width": 1440,
       "height": 900
     },
     "theme": "both",
     "delay": 3000,
-    "alt": "Quick review with every file reviewed, offering Approve and Approve & auto merge",
+    "alt": "Quick review's overview: the description with its Before and After screenshots, and the linked work item beside it",
+    "page": "Quick review"
+  },
+  {
+    "slug": "quick-review-decide",
+    "storyId": "focus-quick-review--all-files-reviewed",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "theme": "both",
+    "delay": 3500,
+    "alt": "Every file reviewed: the footer is the decision, Request changes, Comment, Approve or Approve & auto-merge, with the overall comment and your drafts above it",
+    "page": "Quick review"
+  },
+  {
+    "slug": "quick-review-re-review",
+    "storyId": "focus-quick-review--re-review-since-last-review",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "theme": "both",
+    "delay": 3500,
+    "alt": "A re-review: only the files changed since your last review, the commits in between, stale proof flagged, and Undo for the approval you just gave",
     "page": "Quick review"
   },
   {

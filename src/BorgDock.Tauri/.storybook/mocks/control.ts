@@ -135,10 +135,10 @@ export type GithubResponses = {
   getPRCommits?: PullRequestCommit[] | (() => PullRequestCommit[] | Promise<PullRequestCommit[]>);
   getReviewThreads?: ReviewThread[] | (() => ReviewThread[] | Promise<ReviewThread[]>);
   // DiscussionTab additions
-  getReviews?: RawReview[] | (() => RawReview[] | Promise<RawReview[]>);
+  getReviews?: RawReview[] | ((args: { prNumber: number }) => RawReview[] | Promise<RawReview[]>);
   getAllComments?:
     | ClaudeReviewComment[]
-    | (() => ClaudeReviewComment[] | Promise<ClaudeReviewComment[]>);
+    | ((args: { prNumber: number }) => ClaudeReviewComment[] | Promise<ClaudeReviewComment[]>);
 };
 
 // Phase 11 — pr-actions overrides

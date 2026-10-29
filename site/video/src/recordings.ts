@@ -22,6 +22,9 @@ export type SceneSpec = {
   crop?: Crop;
 };
 
+/** Quick review at 1440×900 without the story's black backdrop. */
+const QUICK_REVIEW_CROP: Crop = { x: 20, y: 20, width: 1400, height: 860 };
+
 export const launchScenes: SceneSpec[] = [
   {
     slug: 'pr-detail-push',
@@ -39,11 +42,11 @@ export const launchScenes: SceneSpec[] = [
     detail: 'Fix with Claude starts an agent on the failure, straight from the pull request.',
   },
   {
-    slug: 'quick-review',
-    headline: 'Review the changes one file at a time.',
-    detail: 'Quick review walks you through every file. Press V to mark one reviewed.',
+    slug: 'quick-review-decide',
+    headline: 'Review file by file, decide on the last one.',
+    detail: 'Mark the last file and Quick review asks for your verdict. The next pull request opens.',
     // The story draws Quick review on a black backdrop; leave that out.
-    crop: { x: 21, y: 21, width: 1318, height: 838 },
+    crop: QUICK_REVIEW_CROP,
   },
   {
     slug: 'focus-merge',
@@ -61,9 +64,8 @@ export const launchScenes: SceneSpec[] = [
   {
     slug: 'dispatch-start',
     headline: 'Start an agent on the next item.',
-    detail: 'Pick a free slot, a model and how it begins. It runs in T3 Code.',
-    trimStart: 1.0,
-    trimEnd: 9.5,
+    detail: 'Pick the machine, a fresh worktree and how it begins. It runs in T3 Code.',
+    trimStart: 2.0,
   },
   {
     slug: 'flyout',
@@ -99,14 +101,41 @@ export const dispatchScenes: SceneSpec[] = [
   {
     slug: 'dispatch-start',
     headline: 'Start an agent on the next item.',
-    detail: 'Pick a free slot, a model and how it begins.',
-    trimStart: 1.0,
-    trimEnd: 9.5,
+    detail: 'Pick the machine, a fresh worktree and how it begins.',
+    trimStart: 2.0,
   },
   {
     slug: 'dispatch-board',
     headline: 'Open any item without losing the board.',
     detail: 'A card opens its detail in a drawer beside the columns.',
+  },
+];
+
+// The Quick review page's hero: the overview, the walk, images and the decision.
+export const quickReviewScenes: SceneSpec[] = [
+  {
+    slug: 'quick-review',
+    headline: 'Start with what is waiting on you.',
+    detail: 'Quick review opens on the pull request. Review files walks its changes.',
+    crop: { x: 21, y: 21, width: 1318, height: 838 },
+  },
+  {
+    slug: 'quick-review-walk',
+    headline: 'Keep the pull request in view.',
+    detail: 'D opens the description in place. The proof sits beside the diff.',
+    crop: QUICK_REVIEW_CROP,
+  },
+  {
+    slug: 'quick-review-images',
+    headline: 'See what a changed image looks like now.',
+    detail: 'Before and After side by side. Click one to zoom in.',
+    crop: { x: 20, y: 20, width: 1440, height: 885 },
+  },
+  {
+    slug: 'quick-review-decide',
+    headline: 'Decide the moment you are done.',
+    detail: 'The last file turns the footer into your verdict. Then the next pull request opens.',
+    crop: QUICK_REVIEW_CROP,
   },
 ];
 

@@ -1,0 +1,192 @@
+---
+import Layout from '~/layouts/Layout.astro';
+import SiteNav from '~/components/SiteNav.astro';
+import SiteFooter from '~/components/SiteFooter.astro';
+import Hero from '~/components/sections/Hero.astro';
+import Job from '~/components/sections/Job.astro';
+import DownloadBlock from '~/components/sections/DownloadBlock.astro';
+import Capture from '~/components/ui/Capture.astro';
+import Recording from '~/components/ui/Recording.astro';
+import { quickReviewVideo } from '~/data/media';
+
+const toc = [
+  { id: 'start', label: 'Start' },
+  { id: 'in-view', label: 'The pull request in view' },
+  { id: 'walk', label: 'File by file' },
+  { id: 'proof', label: 'Proof' },
+  { id: 'images', label: 'Images' },
+  { id: 'decide', label: 'Decide' },
+  { id: 're-review', label: 'Re-review' },
+  { id: 'keys', label: 'Keys' },
+];
+
+const keyGroups = [
+  {
+    name: 'While you walk the files',
+    keys: [
+      ['V', 'Mark the file reviewed and open the next one'],
+      ['N / P', 'Next or previous file'],
+      ['J / K', 'Scroll the diff'],
+      ['D', 'Open or close the whole description'],
+      [']', 'Fold the panel beside the diff into a rail'],
+      ['1–4', 'Proof, Checks, Work item, Comments'],
+      ['W', 'Wrap long lines'],
+      ['S', 'Switch between the changes since your review and all files'],
+      ['Esc', 'Back to the overview'],
+    ],
+  },
+  {
+    name: 'Once every file is reviewed',
+    keys: [
+      ['Enter', 'Approve & auto-merge'],
+      ['A', 'Approve'],
+      ['R', 'Request changes'],
+      ['C', 'Comment'],
+      ['Z', 'Undo the approval you just gave'],
+    ],
+  },
+  {
+    name: 'In the main window',
+    keys: [['Shift+R', 'Start Quick review on every pull request waiting for your review']],
+  },
+];
+---
+
+<Layout
+  title="Quick review: BorgDock"
+  description="Quick review walks a pull request one file at a time with its description and proof in view, turns the last file into your decision, and opens the next pull request."
+>
+  <SiteNav current="quick-review" />
+  <main id="main">
+    <Hero
+      badge={{ href: '/whats-new/4-8-0', text: 'New in BorgDock 4.8: review with the pull request in view' }}
+      title="Review file by file, decide on the last one."
+      lede="Quick review keeps the pull request above the diff and its proof beside it. Mark the last file reviewed and the footer asks for your verdict. Approve, and the next pull request is already open."
+      secondary={{ href: '#start', label: 'Take the tour' }}
+      video={quickReviewVideo}
+      fallback="quick-review-walk"
+    />
+
+    <nav class="toc dispatch-toc" aria-label="On this page">
+      {toc.map((t) => <a href={`#${t.id}`}>{t.label}</a>)}
+    </nav>
+
+    <div class="jobs">
+      <Job id="start" eyebrow="Start" title="Open everything that waits on you" reading>
+        <p>
+          Press Start Quick Review in Focus, or Shift+R in the main window, and every pull request
+          that waits for your review lines up. Review on a single pull request opens just that one.
+        </p>
+        <p>
+          Each one opens on its description, screenshots included, next to the linked work item, its
+          checks and how many files are left. Review files starts the walk. Review later sends it to
+          the back of the line.
+        </p>
+        <Capture slot="media" slug="quick-review-overview" />
+      </Job>
+
+      <Job id="in-view" eyebrow="The pull request in view" title="Keep the pull request above the code" reverse reading>
+        <p>
+          The pull request stays at the top while you read its files: who opened it, the branch, CI,
+          conflicts, the linked work item and its labels in their GitHub colours.
+        </p>
+        <p>
+          Two lines of the description sit under the title. Press D to read all of it in place and D
+          again to get back to the code.
+        </p>
+        <p>
+          The panel beside the diff holds the proof, the checks, the work item and the comments. Keys 1
+          to 4 switch between them, and ] folds the panel into a rail when the code needs the room.
+        </p>
+        <Recording slot="media" slug="quick-review-walk" />
+      </Job>
+
+      <Job id="walk" eyebrow="File by file" title="Walk the changes one file at a time" reading>
+        <p>
+          Files are grouped by folder, with generated files left out. Press V to mark one reviewed and
+          open the next, or N and P to move without marking.
+        </p>
+        <p>
+          Click + beside a line to leave a comment there. Your drafts are kept on this device until you
+          send the review, so closing BorgDock loses nothing.
+        </p>
+        <p>
+          Switch between Unified and Split, press W to wrap long lines, or give a large pull request the
+          whole window.
+        </p>
+        <Recording slot="media" slug="quick-review" />
+      </Job>
+
+      <Job id="proof" eyebrow="Proof" title="See that it works before you read how" reverse reading>
+        <p>
+          The Proof tab collects the screenshots from the description and from comments that show the
+          change working, with the description's checklist below them.
+        </p>
+        <p>
+          Every proof says whether it was made on the latest commit. When the author pushed after it,
+          Ask for fresh proof posts a comment asking them for a new one.
+        </p>
+        <Capture slot="media" slug="quick-review-walk" />
+      </Job>
+
+      <Job id="images" eyebrow="Images" title="Before and After for every changed image" reading>
+        <p>
+          A changed screenshot or icon shows its old and new version side by side, with their sizes.
+          Click one to look at it full size.
+        </p>
+        <Recording slot="media" slug="quick-review-images" />
+      </Job>
+
+      <Job id="decide" eyebrow="Decide" title="Decide the moment you're done" reverse reading>
+        <p>
+          Mark the last file reviewed and the footer turns into your decision: Request changes,
+          Comment, Approve, or Approve & auto-merge. Your overall comment and every draft go with it.
+        </p>
+        <p>
+          The next pull request opens straight away. Approvals wait five seconds before BorgDock posts
+          them, so an Undo is one key away. GitHub cannot take a review back once it's in.
+        </p>
+        <p>
+          Approve & auto-merge lets GitHub merge as soon as the required checks pass. The merge carries
+          on in the background, and BorgDock tells you if it doesn't go through.
+        </p>
+        <Recording slot="media" slug="quick-review-decide" />
+      </Job>
+
+      <Job id="re-review" eyebrow="Re-review" title="Read only what changed since your last review" reading>
+        <p>
+          Back at a pull request you reviewed before? Quick review shows only the files that changed
+          since then, with the commits in between and what you said last time.
+        </p>
+        <p>The files you already read are folded away. Press S to see the whole pull request again.</p>
+        <Capture slot="media" slug="quick-review-re-review" />
+      </Job>
+    </div>
+
+    <section id="keys" class="keys" aria-labelledby="keys-title">
+      <h2 id="keys-title" class="also__title">Keys</h2>
+      <div class="keys__groups">
+        {
+          keyGroups.map((g) => (
+            <section class="keys__group" aria-label={g.name}>
+              <h3 class="needs__name">{g.name}</h3>
+              <dl class="keys__list">
+                {g.keys.map(([key, action]) => (
+                  <div class="keys__row">
+                    <dt>
+                      <kbd>{key}</kbd>
+                    </dt>
+                    <dd>{action}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ))
+        }
+      </div>
+    </section>
+
+    <DownloadBlock />
+  </main>
+  <SiteFooter />
+</Layout>

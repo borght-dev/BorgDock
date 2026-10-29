@@ -11,7 +11,9 @@
     "render:hero-light": "remotion render LaunchHero ../public/video/launch-hero-light.mp4 --props=props/light.json && remotion still LaunchPoster ../public/video/launch-hero-light.webp --frame=-1 --props=props/light.json",
     "render:dispatch": "remotion render DispatchHero ../public/video/dispatch-hero.mp4 && remotion still DispatchPoster ../public/video/dispatch-hero.webp --frame=-1",
     "render:dispatch-light": "remotion render DispatchHero ../public/video/dispatch-hero-light.mp4 --props=props/light.json && remotion still DispatchPoster ../public/video/dispatch-hero-light.webp --frame=-1 --props=props/light.json",
-    "render:all": "bun run render && bun run render:short && bun run render:hero && bun run render:hero-light && bun run render:dispatch && bun run render:dispatch-light",
+    "render:quick-review": "remotion render QuickReviewHero ../public/video/quick-review-hero.mp4 && remotion still QuickReviewPoster ../public/video/quick-review-hero.webp --frame=-1",
+    "render:quick-review-light": "remotion render QuickReviewHero ../public/video/quick-review-hero-light.mp4 --props=props/light.json && remotion still QuickReviewPoster ../public/video/quick-review-hero-light.webp --frame=-1 --props=props/light.json",
+    "render:all": "bun run render && bun run render:short && bun run render:hero && bun run render:hero-light && bun run render:dispatch && bun run render:dispatch-light && bun run render:quick-review && bun run render:quick-review-light",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -1,29 +1,29 @@
 {
   "repo": "borght-dev/BorgDock",
-  "tag": "v4.4.1",
-  "version": "4.4.1",
-  "name": "BorgDock v4.4.1",
-  "date": "2026-10-20",
-  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v4.4.1",
-  "fetchedAt": "2026-10-21T13:44:53.527Z",
+  "tag": "v4.9.1",
+  "version": "4.9.1",
+  "name": "BorgDock v4.9.1",
+  "date": "2026-10-29",
+  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v4.9.1",
+  "fetchedAt": "2026-10-29T11:02:23.538Z",
   "assets": [
     {
-      "name": "BorgDock_4.4.1_x64-setup.exe",
-      "size": 30559352,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.4.1/BorgDock_4.4.1_x64-setup.exe",
-      "digest": "sha256:072de92bcc842ef6bf02e8ab41b9711a0650ca6eca3635376e3e5d468e10c9fd"
+      "name": "BorgDock_4.9.1_x64-setup.exe",
+      "size": 39441789,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.9.1/BorgDock_4.9.1_x64-setup.exe",
+      "digest": "sha256:f464b4e470cb96e5f1477366d669afe0012dbacd845df5a5b1cb3494f9cf8063"
     },
     {
-      "name": "BorgDock_4.4.1_x64-setup.exe.sig",
+      "name": "BorgDock_4.9.1_x64-setup.exe.sig",
       "size": 420,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.4.1/BorgDock_4.4.1_x64-setup.exe.sig",
-      "digest": "sha256:1f846ed4a96a0e455a5a34a5999228fb6ad0d8fd0364cc4554ff65feb9c72d77"
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.9.1/BorgDock_4.9.1_x64-setup.exe.sig",
+      "digest": "sha256:8208744c999e705a289854e01074669d3ba01bce189ec96ccb2f5ab1793e8074"
     },
     {
       "name": "latest.json",
-      "size": 2032,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.4.1/latest.json",
-      "digest": "sha256:5d2444f017f984380c5c81fb6acd3ef861c34db47f768171ba239750b0eff98d"
+      "size": 1628,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.9.1/latest.json",
+      "digest": "sha256:e52ec8b35d8646a7472908324d9de9acdc3fb013be68d8fad86b855bd0051957"
     }
   ]
 }

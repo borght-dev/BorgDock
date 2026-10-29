@@ -24,7 +24,7 @@ export function UnitAside({ overview }: { overview: ItemOverview }) {
         data-offline={thread.available ? undefined : 'true'}
         title={`${thread.place}, ${thread.hostLabel}`}
       >
-        {thread.place}
+        <span className="bd-dp-agentchip__place">{thread.place}</span>
       </span>
     );
   }

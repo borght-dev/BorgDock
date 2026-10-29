@@ -44,7 +44,7 @@ const also = [
   {
     slug: 'dispatch-sync-sheet',
     name: 'Sync all on a schedule',
-    text: 'Pick the weekdays and a time, and Sync all runs by itself while BorgDock is open, in the slot and model you used last.',
+    text: 'Pick the weekdays and a time, and Sync all runs by itself while BorgDock is open, in a fresh worktree of the repository and with the model you used last.',
   },
   {
     slug: 'dispatch-launch',
@@ -57,16 +57,26 @@ const also = [
     text: 'Your work grouped by what it needs, with the selected item, its agent and its next step beside the list.',
   },
   {
+    slug: 'dispatch-handoff',
+    name: 'Back to the thread that did the work',
+    text: 'Update for QA picks the thread that worked on the item, so the agent already knows what it changed. Existing thread works for any launch.',
+  },
+  {
+    slug: 'workstreams-chips',
+    name: 'Workstreams on every row',
+    text: 'An item that belongs to a workstream says which one, and the workstream keeps its pull requests and threads together.',
+  },
+  {
     slug: 'settings-agents',
     name: 'Settings → Agents',
-    text: 'Choose which T3 projects count as slots, turn on notifications and edit the prompts Dispatch starts agents with.',
+    text: 'Pair with T3, add your other machines, turn on notifications and edit the prompts Dispatch starts agents with.',
   },
 ];
 
 const needs = [
   {
     name: 'BorgDock 4 or later',
-    text: 'Dispatch is the second section in the rail. Keys 1 to 5 switch sections.',
+    text: 'Dispatch is the second section in the rail. Press 2 to open it.',
   },
   {
     name: 'Azure DevOps',
@@ -86,7 +96,7 @@ const needs = [
   <SiteNav current="dispatch" />
   <main id="main">
     <Hero
-      badge={{ href: '/whats-new/4-0-0', text: 'New in BorgDock 4' }}
+      badge={{ href: '/whats-new/4-9-0', text: 'New in 4.9: start agents in a fresh worktree on any machine' }}
       title="Your work items and the agents on them."
       lede="Dispatch puts every Azure DevOps item assigned to you next to the T3 Code threads and pull requests that belong to it, tells you what each one needs, and hands the busywork to agents."
       secondary={{ href: '#briefing', label: 'Take the tour' }}
@@ -156,7 +166,7 @@ const needs = [
         </p>
         <p>
           The sheet groups the items by where they will move, with one checkbox per group. Pick the
-          slot, type to find a model and choose how hard it should think.
+          machine and the repository, type to find a model and choose how hard it should think.
         </p>
         <p>
           Start it in the background and keep working. The state shows the agent at work and, when it
@@ -167,12 +177,14 @@ const needs = [
 
       <Job id="start" eyebrow="Start an agent" title="Put an agent on the next item" reading>
         <p>
-          Slots are your T3 Code projects. Click a free one, press S, or drop a card on it, and the
-          launch sheet opens for the next item in line.
+          Press S or Start in T3 and pick where the agent works: the machine T3 runs on, the repository
+          (BorgDock picks the one your work lives in) and the branch to start from. T3 makes a fresh
+          worktree for the thread, as it does for a thread you start in T3 itself.
         </p>
         <p>
           Choose how the agent begins: a plan for you to approve, straight to work, an update for QA or
-          closing as done. The first message is right there to edit before it goes out.
+          closing as done. The first message is right there to edit before it goes out. Existing
+          thread sends it to a thread that already worked on the item instead.
         </p>
         <p>
           Starting can move the item to Development In Progress for you, so Azure DevOps matches what
@@ -201,8 +213,8 @@ const needs = [
           by side.
         </p>
         <p>
-          Click a card to open its detail in a drawer, or drag it onto a free slot to start an agent
-          on it. The counts sit above every layout, so filtering works the same in each.
+          Click a card to open its detail in a drawer, and start an agent on it from there. The counts
+          sit above every layout, so filtering works the same in each.
         </p>
         <Recording slot="media" slug="dispatch-board" />
       </Job>
@@ -222,7 +234,7 @@ const needs = [
       <Job id="machines" eyebrow="Other machines" title="Every machine you run agents on" reading>
         <p>
           Run T3 Code on a Mac mini or a build machine too? Add it under Settings → Agents, and its
-          slots and agents show beside the ones on this machine.
+          agents show beside the ones on this machine. Every launch lets you pick which machine runs it.
         </p>
         <p>
           A machine that goes offline keeps its last known work on screen, so you don't start a second

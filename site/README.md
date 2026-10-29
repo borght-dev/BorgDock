@@ -1,7 +1,8 @@
 # BorgDock marketing site
 
 The site at [borgdock.koenvdborght.nl](https://borgdock.koenvdborght.nl): what BorgDock does for
-you, a gallery of every screen, the download page and the changelog. It is an Astro 5 site with one
+you, a page each for Dispatch and Quick review, a gallery of every screen, the download page and
+the changelog. It is an Astro 5 site with one
 React island (the theme toggle), deployed to GitHub Pages from `master` by
 `.github/workflows/deploy-site.yml`.
 
@@ -20,7 +21,7 @@ Run these from the repo root.
 | `bun run site:tokens-check` | Fails when `src/styles/tokens.css` differs from the app's tokens, or a hex colour appears outside it. |
 | `bun run site:release` | Refreshes `src/data/release.json` from the latest GitHub release. |
 | `bun run site:assets` | Starts Storybook on :6006, regenerates every capture and recording, stops it. Refuses a server already on :6006 unless you pass `-- --reuse`; `-- --screens` or `-- --recordings` runs one half. |
-| `bun run site:video` | Renders the launch video, the portrait short and the hero cut (dark and light) from the recordings, with a poster for each, into `public/video/`. Run it after `site:assets`, locally, once per release. |
+| `bun run site:video` | Renders the launch video, the portrait short and the hero cuts for home, Dispatch and Quick review (dark and light) from the recordings, with a poster for each, into `public/video/`. Run it after `site:assets`, locally, once per release. |
 | `bun run site:video:typecheck` | Type-checks the video project. CI runs it next to `site:build`. |
 
 ## Layout
@@ -36,7 +37,7 @@ site/
 ├── public/
 │   ├── screens/            # <slug>-<light|dark>@2x.png   (generated, committed)
 │   ├── recordings/         # <slug>-<theme>.mp4 and .webp poster  (generated, committed)
-│   ├── video/              # launch, short, launch-hero, launch-hero-light: .mp4 + .webp poster  (site:video, committed)
+│   ├── video/              # launch, short and the hero cuts (launch-, dispatch-, quick-review-hero, each with -light): .mp4 + .webp poster  (site:video, committed)
 │   └── whats-new/<version>/  # images for hand-written release posts (generated posts read docs/whats-new)
 └── src/
     ├── data/
@@ -45,12 +46,12 @@ site/
     │   ├── media.ts        # joins design/site/*.json with the files in public/
     │   └── changelog.ts    # parses /CHANGELOG.md, finds What's new posts
     ├── components/
-    │   ├── sections/       # Hero (home and Dispatch), Job (one job with its media), DownloadBlock, ChangelogTeaser
+    │   ├── sections/       # Hero (home, Dispatch, Quick review), Job (one job with its media), DownloadBlock, ChangelogTeaser
     │   ├── ui/             # Capture, Recording, WindowFrame, BorgDockLogo
     │   ├── DownloadButton.astro, PageHeading.astro, SiteNav.astro, SiteFooter.astro
     │   └── ThemeToggle.tsx # the only hydrated island
     ├── layouts/Layout.astro  # <head>, theme and platform detection before paint
-    ├── pages/              # index, features, dispatch, gallery, download, changelog, whats-new/[version]
+    ├── pages/              # index, features, dispatch, quick-review, gallery, download, changelog, whats-new/[version]
     └── styles/
         ├── tokens.css      # GENERATED copy of the app's tokens, do not edit
         └── global.css      # everything else, colours only through tokens
@@ -97,8 +98,8 @@ live in the app (`src/BorgDock.Tauri/scripts/`) because they use its Playwright 
 element (the Pull requests captures use `main.bd-mainwindow__body` to leave the rail out, so the
 text stays readable at the size the site shows it). `storyId` may be
 `{ "light": "…", "dark": "…" }` for stories that lock their theme. `args` passes string story args
-through the URL. `page` is the gallery filter (`Pull requests`, `Focus`, `Dispatch`, `Detail`,
-`Quick review`, `Tools`). `draft: true` keeps a capture out of the gallery, for a screen that is still being built.
+through the URL. `page` is the gallery filter (`Pull requests`, `Focus`, `Dispatch`, `Workstreams`,
+`Detail`, `Quick review`, `Notes`, `Activity`, `Tools`; anything else lands in `Tools`). `draft: true` keeps a capture out of the gallery, for a screen that is still being built.
 Output: `public/screens/<slug>-<theme>@2x.png`. Run it on its own with
 `node scripts/screenshot-manifest.mjs [manifest] [outDir] [--only slug,slug]` from
 `src/BorgDock.Tauri`.
@@ -135,9 +136,14 @@ when named with `--only`.
 
 The generated files are committed: CI builds the site and never starts Storybook or a browser.
 
+When another checkout already serves :6006, start this worktree's Storybook on a free port
+(`../../node_modules/.bin/storybook dev -p 6016 --no-open` from `src/BorgDock.Tauri`) and run the
+two scripts yourself with `STORYBOOK_URL=http://localhost:6016`. Their manifest and output
+arguments resolve from the repo root, and default to the paths above.
+
 ## Launch video
 
-`site/video/` is a Remotion project (workspace member `borgdock-video`) with four compositions
+`site/video/` is a Remotion project (workspace member `borgdock-video`) with five compositions
 built from the recordings above:
 
 - `Launch`, 1920×1080 at 30 fps, about 70 s: a title card with the hero headline, one scene per
@@ -147,6 +153,8 @@ built from the recordings above:
   background at the end so it loops cleanly. The home page hero plays it, in the page's theme.
 - `DispatchHero`, 1920×1080: `LaunchHero` with the Dispatch scenes (`dispatchScenes`), about
   a minute. The Dispatch page's hero plays it.
+- `QuickReviewHero`, 1920×1080: `LaunchHero` with the Quick review scenes (`quickReviewScenes`):
+  the overview, the walk, image diffs and the decision. The Quick review page's hero plays it.
 - `Short`, 1080×1920 at 30 fps, about 20 s: three of the scenes, trimmed to the action and
   cropped for portrait, under the headline, then the download card. For social.
 
@@ -167,7 +175,7 @@ bun run site:video    # everything in public/video/
 bun run site:build
 ```
 
-`site:video` runs `bun run render:all` in `site/video`, which is six renders, each followed by
+`site:video` runs `bun run render:all` in `site/video`, which is eight renders, each followed by
 its poster (the first scene once it has settled, `.webp`):
 
 | Script (in `site/video`) | Output in `public/video/` |
@@ -178,6 +186,8 @@ its poster (the first scene once it has settled, `.webp`):
 | `bun run render:hero-light` | `launch-hero-light.mp4`, `launch-hero-light.webp` (`--props=props/light.json`) |
 | `bun run render:dispatch` | `dispatch-hero.mp4`, `dispatch-hero.webp` |
 | `bun run render:dispatch-light` | `dispatch-hero-light.mp4`, `dispatch-hero-light.webp` (`--props=props/light.json`) |
+| `bun run render:quick-review` | `quick-review-hero.mp4`, `quick-review-hero.webp` |
+| `bun run render:quick-review-light` | `quick-review-hero-light.mp4`, `quick-review-hero-light.webp` (`--props=props/light.json`) |
 
 Every render is H.264 at CRF 18 with no audio track. The first run downloads Remotion's headless
 Chrome (about 110 MB); the whole set takes a few minutes. Any composition renders light with
@@ -186,10 +196,11 @@ Remotion Studio.
 
 It is rendered locally per release, not in CI; the rendered files are committed like the
 recordings. `Hero.astro` shows `launch-hero.mp4` / `launch-hero-light.mp4` (the Dispatch page:
-`dispatch-hero*.mp4`) through `Recording.astro`, unframed (the video draws its own window frames),
-playing while on screen and showing the poster under reduced motion. When neither file exists the
-hero falls back to a recording (`pr-detail-push`, on the Dispatch page `dispatch-layouts`), so the
-site builds either way. A Chrome that takes longer than 25 s to start fails a render; rerun the
+`dispatch-hero*.mp4`, the Quick review page: `quick-review-hero*.mp4`) through `Recording.astro`,
+unframed (the video draws its own window frames), playing while on screen and showing the poster
+under reduced motion. When neither file exists the hero falls back to a recording (`pr-detail-push`,
+on the Dispatch page `dispatch-layouts`, on the Quick review page `quick-review-walk`), so the site
+builds either way. A Chrome that takes longer than 25 s to start fails a render; rerun the
 script when the machine is less busy.
 
 ## Releases and the download page
@@ -225,4 +236,5 @@ releases) link to the posts.
 
 Write like the changelog: benefit first, "you", plain verbs, sentence case. No exclamation marks,
 no "seamless", no engineering prose. Feature names match the labels in the app: Focus, Dispatch,
-Pull requests, Work items, Worktrees, Quick review, Fix with Claude, Open in T3.
+Pull requests, Work items, Worktrees, Workstreams, Activity, Notes, Quick review, Fix with Claude,
+Open in T3.
