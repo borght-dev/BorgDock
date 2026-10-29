@@ -528,9 +528,9 @@ test('overview shows description screenshots, required-check gaps and a read-onl
   await expect.poll(() => description.locator('img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
   await description.getByAltText('First').scrollIntoViewIfNeeded();
   await page.screenshot({ path: test.info().outputPath('overview-description-light.png') });
-  await review.getByRole('button', { name: /Read AB#59671/ }).hover();
+  await review.getByRole('link', { name: /Read AB#59671/ }).hover();
   await expect(page.getByRole('tooltip')).toContainText('The questionnaire must remain on the live activity.');
-  await review.getByRole('button', { name: /Read AB#59671/ }).click();
+  await review.getByRole('link', { name: /Read AB#59671/ }).click();
   const workItem = page.getByRole('dialog', { name: 'AB#59671', exact: true });
   await expect(workItem.getByText('Read-only preview')).toBeVisible();
   await expect(workItem.getByText('The questionnaire must remain on the live activity.')).toBeVisible();
