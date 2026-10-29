@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BorgDock · AB# hover card</title>
+<style>
+  :root {
+    --font-ui: "Inter Variable", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    --font-reading: "Instrument Sans Variable", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    --font-code: "JetBrains Mono Variable", "Cascadia Code", Consolas, monospace;
+    --type-bug: #cc293d;
+    --type-pbi: #009ccc;
+    --type-task: #e0b520;
+    --type-qi: #339947;
+  }
+  .light {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --raised: rgba(23, 24, 28, 0.03);
+    --modal: #ffffff;
+    --border: #e5e6ea;
+    --text: #17181c;
+    --text-2: #5d606a;
+    --text-3: #6d707a;
+    --faint: #c2c4cb;
+    --accent: #4f46e5;
+    --accent-subtle: rgba(79, 70, 229, 0.1);
+    --green: #1f9d6b;
+    --yellow: #c98a12;
+    --blue: #2d6be4;
+    --shadow: 0 12px 32px rgba(20, 22, 30, 0.14), 0 2px 6px rgba(20, 22, 30, 0.08), 0 0 0 1px rgba(20, 22, 30, 0.06);
+  }
+  .dark {
+    --bg: #151618;
+    --surface: #1b1c1f;
+    --raised: #202125;
+    --modal: #1b1c1f;
+    --border: rgba(255, 255, 255, 0.065);
+    --text: #ededef;
+    --text-2: #9c9da4;
+    --text-3: #82838a;
+    --faint: #3f4046;
+    --accent: #7f7eff;
+    --accent-subtle: rgba(127, 126, 255, 0.15);
+    --green: #5cc98f;
+    --yellow: #e5b454;
+    --blue: #6b9bff;
+    --shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 40px 56px;
+    background: #0e0f11;
+    color: #ededef;
+    font-family: var(--font-ui);
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
+  .lede { color: #9c9da4; font-size: 13px; margin: 0 0 28px; max-width: 760px; line-height: 1.5; }
+  .frame-label {
+    font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: #82838a; margin: 0 0 10px; font-weight: 600;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 36px; }
+
+  /* ---------- PR detail pane (context) ---------- */
+  .pane {
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding-bottom: 264px;
+    overflow: hidden;
+    position: relative;
+  }
+  .pane-head {
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pane-head .repo { font-size: 11px; color: var(--text-3); font-family: var(--font-code); }
+  .pane-head .title { font-size: 15px; font-weight: 600; margin-top: 4px; }
+  .tabs { display: flex; gap: 16px; padding: 0 18px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .tabs span { padding: 9px 0; color: var(--text-3); }
+  .tabs span.on { color: var(--text); border-bottom: 2px solid var(--accent); }
+  .desc {
+    padding: 16px 18px;
+    font-family: var(--font-reading);
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  .desc h2 { font-size: 14px; margin: 0 0 6px; font-family: var(--font-ui); }
+  .desc > p, .desc > .p { margin: 0 0 12px; color: var(--text); }
+  .desc ul { margin: 0 0 12px; padding-left: 18px; color: var(--text); }
+  .ab {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    border-radius: 3px;
+    position: relative;
+  }
+  .ab.hovered {
+    background: var(--accent-subtle);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--accent-subtle);
+  }
+  .ab-anchor { position: relative; display: inline-block; }
+  .cursor {
+    position: absolute; left: 38px; top: 12px;
+    width: 14px; height: 20px;
+    pointer-events: none; z-index: 3;
+  }
+  .ab-anchor > .wi-card { top: calc(100% + 6px); left: -24px; text-align: left; }
+
+  /* ---------- the hover card ---------- */
+  .wi-card {
+    position: absolute;
+    width: 380px;
+    background: var(--modal);
+    color: var(--text);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    font-family: var(--font-ui);
+    overflow: hidden;
+    z-index: 2;
+    line-height: 1.4;
+  }
+  .wi-card.static { position: relative; }
+  .wi-card::before {
+    /* type stripe, mirrors ADO's left colour bar */
+    content: "";
+    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--type, var(--faint));
+  }
+  .wi-body { padding: 12px 14px 12px 16px; }
+  .wi-top { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-2); }
+  .wi-type { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); }
+  .wi-type svg { width: 13px; height: 13px; }
+  .wi-id { font-family: var(--font-code); font-size: 11px; color: var(--text-3); }
+  .wi-state {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 2px 8px 2px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    font-size: 11px; color: var(--text);
+    white-space: nowrap;
+  }
+  .wi-state i { width: 7px; height: 7px; border-radius: 50%; background: var(--dot); display: inline-block; }
+  .wi-title {
+    margin: 8px 0 0;
+    font-size: 14px; font-weight: 600; line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .wi-meta {
+    display: flex; flex-wrap: wrap; gap: 4px 12px;
+    margin-top: 8px; font-size: 11.5px; color: var(--text-2);
+  }
+  .wi-meta span { display: inline-flex; align-items: center; gap: 5px; }
+  .avatar {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: linear-gradient(135deg, #7f7eff, #4f46e5);
+    color: #fff; font-size: 8px; font-weight: 700;
+    display: inline-grid; place-items: center;
+  }
+  .wi-meta svg { width: 12px; height: 12px; opacity: .75; }
+  .wi-desc {
+    margin: 10px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-reading);
+    font-size: 12.5px; line-height: 1.55; color: var(--text-2);
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .wi-desc b { color: var(--text); font-weight: 600; }
+  .wi-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; padding: 2px 7px; border-radius: 6px;
+    background: var(--raised); border: 1px solid var(--border); color: var(--text-2);
+  }
+  .chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--dot); }
+  .chip .mono { font-family: var(--font-code); font-size: 10.5px; }
+  .wi-foot {
+    display: flex; align-items: center; gap: 12px;
+    padding: 7px 14px 7px 16px;
+    background: var(--raised);
+    border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--text-3);
+  }
+  .wi-foot .spacer { flex: 1; }
+  kbd {
+    font-family: var(--font-code); font-size: 10px;
+    padding: 0 4px; border-radius: 4px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+  }
+  .wi-foot a { color: var(--accent); text-decoration: none; }
+
+  /* skeleton */
+  .sk { background: var(--raised); border-radius: 4px; height: 10px; position: relative; overflow: hidden; }
+  .dark .sk { background: rgba(255,255,255,.06); }
+  .light .sk { background: rgba(23,24,28,.06); }
+  .sk::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+  /* states strip */
+  .states { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .state-frame { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .state-frame .caption { font-size: 11.5px; color: var(--text-3); margin-bottom: 12px; }
+  .state-frame .wi-card { width: 100%; }
+
+  .notes {
+    margin-top: 36px; max-width: 900px;
+    font-size: 13px; line-height: 1.6; color: #b4b5bb;
+  }
+  .notes h2 { font-size: 14px; color: #ededef; margin: 0 0 8px; }
+  .notes ul { margin: 0; padding-left: 18px; }
+  .notes code { font-family: var(--font-code); font-size: 12px; color: #ededef; }
+
+  @media (max-width: 900px) {
+    body { background: none; padding: 0; }
+    .row { grid-template-columns: 1fr; }
+    .states { grid-template-columns: 1fr 1fr; gap: 14px; }
+    .state-frame { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-bug" viewBox="0 0 16 16"><path fill="var(--type-bug)" d="M8 2a3 3 0 0 0-3 3v.2A4 4 0 0 0 4 8v1H2v1.5h2a4 4 0 0 0 .6 1.6L3 13.6l1 1 1.5-1.5A4 4 0 0 0 8 14a4 4 0 0 0 2.5-.9l1.5 1.5 1-1-1.6-1.5a4 4 0 0 0 .6-1.6h2V9h-2V8a4 4 0 0 0-1-2.8V5a3 3 0 0 0-3-3Z"/></symbol>
+  <symbol id="i-pbi" viewBox="0 0 16 16"><path fill="var(--type-pbi)" d="M3 2h10v12H3zM5 5v1.5h6V5zm0 3v1.5h6V8zm0 3v1.5h4V11z" fill-rule="evenodd"/></symbol>
+  <symbol id="i-task" viewBox="0 0 16 16"><path fill="var(--type-task)" d="M3 2h10v12H3zm2.2 6.3-1 1L7 12l4.8-5.8-1-.9L7 9.8z" fill-rule="evenodd"/></symbol>
+  <symbol id="i-sprint" viewBox="0 0 16 16"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 1.5a5 5 0 1 1 0 10A5 5 0 0 1 8 3Zm-.75 1.5v4l3 1.8.75-1.25-2.25-1.35V4.5z"/></symbol>
+  <symbol id="i-prio" viewBox="0 0 16 16"><path fill="currentColor" d="M3 2h1.5v12H3zm2 0h8l-2 3 2 3H5z"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 14 20"><path d="M1 1v15l4-4 3 7 2.5-1-3-7h5.5z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+</svg>
+
+<h1>AB# hover card</h1>
+<p class="lede">
+  Hover any <code>AB#12345</code> in BorgDock (PR description, review comments, notes, Dispatch) and after 300&nbsp;ms a card shows
+  the work item: type, state, title, who has it, sprint, the first lines of the description, and the PRs / T3 threads BorgDock already knows about.
+  Click opens the existing read-only work item dialog; <kbd style="color:#9c9da4;border-color:#333;background:#1b1c1f">Ctrl</kbd>+click opens it in Azure DevOps.
+</p>
+
+<div class="row">
+  <!-- ===================== DARK ===================== -->
+  <div>
+    <p class="frame-label">PR detail · dark</p>
+    <div class="pane dark">
+      <div class="pane-head">
+        <div class="repo">Gomocha-FLOW/FSP · #4812</div>
+        <div class="title">Planboard: keep drag preview inside the resource lane</div>
+      </div>
+      <div class="tabs"><span class="on">Overview</span><span>Files</span><span>Checks</span><span>Reviews</span></div>
+      <div class="desc">
+        <h2>Summary</h2>
+        <p>Dragging an order onto a resource near the bottom edge drew the preview one lane too low. The drop target now uses the lane's own bounds.</p>
+        <ul>
+          <li>Clamp preview to the hovered lane</li>
+          <li>Add regression test for the last lane</li>
+        </ul>
+        <div class="p">Fixes <span class="ab-anchor"><a class="ab hovered">AB#61021</a><svg class="cursor"><use href="#i-cursor"/></svg>
+      <div class="wi-card" style="--type: var(--type-bug)">
+        <div class="wi-body">
+          <div class="wi-top">
+            <span class="wi-type"><svg><use href="#i-bug"/></svg>Bug</span>
+            <span class="wi-id">61021</span>
+            <span class="wi-state" style="--dot: var(--blue)"><i></i>Code Review</span>
+          </div>
+          <h3 class="wi-title">Planboard drag preview lands one resource lane too low when the board is scrolled</h3>
+          <div class="wi-meta">
+            <span><span class="avatar">KB</span>Koen van der Borght</span>
+            <span><svg><use href="#i-sprint"/></svg>Sprint 2026-22</span>
+            <span><svg><use href="#i-prio"/></svg>P2</span>
+          </div>
+          <p class="wi-desc">
+            <b>Repro:</b> open the planboard with more resources than fit, scroll down, drag an unplanned order onto the
+            last visible lane. The ghost shows on the lane below and the order is planned there too. Started after the
+            virtualised lanes change in 4.31.
+          </p>
+          <div class="wi-links">
+            <span class="chip" style="--dot: var(--green)"><i></i><span class="mono">#4812</span> checks passing</span>
+            <span class="chip" style="--dot: var(--yellow)"><i></i>T3 · your turn</span>
+          </div>
+        </div>
+        <div class="wi-foot">
+          <span>Updated 2 h ago by Vera</span>
+          <span class="spacer"></span>
+          <span><kbd>Click</kbd> read</span>
+          <span><kbd>Ctrl</kbd>+<kbd>Click</kbd> ADO</span>
+        </div>
+      </div></span>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LIGHT ===================== -->
+  <div>
+    <p class="frame-label">PR detail · light · PBI</p>
+    <div class="pane light" style="padding-bottom:120px">
+      <div class="pane-head">
+        <div class="repo">Gomocha-FLOW/FSP · #4790</div>
+        <div class="title">Work orders: bulk reassign from the list view</div>
+      </div>
+      <div class="tabs"><span class="on">Overview</span><span>Files</span><span>Checks</span><span>Reviews</span></div>
+      <div class="desc">
+        <h2>What</h2>
+        <p>Select several work orders in the list and reassign them to one engineer in a single step.</p>
+        <div class="p">Implements <span class="ab-anchor"><a class="ab hovered">AB#60877</a><svg class="cursor"><use href="#i-cursor"/></svg>
+      <div class="wi-card" style="--type: var(--type-pbi)">
+        <div class="wi-body">
+          <div class="wi-top">
+            <span class="wi-type"><svg><use href="#i-pbi"/></svg>Product Backlog Item</span>
+            <span class="wi-id">60877</span>
+            <span class="wi-state" style="--dot: var(--yellow)"><i></i>In Progress</span>
+          </div>
+          <h3 class="wi-title">Bulk reassign work orders from the list view</h3>
+          <div class="wi-meta">
+            <span><span class="avatar" style="background:linear-gradient(135deg,#1f9d6b,#0e6b48)">MJ</span>Maaike Jansen</span>
+            <span><svg><use href="#i-sprint"/></svg>Sprint 2026-22</span>
+            <span><svg><use href="#i-prio"/></svg>P1</span>
+            <span>8 pts</span>
+          </div>
+          <p class="wi-desc">
+            As a planner I want to select multiple work orders and assign them to another engineer at once, so that
+            covering for someone who is ill takes one action instead of fifty.
+          </p>
+          <div class="wi-links">
+            <span class="chip" style="--dot: var(--yellow)"><i></i><span class="mono">#4790</span> 1 check running</span>
+            <span class="chip" style="--dot: var(--faint)"><i></i>2 tasks · 1 done</span>
+          </div>
+        </div>
+        <div class="wi-foot">
+          <span>Updated yesterday</span>
+          <span class="spacer"></span>
+          <span><kbd>Click</kbd> read</span>
+          <span><kbd>Ctrl</kbd>+<kbd>Click</kbd> ADO</span>
+        </div>
+      </div></span>; notifications follow in <a class="ab">AB#60912</a>.</div>
+        <h2>Testing</h2>
+        <ul>
+          <li>Reassign 1, 20 and 200 orders</li>
+          <li>Orders already started stay with their engineer</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== STATES ===================== -->
+<p class="frame-label">States</p>
+<div class="states">
+  <div class="state-frame dark">
+    <div class="caption">Loading (first hover, not in cache)</div>
+    <div class="wi-card static">
+      <div class="wi-body">
+        <div class="wi-top">
+          <span class="wi-id">AB#61021</span>
+          <span class="sk" style="width:80px; margin-left:auto; height:16px; border-radius:999px"></span>
+        </div>
+        <div class="sk" style="width:92%; height:12px; margin-top:12px"></div>
+        <div class="sk" style="width:60%; height:12px; margin-top:7px"></div>
+        <div class="sk" style="width:70%; margin-top:12px"></div>
+        <div class="wi-desc" style="-webkit-line-clamp:unset">
+          <div class="sk" style="width:100%"></div>
+          <div class="sk" style="width:96%; margin-top:7px"></div>
+          <div class="sk" style="width:80%; margin-top:7px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state-frame dark">
+    <div class="caption">Task, closed, no description</div>
+    <div class="wi-card static" style="--type: var(--type-task)">
+      <div class="wi-body">
+        <div class="wi-top">
+          <span class="wi-type"><svg><use href="#i-task"/></svg>Task</span>
+          <span class="wi-id">60950</span>
+          <span class="wi-state" style="--dot: var(--green)"><i></i>Done</span>
+        </div>
+        <h3 class="wi-title">Add index on WorkOrder.AssignedEngineerId</h3>
+        <div class="wi-meta">
+          <span><span class="avatar" style="background:linear-gradient(135deg,#c98a12,#8f620b)">TS</span>Tim Smit</span>
+          <span><svg><use href="#i-sprint"/></svg>Sprint 2026-21</span>
+        </div>
+        <p class="wi-desc" style="font-style:italic; color:var(--text-3)">No description.</p>
+      </div>
+      <div class="wi-foot">
+        <span>Closed 6 days ago</span>
+        <span class="spacer"></span>
+        <span>Parent <a>AB#60877</a></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="state-frame dark">
+    <div class="caption">ADO not connected / item not found</div>
+    <div class="wi-card static">
+      <div class="wi-body">
+        <div class="wi-top">
+          <span class="wi-id">AB#61021</span>
+        </div>
+        <h3 class="wi-title" style="font-weight:500; color:var(--text-2)">Connect Azure DevOps to see this work item.</h3>
+        <p class="wi-desc" style="border-top:0; padding-top:0; margin-top:6px">
+          BorgDock reads titles, state and description with your ADO token. You can still open the item in the browser.
+        </p>
+      </div>
+      <div class="wi-foot">
+        <a>Open Settings</a>
+        <span class="spacer"></span>
+        <span><kbd>Ctrl</kbd>+<kbd>Click</kbd> ADO</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <h2>How it behaves</h2>
+  <ul>
+    <li>Opens after 300 ms, stays open while the pointer is on the link or the card, closes 150 ms after it leaves both. Esc closes it.</li>
+    <li>Data comes from the work item cache Dispatch and the Work Items section already fill; a miss fetches one item and caches it for the session.</li>
+    <li>Description is HTML-stripped plain text, clamped to 4 lines (Repro Steps for bugs when Description is empty).</li>
+    <li>Chips show only what BorgDock already knows: linked PRs with their check state, T3 threads with their status, child task progress.</li>
+    <li>Card uses <code>--color-modal-bg</code> so it stays opaque in light mode; the left stripe is the ADO type colour.</li>
+    <li>Same card replaces the plainer peek on <code>LinkedWorkItemBadge</code>, so every AB# looks the same.</li>
+  </ul>
+</div>
+
+</body>
+</html>

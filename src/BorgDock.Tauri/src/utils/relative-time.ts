@@ -44,3 +44,15 @@ export function isOlderThanDays(
   if (!Number.isFinite(then)) return false;
   return now - then >= days * DAY;
 }
+
+/** "42s", "4m 12s" from start to end; empty when either is missing. */
+export function formatDuration(startedAt?: string | null, completedAt?: string | null): string {
+  if (!startedAt || !completedAt) return '';
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return '';
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${minutes}m ${String(secs).padStart(2, '0')}s`;
+}

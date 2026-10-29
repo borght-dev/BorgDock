@@ -14,6 +14,7 @@
 @import "./activity-workbench.css";
 @import "./notes-workbench.css";
 @import "./notes-editor.css";
+@import "./hover-cards.css";
 
 /*
  * @theme inline — promote every runtime CSS custom property into a Tailwind

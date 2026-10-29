@@ -340,6 +340,14 @@ Capturing from Storybook in a fresh worktree: `src/BorgDock.Tauri/public/whats-n
 
 `HoverPopover` with `variant="tooltip"` and `when={isTextClipped}` explains text cut off with an ellipsis: it opens after 300 ms, only while the trigger's `[data-clip]` element is actually clipped. Drop the native `title` where you add one. A nowrap ellipsis span's min-content is its full text, so a flex item holding one never shrinks below that unless it has an explicit `min-width` (see `.bd-ci-marker-slot`).
 
+## Hover cards: AB# references and PR check bars
+
+`HoverPopover variant="card"` has no chrome of its own: the content draws the card (`styles/hover-cards.css`), the wrapper `.bd-hover-card` pins the header and footer and scrolls only `.bd-hover-card__scroll`, so a card's actions never scroll away. Designs: `design/work-item-hover/mockups.html`, `design/check-hover/mockups.html`; stories `Work Items/Hover card` and `PR/Checks hover card` (the `In…` stories hover the real trigger).
+
+- **AB# references.** `Markdown` turns plain `AB#123` into a link (`rehypeWorkItemRefs`, after `rehype-raw` so raw HTML counts; href `#bd-ab-123`; rehype-sanitize may prefix it `#user-content-`) and renders any link to `/_workitems/edit/<id>` as `WorkItemRef`. `WorkItemPreview` is lazy inside `WorkItemRef`: a static import closes the cycle Markdown → WorkItemRef → WorkItemPreview → detail panel → Markdown, and `PrDetailView`'s import hangs in tests. The card reads through `useWorkItemPeek` (link-store cache, one request per id) only when it opens.
+- **Checks card.** `PrRow` passes `checksCard` to `PrRowCore`; the check bar then takes its own click (opens the PR on its Checks tab). The reason per failed job comes from the CI failure store (`usePrCiFailures`, signals of the job's occurrence); `checks-card-data.ts` is pure. With related CI failures off no log is read, and the card says so.
+- **e2e.** ADO reads go through the mocked `ado_fetch` command, not the network: route them there. Mock handlers are serialized into the page, so a handler function can't use variables from the spec. The first spec against a cold dev server can take 20 s+ to open a detail view (lazy chunks compile); run against a warm server before reading a timeout as a bug.
+
 ## Vitest: a hook that returns a function
 
 `beforeEach(() => someMock.mockReset())` returns the mock, and Vitest runs a function returned from `beforeEach` as that test's teardown. A mock that later rejects then fails the test with its own error after every assertion passed. Give hooks a block body: `beforeEach(() => { someMock.mockReset(); })`. The same goes for `onTestFinished`.

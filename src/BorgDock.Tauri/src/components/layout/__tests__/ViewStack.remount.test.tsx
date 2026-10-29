@@ -37,7 +37,9 @@ describe('ViewStack fallback pop', () => {
   });
 });
 
+// The detail views' whole graph, plus the lazy hover cards' that Vite
+// transforms ahead of use: slow on a cold transform cache.
 beforeAll(async () => {
   await import('@/components/pr-detail/PrDetailView');
   await import('@/components/work-items/WorkItemDetailView');
-}, 30_000);
+}, 60_000);

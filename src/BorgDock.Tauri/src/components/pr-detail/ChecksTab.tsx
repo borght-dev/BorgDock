@@ -28,6 +28,7 @@ import { rerunChecks } from '@/services/pr-actions';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { parseError } from '@/utils/parse-error';
+import { formatDuration } from '@/utils/relative-time';
 import { ChecksGrouped } from './ChecksGrouped';
 import type { CheckGroup } from './check-groups';
 
@@ -61,16 +62,6 @@ function classifyCheck(run: CheckRun): CheckState {
     default:
       return 'pending';
   }
-}
-
-function formatDuration(startedAt?: string, completedAt?: string): string {
-  if (!startedAt || !completedAt) return '';
-  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${minutes}m ${secs}s`;
 }
 
 function groupBySuite(checks: CheckRun[]): Map<number, CheckRun[]> {

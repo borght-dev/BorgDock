@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BorgDock · checks hover card</title>
+<style>
+  :root {
+    --font-ui: "Inter Variable", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    --font-reading: "Instrument Sans Variable", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    --font-code: "JetBrains Mono Variable", "Cascadia Code", Consolas, monospace;
+  }
+  .light {
+    --bg: #ffffff; --surface: #ffffff; --raised: rgba(23, 24, 28, 0.03); --modal: #ffffff; --hover: rgba(23, 24, 28, 0.04);
+    --border: #e5e6ea; --strong-border: #d9dbe0; --text: #17181c; --text-2: #5d606a; --text-3: #6d707a; --faint: #c2c4cb;
+    --accent: #4f46e5; --accent-subtle: rgba(79, 70, 229, 0.1);
+    --green: #1f9d6b; --red: #d64560; --yellow: #c98a12; --gray: #8f929c;
+    --red-fg: #bf3552; --red-bg: rgba(214, 69, 96, 0.07); --red-border: rgba(214, 69, 96, 0.2);
+    --amber-fg: #8f620b; --amber-bg: rgba(201, 138, 18, 0.1); --amber-border: rgba(201, 138, 18, 0.24);
+    --green-fg: #1f9d6b; --code-bg: rgba(23, 24, 28, 0.04);
+    --shadow: 0 12px 32px rgba(20, 22, 30, 0.14), 0 2px 6px rgba(20, 22, 30, 0.08), 0 0 0 1px rgba(20, 22, 30, 0.06);
+  }
+  .dark {
+    --bg: #151618; --surface: #1b1c1f; --raised: #202125; --modal: #1b1c1f; --hover: rgba(255, 255, 255, 0.035);
+    --border: rgba(255, 255, 255, 0.065); --strong-border: rgba(255, 255, 255, 0.1); --text: #ededef; --text-2: #9c9da4; --text-3: #82838a; --faint: #3f4046;
+    --accent: #7f7eff; --accent-subtle: rgba(127, 126, 255, 0.15);
+    --green: #5cc98f; --red: #f0616d; --yellow: #e5b454; --gray: #67686f;
+    --red-fg: #f0616d; --red-bg: rgba(240, 97, 109, 0.09); --red-border: rgba(240, 97, 109, 0.22);
+    --amber-fg: #e5b454; --amber-bg: rgba(229, 180, 84, 0.09); --amber-border: rgba(229, 180, 84, 0.22);
+    --green-fg: #5cc98f; --code-bg: rgba(255, 255, 255, 0.04);
+    --shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; font-family: var(--font-ui); color: #ededef; }
+  @media (min-width: 900px) {
+    body { background: #0e0f11; padding: 32px 0 56px; }
+    .page { max-width: 760px; margin: 0 auto; }
+  }
+  .lede { color: #9c9da4; font-size: 13px; margin: 0 0 22px; line-height: 1.5; }
+  .lede code, .notes code { font-family: var(--font-code); font-size: 12px; }
+  .frame-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #82838a; margin: 0 0 10px; font-weight: 600; }
+  .frame { margin-bottom: 30px; }
+  .mono { font-family: var(--font-code); }
+
+  /* ---------- PR list (context) ---------- */
+  .pane { background: var(--bg); color: var(--text); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; position: relative; }
+  .list-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-3); }
+  .list-head b { color: var(--text); font-weight: 600; font-size: 12.5px; }
+  .list-head .count { font-variant-numeric: tabular-nums; }
+  .pr {
+    display: grid; grid-template-columns: 24px minmax(0, 1fr) auto auto 44px;
+    align-items: center; gap: 12px; padding: 9px 14px; border-bottom: 1px solid var(--border);
+    font-size: 12.5px; position: relative;
+  }
+  .pr.hovered { background: var(--hover); }
+  .av { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 9.5px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #7f7eff, #4f46e5); }
+  .av.them { background: linear-gradient(135deg, #5d606a, #3f4046); }
+  .pr-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .pr-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .pr-meta { font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pr-meta em { font-style: normal; color: var(--text-2); }
+  .pr-num { font-family: var(--font-code); font-size: 11px; color: var(--text-3); text-align: right; }
+  .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-2); white-space: nowrap; }
+  .chip.approved { color: var(--green-fg); border-color: color-mix(in srgb, var(--green) 30%, transparent); }
+  .chip.requested { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+  .checkbar { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--text-2); position: relative; padding: 3px 6px; margin: -3px -6px; border-radius: 6px; }
+  .checkbar.fail { color: var(--red-fg); }
+  .checkbar.run { color: var(--amber-fg); }
+  .checkbar.hovered { background: var(--hover); box-shadow: 0 0 0 1px var(--strong-border); }
+  .cb-bar { display: flex; width: 44px; height: 4px; border-radius: 2px; overflow: hidden; background: var(--strong-border); }
+  .cb-bar i { display: block; height: 100%; }
+  .seg-ok { background: var(--green); } .seg-fail { background: var(--red); } .seg-run { background: var(--yellow); } .seg-skip { background: var(--faint); }
+
+  .cursor { position: absolute; width: 14px; height: 20px; pointer-events: none; z-index: 4; left: 40px; top: 10px; }
+
+  /* ---------- the hover card ---------- */
+  .ck-card {
+    position: absolute; top: calc(100% + 8px); right: -66px; width: 420px; z-index: 3;
+    background: var(--modal); color: var(--text); border-radius: 10px; box-shadow: var(--shadow);
+    font-family: var(--font-ui); line-height: 1.4; overflow: hidden; white-space: normal; text-align: left;
+  }
+  .ck-card.static { position: relative; top: auto; right: auto; width: 100%; }
+  .ck-head { padding: 11px 14px 10px; border-bottom: 1px solid var(--border); }
+  .ck-head-top { display: flex; align-items: baseline; gap: 8px; font-size: 11.5px; color: var(--text-3); }
+  .ck-head-top b { color: var(--text); font-size: 12.5px; font-weight: 600; }
+  .ck-head-top code { font-family: var(--font-code); font-size: 11px; color: var(--text-2); }
+  .ck-head-top .r { margin-left: auto; }
+  .ck-bigbar { display: flex; gap: 2px; height: 6px; margin-top: 9px; border-radius: 3px; overflow: hidden; }
+  .ck-bigbar i { display: block; height: 100%; }
+  .ck-counts { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--text-2); }
+  .ck-counts span { display: inline-flex; align-items: center; gap: 5px; }
+  .ck-counts i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .ck-counts .fail { color: var(--red-fg); font-weight: 600; }
+  .ck-counts .run { color: var(--amber-fg); }
+
+  .ck-body { }
+  .ck-sec { padding: 9px 14px 10px; border-bottom: 1px solid var(--border); }
+  .ck-sec:last-child { border-bottom: 0; }
+  .ck-sec-label { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: var(--text-3); margin-bottom: 7px; display: flex; gap: 6px; }
+  .ck-sec-label .n { font-variant-numeric: tabular-nums; color: var(--text-2); }
+
+  .ck-job + .ck-job { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .ck-line { display: flex; align-items: center; gap: 7px; font-size: 12.5px; min-width: 0; }
+  .ck-line .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .ck-line .wf { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+  .ck-line .dur { margin-left: auto; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ic { width: 14px; height: 14px; flex: none; }
+  .ck-step { margin: 3px 0 0 21px; font-size: 11.5px; color: var(--text-2); }
+  .ck-step b { color: var(--text); font-weight: 500; }
+  .ck-why {
+    margin: 7px 0 0 21px; padding: 7px 9px; border-radius: 7px;
+    background: var(--red-bg); border: 1px solid var(--red-border);
+    font-size: 11.5px;
+  }
+  .ck-test { font-family: var(--font-code); font-size: 11px; color: var(--text); overflow-wrap: anywhere; }
+  .ck-msg { margin-top: 3px; color: var(--red-fg); font-family: var(--font-code); font-size: 11px; overflow-wrap: anywhere; }
+  .ck-diff { margin-top: 5px; display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; font-family: var(--font-code); font-size: 10.5px; }
+  .ck-diff .k { color: var(--text-3); }
+  .ck-diff .exp { color: var(--green-fg); }
+  .ck-diff .act { color: var(--red-fg); }
+  .ck-loc { margin-top: 5px; font-family: var(--font-code); font-size: 10.5px; color: var(--accent); }
+  .ck-more { margin: 5px 0 0 21px; font-size: 11px; color: var(--text-3); }
+  .ck-more .mono { font-size: 10.5px; color: var(--text-2); }
+  .ck-code { font-family: var(--font-code); font-size: 10.5px; padding: 0 4px; border-radius: 4px; background: var(--code-bg); border: 1px solid var(--border); color: var(--text); margin-right: 4px; }
+  .ck-shared {
+    margin: 7px 0 0 21px; padding: 6px 9px; border-radius: 7px;
+    background: var(--amber-bg); border: 1px solid var(--amber-border); color: var(--amber-fg);
+    font-size: 11.5px; display: flex; gap: 6px; align-items: flex-start;
+  }
+  .ck-shared b { font-weight: 600; }
+  .ck-shared .sub { color: var(--text-2); }
+  .ck-why.plain { background: var(--code-bg); border-color: var(--border); }
+  .ck-why.plain .ck-msg { color: var(--text-2); }
+
+  .ck-run-row { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+  .ck-run-row + .ck-run-row { margin-top: 6px; }
+  .ck-run-row .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ck-run-row .dur { margin-left: auto; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .eta { display: inline-block; width: 46px; height: 3px; border-radius: 2px; background: var(--strong-border); overflow: hidden; vertical-align: middle; margin-left: 6px; }
+  .eta i { display: block; height: 100%; background: var(--yellow); }
+  .spin { width: 12px; height: 12px; flex: none; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--yellow) 30%, transparent); border-top-color: var(--yellow); margin: 1px; }
+
+  .ck-names { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ck-names span { font-size: 11px; padding: 1px 7px; border-radius: 6px; background: var(--raised); border: 1px solid var(--border); color: var(--text-2); white-space: nowrap; }
+  .ck-names.ok span::before { content: "✓ "; color: var(--green-fg); }
+  .ck-names.skip span { color: var(--text-3); border-style: dashed; background: transparent; }
+  .ck-names .more { background: transparent !important; border-color: transparent !important; color: var(--text-3) !important; }
+  .ck-names .more::before { content: none !important; }
+
+  .ck-foot { display: flex; align-items: center; gap: 6px; padding: 7px 10px 7px 14px; background: var(--raised); border-top: 1px solid var(--border); font-size: 11px; color: var(--text-3); }
+  .ck-foot .spacer { flex: 1; }
+  .btn { font: inherit; font-size: 11.5px; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--strong-border); background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .dark .btn.primary { color: #12121a; }
+
+  .sk { border-radius: 4px; height: 9px; position: relative; overflow: hidden; background: var(--code-bg); }
+  .sk + .sk { margin-top: 6px; }
+  .sk::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent); animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+  .states { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .state-frame { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .state-frame .caption { font-size: 11.5px; color: var(--text-3); margin-bottom: 10px; }
+
+  .notes { margin-top: 30px; font-size: 13px; line-height: 1.6; color: #b4b5bb; }
+  .notes h2 { font-size: 14px; color: #ededef; margin: 0 0 8px; }
+  .notes ul { margin: 0; padding-left: 18px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-x" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="var(--red)"/><path d="M5.5 5.5l5 5m0-5l-5 5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="var(--green)"/><path d="M5 8.2l2 2 4-4.4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 16 16"><path d="M8 1.8l6.6 11.6H1.4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6.2v3.4M8 11.4v.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 14 20"><path d="M1 1v15l4-4 3 7 2.5-1-3-7h5.5z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="page">
+<p class="lede">Hover a PR's check bar and after 300&nbsp;ms a card lists every check of the head commit: failing first, each with <b>why</b> it failed (the failing test, assertion, expected/received and file:line that BorgDock already pulls from the job log), then running, passed and skipped. Red that isn't the PR's fault says so. The card stays open while the pointer is on it, so its buttons work.</p>
+
+<!-- ===================== DARK · failing ===================== -->
+<div class="frame">
+  <p class="frame-label">Pull requests · dark · 2 failing</p>
+  <div class="pane dark">
+    <div class="list-head"><b>Gomocha-FLOW/FSP</b><span class="count">4 open</span></div>
+
+    <div class="pr">
+      <span class="av">KB</span>
+      <span class="pr-text"><span class="pr-title">Work orders: bulk reassign from the list view</span><span class="pr-meta"><em>kvdborght</em> in FSP, pushed 2 h ago</span></span>
+      <span class="checkbar"><span class="cb-bar"><i class="seg-ok" style="width:100%"></i></span>18 passing</span>
+      <span class="chip approved">Approved</span>
+      <span class="pr-num">#4790</span>
+    </div>
+
+    <div class="pr hovered">
+      <span class="av">KB</span>
+      <span class="pr-text"><span class="pr-title">Planboard: keep drag preview inside the resource lane</span><span class="pr-meta"><em>kvdborght</em> in FSP, pushed 18 min ago</span></span>
+      <span class="checkbar fail hovered"><span class="cb-bar"><i class="seg-ok" style="width:70%"></i><i class="seg-fail" style="width:10%"></i><i class="seg-run" style="width:6%"></i></span>2 failing
+        <svg class="cursor"><use href="#i-cursor"/></svg>
+        <div class="ck-card">
+          <div class="ck-head">
+            <div class="ck-head-top"><b>Checks</b><span>on <code>a41f9c2</code></span><span class="r">pushed 18 min ago</span></div>
+            <div class="ck-bigbar"><i class="seg-fail" style="flex:2"></i><i class="seg-run" style="flex:1"></i><i class="seg-ok" style="flex:14"></i><i class="seg-skip" style="flex:3"></i></div>
+            <div class="ck-counts">
+              <span class="fail"><i style="background:var(--red)"></i>2 failing</span>
+              <span class="run"><i style="background:var(--yellow)"></i>1 running</span>
+              <span><i style="background:var(--green)"></i>14 passed</span>
+              <span><i style="background:var(--faint)"></i>3 skipped</span>
+            </div>
+          </div>
+          <div class="ck-body">
+            <div class="ck-sec">
+              <div class="ck-sec-label">Failing</div>
+              <div class="ck-job">
+                <div class="ck-line"><svg class="ic"><use href="#i-x"/></svg><span class="name">test (ubuntu-latest, node 22)</span><span class="wf">CI</span><span class="dur">4m 12s</span></div>
+                <div class="ck-step">Step <b>Run vitest</b> · 3 failed, 412 passed</div>
+                <div class="ck-why">
+                  <div class="ck-test">PlanBoard › drag preview › clamps to the last lane</div>
+                  <div class="ck-msg">AssertionError: expected 412 to be 380</div>
+                  <div class="ck-diff"><span class="k">expected</span><span class="exp">380</span><span class="k">received</span><span class="act">412</span></div>
+                  <div class="ck-loc">src/planboard/drag-preview.test.ts:88</div>
+                </div>
+                <div class="ck-more">+2 more: <span class="mono">Lane › scrolled › keeps offset</span>, <span class="mono">Lane › last › drop target</span></div>
+              </div>
+              <div class="ck-job">
+                <div class="ck-line"><svg class="ic"><use href="#i-x"/></svg><span class="name">build-api</span><span class="wf">Backend</span><span class="dur">2m 03s</span></div>
+                <div class="ck-step">Step <b>dotnet build</b></div>
+                <div class="ck-why">
+                  <div class="ck-msg" style="margin-top:0"><span class="ck-code">CS0246</span>The type or namespace name 'IClock' could not be found</div>
+                  <div class="ck-loc">Fsp.Api/Planning/SlotService.cs:14</div>
+                </div>
+                <div class="ck-shared"><svg class="ic"><use href="#i-warn"/></svg><span><b>Not caused by this PR.</b> Also fails on master since 3 h ago <span class="sub">· Owner Tim · T3 working</span></span></div>
+              </div>
+            </div>
+            <div class="ck-sec">
+              <div class="ck-sec-label">Running</div>
+              <div class="ck-run-row"><span class="spin"></span><span class="name">e2e (chromium)</span><span class="dur">3m 40s<span class="eta"><i style="width:60%"></i></span> ~6m</span></div>
+            </div>
+            <div class="ck-sec">
+              <div class="ck-sec-label">Passed <span class="n">14</span></div>
+              <div class="ck-names ok"><span>lint</span><span>typecheck</span><span>test (windows)</span><span>build-web</span><span>storybook</span><span class="more">+9 more</span></div>
+            </div>
+            <div class="ck-sec">
+              <div class="ck-sec-label">Skipped <span class="n">3</span></div>
+              <div class="ck-names skip"><span>deploy-preview</span><span>visual-regression</span><span>release</span></div>
+            </div>
+          </div>
+          <div class="ck-foot">
+            <span>Click opens Checks</span>
+            <span class="spacer"></span>
+            <button class="btn">Rerun failed</button>
+            <button class="btn primary">Fix with agent</button>
+          </div>
+        </div>
+      </span>
+      <span class="chip requested">Review requested</span>
+      <span class="pr-num">#4812</span>
+    </div>
+
+    <div class="pr">
+      <span class="av them">MJ</span>
+      <span class="pr-text"><span class="pr-title">Invoices: export credit notes to Exact</span><span class="pr-meta"><em>mjansen</em> in FSP, pushed yesterday</span></span>
+      <span class="checkbar run"><span class="cb-bar"><i class="seg-ok" style="width:80%"></i><i class="seg-run" style="width:10%"></i></span>16 of 18, running</span>
+      <span class="chip">Commented</span>
+      <span class="pr-num">#4801</span>
+    </div>
+    <div class="pr">
+      <span class="av them">TS</span>
+      <span class="pr-text"><span class="pr-title">Mobile: offline queue retries with backoff</span><span class="pr-meta"><em>tsmit</em> in FSP, pushed 3 d ago</span></span>
+      <span class="checkbar"><span class="cb-bar"><i class="seg-ok" style="width:100%"></i></span>12 passing</span>
+      <span class="chip">Draft</span>
+      <span class="pr-num">#4774</span>
+    </div>
+    <div style="height:680px"></div>
+  </div>
+</div>
+
+<!-- ===================== LIGHT · running ===================== -->
+<div class="frame">
+  <p class="frame-label">Pull requests · light · still running</p>
+  <div class="pane light">
+    <div class="list-head"><b>Gomocha-FLOW/FSP</b><span class="count">4 open</span></div>
+    <div class="pr hovered">
+      <span class="av them">MJ</span>
+      <span class="pr-text"><span class="pr-title">Invoices: export credit notes to Exact</span><span class="pr-meta"><em>mjansen</em> in FSP, pushed 9 min ago</span></span>
+      <span class="checkbar run hovered"><span class="cb-bar"><i class="seg-ok" style="width:80%"></i><i class="seg-run" style="width:10%"></i></span>16 of 18, running
+        <svg class="cursor"><use href="#i-cursor"/></svg>
+        <div class="ck-card">
+          <div class="ck-head">
+            <div class="ck-head-top"><b>Checks</b><span>on <code>7c02be1</code></span><span class="r">pushed 9 min ago</span></div>
+            <div class="ck-bigbar"><i class="seg-run" style="flex:2"></i><i class="seg-ok" style="flex:16"></i><i class="seg-skip" style="flex:1"></i></div>
+            <div class="ck-counts">
+              <span class="run"><i style="background:var(--yellow)"></i>2 running</span>
+              <span><i style="background:var(--green)"></i>16 passed</span>
+              <span><i style="background:var(--faint)"></i>1 skipped</span>
+            </div>
+          </div>
+          <div class="ck-body">
+            <div class="ck-sec">
+              <div class="ck-sec-label">Running</div>
+              <div class="ck-run-row"><span class="spin"></span><span class="name">e2e (chromium)</span><span class="dur">5m 02s<span class="eta"><i style="width:84%"></i></span> ~6m</span></div>
+              <div class="ck-run-row"><span class="spin"></span><span class="name">SonarCloud Code Analysis</span><span class="dur">queued 1m</span></div>
+            </div>
+            <div class="ck-sec">
+              <div class="ck-sec-label">Passed <span class="n">16</span></div>
+              <div class="ck-names ok"><span>lint</span><span>typecheck</span><span>test (ubuntu, node 22)</span><span>test (windows)</span><span>build-api</span><span>build-web</span><span class="more">+10 more</span></div>
+            </div>
+            <div class="ck-sec">
+              <div class="ck-sec-label">Skipped <span class="n">1</span></div>
+              <div class="ck-names skip"><span>release</span></div>
+            </div>
+          </div>
+          <div class="ck-foot">
+            <span>Click opens Checks</span>
+            <span class="spacer"></span>
+            <span>Done in ~1 min</span>
+          </div>
+        </div>
+      </span>
+      <span class="chip">Commented</span>
+      <span class="pr-num">#4801</span>
+    </div>
+    <div class="pr">
+      <span class="av them">TS</span>
+      <span class="pr-text"><span class="pr-title">Mobile: offline queue retries with backoff</span><span class="pr-meta"><em>tsmit</em> in FSP, pushed 3 d ago</span></span>
+      <span class="checkbar"><span class="cb-bar"><i class="seg-ok" style="width:100%"></i></span>12 passing</span>
+      <span class="chip">Draft</span>
+      <span class="pr-num">#4774</span>
+    </div>
+    <div style="height:290px"></div>
+  </div>
+</div>
+
+<!-- ===================== STATES ===================== -->
+<p class="frame-label">Why, when the log says less</p>
+<div class="states">
+  <div class="state-frame dark">
+    <div class="caption">Log not read yet (first hover)</div>
+    <div class="ck-card static">
+      <div class="ck-body">
+        <div class="ck-sec">
+          <div class="ck-sec-label">Failing</div>
+          <div class="ck-job">
+            <div class="ck-line"><svg class="ic"><use href="#i-x"/></svg><span class="name">test (ubuntu-latest)</span><span class="dur">4m 12s</span></div>
+            <div class="ck-step">Step <b>Run vitest</b> · reading log…</div>
+            <div class="ck-why plain"><div class="sk" style="width:90%"></div><div class="sk" style="width:65%"></div><div class="sk" style="width:40%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state-frame dark">
+    <div class="caption">Nothing recognisable in the log tail</div>
+    <div class="ck-card static">
+      <div class="ck-body">
+        <div class="ck-sec">
+          <div class="ck-sec-label">Failing</div>
+          <div class="ck-job">
+            <div class="ck-line"><svg class="ic"><use href="#i-x"/></svg><span class="name">deploy-staging</span><span class="dur">0m 41s</span></div>
+            <div class="ck-step">Step <b>Upload artifact</b></div>
+            <div class="ck-why plain"><div class="ck-msg" style="margin-top:0">Process completed with exit code 1.</div><div class="ck-loc">Open job log ↗</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state-frame dark">
+    <div class="caption">Check from another app (check output)</div>
+    <div class="ck-card static">
+      <div class="ck-body">
+        <div class="ck-sec">
+          <div class="ck-sec-label">Failing</div>
+          <div class="ck-job">
+            <div class="ck-line"><svg class="ic"><use href="#i-x"/></svg><span class="name">SonarCloud Code Analysis</span></div>
+            <div class="ck-why">
+              <div class="ck-test" style="font-family:var(--font-ui);font-size:11.5px">Quality Gate failed</div>
+              <div class="ck-diff"><span class="k">coverage</span><span class="act">71.4% (needs 80%)</span><span class="k">new bugs</span><span class="act">1</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state-frame light">
+    <div class="caption">Lint / compile: rule and location</div>
+    <div class="ck-card static">
+      <div class="ck-body">
+        <div class="ck-sec">
+          <div class="ck-sec-label">Failing</div>
+          <div class="ck-job">
+            <div class="ck-line"><svg class="ic"><use href="#i-x"/></svg><span class="name">lint</span><span class="wf">CI</span><span class="dur">38s</span></div>
+            <div class="ck-step">Step <b>biome lint</b> · 2 errors</div>
+            <div class="ck-why">
+              <div class="ck-msg" style="margin-top:0"><span class="ck-code">noUnusedImports</span>'useMemo' is imported but never used</div>
+              <div class="ck-loc">src/planboard/Lane.tsx:3</div>
+            </div>
+            <div class="ck-more">+1 more in <span class="mono">src/planboard/drag.ts:41</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <h2>How it behaves</h2>
+  <ul>
+    <li>Opens after 300 ms on the check bar (not the whole row, so skimming the list doesn't pop cards). Stays open while the pointer is on the bar or the card; Esc closes it. Click on the bar still opens the PR on the Checks tab.</li>
+    <li>Names and states come from the PR poll (<code>ciJobs</code>, failing and pending names), so the list shows instantly. The reason comes from the CI failure store's signals for the failed job; if that job's log hasn't been read yet, the hover reads it (tail only, same <code>ci_read_job_log</code> path) and the skeleton fills in.</li>
+    <li>Per failing job: the failed step, the first failing test or error with expected/received and file:line, then "+N more". Totals line ("3 failed, 412 passed") comes from the summary signal.</li>
+    <li>Shared failures (also red on master) get the amber "Not caused by this PR" line with owner, same wording as the row's marker.</li>
+    <li>Passed and skipped stay one compact line each; a long list scrolls inside the card past ~460 px.</li>
+    <li>Buttons reuse what exists: Rerun failed (check suite rerun) and Fix with agent (<code>fixWithClaude</code>, which runs the launch guard first).</li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

@@ -160,20 +160,11 @@
   color: inherit;
   font: inherit;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 .bd-linked-item-button .bd-card:hover {
   border-color: var(--color-accent);
-}
-.bd-work-item-peek h3 {
-  margin: 6px 0 8px;
-  font-size: 15px;
-  overflow-wrap: anywhere;
-}
-.bd-work-item-peek p {
-  margin: 8px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
 }
 @media (max-width: 640px) {
   .bd-preview-overlay {
