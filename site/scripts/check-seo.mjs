@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const dist = path.resolve(process.argv[2] ?? fileURLToPath(new URL('../dist/', import.meta.url)));
-const origin = 'https://borgdock.koenvdborght.nl';
+const origin = 'https://borgdock.dev';
 const read = (file) => fs.readFileSync(path.join(dist, file), 'utf8');
 const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
   const file = path.join(dir, entry.name);

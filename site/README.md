@@ -1,6 +1,6 @@
 # BorgDock marketing site
 
-The site at [borgdock.koenvdborght.nl](https://borgdock.koenvdborght.nl): what BorgDock does for
+The site at [borgdock.dev](https://borgdock.dev): what BorgDock does for
 you, a page each for Dispatch and Quick review, a gallery of every screen, the download page and
 the changelog. It is an Astro 5 site with one
 React island (the theme toggle), deployed to GitHub Pages from `master` by
@@ -11,6 +11,31 @@ data. Nothing is drawn by hand, and nothing comes from a real account.
 
 ## Search visibility
 
+### Domain cutover
+
+The target hostname is `borgdock.dev`. Before deploying the domain change:
+
+1. Set the repository's Settings > Pages > Custom domain to `borgdock.dev`. This site deploys
+   through Actions, so the Pages setting controls the hostname; the public CNAME file alone does not.
+2. In Cloudflare DNS, add four `A` records for `@`: `185.199.108.153`, `185.199.109.153`,
+   `185.199.110.153`, `185.199.111.153`. Use DNS only, with proxying disabled and TTL Auto.
+   Add `CNAME www` pointing to `borght-dev.github.io`, also DNS only.
+3. Wait for GitHub's DNS check and HTTPS certificate, then enable Enforce HTTPS. `.dev` requires
+   HTTPS in browsers, so confirm the certificate before announcing the new address.
+4. Deploy this branch and check the homepage, download page, robots.txt and sitemap-index.xml
+   over HTTPS. Canonical URLs and sitemap entries must use `https://borgdock.dev/`.
+5. Update the GitHub repository About website link. Redirect every path on the former hostname,
+   `borgdock.koenvdborght.nl`, to the same path on `https://borgdock.dev` with a permanent redirect
+   at its DNS/hosting provider. GitHub Pages supports one custom hostname per site; keeping its
+   former DNS pointed at Pages does not provide this redirect. Preserve query strings.
+
+Existing rendered promo videos still display the former hostname; keep that redirect working
+until those videos are regenerated for the new address.
+
+See [GitHub's custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
+
+### Indexing
+
 `bun run site:build` checks canonical URLs, unique branded titles, descriptions, Open Graph and
 Twitter metadata, share-image files, homepage structured data, robots.txt and sitemap coverage
 for every built HTML page. The Astro sitemap integration includes generated release posts.
@@ -18,9 +43,9 @@ Canonical URLs use the production hostname and trailing slashes, matching GitHub
 
 After deploying SEO changes:
 
-1. Verify `https://borgdock.koenvdborght.nl/robots.txt` and
-   `https://borgdock.koenvdborght.nl/sitemap-index.xml` return HTTP 200.
-2. Add `https://borgdock.koenvdborght.nl/` as a URL-prefix property in
+1. Verify `https://borgdock.dev/robots.txt` and
+   `https://borgdock.dev/sitemap-index.xml` return HTTP 200.
+2. Add `https://borgdock.dev/` as a URL-prefix property in
    [Google Search Console](https://search.google.com/search-console/). Complete its ownership
    verification using the offered HTML file or DNS record.
 3. Submit `sitemap-index.xml` in Sitemaps. Inspect the homepage URL, run Test live URL, then

@@ -5,7 +5,7 @@ import { releaseImages } from './release-images.mjs';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://borgdock.koenvdborght.nl',
+  site: 'https://borgdock.dev',
   trailingSlash: 'always',
   integrations: [react(), sitemap()],
   build: {
