@@ -47,9 +47,10 @@ vi.mock('@/services/activity/api', () => ({
 
 const settle = () => vi.advanceTimersByTimeAsync(0);
 
-function setPhoneLink(phoneLink: typeof DEFAULT_PHONE_LINK) {
+function setPhoneLink(phoneLink: typeof DEFAULT_PHONE_LINK, hasLoaded = true) {
   const settings = useSettingsStore.getState().settings;
   useSettingsStore.setState({
+    hasLoaded,
     settings: {
       ...settings,
       azureDevOps: { ...settings.azureDevOps, organization: 'Gomocha', project: 'FSP' },
@@ -141,6 +142,38 @@ describe('startPhoneLinkSync', () => {
     await settle();
     expect(mocks.readsSince).toHaveBeenCalledWith('2026-10-31T09:00:00.000Z');
     expect(mocks.readSince).toHaveBeenCalledWith('2026-10-31T09:00:00.000Z', '', 200);
+  });
+
+  it('waits for settings to load before it shares or takes reads', async () => {
+    localStorage.setItem(
+      SENT_CURSOR,
+      JSON.stringify({ readAt: '2026-10-31T08:00:00.000Z', id: '' }),
+    );
+    localStorage.setItem(RECEIVED_CURSOR, '2026-10-31T08:00:00.000Z');
+    setPhoneLink(DEFAULT_PHONE_LINK, false);
+    stop = startPhoneLinkSync();
+    await settle();
+    mocks.changed?.();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(mocks.state).not.toHaveBeenCalled();
+    expect(mocks.readSince).not.toHaveBeenCalled();
+    expect(mocks.readsSince).not.toHaveBeenCalled();
+
+    setPhoneLink({ ...DEFAULT_PHONE_LINK, shareReads: false });
+    await settle();
+    expect(mocks.readsSince).not.toHaveBeenCalled();
+    expect(localStorage.getItem(SENT_CURSOR)).toBeNull();
+    expect(localStorage.getItem(RECEIVED_CURSOR)).toBeNull();
+  });
+
+  it('ticks as soon as settings load', async () => {
+    localStorage.setItem(RECEIVED_CURSOR, '2026-10-31T08:00:00.000Z');
+    setPhoneLink(DEFAULT_PHONE_LINK, false);
+    stop = startPhoneLinkSync();
+    await settle();
+    useSettingsStore.setState({ hasLoaded: true });
+    await settle();
+    expect(mocks.readsSince).toHaveBeenCalledWith('2026-10-31T08:00:00.000Z');
   });
 
   it('does nothing while unlinked', async () => {

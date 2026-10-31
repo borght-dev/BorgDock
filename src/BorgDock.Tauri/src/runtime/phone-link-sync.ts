@@ -53,6 +53,9 @@ function scope(): LocalScope {
 const sharing = () =>
   useSettingsStore.getState().settings.notifications.activity?.phoneLink?.shareReads !== false;
 
+/** Before settings load, `shareReads` is the default, not what you saved. */
+const settingsLoaded = () => useSettingsStore.getState().hasLoaded;
+
 /**
  * Read sync with BorgDock for iPhone, main window only: reads made in any
  * window reach the journal, and the journal is what this shares. Presence
@@ -70,11 +73,13 @@ export function startPhoneLinkSync(): () => void {
 
   const share = () =>
     serial(async () => {
-      if (linked && sharing()) await shareReads(port, cursors, new Date().toISOString());
+      if (settingsLoaded() && linked && sharing())
+        await shareReads(port, cursors, new Date().toISOString());
     });
 
   const tick = () =>
     serial(async () => {
+      if (!settingsLoaded()) return;
       linked = (await commandData(commands.phoneLinkState())).linked;
       if (!linked || !sharing()) {
         forgetCursors(cursors);
@@ -93,7 +98,7 @@ export function startPhoneLinkSync(): () => void {
   const onLinkChanged = ({ linked: nowLinked, at }: PhoneLinkChanged) => {
     if (nowLinked)
       serial(async () => {
-        if (sharing()) startCursorsAt(cursors, at);
+        if (settingsLoaded() && sharing()) startCursorsAt(cursors, at);
       });
     tick();
   };
@@ -114,8 +119,9 @@ export function startPhoneLinkSync(): () => void {
   const timer = setInterval(tick, TAKE_MS);
   const unsubscribeSettings = useSettingsStore.subscribe((state, previous) => {
     if (
+      state.hasLoaded !== previous.hasLoaded ||
       state.settings.notifications.activity?.phoneLink !==
-      previous.settings.notifications.activity?.phoneLink
+        previous.settings.notifications.activity?.phoneLink
     ) {
       tick();
     }
