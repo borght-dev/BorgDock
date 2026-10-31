@@ -12,6 +12,7 @@ mod http;
 pub mod keychain;
 pub mod maintenance;
 pub mod notes;
+pub mod phone_link;
 mod runtime;
 mod sqlite_store;
 use tauri::{generate_handler, Emitter, Manager};
@@ -252,6 +253,14 @@ macro_rules! app_commands {
             activity::push::activity_push_target,
             activity::push::activity_push_save,
             activity::push::activity_push_test,
+            activity::commands::activity_read_since,
+            // BorgDock for iPhone
+            phone_link::phone_link_start,
+            phone_link::phone_link_poll,
+            phone_link::phone_link_state,
+            phone_link::phone_link_unlink,
+            phone_link::phone_link_send_reads,
+            phone_link::phone_link_reads_since,
             platform::taskbar::set_taskbar_badge,
             // Workstreams
             // Notes vault
@@ -402,6 +411,7 @@ pub fn run() {
             platform::responsiveness::start(app.handle().clone());
             platform::tray::setup_tray(app)?;
             activity::push::start(app.handle().clone());
+            phone_link::start();
             platform::tray::start_initializing_animation(app.handle().clone());
 
             // Window geometry store: load once, register, spawn flusher,

@@ -146,6 +146,22 @@ pub async fn activity_commit(
     Ok(result)
 }
 
+/// What I read since the cursor, for the phone link (`services/phone-link`).
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn activity_read_since(
+    state: State<'_, ActivityDb>,
+    since: String,
+    after_id: String,
+    limit: u32,
+) -> Result<Vec<ActivityEntryRow>, String> {
+    state
+        .inner()
+        .db
+        .with_store(move |conn| queries::read_since(conn, &since, &after_id, limit))
+        .await
+}
+
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
 pub async fn activity_list(
