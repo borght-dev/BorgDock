@@ -14,6 +14,7 @@ vi.mock('@/generated/commands', () => ({
       Promise.resolve({ status: 'ok', data: { linked: false, server: null, serverName: null } }),
     ),
   },
+  events: { phoneLinkChanged: { listen: vi.fn(async () => () => {}) } },
 }));
 
 function makeNotifications(overrides?: Partial<NotificationSettings>): NotificationSettings {

@@ -321,7 +321,9 @@ async fn forget_session() -> Result<(), String> {
             Err(error) => Err(format!("Failed to remove the link: {error}")),
         },
     )
-    .await
+    .await?;
+    announce(false);
+    Ok(())
 }
 
 async fn linked_session() -> Result<Session, String> {

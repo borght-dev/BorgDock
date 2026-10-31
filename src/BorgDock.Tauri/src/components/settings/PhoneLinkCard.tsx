@@ -8,7 +8,7 @@ import {
   TextInput,
   ToggleRow,
 } from '@/components/shared/primitives';
-import { commands, type PhoneLinkStart, type PhoneLinkState } from '@/generated/commands';
+import { commands, events, type PhoneLinkStart, type PhoneLinkState } from '@/generated/commands';
 import { commandData } from '@/services/native-command';
 import type { PhoneLinkSettings } from '@/types/settings';
 
@@ -38,9 +38,28 @@ export function PhoneLinkCard({ phoneLink, onChange }: Props) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void commandData(commands.phoneLinkState())
-      .then(setState)
-      .catch((reason) => setError(String(reason)));
+    let stopped = false;
+    const load = () =>
+      void commandData(commands.phoneLinkState())
+        .then((linkState) => {
+          if (!stopped) setState(linkState);
+        })
+        .catch((reason) => {
+          if (!stopped) setError(String(reason));
+        });
+    load();
+    let unlisten: (() => void) | undefined;
+    void events.phoneLinkChanged
+      .listen(load)
+      .then((stop) => {
+        if (stopped) stop();
+        else unlisten = stop;
+      })
+      .catch(() => {});
+    return () => {
+      stopped = true;
+      unlisten?.();
+    };
   }, []);
 
   useEffect(() => {

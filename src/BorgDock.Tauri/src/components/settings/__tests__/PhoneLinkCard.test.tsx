@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   poll: vi.fn(),
   unlink: vi.fn(),
   cancel: vi.fn(),
+  linkChanged: undefined as (() => void) | undefined,
 }));
 
 const ok = <T,>(data: T) => Promise.resolve({ status: 'ok' as const, data });
@@ -20,6 +21,14 @@ vi.mock('@/generated/commands', () => ({
     phoneLinkPoll: mocks.poll,
     phoneLinkUnlink: mocks.unlink,
     phoneLinkCancel: mocks.cancel,
+  },
+  events: {
+    phoneLinkChanged: {
+      listen: vi.fn(async (handler: () => void) => {
+        mocks.linkChanged = handler;
+        return () => {};
+      }),
+    },
   },
 }));
 
@@ -115,6 +124,22 @@ describe('PhoneLinkCard', () => {
     await flush();
     unmount();
     expect(mocks.cancel).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows Link again when the link is cleared in the background', async () => {
+    mocks.state.mockImplementation(() =>
+      ok({ linked: true, server: 'https://mini/borgdock', serverName: 'Mac mini' }),
+    );
+    render(<PhoneLinkCard phoneLink={DEFAULT_PHONE_LINK} onChange={() => {}} />);
+    await flush();
+    expect(screen.getByText('Linked to Mac mini')).toBeTruthy();
+
+    mocks.state.mockImplementation(() => ok(unlinked));
+    await act(async () => {
+      mocks.linkChanged?.();
+    });
+    expect(screen.getByRole('button', { name: 'Link iPhone' })).toBeTruthy();
+    expect(screen.queryByText('Linked to Mac mini')).toBeNull();
   });
 
   it('says so when the code expires', async () => {
