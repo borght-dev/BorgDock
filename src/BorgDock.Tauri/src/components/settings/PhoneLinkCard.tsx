@@ -44,26 +44,31 @@ export function PhoneLinkCard({ phoneLink, onChange }: Props) {
   useEffect(() => {
     if (!pending) return;
     let stopped = false;
-    const timer = setInterval(() => {
-      void commandData(commands.phoneLinkPoll(pending.linkId))
-        .then((answer) => {
-          if (stopped || answer.status === 'pending') return;
-          setPending(null);
-          if (answer.status === 'approved') {
-            setState({ linked: true, server: server.trim(), serverName: answer.serverName });
-          } else {
-            setError('The code expired before your iPhone approved it. Link again.');
-          }
-        })
-        .catch((reason) => {
-          if (stopped) return;
-          setPending(null);
-          setError(String(reason));
-        });
-    }, LINK_POLL_MS);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      try {
+        const answer = await commandData(commands.phoneLinkPoll(pending.linkId));
+        if (stopped) return;
+        if (answer.status === 'pending') {
+          timer = setTimeout(poll, LINK_POLL_MS);
+          return;
+        }
+        setPending(null);
+        if (answer.status === 'approved') {
+          setState({ linked: true, server: server.trim(), serverName: answer.serverName });
+        } else {
+          setError('The code expired before your iPhone approved it. Link again.');
+        }
+      } catch (reason) {
+        if (stopped) return;
+        setPending(null);
+        setError(String(reason));
+      }
+    };
+    timer = setTimeout(poll, LINK_POLL_MS);
     return () => {
       stopped = true;
-      clearInterval(timer);
+      clearTimeout(timer);
     };
   }, [pending, server]);
 

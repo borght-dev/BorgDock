@@ -72,6 +72,32 @@ describe('PhoneLinkCard', () => {
     expect(screen.queryByText('Waiting for your iPhone…')).toBeNull();
   });
 
+  it('waits for each poll to answer before it asks again', async () => {
+    let answer: (value: {
+      status: 'ok';
+      data: { status: 'approved'; serverName: string };
+    }) => void = () => {};
+    mocks.poll.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+    );
+    render(<PhoneLinkCard phoneLink={DEFAULT_PHONE_LINK} onChange={() => {}} />);
+    await flush();
+    fireEvent.click(screen.getByRole('button', { name: 'Link iPhone' }));
+    await flush();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LINK_POLL_MS * 4);
+    });
+    expect(mocks.poll).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      answer({ status: 'ok', data: { status: 'approved', serverName: 'Mac mini' } });
+    });
+    expect(screen.getByText('Linked to Mac mini')).toBeTruthy();
+  });
+
   it('says so when the code expires', async () => {
     mocks.poll.mockImplementation(() => ok({ status: 'expired' }));
     render(<PhoneLinkCard phoneLink={DEFAULT_PHONE_LINK} onChange={() => {}} />);
