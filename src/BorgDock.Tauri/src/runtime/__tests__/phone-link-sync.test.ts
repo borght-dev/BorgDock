@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
   readSince: vi.fn(),
   mark: vi.fn(),
   changed: undefined as (() => void) | undefined,
+  linkChanged: undefined as
+    | ((event: { payload: { linked: boolean; at: string } }) => void)
+    | undefined,
 }));
 
 const ok = <T>(data: T) => Promise.resolve({ status: 'ok' as const, data });
@@ -26,6 +29,12 @@ vi.mock('@/generated/commands', () => ({
     activityChanged: {
       listen: vi.fn(async (handler: () => void) => {
         mocks.changed = handler;
+        return () => {};
+      }),
+    },
+    phoneLinkChanged: {
+      listen: vi.fn(async (handler: typeof mocks.linkChanged) => {
+        mocks.linkChanged = handler;
         return () => {};
       }),
     },
@@ -121,6 +130,17 @@ describe('startPhoneLinkSync', () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(localStorage.getItem(SENT_CURSOR)).toBeNull();
     expect(mocks.readsSince).not.toHaveBeenCalled();
+  });
+
+  it('starts both cursors when the phone approves, not at the next tick', async () => {
+    mocks.state.mockImplementation(() => ok({ linked: false, server: null, serverName: null }));
+    stop = startPhoneLinkSync();
+    await settle();
+    mocks.state.mockImplementation(() => ok({ linked: true, server: 'x', serverName: 'Mac mini' }));
+    mocks.linkChanged?.({ payload: { linked: true, at: '2026-10-31T09:00:00.000Z' } });
+    await settle();
+    expect(mocks.readsSince).toHaveBeenCalledWith('2026-10-31T09:00:00.000Z');
+    expect(mocks.readSince).toHaveBeenCalledWith('2026-10-31T09:00:00.000Z', '', 200);
   });
 
   it('does nothing while unlinked', async () => {

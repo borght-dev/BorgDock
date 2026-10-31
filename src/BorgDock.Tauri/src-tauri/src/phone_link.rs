@@ -12,16 +12,19 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex, OnceLock};
 use std::time::Duration;
+use tauri::{AppHandle, Emitter};
 
 pub const LINK_SERVICE: &str = "borgdock:phone-link";
 const PRESENCE_EVERY: Duration = Duration::from_secs(60);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 const UNLINKED: &str = "Your iPhone unlinked this desktop. Link it again in Settings.";
 const CANCELED: &str = "This link was canceled. Start again.";
+pub const CHANGED_EVENT: &str = "phone-link-changed";
 
 static WAKE: LazyLock<tokio::sync::Notify> = LazyLock::new(tokio::sync::Notify::new);
+static APP: OnceLock<AppHandle> = OnceLock::new();
 
 /// Links waiting for the phone, by link id.
 static PENDING: LazyLock<Mutex<HashMap<String, Pending>>> =
@@ -32,6 +35,23 @@ struct Pending {
     server: String,
     poll_secret: String,
     expires_at: String,
+}
+
+/// A link stored or forgotten, `at` the moment it happened.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type, tauri_specta::Event))]
+#[serde(rename_all = "camelCase")]
+pub struct PhoneLinkChanged {
+    pub linked: bool,
+    pub at: String,
+}
+
+fn announce(linked: bool) {
+    let Some(app) = APP.get() else { return };
+    let at = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    if let Err(error) = app.emit(CHANGED_EVENT, PhoneLinkChanged { linked, at }) {
+        log::warn!("phone link: could not emit {CHANGED_EVENT}: {error}");
+    }
 }
 
 /// Takes the link off the waiting list; `None` once it was canceled.
@@ -344,7 +364,8 @@ async fn send_presence() -> Result<(), String> {
 }
 
 /// Presence every minute while linked and sharing; right away after a link.
-pub fn start() {
+pub fn start(app: AppHandle) {
+    let _ = APP.set(app);
     tauri::async_runtime::spawn(async move {
         loop {
             if let Err(error) = send_presence().await {
@@ -429,6 +450,7 @@ pub async fn phone_link_poll(link_id: String) -> Result<PhoneLinkPoll, String> {
             })
             .await?;
             WAKE.notify_one();
+            announce(true);
             PhoneLinkPoll::Approved { server_name }
         }
     };

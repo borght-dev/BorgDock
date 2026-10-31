@@ -418,6 +418,7 @@ export const commands = {
 export const events = {
 	activityChanged: makeEvent<ActivityChanged, ActivityChanged>("activity-changed"),
 	ciFailuresChanged: makeEvent<CiFailuresChanged, CiFailuresChanged>("ci-failures-changed"),
+	phoneLinkChanged: makeEvent<PhoneLinkChanged, PhoneLinkChanged>("phone-link-changed"),
 	runtimeVisibility: makeEvent<RuntimeVisibility, RuntimeVisibility>("runtime-visibility"),
 	t3SessionsUpdated: makeEvent<T3SessionsUpdated_Serialize, T3SessionsUpdated_Deserialize>("t3-sessions-updated"),
 };
@@ -2408,6 +2409,12 @@ export type PhoneActivityTarget_Serialize =
 { kind: "item"; id: number } |
 /**  A raw T3 thread id. */
 { kind: "thread"; id: string; itemId: number | null } | { kind: "ci"; groupId: string } | { kind: "none" };
+
+/**  A link stored or forgotten, `at` the moment it happened. */
+export type PhoneLinkChanged = {
+	linked: boolean,
+	at: string,
+};
 
 export type PhoneLinkPoll = { status: "pending" } | { status: "approved"; serverName: string } | { status: "expired" };
 

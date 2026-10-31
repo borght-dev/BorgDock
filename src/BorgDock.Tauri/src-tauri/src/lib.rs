@@ -412,7 +412,7 @@ pub fn run() {
             platform::responsiveness::start(app.handle().clone());
             platform::tray::setup_tray(app)?;
             activity::push::start(app.handle().clone());
-            phone_link::start();
+            phone_link::start(app.handle().clone());
             platform::tray::start_initializing_animation(app.handle().clone());
 
             // Window geometry store: load once, register, spawn flusher,
@@ -513,7 +513,8 @@ fn command_bindings() -> tauri_specta::Builder<tauri::Wry> {
             runtime::RuntimeVisibility,
             t3::commands::T3SessionsUpdated,
             ci_failures::store::commands::CiFailuresChanged,
-            activity::commands::ActivityChanged
+            activity::commands::ActivityChanged,
+            phone_link::PhoneLinkChanged
         ])
         .commands(app_commands!(collect_commands))
 }

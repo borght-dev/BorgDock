@@ -88,6 +88,12 @@ export async function takeReads(
   return keys.length;
 }
 
+/** A new link: both directions start when the phone approved it. */
+export function startCursorsAt(cursors: CursorStore, at: string): void {
+  cursors.set(SENT_CURSOR, JSON.stringify({ readAt: at, id: '' }));
+  cursors.set(RECEIVED_CURSOR, at);
+}
+
 /** Sharing off or unlinked: start over at now when it comes back. */
 export function forgetCursors(cursors: CursorStore): void {
   cursors.remove(SENT_CURSOR);

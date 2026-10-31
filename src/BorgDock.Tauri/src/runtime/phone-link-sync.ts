@@ -1,4 +1,4 @@
-import { commands, events } from '@/generated/commands';
+import { commands, events, type PhoneLinkChanged } from '@/generated/commands';
 import * as activity from '@/services/activity/api';
 import { configuredHosts } from '@/services/dispatch/hosts';
 import { createLogger } from '@/services/logger';
@@ -8,6 +8,7 @@ import {
   forgetCursors,
   type PhoneLinkPort,
   shareReads,
+  startCursorsAt,
   takeReads,
 } from '@/services/phone-link/sync';
 import type { LocalScope } from '@/services/phone-link/targets';
@@ -89,15 +90,25 @@ export function startPhoneLinkSync(): () => void {
     shareTimer = setTimeout(share, SHARE_DEBOUNCE_MS);
   };
 
+  const onLinkChanged = ({ linked: nowLinked, at }: PhoneLinkChanged) => {
+    if (nowLinked)
+      serial(async () => {
+        if (sharing()) startCursorsAt(cursors, at);
+      });
+    tick();
+  };
+
   let stopped = false;
-  let unlisten: (() => void) | undefined;
-  void events.activityChanged
-    .listen(onChanged)
-    .then((stop) => {
-      if (stopped) stop();
-      else unlisten = stop;
-    })
-    .catch(() => {});
+  const unlisteners: (() => void)[] = [];
+  const follow = (listening: Promise<() => void>) =>
+    void listening
+      .then((stop) => {
+        if (stopped) stop();
+        else unlisteners.push(stop);
+      })
+      .catch(() => {});
+  follow(events.activityChanged.listen(onChanged));
+  follow(events.phoneLinkChanged.listen((event) => onLinkChanged(event.payload)));
 
   tick();
   const timer = setInterval(tick, TAKE_MS);
@@ -112,7 +123,7 @@ export function startPhoneLinkSync(): () => void {
 
   return () => {
     stopped = true;
-    unlisten?.();
+    for (const stop of unlisteners) stop();
     clearTimeout(shareTimer);
     clearInterval(timer);
     unsubscribeSettings();
