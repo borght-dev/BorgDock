@@ -366,6 +366,17 @@ export const commands = {
 	activityPushSave: (url: string, token: string | null) => typedError<null, string>(__TAURI_INVOKE("activity_push_save", { url, token })),
 	/**  Send a test push now, away or not. */
 	activityPushTest: () => typedError<null, string>(__TAURI_INVOKE("activity_push_test")),
+	/**  What I read since the cursor, for the phone link (`services/phone-link`). */
+	activityReadSince: (since: string, afterId: string, limit: number) => typedError<ActivityEntryRow_Serialize[], string>(__TAURI_INVOKE("activity_read_since", { since, afterId, limit })),
+	phoneLinkStart: (server: string) => typedError<PhoneLinkStart, string>(__TAURI_INVOKE("phone_link_start", { server })),
+	phoneLinkPoll: (linkId: string) => typedError<PhoneLinkPoll, string>(__TAURI_INVOKE("phone_link_poll", { linkId })),
+	/**  Stops waiting for the phone: a poll still on its way stores no session. */
+	phoneLinkCancel: (linkId: string) => typedError<null, string>(__TAURI_INVOKE("phone_link_cancel", { linkId })),
+	phoneLinkState: () => typedError<PhoneLinkState_Serialize, string>(__TAURI_INVOKE("phone_link_state")),
+	/**  Signs the session out on the server when it can; forgets it either way. */
+	phoneLinkUnlink: () => typedError<null, string>(__TAURI_INVOKE("phone_link_unlink")),
+	phoneLinkSendReads: (targets: PhoneActivityTarget_Deserialize[], before: string) => typedError<null, string>(__TAURI_INVOKE("phone_link_send_reads", { targets, before })),
+	phoneLinkReadsSince: (since: string) => typedError<PhoneReadsSince_Serialize, string>(__TAURI_INVOKE("phone_link_reads_since", { since })),
 	/**
 	 *  Show `count` on the main window's taskbar icon; 0 clears it. Runs on the
 	 *  GUI thread with the shared timeout, like every window command.
@@ -407,6 +418,7 @@ export const commands = {
 export const events = {
 	activityChanged: makeEvent<ActivityChanged, ActivityChanged>("activity-changed"),
 	ciFailuresChanged: makeEvent<CiFailuresChanged, CiFailuresChanged>("ci-failures-changed"),
+	phoneLinkChanged: makeEvent<PhoneLinkChanged, PhoneLinkChanged>("phone-link-changed"),
 	runtimeVisibility: makeEvent<RuntimeVisibility, RuntimeVisibility>("runtime-visibility"),
 	t3SessionsUpdated: makeEvent<T3SessionsUpdated_Serialize, T3SessionsUpdated_Deserialize>("t3-sessions-updated"),
 };
@@ -746,6 +758,11 @@ export type ActivityNotificationSettings_Deserialize = {
 	/**  The needs-you count on the taskbar icon. */
 	taskbarBadge?: boolean,
 	push?: ActivityPushSettings_Deserialize,
+	/**
+	 *  BorgDock for iPhone. The session token lives in the keychain as
+	 *  `borgdock:phone-link`, never here.
+	 */
+	phoneLink?: PhoneLinkSettings_Deserialize,
 };
 
 export type ActivityNotificationSettings_Serialize = {
@@ -758,6 +775,11 @@ export type ActivityNotificationSettings_Serialize = {
 	/**  The needs-you count on the taskbar icon. */
 	taskbarBadge: boolean,
 	push: ActivityPushSettings_Serialize,
+	/**
+	 *  BorgDock for iPhone. The session token lives in the keychain as
+	 *  `borgdock:phone-link`, never here.
+	 */
+	phoneLink: PhoneLinkSettings_Serialize,
 };
 
 export type ActivityOutboxAck = {
@@ -2365,6 +2387,88 @@ export type PendingRequestDto_Serialize = {
 	/**  `user_input` for a question; anything else asks for approval. */
 	kind: string,
 	createdAt: string | null,
+};
+
+/**  The server's `ActivityTarget`: what an activity entry is about. */
+export type PhoneActivityTarget = PhoneActivityTarget_Serialize | PhoneActivityTarget_Deserialize;
+
+/**  The server's `ActivityTarget`: what an activity entry is about. */
+export type PhoneActivityTarget_Deserialize =
+/**  `owner/repo#n`. */
+{ kind: "pr"; key: string } |
+/**  An Azure DevOps work item id. */
+{ kind: "item"; id: number } |
+/**  A raw T3 thread id. */
+{ kind: "thread"; id: string; itemId?: number | null } | { kind: "ci"; groupId: string } | { kind: "none" };
+
+/**  The server's `ActivityTarget`: what an activity entry is about. */
+export type PhoneActivityTarget_Serialize =
+/**  `owner/repo#n`. */
+{ kind: "pr"; key: string } |
+/**  An Azure DevOps work item id. */
+{ kind: "item"; id: number } |
+/**  A raw T3 thread id. */
+{ kind: "thread"; id: string; itemId: number | null } | { kind: "ci"; groupId: string } | { kind: "none" };
+
+/**  A link stored or forgotten, `at` the moment it happened. */
+export type PhoneLinkChanged = {
+	linked: boolean,
+	at: string,
+};
+
+export type PhoneLinkPoll = { status: "pending" } | { status: "approved"; serverName: string } | { status: "expired" };
+
+export type PhoneLinkSettings = PhoneLinkSettings_Serialize | PhoneLinkSettings_Deserialize;
+
+export type PhoneLinkSettings_Deserialize = {
+	serverUrl?: string,
+	/**  Tell the server how long I have been idle, so the phone stays quiet while I'm at my desk. */
+	shareDesk?: boolean,
+	/**  Send what I read here and mark what I read on the phone. */
+	shareReads?: boolean,
+};
+
+export type PhoneLinkSettings_Serialize = {
+	serverUrl: string,
+	/**  Tell the server how long I have been idle, so the phone stays quiet while I'm at my desk. */
+	shareDesk: boolean,
+	/**  Send what I read here and mark what I read on the phone. */
+	shareReads: boolean,
+};
+
+/**  A started link: show `code` as text and `qrSvg` (the QR of `link`) to the phone. */
+export type PhoneLinkStart = {
+	linkId: string,
+	code: string,
+	expiresAt: string,
+	link: string,
+	qrSvg: string,
+};
+
+export type PhoneLinkState = PhoneLinkState_Serialize | PhoneLinkState_Deserialize;
+
+export type PhoneLinkState_Deserialize = {
+	linked: boolean,
+	server?: string | null,
+	serverName?: string | null,
+};
+
+export type PhoneLinkState_Serialize = {
+	linked: boolean,
+	server: string | null,
+	serverName: string | null,
+};
+
+export type PhoneReadsSince = PhoneReadsSince_Serialize | PhoneReadsSince_Deserialize;
+
+export type PhoneReadsSince_Deserialize = {
+	until: string,
+	targets: PhoneActivityTarget_Deserialize[],
+};
+
+export type PhoneReadsSince_Serialize = {
+	until: string,
+	targets: PhoneActivityTarget_Serialize[],
 };
 
 export type PrDetailSettings = Record<string, never>;

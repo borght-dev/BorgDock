@@ -103,6 +103,23 @@ export interface ActivityPushSettings {
   hideTitles: boolean;
 }
 
+/** BorgDock for iPhone. The session token lives in the keychain, not here. */
+export interface PhoneLinkSettings {
+  serverUrl: string;
+  /** Tell the server how long I have been idle, so the phone stays quiet while I'm at my desk. */
+  shareDesk: boolean;
+  /** Send what I read here and mark what I read on the phone. */
+  shareReads: boolean;
+}
+
+export const DEFAULT_PHONE_SERVER = 'https://gomocha-mac-mini-nl.tail5e171a.ts.net/borgdock';
+
+export const DEFAULT_PHONE_LINK: PhoneLinkSettings = {
+  serverUrl: DEFAULT_PHONE_SERVER,
+  shareDesk: true,
+  shareReads: true,
+};
+
 export interface ActivityNotificationSettings {
   /** Category id (`agent.question`, `pr.review`, …) to its channels. */
   categories: Partial<Record<string, ActivityCategoryChannels>>;
@@ -113,6 +130,7 @@ export interface ActivityNotificationSettings {
   /** The needs-you count on the taskbar icon. */
   taskbarBadge: boolean;
   push: ActivityPushSettings;
+  phoneLink: PhoneLinkSettings;
 }
 
 /** Related CI failures: whether evidence is collected and within which limits. */

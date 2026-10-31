@@ -5,8 +5,13 @@ import { CATEGORY_DEFAULTS, type CategoryChannels } from '@/services/activity/po
 import { categoriesOf } from '@/services/activity/sources';
 import type { ActivityCategory, ActivityCategoryGroup } from '@/services/activity/types';
 import { sendOsNotification } from '@/services/notification';
-import type { ActivityNotificationSettings, NotificationSettings } from '@/types/settings';
+import {
+  type ActivityNotificationSettings,
+  DEFAULT_PHONE_LINK,
+  type NotificationSettings,
+} from '@/types/settings';
 import { PhoneCard } from './PhoneCard';
+import { PhoneLinkCard } from './PhoneLinkCard';
 
 interface Props {
   notifications: NotificationSettings;
@@ -36,6 +41,7 @@ export const DEFAULT_ACTIVITY: ActivityNotificationSettings = {
   markReadOnOpen: true,
   taskbarBadge: true,
   push: { enabled: false, preset: 'home-assistant', awayMinutes: 10, hideTitles: false },
+  phoneLink: DEFAULT_PHONE_LINK,
 };
 
 function channelsOf(
@@ -166,6 +172,11 @@ export function NotificationSection({ notifications, onChange }: Props) {
       </Card>
 
       <PhoneCard push={activity.push} onChange={(push) => updateActivity({ push })} />
+
+      <PhoneLinkCard
+        phoneLink={activity.phoneLink ?? DEFAULT_PHONE_LINK}
+        onChange={(phoneLink) => updateActivity({ phoneLink })}
+      />
 
       <Card variant="default" padding="md">
         <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">

@@ -29,6 +29,7 @@ const READ_REASONS: &[&str] = &[
     "seen-in-t3",
     "bulk",
     "rolled-up",
+    "phone",
 ];
 const CHANNELS: &[&str] = &["popup", "push", "push-clear"];
 
@@ -732,6 +733,32 @@ pub fn list(conn: &Connection, query: &ActivityListQuery) -> Result<ActivityPage
         total,
         revision: revision(conn)?,
     })
+}
+
+/// Entries I read or dismissed after `(read_at, id)`, oldest first: what the
+/// phone link shares. Roll-ups never were read, and reads that came from the
+/// phone go back to nobody.
+pub fn read_since(
+    conn: &Connection,
+    since: &str,
+    after_id: &str,
+    limit: u32,
+) -> Result<Vec<ActivityEntryRow>, String> {
+    let mut statement = conn
+        .prepare(&format!(
+            "SELECT {ENTRY_COLUMNS} FROM entries WHERE read <> 'unread' \
+             AND COALESCE(read_reason, '') NOT IN ('rolled-up', 'phone') \
+             AND (read_at > ?1 OR (read_at = ?1 AND id > ?2)) \
+             ORDER BY read_at ASC, id ASC LIMIT ?3"
+        ))
+        .map_err(db)?;
+    let rows = statement
+        .query_map(
+            params![since, after_id, i64::from(limit.clamp(1, 1000))],
+            entry_from,
+        )
+        .map_err(db)?;
+    rows.collect::<rusqlite::Result<_>>().map_err(db)
 }
 
 pub fn counts(conn: &Connection) -> Result<ActivityCounts, String> {
