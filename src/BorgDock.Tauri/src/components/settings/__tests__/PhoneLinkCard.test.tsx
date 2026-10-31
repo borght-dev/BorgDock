@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   start: vi.fn(),
   poll: vi.fn(),
   unlink: vi.fn(),
+  cancel: vi.fn(),
 }));
 
 const ok = <T,>(data: T) => Promise.resolve({ status: 'ok' as const, data });
@@ -18,6 +19,7 @@ vi.mock('@/generated/commands', () => ({
     phoneLinkStart: mocks.start,
     phoneLinkPoll: mocks.poll,
     phoneLinkUnlink: mocks.unlink,
+    phoneLinkCancel: mocks.cancel,
   },
 }));
 
@@ -37,6 +39,7 @@ describe('PhoneLinkCard', () => {
     mocks.start.mockImplementation(() => ok(started));
     mocks.poll.mockImplementation(() => ok({ status: 'pending' }));
     mocks.unlink.mockImplementation(() => ok(null));
+    mocks.cancel.mockImplementation(() => ok(null));
   });
 
   afterEach(() => {
@@ -96,6 +99,22 @@ describe('PhoneLinkCard', () => {
       answer({ status: 'ok', data: { status: 'approved', serverName: 'Mac mini' } });
     });
     expect(screen.getByText('Linked to Mac mini')).toBeTruthy();
+  });
+
+  it('cancels the waiting link when you cancel or close Settings', async () => {
+    const { unmount } = render(
+      <PhoneLinkCard phoneLink={DEFAULT_PHONE_LINK} onChange={() => {}} />,
+    );
+    await flush();
+    fireEvent.click(screen.getByRole('button', { name: 'Link iPhone' }));
+    await flush();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(mocks.cancel).toHaveBeenCalledWith('link-1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Link iPhone' }));
+    await flush();
+    unmount();
+    expect(mocks.cancel).toHaveBeenCalledTimes(2);
   });
 
   it('says so when the code expires', async () => {

@@ -257,6 +257,7 @@ macro_rules! app_commands {
             // BorgDock for iPhone
             phone_link::phone_link_start,
             phone_link::phone_link_poll,
+            phone_link::phone_link_cancel,
             phone_link::phone_link_state,
             phone_link::phone_link_unlink,
             phone_link::phone_link_send_reads,

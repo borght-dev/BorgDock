@@ -19,6 +19,7 @@ pub const LINK_SERVICE: &str = "borgdock:phone-link";
 const PRESENCE_EVERY: Duration = Duration::from_secs(60);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 const UNLINKED: &str = "Your iPhone unlinked this desktop. Link it again in Settings.";
+const CANCELED: &str = "This link was canceled. Start again.";
 
 static WAKE: LazyLock<tokio::sync::Notify> = LazyLock::new(tokio::sync::Notify::new);
 
@@ -31,6 +32,11 @@ struct Pending {
     server: String,
     poll_secret: String,
     expires_at: String,
+}
+
+/// Takes the link off the waiting list; `None` once it was canceled.
+fn take_pending(link_id: &str) -> Result<Option<Pending>, String> {
+    Ok(PENDING.lock().map_err(|e| e.to_string())?.remove(link_id))
 }
 
 fn still_waiting(pending: &Pending, now: chrono::DateTime<chrono::Utc>) -> bool {
@@ -406,6 +412,9 @@ pub async fn phone_link_poll(link_id: String) -> Result<PhoneLinkPoll, String> {
             session_id,
             server_name,
         } => {
+            if take_pending(&link_id)?.is_none() {
+                return Err(CANCELED.to_string());
+            }
             let session = Session {
                 server: pending.server,
                 token,
@@ -423,8 +432,15 @@ pub async fn phone_link_poll(link_id: String) -> Result<PhoneLinkPoll, String> {
             PhoneLinkPoll::Approved { server_name }
         }
     };
-    PENDING.lock().map_err(|e| e.to_string())?.remove(&link_id);
+    take_pending(&link_id)?;
     Ok(answer)
+}
+
+/// Stops waiting for the phone: a poll still on its way stores no session.
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn phone_link_cancel(link_id: String) -> Result<(), String> {
+    take_pending(&link_id).map(|_| ())
 }
 
 #[tauri::command]
@@ -631,6 +647,23 @@ mod tests {
         let at = |time: &str| chrono::DateTime::parse_from_rfc3339(time).unwrap().to_utc();
         assert!(still_waiting(&link, at("2026-10-31T10:09:00Z")));
         assert!(!still_waiting(&link, at("2026-10-31T10:11:00Z")));
+    }
+
+    #[test]
+    fn a_canceled_link_cannot_be_claimed_by_a_poll_on_its_way() {
+        let waiting = Pending {
+            server: "https://mini.example/borgdock".into(),
+            poll_secret: "p".into(),
+            expires_at: "2099-01-01T00:00:00.000Z".into(),
+        };
+        PENDING
+            .lock()
+            .unwrap()
+            .insert("cancel-me".into(), waiting.clone());
+        PENDING.lock().unwrap().insert("keep-me".into(), waiting);
+        tauri::async_runtime::block_on(phone_link_cancel("cancel-me".into())).unwrap();
+        assert!(take_pending("cancel-me").unwrap().is_none());
+        assert!(take_pending("keep-me").unwrap().is_some());
     }
 
     #[test]

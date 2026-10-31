@@ -20,6 +20,8 @@ interface Props {
 /** How often a started link asks the server whether the phone approved it. */
 export const LINK_POLL_MS = 2_000;
 
+type PendingLink = PhoneLinkStart & { server: string };
+
 const qrSource = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
 /**
@@ -31,7 +33,7 @@ const qrSource = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIC
 export function PhoneLinkCard({ phoneLink, onChange }: Props) {
   const [state, setState] = useState<PhoneLinkState | null>(null);
   const [server, setServer] = useState(phoneLink.serverUrl);
-  const [pending, setPending] = useState<PhoneLinkStart | null>(null);
+  const [pending, setPending] = useState<PendingLink | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -55,7 +57,7 @@ export function PhoneLinkCard({ phoneLink, onChange }: Props) {
         }
         setPending(null);
         if (answer.status === 'approved') {
-          setState({ linked: true, server: server.trim(), serverName: answer.serverName });
+          setState({ linked: true, server: pending.server, serverName: answer.serverName });
         } else {
           setError('The code expired before your iPhone approved it. Link again.');
         }
@@ -69,8 +71,9 @@ export function PhoneLinkCard({ phoneLink, onChange }: Props) {
     return () => {
       stopped = true;
       clearTimeout(timer);
+      void commands.phoneLinkCancel(pending.linkId);
     };
-  }, [pending, server]);
+  }, [pending]);
 
   const link = async () => {
     setBusy(true);
@@ -78,7 +81,10 @@ export function PhoneLinkCard({ phoneLink, onChange }: Props) {
     try {
       if (server.trim() !== phoneLink.serverUrl)
         onChange({ ...phoneLink, serverUrl: server.trim() });
-      setPending(await commandData(commands.phoneLinkStart(server)));
+      setPending({
+        ...(await commandData(commands.phoneLinkStart(server))),
+        server: server.trim(),
+      });
     } catch (reason) {
       setError(String(reason));
     } finally {

@@ -370,6 +370,8 @@ export const commands = {
 	activityReadSince: (since: string, afterId: string, limit: number) => typedError<ActivityEntryRow_Serialize[], string>(__TAURI_INVOKE("activity_read_since", { since, afterId, limit })),
 	phoneLinkStart: (server: string) => typedError<PhoneLinkStart, string>(__TAURI_INVOKE("phone_link_start", { server })),
 	phoneLinkPoll: (linkId: string) => typedError<PhoneLinkPoll, string>(__TAURI_INVOKE("phone_link_poll", { linkId })),
+	/**  Stops waiting for the phone: a poll still on its way stores no session. */
+	phoneLinkCancel: (linkId: string) => typedError<null, string>(__TAURI_INVOKE("phone_link_cancel", { linkId })),
 	phoneLinkState: () => typedError<PhoneLinkState_Serialize, string>(__TAURI_INVOKE("phone_link_state")),
 	/**  Signs the session out on the server when it can; forgets it either way. */
 	phoneLinkUnlink: () => typedError<null, string>(__TAURI_INVOKE("phone_link_unlink")),
