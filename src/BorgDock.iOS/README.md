@@ -2,7 +2,7 @@
 
 SwiftUI, iOS 26, XcodeGen (`project.yml` is the source). Three targets:
 
-- `BorgDock`: the app (Focus, Dispatch, Activity, Notes, Search). Clerk's `ClerkKit` is its only package.
+- `BorgDock`: the app (Focus, Pull requests, Dispatch, Notes, Search; Activity sits behind the bell on Focus). Clerk's `ClerkKit` is its only package.
 - `BorgDockWidgets`: widgets, lock-screen accessories, the Quick note control, and the agent and checks Live Activities.
 - `BorgDockNotificationContent`: the expanded agent question with its options.
 
