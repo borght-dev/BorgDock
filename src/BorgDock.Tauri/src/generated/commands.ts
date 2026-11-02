@@ -1105,7 +1105,10 @@ export type AgentAvailability = {
 export type AgentSettings = AgentSettings_Serialize | AgentSettings_Deserialize;
 
 export type AgentSettings_Deserialize = {
-	/**  Terminal agent for Fix / Resolve / Monitor: "claude" or "codex". */
+	/**
+	 *  Where Fix / Resolve / Monitor start: "claude" or "codex" in a terminal,
+	 *  or "t3" for a T3 thread on the action's prompt.
+	 */
 	defaultProvider?: string,
 	defaultPostFixAction?: string,
 	claudePath?: string | null,
@@ -1128,7 +1131,10 @@ export type AgentSettings_Deserialize = {
 };
 
 export type AgentSettings_Serialize = {
-	/**  Terminal agent for Fix / Resolve / Monitor: "claude" or "codex". */
+	/**
+	 *  Where Fix / Resolve / Monitor start: "claude" or "codex" in a terminal,
+	 *  or "t3" for a T3 thread on the action's prompt.
+	 */
 	defaultProvider: string,
 	defaultPostFixAction: string,
 	claudePath: string | null,
