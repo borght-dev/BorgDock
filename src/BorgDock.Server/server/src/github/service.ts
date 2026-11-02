@@ -472,7 +472,7 @@ export class GithubService extends EventEmitter {
   /* ---------- reads ---------- */
 
   private accountFor(ref: PrRef): string {
-    const known = this.records.get(prKey(ref))?.account;
+    const known = this.records.get(prKey(ref))?.account ?? this.detailCache.get(prKey(ref))?.account;
     if (known) return known;
     const owner = ref.owner.toLowerCase();
     const sameOwner = [...this.records.values()].find((pr) => pr.owner.toLowerCase() === owner)?.account;
@@ -485,12 +485,20 @@ export class GithubService extends EventEmitter {
     const key = prKey(ref);
     const cached = this.detailCache.get(key);
     if (!fresh && cached && this.clock() - cached.at < DETAIL_TTL_MS) return cached;
-    const account = this.accountFor(ref);
-    const raw = await this.client(account).graphql<RawDetail>(DETAIL_QUERY, { owner: ref.owner, repo: ref.repo, number: ref.number });
-    if (!raw.repository?.pullRequest) throw new UserError(`${key} doesn't exist or ${account} can't see it.`, 404);
-    const entry = { at: this.clock(), raw, account };
-    this.detailCache.set(key, entry);
-    return entry;
+    // A repository no poll has shown may belong to another account: the first one that can see it reads it from now on.
+    const first = this.accountFor(ref);
+    const readers = [first, ...[...this.accountStatus.values()].filter((a) => a.ok && a.login !== first).map((a) => a.login)];
+    for (const account of readers) {
+      const raw = await this.client(account).graphql<RawDetail>(DETAIL_QUERY, { owner: ref.owner, repo: ref.repo, number: ref.number }).catch((error) => {
+        if (error instanceof GithubError && [401, 403, 404].includes(error.githubStatus)) return null;
+        throw error;
+      });
+      if (!raw?.repository?.pullRequest) continue;
+      const entry = { at: this.clock(), raw, account };
+      this.detailCache.set(key, entry);
+      return entry;
+    }
+    throw new UserError(`${key} doesn't exist or ${readers.join(' and ')} can't see it.`, 404);
   }
 
   private async recordOf(ref: PrRef, fresh = false): Promise<{ record: PrRecord; raw: RawDetail; account: string }> {

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Focus } from '../../shared/src/api.ts';
 import { UserError } from '../src/service.ts';
-import { checkRun } from './github-fixtures/fake.ts';
+import { checkRun, rawPr, type Seen } from './github-fixtures/fake.ts';
 import { githubWorld } from './github-fixtures/world.ts';
 
 const ONE = { owner: 'acme', repo: 'shop', number: 1 };
@@ -227,4 +227,26 @@ test('search: a number or AB# finds that pull request first, words match title, 
   assert.deepEqual(service.search('AB#60379').map((p) => p.key), ['acme/shop#1']);
   assert.deepEqual(service.search('basket sanne').map((p) => p.key), ['acme/shop#1']);
   assert.deepEqual(service.search(''), []);
+});
+
+test('a pull request no poll has shown is read by the account that can see it, and later reads keep that account', async () => {
+  const { service, gh } = githubWorld({ accounts: ['koen', 'work'] });
+  const portal = rawPr({ number: 7, owner: 'globex', repo: 'portal', title: 'Partner portal sign-in', headSha: 'g7' });
+  const ref = { owner: 'globex', repo: 'portal', number: 7 };
+  const onlyWork = (r: Seen, data: unknown) => (r.headers.authorization.includes('token-of-work-')
+    ? { body: { data } }
+    : { body: { data: { repository: null }, errors: [{ type: 'NOT_FOUND', message: "Could not resolve to a Repository with the name 'globex/portal'." }] } });
+  gh.onGraphql('PrDetail', (r) => onlyWork(r, { repository: {
+    squashMergeAllowed: true, mergeCommitAllowed: false, rebaseMergeAllowed: false, deleteBranchOnMerge: false, viewerPermission: 'READ', viewerDefaultMergeMethod: 'SQUASH',
+    pullRequest: { ...portal, commits: { totalCount: 1 }, reviews: { nodes: [] }, reviewRequestsFull: { nodes: [] } },
+  } }));
+  gh.onGraphql('PrConversation', (r) => onlyWork(r, { repository: { pullRequest: { reviewThreads: { nodes: [] }, comments: { nodes: [] } } } }));
+  await service.refresh();
+
+  const detail = await service.detail(ref);
+  assert.equal(detail.title, 'Partner portal sign-in');
+  const readers = (operation: string) => gh.operations(operation).map((r) => /token-of-(\w+)-/.exec(r.headers.authorization)![1]);
+  assert.deepEqual(readers('PrDetail'), ['koen', 'work'], 'the first account cannot see it, the second can');
+  await service.conversation(ref);
+  assert.deepEqual(readers('PrConversation'), ['work']);
 });
