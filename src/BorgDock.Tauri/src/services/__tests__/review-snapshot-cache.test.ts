@@ -25,7 +25,7 @@ describe('Review snapshot preloading', () => {
     expect(getPRFiles).toHaveBeenCalledTimes(1);
   });
 
-  it('shares a preload still in flight with the review opening', async () => {
+  it('shares a preload still in flight after 30 seconds with the review opening', async () => {
     let finish!: (files: []) => void;
     vi.mocked(getPRFiles).mockReturnValueOnce(
       new Promise((resolve) => {
@@ -34,6 +34,7 @@ describe('Review snapshot preloading', () => {
     );
     const preload = loadCachedReviewSnapshot(client, pr);
     await vi.waitFor(() => expect(getPRFiles).toHaveBeenCalledTimes(1));
+    vi.advanceTimersByTime(31_000);
     const review = loadCachedReviewSnapshot(client, pr);
     finish([]);
     expect(await review).toBe(await preload);

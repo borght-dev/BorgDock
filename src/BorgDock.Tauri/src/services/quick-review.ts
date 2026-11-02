@@ -326,7 +326,6 @@ const SNAPSHOT_TRUSTED_MS = 30_000;
 
 interface CachedReviewSnapshot {
   promise: Promise<ReviewSnapshot>;
-  startedAt: number;
   snapshot?: ReviewSnapshot;
 }
 const snapshotCaches = new WeakMap<GitHubClient, Map<string, CachedReviewSnapshot>>();
@@ -354,13 +353,13 @@ export function loadCachedReviewSnapshot(
     !reload &&
     cached &&
     pr.headSha &&
-    Date.now() - (cached.snapshot?.loadedAt ?? cached.startedAt) < SNAPSHOT_TRUSTED_MS &&
-    (!cached.snapshot || cached.snapshot.pr.headSha === pr.headSha)
+    (!cached.snapshot ||
+      (Date.now() - cached.snapshot.loadedAt < SNAPSHOT_TRUSTED_MS &&
+        cached.snapshot.pr.headSha === pr.headSha))
   )
     return cached.promise;
 
   const entry: CachedReviewSnapshot = {
-    startedAt: Date.now(),
     promise: loadReviewSnapshot(client, pr),
   };
   entry.promise = entry.promise
