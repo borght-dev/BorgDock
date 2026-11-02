@@ -9,6 +9,7 @@ import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
 import { makeEvidence, makeSignal } from '@/services/ci-failures/__fixtures__/evidence';
 import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { makePr, withPrDetail } from './__fixtures__/pr-detail-data';
 import { PrDetailView } from './PrDetailView';
@@ -225,6 +226,29 @@ export const Failing: Story = {
     }),
   ],
   args: { ...target(failingPr), initialTab: 'checks' },
+};
+
+/** Failing with T3 Code as the agent provider: Fix starts a T3 thread. */
+export const FailingWithT3: Story = {
+  decorators: [
+    (Story) => {
+      useSettingsStore.setState((s) => ({
+        settings: {
+          ...s.settings,
+          agents: {
+            defaultPostFixAction: 'commitAndNotify',
+            t3Model: 'claude-fable-5',
+            t3ModelInstance: 'claudeAgent',
+            ...s.settings.agents,
+            defaultProvider: 't3',
+          },
+        },
+      }));
+      return Story();
+    },
+    ...(Failing.decorators as Decorator[]),
+  ],
+  args: Failing.args,
 };
 
 /** Failing, on the Overview tab: the clamped description and its "Show more". */

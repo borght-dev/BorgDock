@@ -5,6 +5,7 @@ import { ProgressButton } from '@/components/shared/primitives';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { usePrCiFailures } from '@/hooks/usePrCiFailures';
 import { useProgressAction } from '@/hooks/useProgressAction';
+import { fixLabel } from '@/services/agent-labels';
 import { jobIndexOf, outsideCauseOf, outsideCauseText } from '@/services/ci-failures/lens';
 import { ciFailureSettings } from '@/services/ci-failures/settings';
 import type { CiGroupSummary, Signal } from '@/services/ci-failures/types';
@@ -353,7 +354,7 @@ function FailureActions({ pr }: { pr: PullRequestWithChecks }) {
   );
   const fix = useProgressAction(
     () => fixWithClaude(pr, pr.failedCheckNames.length > 0 ? pr.failedCheckNames : ['unknown']),
-    `Fix with ${provider === 'codex' ? 'Codex' : 'Claude'} failed`,
+    `${fixLabel(provider)} failed`,
   );
   return (
     <>
@@ -374,7 +375,7 @@ function FailureActions({ pr }: { pr: PullRequestWithChecks }) {
         leading={<Wrench size={11} strokeWidth={2.25} aria-hidden />}
         state={fix.state}
         onTrigger={() => void fix.trigger()}
-        label={`Fix with ${provider === 'codex' ? 'Codex' : 'Claude'}`}
+        label={fixLabel(provider)}
         busyLabel="Starting"
         doneLabel="Started"
         data-checks-action="fix"

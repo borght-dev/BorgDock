@@ -21,6 +21,7 @@ import {
 } from '@/components/shared/primitives';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { type PrCiFailures, usePrCiFailures } from '@/hooks/usePrCiFailures';
+import { fixLabel } from '@/services/agent-labels';
 import { ciFailureSettings } from '@/services/ci-failures/settings';
 import { excerptFromSignals, type FirstFailure, loadFirstFailure } from '@/services/first-failure';
 import { sendOsNotification } from '@/services/notification';
@@ -287,6 +288,7 @@ function storedFirstFailure(failed: CheckRun[], data: PrCiFailures['data']): Fir
 
 export function ChecksTab({ checks, pr, grouped = false }: ChecksTabProps) {
   const { fixWithClaude } = useClaudeActions();
+  const provider = useSettingsStore((s) => s.settings.agents?.defaultProvider ?? 'claude');
   const failures = usePrCiFailures(
     pr?.pullRequest.repoOwner ?? '',
     pr?.pullRequest.repoName ?? '',
@@ -299,15 +301,15 @@ export function ChecksTab({ checks, pr, grouped = false }: ChecksTabProps) {
     (checkName: string) => {
       if (!pr) return;
       fixWithClaude(pr, [checkName]).catch((err) => {
-        console.error('Fix with Claude failed:', err);
+        console.error(`${fixLabel(provider)} failed:`, err);
         void sendOsNotification({
-          title: 'Fix with Claude failed',
+          title: `${fixLabel(provider)} failed`,
           body: parseError(err).message,
           severity: 'error',
         }).catch(() => {});
       });
     },
-    [pr, fixWithClaude],
+    [pr, fixWithClaude, provider],
   );
 
   if (checks.length === 0) {
@@ -327,6 +329,7 @@ export function ChecksTab({ checks, pr, grouped = false }: ChecksTabProps) {
         <ChecksGrouped
           checks={checks}
           onFix={pr ? (run) => handleFixCheck(run.name) : undefined}
+          fixLabel={fixLabel(provider)}
           onRerun={
             p
               ? (group: CheckGroup) =>

@@ -441,7 +441,7 @@ pub enum PrWorkspace {
     },
 }
 
-/// A new, empty thread for a pull request.
+/// A new thread for a pull request: empty, or started on `prompt`.
 #[derive(Debug, serde::Deserialize)]
 #[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -456,6 +456,41 @@ pub struct PrThreadRequest {
     /// Used when neither the project nor an earlier thread names a model.
     pub model: String,
     pub model_instance: String,
+    /// The first message; the agent starts on it at once. Absent: an empty thread.
+    #[serde(default)]
+    pub prompt: Option<String>,
+}
+
+fn pr_thread_launch_command(
+    request: &PrThreadRequest,
+    thread_id: &str,
+    workspace_strategy: Value,
+    selection: Option<Value>,
+    runtime_mode: Option<String>,
+) -> Value {
+    let mut command = json!({
+        "threadId": thread_id,
+        "projectId": request.project_id,
+        "title": request.title,
+        "modelSelection": selection.unwrap_or_else(
+            || json!({ "instanceId": request.model_instance, "model": request.model, "options": [] }),
+        ),
+        "runtimeMode": runtime_mode.unwrap_or_else(|| DEFAULT_RUNTIME_MODE.to_string()),
+        "interactionMode": "default",
+        "workspaceStrategy": workspace_strategy,
+    });
+    if let Some(prompt) = request
+        .prompt
+        .as_deref()
+        .filter(|text| !text.trim().is_empty())
+    {
+        command["initialMessage"] = json!({
+            "messageId": Uuid::new_v4().to_string(),
+            "text": prompt,
+            "attachments": [],
+        });
+    }
+    command
 }
 
 /// The checkout T3 prepared for `pr_url` in the project at `project_root`.
@@ -481,8 +516,9 @@ async fn check_out_pull_request(
     }))
 }
 
-/// Open a fresh, empty T3 thread for a pull request on `host` and bring T3 to
-/// the front on it. Returns the new thread's id.
+/// Open a fresh T3 thread for a pull request on `host`, empty or started on
+/// the request's prompt, and bring T3 to the front on it. Returns the new
+/// thread's id.
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
 pub async fn t3_open_pr_thread(
@@ -511,17 +547,13 @@ pub async fn t3_open_pr_thread(
     client
         .rpc(
             "orchestration.launchThread",
-            json!({
-                "threadId": thread_id,
-                "projectId": request.project_id,
-                "title": request.title,
-                "modelSelection": selection.unwrap_or_else(
-                    || json!({ "instanceId": request.model_instance, "model": request.model, "options": [] }),
-                ),
-                "runtimeMode": runtime_mode.unwrap_or_else(|| DEFAULT_RUNTIME_MODE.to_string()),
-                "interactionMode": "default",
-                "workspaceStrategy": workspace_strategy,
-            }),
+            pr_thread_launch_command(
+                &request,
+                &thread_id,
+                workspace_strategy,
+                selection,
+                runtime_mode,
+            ),
         )
         .await?;
     // Linking is best-effort: the thread exists and is usable without it.
@@ -1012,6 +1044,33 @@ mod tests {
         assert_eq!(command["interactionMode"], "default");
         assert_eq!(command["initialMessage"]["text"], "Pick up AB#60201");
         assert_eq!(command["initialMessage"]["attachments"], json!([]));
+    }
+
+    #[test]
+    fn a_pr_thread_starts_on_its_prompt_and_stays_empty_without_one() {
+        let mut request: PrThreadRequest = serde_json::from_value(json!({
+            "projectId": "p1",
+            "workspace": { "type": "checkOut" },
+            "title": "PR #471: SQL: virtualize the results grid",
+            "repository": "borght-dev/BorgDock",
+            "prNumber": 471,
+            "prUrl": "https://github.com/borght-dev/BorgDock/pull/471",
+            "model": "claude-fable-5",
+            "modelInstance": "claudeAgent"
+        }))
+        .unwrap();
+        let strategy = json!({ "type": "root" });
+        let empty = pr_thread_launch_command(&request, "t1", strategy.clone(), None, None);
+        assert!(empty.get("initialMessage").is_none());
+        assert_eq!(empty["modelSelection"]["model"], "claude-fable-5");
+
+        request.prompt = Some("Fix the failing checks on PR #471".into());
+        let started = pr_thread_launch_command(&request, "t1", strategy, None, None);
+        assert_eq!(
+            started["initialMessage"]["text"],
+            "Fix the failing checks on PR #471"
+        );
+        assert_eq!(started["workspaceStrategy"]["type"], "root");
     }
 
     #[test]

@@ -13,12 +13,11 @@ import {
 } from '@/services/dispatch/sync';
 import { NEEDS_YOU } from '@/services/dispatch/types';
 import { PollingManager } from '@/services/polling';
-import { OPEN_PR_THREAD_EVENT, requestT3Thread } from '@/services/t3-thread';
+import { OPEN_PR_THREAD_EVENT, type PrThreadEvent, requestT3Thread } from '@/services/t3-thread';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import type { PullRequest } from '@/types';
 import { trackPolling } from './visibility';
 
 /** A poll of the T3 on this machine costs one local request. */
@@ -43,8 +42,9 @@ async function listenToOtherWindows(): Promise<() => void> {
     listen<{ itemId: number; actionId: string }>(ITEM_ACTION_EVENT, (event) => {
       runItemAction(event.payload.itemId, event.payload.actionId);
     }),
-    listen<PullRequest>(OPEN_PR_THREAD_EVENT, (event) => {
-      void bringMainWindowForward().then(() => requestT3Thread(event.payload));
+    listen<PrThreadEvent>(OPEN_PR_THREAD_EVENT, (event) => {
+      const { pr, start } = event.payload;
+      void bringMainWindowForward().then(() => requestT3Thread(pr, start));
     }),
   ]);
   return () => {

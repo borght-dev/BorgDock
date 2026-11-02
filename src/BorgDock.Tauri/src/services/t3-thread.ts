@@ -12,6 +12,7 @@ import {
   LOCAL_T3_HOST_ID,
   type T3PrWorkspace,
   t3OpenPrThread,
+  t3SendMessage,
   t3ShowThread,
   t3Snapshot,
 } from '@/services/t3/api';
@@ -23,6 +24,20 @@ const log = createLogger('t3-thread');
 
 /** Another window asks the main window, where Dispatch's T3 data lives, to open the dialog. */
 export const OPEN_PR_THREAD_EVENT = 'open-pr-thread-dialog';
+
+/** What a new PR thread starts on. Without one the thread opens empty. */
+export interface PrThreadStart {
+  /** The first message; the agent starts on it at once. */
+  prompt: string;
+  /** What the agent does, for the dialog: "Fix the failing checks". */
+  intent: string;
+}
+
+/** `OPEN_PR_THREAD_EVENT`'s payload. */
+export interface PrThreadEvent {
+  pr: PullRequest;
+  start?: PrThreadStart;
+}
 
 function repositoryOf(pr: PullRequest): string {
   return `${pr.repoOwner}/${pr.repoName}`;
@@ -37,6 +52,7 @@ async function openOn(
   hostId: string,
   projectId: string,
   workspace: T3PrWorkspace,
+  start?: PrThreadStart,
 ): Promise<string> {
   const agents = useSettingsStore.getState().settings.agents;
   const context = {
@@ -44,6 +60,7 @@ async function openOn(
     repository: repositoryOf(pr),
     hostId,
     workspace: workspace.type,
+    started: !!start,
   };
   log.info('PR thread requested', context);
   const threadId = await log.time('open PR thread', () =>
@@ -58,6 +75,7 @@ async function openOn(
         prUrl: pr.htmlUrl,
         model: agents?.t3Model ?? 'claude-fable-5',
         modelInstance: agents?.t3ModelInstance ?? 'claudeAgent',
+        ...(start ? { prompt: start.prompt } : {}),
       },
       executable(),
     ),
@@ -66,22 +84,26 @@ async function openOn(
 }
 
 /**
- * Open a new, empty T3 thread for `pr` where `target` says and bring T3 to
- * the front on it. A new worktree checks the pull request's branch out (T3
- * reuses the worktree that has it); continuing a thread only shows it.
+ * Open a new T3 thread for `pr` where `target` says, empty or started on
+ * `start`, and bring T3 to the front on it. A new worktree checks the pull
+ * request's branch out (T3 reuses the worktree that has it); a continued
+ * thread gets `start`'s prompt as its next message, or is only shown.
  * Resolves with the thread's scoped id.
  */
-export async function openPrThread(pr: PullRequest, target: LaunchTarget): Promise<string> {
+export async function openPrThread(
+  pr: PullRequest,
+  target: LaunchTarget,
+  start?: PrThreadStart,
+): Promise<string> {
   if (target.kind === 'continue') {
-    await t3ShowThread(
-      hostRefOf(target.hostId),
-      rawId(target.hostId, target.thread.id),
-      executable(),
-    );
+    const host = hostRefOf(target.hostId);
+    const threadId = rawId(target.hostId, target.thread.id);
+    if (start) await t3SendMessage(host, threadId, start.prompt, false);
+    await t3ShowThread(host, threadId, executable());
     return target.thread.id;
   }
   if (target.kind === 'worktree') {
-    return openOn(pr, target.hostId, target.project.id, { type: 'checkOut' });
+    return openOn(pr, target.hostId, target.project.id, { type: 'checkOut' }, start);
   }
   const { thread } = target;
   return openOn(
@@ -91,6 +113,7 @@ export async function openPrThread(pr: PullRequest, target: LaunchTarget): Promi
     thread.worktreePath
       ? { type: 'existingWorktree', worktreePath: thread.worktreePath, branch: thread.branch }
       : { type: 'root' },
+    start,
   );
 }
 
@@ -141,16 +164,24 @@ export function guardT3Launch(pr: PullRequest): Promise<GuardDecision> {
 }
 
 /**
- * Entry point for "Open a new thread in T3": the dialog in the main window
- * picks the environment and where the thread works (`T3PrThreadDialog`).
+ * Entry point for "Open a new thread in T3", and for Fix / Resolve / Monitor
+ * when T3 is the agent provider (`start` carries their prompt): the dialog in
+ * the main window picks the environment and where the thread works
+ * (`T3PrThreadDialog`). An action that starts the thread on a prompt runs its
+ * own launch guard first, so only an empty thread is guarded here.
  */
-export async function requestT3Thread(pr: PullRequest): Promise<void> {
+export async function requestT3Thread(pr: PullRequest, start?: PrThreadStart): Promise<void> {
   if (!isMainWindow()) {
     const { emitTo } = await import('@tauri-apps/api/event');
-    await emitTo(MAIN_WINDOW_LABEL, OPEN_PR_THREAD_EVENT, pr);
+    const payload: PrThreadEvent = start ? { pr, start } : { pr };
+    await emitTo(MAIN_WINDOW_LABEL, OPEN_PR_THREAD_EVENT, payload);
     return;
   }
-  log.info('T3 thread requested', { pr: pr.number, repository: repositoryOf(pr) });
-  if ((await guardT3Launch(pr)) === 'cancel') return;
-  useT3ThreadStore.getState().setPendingPr(pr);
+  log.info('T3 thread requested', {
+    pr: pr.number,
+    repository: repositoryOf(pr),
+    intent: start?.intent,
+  });
+  if (!start && (await guardT3Launch(pr)) === 'cancel') return;
+  useT3ThreadStore.getState().setPendingPr(pr, start);
 }

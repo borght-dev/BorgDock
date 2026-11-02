@@ -54,6 +54,7 @@ export type {
   DispatchSyncSchedule,
   FocusLayout,
   GitHubSettings,
+  InteractiveProvider,
   NotificationSettings,
   PostFixAction,
   PrDensity,

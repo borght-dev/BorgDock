@@ -36,6 +36,7 @@ import {
 } from '@/components/shared/primitives';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { useProgressAction } from '@/hooks/useProgressAction';
+import { fixLabel } from '@/services/agent-labels';
 import {
   bucketFor,
   FOCUS_BUCKET_LABEL,
@@ -52,6 +53,7 @@ import { workbenchPrimaryAction } from '@/services/pr-action-resolver';
 import { mergePrWithToast } from '@/services/pr-actions';
 import { isFailing, isMyPr, isWaitingOnMe } from '@/services/pr-grouping';
 import { openPrDetail } from '@/services/windows';
+import { useSettingsStore } from '@/stores/settings-store';
 import { showToast } from '@/stores/toast-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -157,6 +159,7 @@ function CardActions({
 }) {
   const p = prWithChecks.pullRequest;
   const n = p.number;
+  const provider = useSettingsStore((s) => s.settings.agents?.defaultProvider ?? 'claude');
   const openButton = (
     <Button
       variant="secondary"
@@ -191,11 +194,11 @@ function CardActions({
             variant="primary"
             size="sm"
             leading={<Sparkles {...ICON} />}
-            aria-label={`Fix #${n} with Claude`}
+            aria-label={`${fixLabel(provider)} for #${n}`}
             data-card-action="fix"
             onClick={actions.handleFix}
           >
-            Fix with Claude
+            {fixLabel(provider)}
           </Button>
           <Button
             variant="secondary"

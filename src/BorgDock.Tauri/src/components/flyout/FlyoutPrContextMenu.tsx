@@ -1,9 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { fixLabel, monitorLabel } from '@/services/agent-labels';
 import type { PrActionId } from '@/services/pr-action-resolver';
+import type { InteractiveProvider } from '@/types';
 import type { FlyoutPr } from './FlyoutGlance';
 
 export interface FlyoutPrContextMenuProps {
   pr: FlyoutPr;
+  /** Where Fix and Monitor start, from the main window's settings. */
+  provider: InteractiveProvider;
   position: { x: number; y: number };
   onClose: () => void;
   /** Closes the entire flyout window. Used after a non-menu-only action. */
@@ -52,6 +56,7 @@ function Separator() {
  */
 export function FlyoutPrContextMenu({
   pr,
+  provider,
   position,
   onClose,
   onCloseFlyout,
@@ -238,8 +243,8 @@ export function FlyoutPrContextMenu({
 
       <Separator />
 
-      <MenuItem label="Fix with Claude" onClick={handleFixWithClaude} />
-      <MenuItem label="Monitor with Claude" onClick={handleMonitorWithClaude} />
+      <MenuItem label={fixLabel(provider)} onClick={handleFixWithClaude} />
+      <MenuItem label={monitorLabel(provider)} onClick={handleMonitorWithClaude} />
     </div>
   );
 }

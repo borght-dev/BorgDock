@@ -4,6 +4,7 @@ import { BorgDockLogo, RefreshIcon, SettingsIcon } from '@/components/shared/ico
 import { Dot, IconButton } from '@/components/shared/primitives';
 import { WindowLauncher } from '@/components/shared/WindowLauncher';
 import type { PrActionId } from '@/services/pr-action-resolver';
+import type { InteractiveProvider } from '@/types';
 import { FlyoutActivity } from './FlyoutActivity';
 import { FlyoutFrame } from './FlyoutFrame';
 import { FlyoutPrContextMenu } from './FlyoutPrContextMenu';
@@ -27,6 +28,8 @@ export interface FlyoutData {
   hotkey: string;
   /** Work items whose agent waits on you (Dispatch). Absent in older payloads. */
   agents?: FlyoutAgent[];
+  /** Where Fix and Monitor start. Absent in older payloads: Claude. */
+  agentProvider?: InteractiveProvider;
 }
 
 export interface FlyoutAgent {
@@ -257,6 +260,7 @@ export function FlyoutGlance({
           <FlyoutPrContextMenu
             pr={contextMenu.pr}
             position={contextMenu.position}
+            provider={data.agentProvider ?? 'claude'}
             onClose={() => setContextMenu(null)}
             onCloseFlyout={onClose}
           />

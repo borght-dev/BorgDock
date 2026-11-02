@@ -7,6 +7,7 @@ import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import type {
   AgentProvider,
   AgentSettings,
+  InteractiveProvider,
   PostFixAction,
   SummarySettings,
 } from '@/types/settings';
@@ -19,10 +20,12 @@ interface Props {
   onSummariesChange: (settings: SummarySettings) => void;
 }
 
-const PROVIDERS = [
+const CLI_PROVIDERS = [
   { value: 'claude', label: 'Claude Code' },
   { value: 'codex', label: 'Codex' },
 ];
+
+const INTERACTIVE_PROVIDERS = [...CLI_PROVIDERS, { value: 't3', label: 'T3 Code' }];
 
 const POST_FIX_OPTIONS = [
   { value: 'commitAndNotify', label: 'Commit & Notify' },
@@ -131,13 +134,24 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
         <h3 className="mb-3 text-[13px] font-semibold text-[var(--color-text-primary)]">
           Interactive sessions
         </h3>
-        <Field label="Default provider" anchorId="default-agent-provider">
+        <Field
+          label="Default provider"
+          anchorId="default-agent-provider"
+          hint={
+            agents.defaultProvider === 't3'
+              ? 'Fix, Resolve and Monitor start a T3 thread on their prompt. You pick where it runs.'
+              : undefined
+          }
+        >
           <Select
             ariaLabel="Default agent provider"
             value={agents.defaultProvider}
-            options={PROVIDERS}
+            options={INTERACTIVE_PROVIDERS}
             onChange={(defaultProvider) =>
-              onAgentsChange({ ...agents, defaultProvider: defaultProvider as AgentProvider })
+              onAgentsChange({
+                ...agents,
+                defaultProvider: defaultProvider as InteractiveProvider,
+              })
             }
           />
         </Field>
@@ -321,7 +335,7 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
           <Select
             ariaLabel="Summary provider"
             value={summaries.provider}
-            options={PROVIDERS}
+            options={CLI_PROVIDERS}
             onChange={(provider) =>
               onSummariesChange({ ...summaries, provider: provider as AgentProvider })
             }
