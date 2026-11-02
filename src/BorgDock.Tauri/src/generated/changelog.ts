@@ -4,6 +4,51 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.5",
+    "date": "2026-11-02",
+    "summary": "Follow a guide through your review, Read the changes commit by commit, and Skip the mechanical changes.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Follow a guide through your review",
+        "description": "Quick Review can group files into chapters written by your chosen summary agent, so you can follow how a change fits together. Switch between Guide, Folders and Commits, or press O to cycle through them.",
+        "hero": {
+          "src": "/whats-new/4.9.5/review-guide.png",
+          "alt": "Quick Review with chapters in the file tree and the current chapter above the diff"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Read the changes commit by commit",
+        "description": "Walk through a pull request's commits in order and keep track of which ones you've read. Once you've read them all, mark their files reviewed together.",
+        "hero": {
+          "src": "/whats-new/4.9.5/review-commits.png",
+          "alt": "Quick Review showing the commits reading order"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Skip the mechanical changes",
+        "description": "Quick Review folds moved code, whitespace changes and import-only changes so you can spend your attention on the logic. Expand any fold to inspect it.",
+        "hero": {
+          "src": "/whats-new/4.9.5/folded-changes.png",
+          "alt": "Quick Review with moved code folded into one line"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Link your desktop to BorgDock for iPhone from Notifications settings. Share desktop presence and optionally sync what you've read between your phone and desktop.",
+      "Quick Review preloads review files so revisiting a pull request spends less time loading.",
+      "BorgDock recovers when GitHub refuses a saved token and uses an account that can access each repository.",
+      "Fix, Resolve and Monitor now start a thread when T3 is your selected agent provider.",
+      "Repositories added through a GitHub SSH alias now keep the correct owner, fixing repeated 404 responses when polling."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.9.4",
     "date": "2026-10-29",
     "summary": "",

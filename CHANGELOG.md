@@ -1,5 +1,24 @@
 # Changelog
 
+## 4.9.5 — 2026-11-02
+
+### New Features
+
+- **Follow a guide through your review** — Quick Review can group files into chapters written by your chosen summary agent, so you can follow how a change fits together. Switch between Guide, Folders and Commits, or press O to cycle through them. ![Quick Review with chapters in the file tree and the current chapter above the diff](whats-new/4.9.5/review-guide.png)
+
+### Improvements
+
+- **Read the changes commit by commit** — Walk through a pull request's commits in order and keep track of which ones you've read. Once you've read them all, mark their files reviewed together. ![Quick Review showing the commits reading order](whats-new/4.9.5/review-commits.png)
+- **Skip the mechanical changes** — Quick Review folds moved code, whitespace changes and import-only changes so you can spend your attention on the logic. Expand any fold to inspect it. ![Quick Review with moved code folded into one line](whats-new/4.9.5/folded-changes.png)
+
+### Bug Fixes
+
+- Link your desktop to BorgDock for iPhone from Notifications settings. Share desktop presence and optionally sync what you've read between your phone and desktop.
+- Quick Review preloads review files so revisiting a pull request spends less time loading.
+- BorgDock recovers when GitHub refuses a saved token and uses an account that can access each repository.
+- Fix, Resolve and Monitor now start a thread when T3 is your selected agent provider.
+- Repositories added through a GitHub SSH alias now keep the correct owner, fixing repeated 404 responses when polling.
+
 ## 4.9.4 — 2026-10-29
 
 ### Bug Fixes

@@ -1,0 +1,29 @@
+[
+  {
+    "slug": "review-guide",
+    "storyId": "focus-quick-review--guide-walk",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 3000
+  },
+  {
+    "slug": "review-commits",
+    "storyId": "focus-quick-review--commits-walk",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 3000
+  },
+  {
+    "slug": "folded-changes",
+    "storyId": "focus-quick-review--noise-folded",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 3000
+  }
+]
