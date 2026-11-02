@@ -1,0 +1,1 @@
+{ "name": "@dispatch/shared", "private": true, "type": "module", "exports": { ".": "./src/api.ts" } }

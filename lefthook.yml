@@ -25,5 +25,5 @@ pre-commit:
       # tsc has no per-file mode; we run the whole project. The glob just
       # gates whether the hook fires at all when relevant files are staged.
       root: "src/BorgDock.Tauri/"
-      glob: "src/**/*.{ts,tsx}"
+      glob: "src/BorgDock.Tauri/**/*.{ts,tsx}"
       run: bunx tsc --noEmit

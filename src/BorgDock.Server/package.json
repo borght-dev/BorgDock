@@ -1,0 +1,26 @@
+{
+  "name": "dispatch",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "connector",
+    "web"
+  ],
+  "scripts": {
+    "dev:server": "npm --workspace server run dev",
+    "dev:web": "npm --workspace web run dev",
+    "build": "npm --workspace web run build",
+    "typecheck": "npm --workspace server run typecheck && npm --workspace connector run typecheck && npm --workspace web run typecheck",
+    "test": "npm --workspace server test && npm --workspace connector test && npm --workspace web test",
+    "start": "npm --workspace server start",
+    "cli": "npm --workspace server run --silent cli --"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

@@ -89,9 +89,14 @@ On first launch, the setup wizard will guide you through authentication and repo
 
 ```
 src/BorgDock.Tauri/         # Tauri + React + TypeScript application
+src/BorgDock.iOS/           # BorgDock for iPhone (SwiftUI, XcodeGen): widgets, Live Activities, notifications
+src/BorgDock.Server/        # The server the iPhone app talks to (Node 24, its own npm workspace), grown from Dispatch
 site/                       # Astro marketing site and Remotion launch video
 design/brand/workbench/     # Logo, app icon and tray artwork
+design/ios-app/             # The iPhone app's mockups
 ```
+
+The iPhone app and its server have their own READMEs: `src/BorgDock.iOS/README.md` and `src/BorgDock.Server/README.md`.
 
 ## Tech Stack
 

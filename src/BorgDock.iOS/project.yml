@@ -1,0 +1,217 @@
+name: BorgDock
+
+options:
+  bundleIdPrefix: dev.borght
+  deploymentTarget:
+    iOS: "26.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+packages:
+  Clerk:
+    url: https://github.com/clerk/clerk-ios
+    from: 1.6.2
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: 2YU6RWHUWX
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "2026103101"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ENABLE_MODULE_VERIFIER: NO
+    DEAD_CODE_STRIPPING: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    # Shared between the app and its extensions; also the Keychain access group for the session token.
+    BORGDOCK_APP_GROUP: group.dev.borght.borgdock
+    # The server a fresh install talks to; deploy passes the server's publicOrigin. Empty: a local server.
+    BORGDOCK_SERVER_URL: ""
+
+targets:
+  BorgDock:
+    type: application
+    platform: iOS
+    sources:
+      - path: BorgDock
+        excludes:
+          - Info.plist
+          - BorgDock.entitlements
+      - path: Shared
+    dependencies:
+      - target: BorgDockWidgets
+      - target: BorgDockNotificationContent
+      - package: Clerk
+        product: ClerkKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.borght.borgdock
+        PRODUCT_NAME: BorgDock
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+    info:
+      path: BorgDock/Info.plist
+      properties:
+        CFBundleDisplayName: BorgDock
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        BorgDockAppGroup: $(BORGDOCK_APP_GROUP)
+        BorgDockServerURL: $(BORGDOCK_SERVER_URL)
+        CFBundleURLTypes:
+          - CFBundleURLName: dev.borght.borgdock
+            CFBundleURLSchemes: [borgdock]
+        LSApplicationQueriesSchemes: [t3code]
+        UIBackgroundModes: [remote-notification, fetch]
+        BGTaskSchedulerPermittedIdentifiers: [dev.borght.borgdock.refresh]
+        NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: true
+        NSCameraUsageDescription: BorgDock scans the pairing code a machine shows when you add it.
+        NSFaceIDUsageDescription: BorgDock asks for Face ID before it starts an agent, merges or approves.
+        NSMicrophoneUsageDescription: Dictate quick notes and replies to agents.
+        NSSpeechRecognitionUsageDescription: Dictate quick notes and replies to agents.
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        ITSAppUsesNonExemptEncryption: false
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    entitlements:
+      path: BorgDock/BorgDock.entitlements
+      properties:
+        aps-environment: development
+        com.apple.security.application-groups: [$(BORGDOCK_APP_GROUP)]
+        com.apple.developer.applesignin: [Default]
+        # Clerk's passkeys are bound to its Frontend API domain.
+        com.apple.developer.associated-domains: [webcredentials:relevant-grouse-8572.clerk.accounts.dev]
+
+  BorgDockWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: BorgDockWidgets
+        excludes:
+          - Info.plist
+          - BorgDockWidgets.entitlements
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.borght.borgdock.widgets
+        PRODUCT_NAME: BorgDockWidgets
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: BorgDockWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: BorgDock
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        BorgDockAppGroup: $(BORGDOCK_APP_GROUP)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: BorgDockWidgets/BorgDockWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [$(BORGDOCK_APP_GROUP)]
+
+  BorgDockNotificationContent:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: BorgDockNotificationContent
+        excludes:
+          - Info.plist
+          - BorgDockNotificationContent.entitlements
+      # App Intents and widget views (ios/Shared/Intents, WidgetViews) belong to the app and the widgets only.
+      - path: Shared
+        excludes:
+          - Intents/**
+          - WidgetViews/**
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.borght.borgdock.notifications
+        PRODUCT_NAME: BorgDockNotificationContent
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: BorgDockNotificationContent/Info.plist
+      properties:
+        CFBundleDisplayName: BorgDock
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        BorgDockAppGroup: $(BORGDOCK_APP_GROUP)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationViewController
+          NSExtensionAttributes:
+            UNNotificationExtensionCategory: [BORGDOCK_QUESTION, BORGDOCK_QUESTION_RECOMMENDED, BORGDOCK_QUESTION_TEXT, DISPATCH_QUESTION, DISPATCH_QUESTION_RECOMMENDED, DISPATCH_QUESTION_TEXT]
+            UNNotificationExtensionInitialContentSizeRatio: 0.7
+            UNNotificationExtensionDefaultContentHidden: true
+            UNNotificationExtensionUserInteractionEnabled: true
+    entitlements:
+      path: BorgDockNotificationContent/BorgDockNotificationContent.entitlements
+      properties:
+        com.apple.security.application-groups: [$(BORGDOCK_APP_GROUP)]
+
+  BorgDockTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: BorgDockTests
+    dependencies:
+      - target: BorgDock
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.borght.borgdock.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+
+  BorgDockUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: BorgDockUITests
+    dependencies:
+      - target: BorgDock
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.borght.borgdock.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+
+schemes:
+  BorgDock:
+    build:
+      targets:
+        BorgDock: all
+        BorgDockTests: [test]
+    run:
+      config: Debug
+      commandLineArguments:
+        "-BorgDockServer http://localhost:8797": false
+    test:
+      config: Debug
+      targets:
+        - BorgDockTests
+    archive:
+      config: Release
+
+  BorgDockVisual:
+    build:
+      targets:
+        BorgDock: all
+        BorgDockTests: [test]
+        BorgDockUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - BorgDockTests
+        - BorgDockUITests
