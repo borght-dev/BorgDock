@@ -1,0 +1,1548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BorgDock for iPhone — concept mockups</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0c0d0f; color: #ededef; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono, code { font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace; }
+  code { font-size: .9em; }
+
+  /* ---------- page ---------- */
+  .wrap { max-width: 1820px; margin: 0 auto; padding: 72px 48px 140px; }
+  .hero { display: grid; grid-template-columns: auto 1fr; gap: 32px; align-items: center; }
+  .hero-icon { width: 112px; height: 112px; border-radius: 26px; background: #151618; border: 1px solid #2f3036; display: grid; place-items: center; box-shadow: 0 20px 50px -10px rgba(127, 126, 255, .35); }
+  .hero-icon svg { width: 72px; height: 72px; fill: #7f7eff; }
+  .hero h1 { margin: 0; font-size: 48px; letter-spacing: -.025em; font-weight: 700; }
+  .hero h1 span { color: #7f7eff; }
+  .hero p { margin: 10px 0 0; color: #9c9da4; font-size: 18px; max-width: 860px; line-height: 1.5; }
+  .principles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 44px; }
+  .principle { padding: 20px 22px; border-radius: 18px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); }
+  .principle b { display: block; font-size: 16px; margin-bottom: 6px; }
+  .principle span { color: #9c9da4; font-size: 14px; line-height: 1.55; }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+  .toc a { color: #c9c8ff; text-decoration: none; font-size: 13.5px; padding: 7px 13px; border-radius: 18px; background: rgba(127, 126, 255, .1); border: 1px solid rgba(127, 126, 255, .2); }
+  .sec { margin-top: 110px; }
+  .sec-h { display: flex; align-items: baseline; gap: 14px; border-top: 1px solid rgba(255, 255, 255, .08); padding-top: 30px; }
+  .sec-h .n { font: 600 13px/1 "SF Mono", ui-monospace, monospace; color: #7f7eff; }
+  .sec-h h2 { margin: 0; font-size: 30px; letter-spacing: -.02em; }
+  .sec-lead { margin: 12px 0 44px; color: #9c9da4; font-size: 16px; line-height: 1.6; max-width: 940px; }
+  .row { display: flex; flex-wrap: wrap; gap: 72px 44px; align-items: flex-start; }
+  figure.shot { margin: 0; width: 393px; }
+  figure.shot figcaption { margin-top: 34px; font-size: 14px; color: #9c9da4; line-height: 1.55; }
+  figure.shot figcaption b { display: block; color: #ededef; font-size: 16px; margin-bottom: 4px; }
+  figure.shot figcaption ul { margin: 8px 0 0; padding-left: 18px; }
+  figure.shot figcaption li { margin: 4px 0; }
+
+  /* ---------- the phone ---------- */
+  .phone {
+    --bg: #111214; --card: #1b1c1f; --card2: #232428; --sheet: #1b1c1f; --menu: rgba(44, 45, 50, .82);
+    --fill: rgba(255, 255, 255, .07); --fill2: rgba(255, 255, 255, .11); --sep: rgba(255, 255, 255, .08);
+    --tx: #ededef; --tx2: #9c9da4; --tx3: #6c6d74;
+    --ac: #7f7eff; --ac-soft: rgba(127, 126, 255, .16); --ac-tx: #b4b3ff; --onac: #12121a;
+    --gr: #5cc98f; --gr-soft: rgba(92, 201, 143, .14); --ongr: #0b2416;
+    --rd: #f0616d; --rd-soft: rgba(240, 97, 109, .15);
+    --yl: #e5b454; --yl-soft: rgba(229, 180, 84, .15);
+    --bl: #6fa8ff; --bl-soft: rgba(111, 168, 255, .15);
+    --mg: #a371f7; --mg-soft: rgba(163, 113, 247, .16);
+    --glass: rgba(52, 53, 58, .58); --glass-brd: rgba(255, 255, 255, .13);
+    --syk: #c4a7ff; --sys: #9ecbff; --syf: #dcbdfb; --syt: #7ee787; --sycm: #8b949e;
+    position: relative; width: 393px; height: 852px; border-radius: 55px; overflow: hidden; isolation: isolate;
+    background: var(--bg); color: var(--tx); font-size: 15px; line-height: 1.35; letter-spacing: -.01em;
+    box-shadow: 0 0 0 9px #050506, 0 0 0 10.5px #3a3b40, 0 46px 90px -24px rgba(0, 0, 0, .75);
+  }
+  .phone.light {
+    --bg: #f2f2f7; --card: #fff; --card2: #f7f7f9; --sheet: #f2f2f7; --menu: rgba(250, 250, 252, .86);
+    --fill: rgba(23, 24, 28, .055); --fill2: rgba(23, 24, 28, .09); --sep: #e3e4e8;
+    --tx: #17181c; --tx2: #5d606a; --tx3: #8f929c;
+    --ac: #4f46e5; --ac-soft: rgba(79, 70, 229, .1); --ac-tx: #4338ca; --onac: #fff;
+    --gr: #1f9d6b; --gr-soft: #e3f5ec; --ongr: #fff;
+    --rd: #d64560; --rd-soft: #fbe9ec;
+    --yl: #b07a0e; --yl-soft: #fbf1dc;
+    --bl: #2d6be4; --bl-soft: #e6eefc;
+    --mg: #8250df; --mg-soft: #f0e8fc;
+    --glass: rgba(255, 255, 255, .72); --glass-brd: rgba(0, 0, 0, .07);
+    --syk: #8250df; --sys: #0a3069; --syf: #6639ba; --syt: #116329; --sycm: #6e7781;
+  }
+  .sb { position: absolute; top: 0; left: 0; right: 0; height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 32px 0 54px; z-index: 90; font-weight: 600; font-size: 17px; letter-spacing: -.02em; color: var(--tx); pointer-events: none; }
+  .sb.w { color: #fff; }
+  .sb-r { display: flex; gap: 6px; align-items: center; }
+  .sb-r svg { height: 12px; width: auto; fill: currentColor; }
+  .sb-r svg.bat { height: 13px; }
+  .di { position: absolute; top: 11px; left: 50%; width: 125px; height: 37px; margin-left: -62.5px; border-radius: 19px; background: #000; z-index: 95; }
+  .hi { position: absolute; bottom: 8px; left: 50%; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: var(--tx); z-index: 99; }
+  .hi.w { background: #fff; }
+  .view { position: absolute; inset: 0; padding-top: 54px; overflow: hidden; }
+  .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 150px; background: linear-gradient(to bottom, transparent, var(--bg) 72%); z-index: 34; pointer-events: none; }
+
+  /* icons */
+  .ic { display: inline-grid; width: var(--s, 16px); height: var(--s, 16px); flex: none; }
+  .ic svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: var(--sw, 2); stroke-linecap: round; stroke-linejoin: round; }
+  .ic.fill svg { fill: currentColor; stroke: none; }
+
+  /* nav + titles */
+  .nav { height: 54px; display: flex; align-items: center; gap: 8px; padding: 0 16px; position: relative; z-index: 30; }
+  .sp { flex: 1; }
+  .gb, .gp { flex: none; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: var(--glass); border: .5px solid var(--glass-brd); backdrop-filter: blur(18px) saturate(1.7); -webkit-backdrop-filter: blur(18px) saturate(1.7); box-shadow: 0 2px 12px rgba(0, 0, 0, .1), inset 0 1px 0 rgba(255, 255, 255, .07); color: var(--tx); }
+  .gb { width: 44px; border-radius: 50%; }
+  .gb .ic { --s: 19px; }
+  .gp { border-radius: 22px; padding: 0 15px; gap: 6px; font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .gp .ic { --s: 16px; }
+  .gp.pri { background: var(--ac); color: var(--onac); border-color: transparent; }
+  .gp.dimmed { color: var(--tx3); }
+  .me { font-size: 14px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #7f7eff, #4f46e5); border-color: transparent; }
+  .nav-t { flex: 1; text-align: center; min-width: 0; }
+  .nav-t b { display: block; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-t span { display: block; font-size: 12px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lt { padding: 0 16px; font-size: 34px; font-weight: 700; letter-spacing: .005em; line-height: 41px; }
+  .sub { padding: 2px 16px 0; color: var(--tx2); font-size: 15px; }
+  .eyebrow { padding: 0 16px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+
+  /* pills, chips, dots */
+  .pills { display: flex; gap: 8px; padding: 14px 16px 4px; overflow: hidden; }
+  .pill { flex: none; height: 34px; padding: 0 13px; border-radius: 17px; display: inline-flex; align-items: center; gap: 6px; background: var(--fill); font-size: 14px; font-weight: 600; color: var(--tx); white-space: nowrap; }
+  .pill .c { color: var(--tx2); font-variant-numeric: tabular-nums; }
+  .pill.on { background: var(--tx); color: var(--bg); }
+  .pill.on .c { color: inherit; opacity: .6; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border-radius: 12px; font-size: 12.5px; font-weight: 600; background: var(--fill); color: var(--tx2); white-space: nowrap; flex: none; }
+  .chip .ic { --s: 13px; --sw: 2.4; }
+  .chip.bad { background: var(--rd-soft); color: var(--rd); }
+  .chip.ok { background: var(--gr-soft); color: var(--gr); }
+  .chip.warn { background: var(--yl-soft); color: var(--yl); }
+  .chip.run { background: var(--bl-soft); color: var(--bl); }
+  .chip.ac { background: var(--ac-soft); color: var(--ac-tx); }
+  .chip.mg { background: var(--mg-soft); color: var(--mg); }
+  .chip.sm { height: 21px; padding: 0 7px; font-size: 11.5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; display: inline-block; }
+  .pulse { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent); }
+  .unread { width: 9px; height: 9px; border-radius: 50%; background: var(--ac); flex: none; }
+  .av { width: 20px; height: 20px; border-radius: 50%; flex: none; display: inline-grid; place-items: center; font-size: 8.5px; font-weight: 700; color: #fff; background: hsl(var(--h, 245) 52% 50%); letter-spacing: 0; }
+  .av.lg { width: 30px; height: 30px; font-size: 11px; }
+  .lbl { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 11px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--c) 20%, transparent); color: color-mix(in srgb, var(--c) 60%, var(--tx)); border: .5px solid color-mix(in srgb, var(--c) 45%, transparent); }
+  .ty { width: 11px; height: 11px; border-radius: 3px; flex: none; display: inline-block; }
+  .ty.bug { background: #e5484d; } .ty.pbi { background: #3e7bfa; } .ty.task { background: #e5a33d; }
+  .br { font-family: "SF Mono", ui-monospace, monospace; font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--fill); color: var(--tx2); }
+
+  /* cards and lists */
+  .list { padding: 10px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .card { background: var(--card); border-radius: 22px; padding: 13px 16px 14px; border: .5px solid var(--sep); position: relative; }
+  .light .card { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .pr-h { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tx2); }
+  .pr-h b { color: var(--tx); font-weight: 600; }
+  .card h4 { margin: 5px 0 0; font-size: 16px; font-weight: 600; line-height: 1.3; letter-spacing: -.015em; }
+  .why { margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--tx2); }
+  .why .ic { --s: 14px; }
+  .why.ac { color: var(--ac-tx); } .why.bad { color: var(--rd); } .why.ok { color: var(--gr); } .why.warn { color: var(--yl); }
+  .pr-f { margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+  .cbar { display: flex; gap: 2px; width: 64px; height: 5px; flex: none; margin-right: 4px; }
+  .cbar i { flex: 1; border-radius: 2px; background: var(--gr); }
+  .cbar i.r { background: var(--rd); } .cbar i.y { background: var(--yl); } .cbar i.g { background: var(--tx3); opacity: .5; }
+  .ds { margin-left: auto; font: 500 12px "SF Mono", ui-monospace, monospace; color: var(--tx3); white-space: nowrap; }
+  .ds .a { color: var(--gr); } .ds .d { color: var(--rd); }
+  .grp-h { padding: 18px 32px 7px; font-size: 13px; color: var(--tx2); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .grp-h a { color: var(--ac-tx); font-weight: 500; text-decoration: none; }
+  .grp { margin: 0 16px; background: var(--card); border-radius: 22px; overflow: hidden; }
+  .dark .grp { border: .5px solid var(--sep); }
+  .cell { display: flex; align-items: center; gap: 12px; padding: 11px 16px; min-height: 50px; position: relative; }
+  .cell + .cell::before { content: ""; position: absolute; top: 0; left: var(--indent, 58px); right: 0; height: .5px; background: var(--sep); }
+  .cell .t { flex: 1; min-width: 0; }
+  .cell .t b { display: block; font-weight: 500; font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell .t > span { display: block; font-size: 13px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .cell .v { color: var(--tx2); font-size: 15px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+  .cell .chev { color: var(--tx3); --s: 15px; --sw: 2.4; }
+  .cell .when { font-size: 12.5px; color: var(--tx3); align-self: flex-start; margin-top: 2px; white-space: nowrap; }
+  .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; color: #fff; background: var(--ac); }
+  .ico .ic { --s: 17px; }
+  .ico.r { border-radius: 50%; }
+  .ico.soft { color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+
+  /* buttons, toggles, segmented */
+  .btn { height: 52px; border-radius: 26px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 17px; font-weight: 600; background: var(--fill2); color: var(--tx); flex: 1; white-space: nowrap; }
+  .btn .ic { --s: 18px; }
+  .btn.pri { background: var(--ac); color: var(--onac); }
+  .btn.go { background: var(--gr); color: var(--ongr); }
+  .btn.bad { background: var(--rd-soft); color: var(--rd); }
+  .btn.sm { height: 44px; font-size: 15.5px; }
+  .btns { display: flex; gap: 10px; padding: 0 16px; }
+  .tg { width: 52px; height: 31px; border-radius: 16px; background: var(--gr); position: relative; flex: none; }
+  .tg::after { content: ""; position: absolute; top: 2px; right: 2px; width: 35px; height: 27px; border-radius: 14px; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .18); }
+  .tg.off { background: var(--fill2); }
+  .tg.off::after { right: auto; left: 2px; }
+  .segc { display: flex; padding: 3px; border-radius: 13px; background: var(--fill); }
+  .segc span { flex: 1; text-align: center; padding: 7px 0; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: var(--tx2); }
+  .segc span.on { background: var(--card); color: var(--tx); box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
+  .dark .segc span.on { background: #3b3c42; }
+
+  /* tab bar (iOS 26 floating glass) */
+  .tabbar { position: absolute; left: 20px; right: 20px; bottom: 24px; display: flex; gap: 10px; z-index: 40; }
+  .tb-tabs { flex: 1; display: flex; height: 62px; padding: 4px; border-radius: 31px; }
+  .tb-tabs, .tb-search, .glass { background: var(--glass); border: .5px solid var(--glass-brd); backdrop-filter: blur(22px) saturate(1.8); -webkit-backdrop-filter: blur(22px) saturate(1.8); box-shadow: 0 10px 32px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .07); }
+  .tb-tab { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 27px; font-size: 10.5px; font-weight: 600; color: var(--tx); }
+  .tb-tab .ic { --s: 23px; --sw: 1.9; }
+  .tb-tab.on { background: var(--fill2); color: var(--ac); }
+  .tb-badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--rd); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  .tb-search { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .tb-search .ic { --s: 23px; }
+  .actbar { position: absolute; left: 16px; right: 16px; bottom: 30px; display: flex; gap: 10px; z-index: 40; align-items: center; }
+
+  /* sheets, menus, dim */
+  .dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); z-index: 45; }
+  .blurred { filter: blur(14px) saturate(1.2); transform: scale(1.04); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--sheet); border-radius: 40px 40px 0 0; padding-top: 7px; box-shadow: 0 -10px 40px rgba(0, 0, 0, .25); }
+  .sheet.float { left: 8px; right: 8px; bottom: 8px; border-radius: 46px; }
+  .grab { width: 38px; height: 5px; border-radius: 3px; background: var(--tx3); opacity: .45; margin: 0 auto 4px; }
+  .sh-h { display: flex; align-items: center; gap: 10px; padding: 6px 16px 8px; }
+  .sh-h h3 { flex: 1; margin: 0; text-align: center; font-size: 17px; font-weight: 600; }
+  .menu { position: absolute; z-index: 60; width: 262px; border-radius: 22px; overflow: hidden; background: var(--menu); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); box-shadow: 0 20px 60px rgba(0, 0, 0, .45); }
+  .mi { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 16px; position: relative; }
+  .mi + .mi::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: .5px; background: var(--sep); }
+  .mi span { flex: 1; }
+  .mi .ic { --s: 18px; }
+  .mi.gap { border-top: 7px solid rgba(0, 0, 0, .18); }
+  .mi.gap::before { display: none; }
+  .mi.bad { color: var(--rd); }
+
+  /* code */
+  .code { font: 11.5px/18px "SF Mono", ui-monospace, Menlo, monospace; background: var(--fill); border-radius: 12px; padding: 9px 11px; color: var(--tx); white-space: pre; overflow: hidden; }
+  .diff { font: 11px/19px "SF Mono", ui-monospace, Menlo, monospace; }
+  .dl { display: grid; grid-template-columns: 34px 16px 1fr; white-space: pre; overflow: hidden; }
+  .dl .n { color: var(--tx3); text-align: right; padding-right: 6px; }
+  .dl .m { color: var(--tx3); }
+  .dl.a { background: var(--gr-soft); }
+  .dl.a .n, .dl.a .m { color: var(--gr); }
+  .dl.d { background: var(--rd-soft); }
+  .dl.d .n, .dl.d .m { color: var(--rd); }
+  .hk { padding: 3px 12px; background: var(--fill); color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .diff .k { color: var(--syk); } .diff .s { color: var(--sys); } .diff .f { color: var(--syf); } .diff .ty2 { color: var(--syt); } .diff .cm { color: var(--sycm); }
+
+  /* reference chips inside prose (notes, comments) */
+  .rc { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 7px; background: var(--fill); font-size: 13px; font-weight: 600; vertical-align: 1px; white-space: nowrap; color: var(--tx); }
+  .rc .ic { --s: 12px; --sw: 2.4; }
+  .ud { position: absolute; left: 6px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--ac); }
+
+  /* wallpaper, lock screen, widgets, live activities */
+  .wall { background: radial-gradient(110% 70% at 15% 8%, #4a47b8 0%, transparent 55%), radial-gradient(90% 60% at 95% 85%, #1c6170 0%, transparent 60%), linear-gradient(165deg, #1b1a46, #0a0b12 72%); }
+  .wall-blur { position: absolute; inset: -30px; filter: blur(26px); }
+  .lk-date { text-align: center; color: rgba(255, 255, 255, .86); font-size: 20px; font-weight: 600; margin-top: 52px; }
+  .lk-time { text-align: center; color: rgba(255, 255, 255, .93); font-size: 104px; font-weight: 700; letter-spacing: -3px; line-height: 1; margin-top: 2px; text-shadow: 0 2px 30px rgba(127, 126, 255, .35); }
+  .lk-w { display: flex; justify-content: center; gap: 10px; margin-top: 14px; color: #fff; }
+  .lw-c { width: 70px; height: 70px; border-radius: 50%; background: rgba(255, 255, 255, .14); backdrop-filter: blur(10px); display: grid; place-items: center; text-align: center; position: relative; }
+  .lw-r { width: 156px; height: 70px; border-radius: 20px; background: rgba(255, 255, 255, .14); backdrop-filter: blur(10px); padding: 10px 12px; font-size: 13px; line-height: 1.3; }
+  .nt { border-radius: 26px; background: rgba(28, 29, 36, .62); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); color: #fff; padding: 12px 14px; display: flex; gap: 11px; border: .5px solid rgba(255, 255, 255, .1); }
+  .nt .app { width: 38px; height: 38px; border-radius: 10px; background: #151618; display: grid; place-items: center; flex: none; border: .5px solid rgba(255, 255, 255, .14); }
+  .nt .app svg { width: 24px; height: 24px; fill: #7f7eff; }
+  .nt .bd { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.33; }
+  .nt .bd b { font-weight: 600; }
+  .nt .hd { display: flex; justify-content: space-between; font-size: 14.5px; }
+  .nt .hd span { color: rgba(255, 255, 255, .55); font-size: 13px; }
+  .nt .tx { color: rgba(255, 255, 255, .82); }
+  .app-ic { width: 62px; height: 62px; border-radius: 15px; display: grid; place-items: center; color: #fff; margin: 0 auto; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+  .app-ic .ic { --s: 30px; --sw: 1.8; }
+  .app-lbl { text-align: center; color: #fff; font-size: 12px; margin-top: 5px; }
+  .wg { border-radius: 26px; background: rgba(24, 25, 30, .58); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); border: .5px solid rgba(255, 255, 255, .1); color: #fff; padding: 14px 15px; }
+  .crop { height: 270px; border-radius: 55px 55px 26px 26px; }
+  .crop .sb { padding: 6px 20px 0 40px; }
+  .key { width: 33px; height: 42px; border-radius: 8px; background: #6b6b70; display: grid; place-items: center; box-shadow: 0 1px 0 rgba(0, 0, 0, .35); font-weight: 400; }
+  .key.fn { background: #46464b; }
+  .crop.nosb .sb { display: none; }
+  .crop .sb-r { visibility: hidden; }
+  .wl { color: var(--ac-tx); font-weight: 500; }
+
+  /* how it works */
+  .arch { display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr; gap: 0; align-items: stretch; }
+  .arch-col { padding: 22px; border-radius: 22px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); display: grid; gap: 10px; align-content: start; }
+  .arch-col.accent { border-color: rgba(127, 126, 255, .4); background: linear-gradient(#18182a, #151618); }
+  .arch-col h4, .plan-col h4, .open h4 { margin: 0 0 4px; font-size: 17px; }
+  .arch-box { padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .06); font-size: 13.5px; line-height: 1.5; }
+  .arch-box b { display: block; font-size: 14.5px; margin-bottom: 2px; }
+  .arch-box span { color: #9c9da4; }
+  .arch-box code { color: #c9c8ff; }
+  .arch-arrow { display: grid; place-items: center; color: #7f7eff; font-size: 24px; }
+  .plan { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .plan-col { padding: 22px; border-radius: 22px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .plan-col h4 span, .open h4 span { display: block; font: 600 12px/1.4 "SF Mono", ui-monospace, monospace; color: #7f7eff; margin-bottom: 4px; }
+  .plan-col p { margin: 8px 0 0; }
+  .plan-col p.muted { color: #8e8f96; }
+  .plan-col ul, .open ul { margin: 8px 0 0; padding-left: 18px; }
+  .plan-col li, .open li { margin: 4px 0; }
+  .open { margin-top: 16px; padding: 22px 26px; border-radius: 22px; border: 1px dashed rgba(255, 255, 255, .14); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .open b { color: #ededef; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="mark" viewBox="0 0 32 32"><rect x="4" y="4" width="6" height="24" rx="1.5"/><path d="M14.5 4H22a6 6 0 0 1 6 6v1a4 4 0 0 1-4 4H14.5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 14.5 4ZM14.5 17H24a4 4 0 0 1 4 4v1a6 6 0 0 1-6 6h-7.5a1.5 1.5 0 0 1-1.5-1.5v-8a1.5 1.5 0 0 1 1.5-1.5Z"/></symbol>
+    <symbol id="sb-sig" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></symbol>
+    <symbol id="sb-wifi" viewBox="0 0 16 12"><path d="M8 2.4c2.3 0 4.4.9 6 2.4l1.2-1.2A10.3 10.3 0 0 0 8 .7C5.2.7 2.7 1.8.8 3.6L2 4.8a8.6 8.6 0 0 1 6-2.4Zm0 3.3c1.4 0 2.7.5 3.7 1.4l1.2-1.2A7 7 0 0 0 8 4c-1.9 0-3.6.7-4.9 1.9l1.2 1.2c1-.9 2.3-1.4 3.7-1.4Zm0 3.3c.6 0 1.2.2 1.6.6L8 11.3 6.4 9.6c.4-.4 1-.6 1.6-.6Z"/></symbol>
+    <symbol id="sb-bat" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.6" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2.2"/><path d="M25 4.5v4c.8-.3 1.4-1.1 1.4-2s-.6-1.7-1.4-2Z" opacity=".45"/></symbol>
+
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-pr" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7M6 9v12"/></symbol>
+    <symbol id="i-merge" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M16 13H8M16 17H8M10 9H8"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-rerun" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.13 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+    <symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-fail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></symbol>
+    <symbol id="i-pending" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-dasharray="3 3.3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 13l-2 2 2 2M14 17l2-2-2-2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+    <symbol id="i-hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4M12 2v13"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+    <symbol id="i-torch" viewBox="0 0 24 24"><path d="M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z"/><path d="M6 6h12M12 12v1"/></symbol>
+    <symbol id="i-face" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4M21 2l-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-git" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+    <symbol id="i-board" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7M12 7v4M16 7v9"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+    <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+    <symbol id="i-del" viewBox="0 0 24 24"><path d="M10 5a2 2 0 0 0-1.34.52l-6.33 5.9a.8.8 0 0 0 0 1.16l6.33 5.9A2 2 0 0 0 10 19h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6M18 9l-6 6"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/></symbol>
+    <symbol id="i-shift" viewBox="0 0 24 24"><path d="M9 18v-6H5l7-7 7 7h-4v6H9z"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="hero-icon"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></div>
+  <div>
+    <h1>BorgDock for <span>iPhone</span></h1>
+    <p>Concept mockups. BorgDock's server watches your pull requests, work items and agents around the clock, so the phone works on its own: a review to give, an agent waiting for an answer, a red master, and what changed while you were out. The desktop app is optional.</p>
+  </div>
+</header>
+
+<div class="principles">
+  <div class="principle"><b>Answer, don't browse</b><span>A phone session lasts thirty seconds. Every screen opens on what needs you and puts the one action under your thumb.</span></div>
+  <div class="principle"><b>The same rules as the desktop</b><span>Focus buckets, Dispatch verdicts, the Activity journal and CI fingerprints are one TypeScript package that the desktop and BorgDock's server both run, so the phone never disagrees with the dock.</span></div>
+  <div class="principle"><b>Agents stay on your machines</b><span>The phone steers T3 threads on your Mac mini, workstation or build VM through a small connector on each. No VPN on the phone, and the phone never runs code.</span></div>
+  <div class="principle"><b>Nothing final without a beat</b><span>Approvals keep the Undo countdown, merges show their checks and ask for Face ID, and ADO moves go through an agent run, as on the desktop.</span></div>
+</div>
+
+<nav class="toc">
+  <a href="#focus">1 · Focus</a><a href="#pr">2 · Pull request</a><a href="#review">3 · Quick Review</a><a href="#dispatch">4 · Dispatch &amp; agents</a><a href="#activity">5 · Activity, notifications, widgets</a><a href="#notes">6 · Notes &amp; search</a><a href="#workstreams">7 · Workstreams &amp; CI failures</a><a href="#setup">8 · Account &amp; setup</a><a href="#how">9 · How it would work</a>
+</nav>
+
+<!-- ============================== 1 · FOCUS ============================== -->
+<section class="sec" id="focus">
+  <div class="sec-h"><span class="n">01</span><h2>Focus: what needs you, first</h2></div>
+  <p class="sec-lead">The home tab is the desktop's Focus board as one column. The four buckets (Needs you, Waiting on others, Ready to merge, Stale) become a pill strip; each card says <em>why</em> it is yours in one line. Agents waiting on you sit under the pull requests, since an answer from you often unblocks more than a review does.</p>
+  <div class="row">
+
+    <!-- A · Focus home -->
+    <figure class="shot">
+      <div class="phone dark" data-tab="focus">
+        <div class="view">
+          <div class="nav"><span class="gb me">KB</span><span class="sp"></span><span class="gp"><i class="dot pulse" style="color:var(--gr);width:7px;height:7px"></i>12 s</span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Focus</div>
+          <div class="sub">3 pull requests and 2 agents need you</div>
+          <div class="pills"><span class="pill on">Needs you <span class="c">3</span></span><span class="pill">Waiting <span class="c">5</span></span><span class="pill">Ready <span class="c">2</span></span><span class="pill">Stale <span class="c">1</span></span></div>
+          <div class="list">
+            <article class="card">
+              <div class="pr-h"><b>shop</b>#3712<span class="sp"></span>2 h</div>
+              <h4>Checkout: keep the basket when a payment times out</h4>
+              <div class="why ac"><i class="ic" data-i="eye"></i>Sanne asked for your review</div>
+              <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i class="r"></i><i></i><i class="r"></i><i></i><i></i></span><span class="chip bad">2 failing</span><span class="chip ac">AB#61021</span><span class="ds"><span class="a">+412</span> <span class="d">−88</span></span></div>
+            </article>
+            <article class="card">
+              <div class="pr-h"><b>BorgDock</b>#108<span class="sp"></span>40 min</div>
+              <h4>Activity: one summary per burst of merges</h4>
+              <div class="why ac"><i class="ic" data-i="rerun"></i>3 new commits since your review</div>
+              <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="chip ok">Checks pass</span><span class="chip">1 approval</span><span class="ds"><span class="a">+96</span> <span class="d">−31</span></span></div>
+            </article>
+            <article class="card">
+              <div class="pr-h"><b>shop-api</b>#2291 · yours<span class="sp"></span>1 d</div>
+              <h4>Orders: fix VAT rounding on partial refunds</h4>
+              <div class="why bad"><i class="ic" data-i="msg"></i>Tom requested changes</div>
+              <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i></span><span class="chip warn"><i class="ic" data-i="alert"></i>Conflicts</span><span class="ds"><span class="a">+58</span> <span class="d">−17</span></span></div>
+            </article>
+          </div>
+          <div class="grp-h">Agents waiting on you <a>Dispatch</a></div>
+          <div class="grp">
+            <div class="cell"><span class="ico r soft" style="--c:var(--ac)"><i class="ic" data-i="bot"></i></span><div class="t"><b>Offline basket for the mobile app</b><span>Plan ready · waiting 2 d</span></div><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell"><span class="ico r soft" style="--c:var(--yl)"><i class="ic" data-i="help"></i></span><div class="t"><b>Refund email sent twice</b><span>Asks: keep the retry queue?</span></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Focus</b>Cards carry the desktop's check bar, the reason it is yours and the linked work item. The pulse next to "12 s" is the last sync; pull down to refresh.
+        <ul><li>Bucket pills keep the counts the rail shows on the desktop.</li><li>Tab badges: Dispatch counts agents waiting on you, Activity counts unread entries.</li></ul></figcaption>
+    </figure>
+
+    <!-- B · Swipe actions -->
+    <figure class="shot">
+      <div class="phone light" data-tab="focus">
+        <div class="view">
+          <div class="nav"><span class="gb me">KB</span><span class="sp"></span><span class="gp"><i class="dot" style="color:var(--gr);width:7px;height:7px"></i>8 s</span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Focus</div>
+          <div class="sub">2 ready to merge</div>
+          <div class="pills"><span class="pill">Needs you <span class="c">3</span></span><span class="pill">Waiting <span class="c">5</span></span><span class="pill on">Ready <span class="c">2</span></span><span class="pill">Stale <span class="c">1</span></span></div>
+          <div class="list">
+            <div style="position:relative">
+              <div style="position:absolute;inset:0;display:flex;justify-content:flex-end;align-items:stretch;gap:8px">
+                <div style="width:76px;border-radius:22px;background:#8b8bf5;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:13px;font-weight:600"><i class="ic" data-i="moon" style="--s:22px"></i>Snooze</div>
+                <div style="width:76px;border-radius:22px;background:var(--gr);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:13px;font-weight:600"><i class="ic" data-i="merge" style="--s:22px"></i>Merge</div>
+              </div>
+              <article class="card" style="transform:translateX(-168px);box-shadow:4px 0 18px rgba(0,0,0,.08)">
+                <div class="pr-h"><b>shop</b>#3698<span class="sp"></span>5 h</div>
+                <h4>Search: debounce the product filter</h4>
+                <div class="why ok"><i class="ic" data-i="ok"></i>Approved by Tom</div>
+                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="chip ok">18 pass</span></div>
+              </article>
+            </div>
+            <article class="card">
+              <div class="pr-h"><b>BorgDock</b>#104<span class="sp"></span>1 d</div>
+              <h4>Notes: open a note by title</h4>
+              <div class="why ok"><i class="ic" data-i="ok"></i>Approved by Ines · auto-merge on</div>
+              <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i class="y"></i></span><span class="chip run"><i class="dot"></i>1 running</span><span class="chip ac">Auto-merge</span><span class="ds"><span class="a">+140</span> <span class="d">−22</span></span></div>
+            </article>
+            <div style="position:relative;margin-top:22px">
+              <div style="position:absolute;inset:0;display:flex;align-items:stretch">
+                <div style="width:96px;border-radius:22px;background:var(--ac);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:13px;font-weight:600"><i class="ic" data-i="eye" style="--s:22px"></i>Review</div>
+              </div>
+              <article class="card" style="transform:translateX(104px);box-shadow:-4px 0 18px rgba(0,0,0,.08)">
+                <div class="pr-h"><b>shop</b>#3715<span class="sp"></span>3 h</div>
+                <h4>Search: keep filters in the URL</h4>
+                <div class="why ac"><i class="ic" data-i="eye"></i>From the Needs you bucket</div>
+              </article>
+            </div>
+          </div>
+          <div style="margin:18px 32px 0;font-size:13px;color:var(--tx3);line-height:1.5">Swipe left to merge or snooze until tomorrow. Swipe right to start a review. Touch and hold for everything else.</div>
+        </div>
+      </div>
+      <figcaption><b>Swipe actions</b>The desktop card's buttons become swipes. A full swipe left on a ready card opens the merge sheet, never a blind merge.
+        <ul><li>Snooze is the desktop's "until tomorrow"; the card comes back on its own.</li><li>Merge only appears when the PR is mergeable.</li></ul></figcaption>
+    </figure>
+
+    <!-- C · Long-press menu -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="blurred">
+            <div class="nav"><span class="gb me">KB</span><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+            <div class="lt">Focus</div>
+            <div class="sub">3 pull requests and 2 agents need you</div>
+            <div class="pills"><span class="pill on">Needs you <span class="c">3</span></span><span class="pill">Waiting <span class="c">5</span></span><span class="pill">Ready <span class="c">2</span></span></div>
+            <div class="list"><div class="card" style="height:130px"></div><div class="card" style="height:130px"></div><div class="card" style="height:130px"></div></div>
+          </div>
+          <div class="dim" style="background:rgba(0,0,0,.35)"></div>
+          <article class="card" style="position:absolute;z-index:55;left:16px;right:16px;top:150px;box-shadow:0 20px 50px rgba(0,0,0,.5);background:#202125">
+            <div class="pr-h"><b>shop</b>#3712<span class="sp"></span>2 h</div>
+            <h4>Checkout: keep the basket when a payment times out</h4>
+            <div class="why ac"><i class="ic" data-i="eye"></i>Sanne asked for your review</div>
+            <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i class="r"></i><i></i><i class="r"></i><i></i><i></i></span><span class="chip bad">2 failing</span><span class="chip ac">AB#61021</span><span class="ds"><span class="a">+412</span> <span class="d">−88</span></span></div>
+          </article>
+          <div class="menu" style="left:16px;top:304px">
+            <div class="mi"><span>Review</span><i class="ic" data-i="eye"></i></div>
+            <div class="mi"><span>Fix with Claude</span><i class="ic" data-i="spark"></i></div>
+            <div class="mi"><span>Rerun failed checks</span><i class="ic" data-i="rerun"></i></div>
+            <div class="mi"><span>Open in T3…</span><i class="ic" data-i="term"></i></div>
+            <div class="mi gap"><span>Snooze until tomorrow</span><i class="ic" data-i="moon"></i></div>
+            <div class="mi"><span>Open AB#61021</span><i class="ic" data-i="board"></i></div>
+            <div class="mi"><span>Copy branch name</span><i class="ic" data-i="branch"></i></div>
+            <div class="mi"><span>Open on GitHub</span><i class="ic" data-i="ext"></i></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Touch and hold</b>The same actions as the desktop card, filtered to what applies: this PR has failing checks, so Rerun and Fix with Claude are on top and Merge is absent.
+        <ul><li>Fix with Claude and Open in T3 start the thread on a machine you choose (see Dispatch).</li><li>Both pass the CI launch guard first, as on the desktop.</li></ul></figcaption>
+    </figure>
+
+    <!-- D · Merge sheet -->
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb me">KB</span><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Focus</div>
+          <div class="list"><div class="card" style="height:120px"></div></div>
+          <div class="dim" style="background:rgba(0,0,0,.28)"></div>
+          <div class="sheet float" style="padding-bottom:22px">
+            <div class="grab"></div>
+            <div class="sh-h"><span class="gb"><i class="ic" data-i="x"></i></span><h3>Merge</h3><span style="width:44px"></span></div>
+            <div style="padding:2px 22px 14px">
+              <div class="pr-h"><i class="ic" data-i="pr" style="color:var(--gr)"></i><b>acme/shop</b>#3698</div>
+              <div style="margin-top:4px;font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.25">Search: debounce the product filter</div>
+            </div>
+            <div class="grp" style="margin:0 12px;--indent:50px">
+              <div class="cell" style="min-height:44px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr)"></i><div class="t"><b>18 checks passed</b></div></div>
+              <div class="cell" style="min-height:44px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr)"></i><div class="t"><b>Approved by Tom Peeters</b></div></div>
+              <div class="cell" style="min-height:44px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr)"></i><div class="t"><b>No conflicts with master</b></div></div>
+              <div class="cell" style="min-height:44px"><i class="ic" data-i="branch" style="--s:20px;color:var(--tx2)"></i><div class="t"><b>Delete <code class="br">search-debounce</code></b></div><span class="tg"></span></div>
+            </div>
+            <div style="padding:16px 12px 0"><div class="segc"><span class="on">Squash</span><span>Merge</span><span>Rebase</span></div></div>
+            <div style="padding:12px 12px 0"><div class="code" style="background:var(--card);white-space:normal;font-size:12.5px;line-height:1.5;padding:12px 14px;border-radius:16px">Search: debounce the product filter (#3698)<br><span style="color:var(--tx3)">Typing in the filter now waits 250 ms before it queries, so the list stops flickering.</span></div></div>
+            <div class="btns" style="padding:18px 12px 0"><div class="btn go"><i class="ic" data-i="merge"></i>Squash and merge</div></div>
+            <div style="margin-top:10px;text-align:center;font-size:12.5px;color:var(--tx3);display:flex;gap:6px;justify-content:center;align-items:center"><i class="ic" data-i="face" style="--s:14px"></i>Confirms with Face ID</div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Merge sheet</b>Shows the facts the merge rests on before you commit to it: checks, approval, conflicts. The method remembers each repository's default.
+        <ul><li>Face ID guards merge and approve (a setting).</li><li>When a check is still running, the button becomes "Merge when ready" (auto-merge).</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 2 · PULL REQUEST ============================== -->
+<section class="sec" id="pr">
+  <div class="sec-h"><span class="n">02</span><h2>A pull request, on one screen</h2></div>
+  <p class="sec-lead">The PR detail keeps the desktop's tabs (Overview, Files, Checks, Proof, Comments) as a scrolling strip. The header answers the three questions you have on a phone: is it green, does it conflict, which work item is it. The bottom bar holds the next step: start the review, or hand the failure to an agent.</p>
+  <div class="row">
+
+    <!-- E · PR detail -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="share"></i></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div style="padding:4px 16px 0">
+            <div class="pr-h"><i class="ic" data-i="pr" style="--s:15px;color:var(--gr)"></i><b>acme/shop</b>#3712 · Open</div>
+            <div style="margin-top:6px;font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.22">Checkout: keep the basket when a payment times out</div>
+            <div style="margin-top:9px;display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--tx2)"><span class="av" style="--h:330">SD</span>Sanne de Vries · 6 commits · <code class="br">basket-timeout</code></div>
+            <div style="margin-top:10px;display:flex;gap:6px"><span class="lbl" style="--c:#e8743b">checkout</span><span class="lbl" style="--c:#e5484d">bug</span><span class="lbl" style="--c:#3e7bfa">needs-qa</span></div>
+            <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap"><span class="chip bad"><i class="ic" data-i="x"></i>2 failing</span><span class="chip ok"><i class="ic" data-i="check"></i>No conflicts</span><span class="chip ac"><span class="ty bug" style="width:9px;height:9px"></span>AB#61021 · Code Review</span></div>
+          </div>
+          <div style="display:flex;gap:22px;padding:18px 16px 0;border-bottom:.5px solid var(--sep);font-size:15px;font-weight:600;color:var(--tx2);white-space:nowrap">
+            <span style="color:var(--tx);padding-bottom:10px;border-bottom:2.5px solid var(--ac)">Overview</span><span>Files 14</span><span>Checks <span style="color:var(--rd)">●</span></span><span>Proof 3</span><span>Comments 6</span>
+          </div>
+          <div style="padding:14px 16px 0">
+            <div style="font-size:14.5px;line-height:1.5;color:var(--tx)">When the payment provider takes longer than 30 s we cleared the basket and sent people back to an empty cart. Timeouts now keep the basket and show a retry banner; hard declines still clear it.</div>
+            <div style="margin-top:6px;color:var(--ac-tx);font-size:14px;font-weight:600">Read the whole description</div>
+          </div>
+          <div class="grp-h" style="padding-top:16px">Reviews</div>
+          <div class="grp" style="--indent:54px">
+            <div class="cell" style="min-height:46px"><span class="av lg" style="--h:200">TP</span><div class="t"><b>Tom Peeters</b></div><span class="chip ok"><i class="ic" data-i="check"></i>Approved</span></div>
+            <div class="cell" style="min-height:46px"><span class="av lg" style="--h:245">KB</span><div class="t"><b>You</b></div><span class="chip ac">Requested 2 h</span></div>
+          </div>
+          <div class="grp-h">Work item</div>
+          <div class="grp">
+            <div class="cell"><span class="ty bug" style="width:14px;height:14px;margin:0 8px"></span><div class="t"><b>Basket empties after a payment timeout</b><span>Code Review · agent settled 1 h on mac-mini</span></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+        </div>
+        <div class="edge" style="height:130px"></div>
+        <div class="actbar"><span class="gp" style="height:52px;border-radius:26px;padding:0 18px"><i class="ic" data-i="spark"></i>Fix</span><div class="btn pri"><i class="ic" data-i="eye"></i>Start review</div></div>
+      </div>
+      <figcaption><b>Pull request detail</b>Labels in their GitHub colours, the checks dot on the tab and the ADO state of the linked item, as the desktop's two-row header.
+        <ul><li>"Fix" hands the failing checks to Claude in a T3 thread on your chosen machine.</li><li>Tap the AB# chip for the work item card; touch and hold for "Open in Azure DevOps".</li></ul></figcaption>
+    </figure>
+
+    <!-- F · Checks sheet -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span></div>
+          <div style="padding:4px 16px;font-size:23px;font-weight:700">Checkout: keep the basket…</div>
+          <div class="dim"></div>
+          <div class="sheet" style="top:96px;padding-bottom:0">
+            <div class="grab"></div>
+            <div style="display:flex;align-items:flex-start;padding:8px 16px 4px 20px;gap:10px">
+              <div style="flex:1"><div style="font-size:22px;font-weight:700;letter-spacing:-.02em">Checks</div><div style="font-size:13.5px;color:var(--tx2);margin-top:2px">2 failed · 1 running · 15 passed · <span class="mono">4f2a91c</span></div></div>
+              <span class="gb"><i class="ic" data-i="x"></i></span>
+            </div>
+            <div class="list" style="gap:10px;padding-top:8px">
+              <div class="card" style="background:var(--card2)">
+                <div style="display:flex;align-items:center;gap:8px"><i class="ic" data-i="fail" style="--s:18px;color:var(--rd)"></i><b style="font-size:15.5px;flex:1">e2e / checkout</b><span style="font-size:12.5px;color:var(--tx3)">4 m 12 s</span></div>
+                <div style="margin:4px 0 9px 26px;font-size:13px;color:var(--tx2)">Step <b style="color:var(--tx);font-weight:500">Run Playwright</b> · <span class="chip bad sm">New in this PR</span></div>
+                <div class="code" style="margin-left:26px"><span style="color:var(--tx3)">checkout-timeout.spec.ts:84</span>
+expect(basket).toHaveText()
+<span style="color:var(--gr)">Expected: "Basket (3)"</span>
+<span style="color:var(--rd)">Received: "Basket (0)"</span></div>
+              </div>
+              <div class="card" style="background:var(--card2)">
+                <div style="display:flex;align-items:center;gap:8px"><i class="ic" data-i="fail" style="--s:18px;color:var(--rd)"></i><b style="font-size:15.5px;flex:1">build / windows</b><span style="font-size:12.5px;color:var(--tx3)">1 m 40 s</span></div>
+                <div style="margin:4px 0 9px 26px;font-size:13px;color:var(--tx2)">Step <b style="color:var(--tx);font-weight:500">tsc -b</b></div>
+                <div class="code" style="margin-left:26px"><span style="color:var(--tx3)">src/api/orders.ts:212</span>
+TS2345: 'string | undefined' is not
+assignable to 'string'.</div>
+                <div style="margin:10px 0 0 26px;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--yl-soft);color:var(--yl);font-size:13px;font-weight:500"><i class="ic" data-i="alert" style="--s:15px"></i><span style="flex:1">Also red on master. Not this PR.</span><span class="av" style="--h:30">LJ</span>Lars</div>
+              </div>
+              <div class="grp" style="margin:0;--indent:46px">
+                <div class="cell" style="min-height:46px"><i class="ic" data-i="pending" style="--s:18px;color:var(--bl)"></i><div class="t"><b>e2e / search</b></div><span class="v" style="font-size:13px">running 2 m</span></div>
+                <div class="cell" style="min-height:46px"><i class="ic" data-i="ok" style="--s:18px;color:var(--gr)"></i><div class="t"><b>15 passed</b></div><i class="ic chev" data-i="chev-r"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="edge" style="height:120px;z-index:52;background:linear-gradient(transparent,var(--sheet) 70%)"></div>
+        <div class="actbar" style="z-index:55"><div class="btn"><i class="ic" data-i="rerun"></i>Rerun failed</div><div class="btn pri"><i class="ic" data-i="spark"></i>Hand to Claude</div></div>
+      </div>
+      <figcaption><b>Checks</b>Why each check failed, without opening a log: the step that broke and the test or error, from the desktop's CI failure rules, run on the server over the job log tails.
+        <ul><li>A failure that is also red on master says so and names who claimed it.</li><li>Hand to Claude skips failures that aren't this PR's; the launch guard asks first.</li></ul></figcaption>
+    </figure>
+
+    <!-- G · Comments -->
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Comments</b><span>#3712 · 2 open threads</span></div><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="list" style="padding-top:6px">
+            <div class="card" style="padding:0;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:7px;padding:11px 14px;font-size:12.5px;color:var(--tx2);border-bottom:.5px solid var(--sep)"><i class="ic" data-i="file" style="--s:14px"></i><span class="mono" style="flex:1">checkout/basket-store.ts</span><span class="mono">L48</span></div>
+              <div class="diff" style="padding:4px 0">
+                <div class="dl"><span class="n">47</span><span class="m"></span><span>  <span class="k">if</span> (result.kind === <span class="s">'declined'</span>) {</span></div>
+                <div class="dl a"><span class="n">48</span><span class="m">+</span><span>    basket.<span class="f">clear</span>();</span></div>
+                <div class="dl"><span class="n">49</span><span class="m"></span><span>  }</span></div>
+              </div>
+              <div style="padding:10px 14px 4px;display:flex;gap:10px"><span class="av lg" style="--h:200">TP</span><div style="flex:1;font-size:14.5px;line-height:1.45"><b style="font-weight:600">Tom Peeters</b> <span style="color:var(--tx3);font-size:12.5px">3 h</span><br>Does a 3-D Secure abort count as declined here? Then we'd still empty the basket.</div></div>
+              <div style="padding:8px 14px 12px;display:flex;gap:10px"><span class="av lg" style="--h:330">SD</span><div style="flex:1;font-size:14.5px;line-height:1.45"><b style="font-weight:600">Sanne de Vries</b> <span style="color:var(--tx3);font-size:12.5px">1 h</span><br>It comes back as <code>aborted</code>, so it keeps the basket. Added a case to the spec.</div></div>
+              <div style="display:flex;border-top:.5px solid var(--sep);font-size:15px;font-weight:600;color:var(--ac)"><span style="flex:1;text-align:center;padding:11px 0;border-right:.5px solid var(--sep)">Resolve</span><span style="flex:1;text-align:center;padding:11px 0">Reply</span></div>
+            </div>
+            <div class="card">
+              <div style="display:flex;gap:10px"><span class="av lg" style="--h:150">IM</span><div style="flex:1;font-size:14.5px;line-height:1.45"><b style="font-weight:600">Ines Moreau</b> <span style="color:var(--tx3);font-size:12.5px">50 min</span><br>The retry banner covers the total on small screens. Screenshot in the Proof tab.</div></div>
+              <div style="display:flex;gap:8px;margin:10px 0 0 40px"><span class="chip">👍 2</span><span class="chip ac"><i class="ic" data-i="image"></i>Proof</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="actbar" style="bottom:28px">
+          <div class="glass" style="flex:1;height:50px;border-radius:25px;display:flex;align-items:center;padding:0 6px 0 18px;gap:8px;color:var(--tx3);font-size:16px"><span style="flex:1">Reply to Ines…</span><i class="ic" data-i="mic" style="--s:20px;color:var(--tx2)"></i><span style="width:38px;height:38px;border-radius:50%;background:var(--ac);color:#fff;display:grid;place-items:center"><i class="ic" data-i="up" style="--s:19px;--sw:2.6"></i></span></div>
+        </div>
+      </div>
+      <figcaption><b>Comments</b>Review threads show the lines they were left on. Reply with the keyboard or dictation, resolve with one tap.
+        <ul><li>"Proof" jumps to the screenshot in the description that the comment is about.</li><li>Your own pending review comments live with the review, not here.</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 3 · QUICK REVIEW ============================== -->
+<section class="sec" id="review">
+  <div class="sec-h"><span class="n">03</span><h2>Quick Review, one file per swipe</h2></div>
+  <p class="sec-lead">The desktop's file walk fits a phone well: one file at a time, unified diff, mark it reviewed and swipe to the next. Approve stays locked until every file is seen, the decision appears after the last one, and an approval waits out its Undo before GitHub hears about it.</p>
+  <div class="row">
+
+    <!-- H · File walk -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="nav-t"><b>#3712 · file 5 of 14</b><span style="margin:6px auto 0;width:120px;height:4px;border-radius:2px;background:var(--fill2);overflow:hidden"><i style="display:block;width:29%;height:100%;background:var(--gr)"></i></span></div><span class="gp dimmed" style="padding:0 13px"><i class="ic" data-i="lock"></i>9 left</span></div>
+          <div style="padding:6px 16px 10px;display:flex;align-items:flex-end;gap:10px">
+            <div style="flex:1;min-width:0"><div class="mono" style="font-size:12px;color:var(--tx3)">src/checkout/</div><div style="font-size:18px;font-weight:700;letter-spacing:-.01em">BasketRecovery.tsx</div></div>
+            <span class="ds" style="margin:0 0 3px"><span class="a">+11</span> <span class="d">−1</span></span>
+          </div>
+          <div class="diff" style="border-top:.5px solid var(--sep)">
+            <div class="hk">@@ -32,9 +32,18 @@ export function BasketRecovery</div>
+            <div class="dl"><span class="n">32</span><span class="m"></span><span><span class="k">export function</span> <span class="f">BasketRecovery</span>({ order }) {</span></div>
+            <div class="dl"><span class="n">33</span><span class="m"></span><span>  <span class="k">const</span> basket = <span class="f">useBasket</span>();</span></div>
+            <div class="dl d"><span class="n">34</span><span class="m">−</span><span>  <span class="f">useEffect</span>(() =&gt; basket.<span class="f">clear</span>(), [failed]);</span></div>
+            <div class="dl a"><span class="n">34</span><span class="m">+</span><span>  <span class="k">const</span> timedOut = order.kind === <span class="s">'timeout'</span>;</span></div>
+            <div class="dl a"><span class="n">35</span><span class="m">+</span><span></span></div>
+            <div class="dl a"><span class="n">36</span><span class="m">+</span><span>  <span class="f">useEffect</span>(() =&gt; {</span></div>
+            <div class="dl a"><span class="n">37</span><span class="m">+</span><span>    <span class="k">if</span> (failed &amp;&amp; !timedOut) basket.<span class="f">clear</span>();</span></div>
+            <div class="dl a"><span class="n">38</span><span class="m">+</span><span>  }, [failed, timedOut]);</span></div>
+            <div class="dl a"><span class="n">39</span><span class="m">+</span><span></span></div>
+            <div class="dl a"><span class="n">40</span><span class="m">+</span><span>  <span class="k">if</span> (timedOut) {</span></div>
+            <div class="dl a"><span class="n">41</span><span class="m">+</span><span>    <span class="k">return</span> &lt;<span class="ty2">RetryBanner</span> onRetry={retry} /&gt;;</span></div>
+            <div style="margin:6px 12px 6px 50px;padding:10px 12px;border-radius:14px;background:var(--ac-soft);border:.5px solid color-mix(in srgb,var(--ac) 35%,transparent);font-family:-apple-system,system-ui,sans-serif;font-size:13.5px;line-height:1.4">
+              <div style="font-size:11.5px;color:var(--ac-tx);font-weight:600;margin-bottom:3px">Draft · line 41</div>Should the banner say how long the provider took? Support keeps asking for it.</div>
+            <div class="dl a"><span class="n">42</span><span class="m">+</span><span>  }</span></div>
+            <div class="dl"><span class="n">43</span><span class="m"></span><span>  <span class="k">return</span> &lt;<span class="ty2">Summary</span> basket={basket} /&gt;;</span></div>
+            <div class="dl"><span class="n">44</span><span class="m"></span><span>}</span></div>
+            <div class="hk">@@ -80,6 +89,11 @@ describe('checkout timeout')</div>
+            <div class="dl"><span class="n">89</span><span class="m"></span><span>  <span class="f">it</span>(<span class="s">'keeps the basket'</span>, <span class="k">async</span> () =&gt; {</span></div>
+            <div class="dl a"><span class="n">90</span><span class="m">+</span><span>    <span class="k">await</span> <span class="f">payWith</span>(psp.<span class="f">timeout</span>());</span></div>
+          </div>
+        </div>
+        <div class="edge" style="height:150px"></div>
+        <div style="position:absolute;left:0;right:0;bottom:96px;z-index:41;display:flex;justify-content:center;gap:4px">
+          <i style="width:6px;height:6px;border-radius:3px;background:var(--gr)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--gr)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--gr)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--gr)"></i><i style="width:18px;height:6px;border-radius:3px;background:var(--tx)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--fill2)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--fill2)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--fill2)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--fill2)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--fill2)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--fill2)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--fill2)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--fill2)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--fill2)"></i>
+        </div>
+        <div class="actbar"><span class="gb" style="width:52px;height:52px"><i class="ic" data-i="chev-l"></i></span><div class="btn go"><i class="ic" data-i="check"></i>Mark reviewed</div><span class="gb" style="width:52px;height:52px"><i class="ic" data-i="chev-r"></i></span></div>
+      </div>
+      <figcaption><b>The file walk</b>One file per page. Tap a line number to leave a draft comment; swipe sideways to move between files. The dots are the file tree in miniature: green is reviewed.
+        <ul><li>Approve shows a lock and how many files are left, as on the desktop.</li><li>Long lines wrap with a hanging indent; turn the phone for a wider view.</li><li>Tap the title to open the file tree by folder.</li></ul></figcaption>
+    </figure>
+
+    <!-- J · Decide -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="nav-t"><b>#3712 · file 14 of 14</b><span style="margin:6px auto 0;width:120px;height:4px;border-radius:2px;background:var(--gr)"></span></div><span class="gp" style="padding:0 13px;color:var(--gr)"><i class="ic" data-i="check"></i>Done</span></div>
+          <div style="padding:6px 16px 10px"><div class="mono" style="font-size:12px;color:var(--tx3)">tests/e2e/</div><div style="font-size:18px;font-weight:700">checkout-timeout.spec.ts</div></div>
+          <div class="diff" style="opacity:.55">
+            <div class="dl a"><span class="n">84</span><span class="m">+</span><span>    <span class="k">await</span> <span class="f">expect</span>(page.basket)</span></div>
+            <div class="dl a"><span class="n">85</span><span class="m">+</span><span>      .<span class="f">toHaveText</span>(<span class="s">'Basket (3)'</span>);</span></div>
+          </div>
+          <div class="dim" style="background:rgba(0,0,0,.35)"></div>
+          <div class="sheet float" style="padding:10px 0 20px">
+            <div class="grab"></div>
+            <div style="padding:10px 20px 0;display:flex;align-items:center;gap:10px"><i class="ic" data-i="ok" style="--s:26px;color:var(--gr)"></i><div><div style="font-size:19px;font-weight:700">All 14 files reviewed</div><div style="font-size:13.5px;color:var(--tx2)">Your decision on #3712</div></div></div>
+            <div style="margin:14px 14px 0;padding:12px 14px;min-height:84px;border-radius:18px;background:var(--fill);font-size:15px;line-height:1.45">Works on iPhone and on the desktop. One question on the banner copy, otherwise good to go.<span style="display:inline-block;width:2px;height:17px;background:var(--ac);vertical-align:-3px;margin-left:1px"></span></div>
+            <div class="grp" style="margin:10px 14px 0;--indent:16px;background:var(--fill);border:0">
+              <div class="cell" style="min-height:42px;padding:9px 14px"><div class="t"><span style="color:var(--ac-tx);font-weight:600;font-size:12px">BasketRecovery.tsx:41</span><b style="font-size:14px">Should the banner say how long…</b></div><span style="color:var(--ac-tx);font-size:14px;font-weight:600">Jump</span></div>
+              <div class="cell" style="min-height:42px;padding:9px 14px"><div class="t"><span style="color:var(--ac-tx);font-weight:600;font-size:12px">basket-store.ts:52</span><b style="font-size:14px">Nit: `keep` reads better than…</b></div><span style="color:var(--ac-tx);font-size:14px;font-weight:600">Jump</span></div>
+            </div>
+            <div class="btns" style="padding:16px 14px 0"><div class="btn sm bad">Request changes</div><div class="btn sm">Comment</div></div>
+            <div class="btns" style="padding:10px 14px 0"><div class="btn pri"><i class="ic" data-i="check"></i>Approve</div></div>
+            <div style="padding:12px 0 0;text-align:center;font-size:15px;font-weight:600;color:var(--gr)">Approve &amp; auto-merge</div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Decide where you finished</b>Marking the last file reviewed opens the decision: the overall comment, your drafts with a jump to each line, and the four outcomes.
+        <ul><li>Request changes and Comment post at once.</li><li>Approve moves you to the next pull request and holds the review for five seconds.</li></ul></figcaption>
+    </figure>
+
+    <!-- K · Approving + undo -->
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="nav-t"><b>Review · 2 of 3</b><span>Up next: #2296</span></div><span class="gp dimmed" style="padding:0 13px"><i class="ic" data-i="lock"></i>6 left</span></div>
+          <div style="padding:8px 16px 0">
+            <div class="pr-h"><i class="ic" data-i="pr" style="--s:15px;color:var(--gr)"></i><b>borght-dev/BorgDock</b>#108</div>
+            <div style="margin-top:6px;font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.22">Activity: one summary per burst of merges</div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--tx2)"><span class="av" style="--h:150">IM</span>Ines Moreau · <code class="br">activity-bursts</code></div>
+            <div style="margin-top:12px;display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:14px;background:var(--yl-soft);color:var(--yl);font-size:13.5px;line-height:1.4"><i class="ic" data-i="rerun" style="--s:16px;margin-top:1px"></i><span style="color:var(--tx)"><b style="font-weight:600">Re-review.</b> 3 commits since you approved on Tuesday. Only the 6 files they touched are left.</span></div>
+          </div>
+          <div class="grp-h" style="padding-top:16px">Files <span>6 to review</span></div>
+          <div class="grp" style="--indent:46px">
+            <div class="cell" style="min-height:44px"><i class="newdot" style="width:8px;height:8px;border-radius:50%;background:var(--yl);margin:0 4px"></i><div class="t"><b class="mono" style="font-size:13.5px">derive/github.ts</b></div><span class="ds"><span class="a">+41</span> <span class="d">−12</span></span></div>
+            <div class="cell" style="min-height:44px"><i style="width:8px;height:8px;border-radius:50%;background:var(--yl);margin:0 4px"></i><div class="t"><b class="mono" style="font-size:13.5px">policy.ts</b></div><span class="ds"><span class="a">+18</span> <span class="d">−9</span></span></div>
+            <div class="cell" style="min-height:44px"><i style="width:8px;height:8px;border-radius:50%;background:var(--yl);margin:0 4px"></i><div class="t"><b class="mono" style="font-size:13.5px">copy.ts</b></div><span class="ds"><span class="a">+7</span> <span class="d">−2</span></span></div>
+            <div class="cell" style="min-height:44px"><i style="width:8px;height:8px;border-radius:50%;background:var(--yl);margin:0 4px"></i><div class="t"><b class="mono" style="font-size:13.5px">__tests__/policy.test.ts</b></div><span class="ds"><span class="a">+30</span></span></div>
+          </div>
+        </div>
+        <div style="position:absolute;left:12px;right:12px;bottom:104px;z-index:60;border-radius:24px;background:#1f2024;color:#fff;box-shadow:0 14px 40px rgba(0,0,0,.3);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:13px 10px 13px 16px"><i class="ic" data-i="check" style="--s:18px;color:#5cc98f;--sw:2.6"></i><div style="flex:1;font-size:14.5px;line-height:1.3"><b style="font-weight:600">Approving #3712…</b><br><span style="color:#9c9da4;font-size:13px">Posts in 3 s · shake to undo</span></div><span style="height:36px;padding:0 16px;border-radius:18px;background:rgba(255,255,255,.14);display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:15px"><i class="ic" data-i="undo" style="--s:16px"></i>Undo</span></div>
+          <div style="height:3px;background:rgba(255,255,255,.1)"><i style="display:block;width:58%;height:100%;background:#7f7eff"></i></div>
+        </div>
+        <div class="actbar"><span class="gb" style="width:52px;height:52px"><i class="ic" data-i="chev-l"></i></span><div class="btn pri"><i class="ic" data-i="eye"></i>Walk 6 files</div></div>
+      </div>
+      <figcaption><b>The clock on an approval</b>The deck moves on at once; the approval posts only when the bar runs out. Undo, or shake the phone, brings #3712 back.
+        <ul><li>A re-review starts on the files changed since your last review (amber dots).</li><li>If GitHub refuses the approval, the PR comes back with the error.</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 4 · DISPATCH ============================== -->
+<section class="sec" id="dispatch">
+  <div class="sec-h"><span class="n">04</span><h2>Dispatch: your work items and the agents on them</h2></div>
+  <p class="sec-lead">Dispatch's States view is the morning walk: one section per ADO state, each item with a verdict, its evidence and the latest message. On the phone the main job is answering agents (approve a plan, pick an option, nudge a quiet thread) and starting new ones on a machine at home or in the office.</p>
+  <div class="row">
+
+    <!-- L · States walk -->
+    <figure class="shot">
+      <div class="phone dark" data-tab="dispatch">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="layers"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="sync"></i></span><span class="gb"><i class="ic" data-i="plus"></i></span></div>
+          <div class="lt">Dispatch</div>
+          <div class="sub"><b style="color:var(--rd);font-weight:600">2 need you</b> · 3 out of sync · 4 agents running</div>
+          <div style="display:flex;gap:8px;padding:12px 16px 2px"><span class="pill" style="background:var(--yl-soft);color:var(--yl)"><i class="ic" data-i="sync" style="--s:14px"></i>Fix out of sync <span class="c" style="color:inherit;opacity:.7">3</span></span><span class="pill">Sync all</span></div>
+          <div class="grp-h">Code Review <span>2</span></div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell" style="display:block;padding:12px 16px">
+              <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--tx2)"><span class="ty bug"></span>AB#61021<span class="sp"></span><span class="chip bad sm">CI red</span></div>
+              <div style="margin-top:4px;font-size:15.5px;font-weight:600">Basket empties after a payment timeout</div>
+              <div style="display:flex;gap:5px;margin-top:7px"><span class="chip sm"><i class="ic" data-i="pr"></i>#3712 open</span><span class="chip sm"><i class="ic" data-i="bot"></i>basket-timeout</span></div>
+              <div style="margin-top:7px;font-size:13px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b style="color:var(--tx);font-weight:500">Vera · qa-check —</b> e2e fails on the timeout path</div>
+            </div>
+            <div class="cell" style="display:block;padding:12px 16px">
+              <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--tx2)"><span class="ty pbi"></span>AB#61002<span class="sp"></span><span class="chip ok sm">Ready to merge</span></div>
+              <div style="margin-top:4px;font-size:15.5px;font-weight:600">Export orders to CSV</div>
+              <div style="display:flex;gap:5px;margin-top:7px"><span class="chip sm ok"><i class="ic" data-i="check"></i>#3701 approved</span></div>
+            </div>
+          </div>
+          <div class="grp-h">Development In Progress <span>3</span></div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell" style="display:block;padding:12px 16px">
+              <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--tx2)"><span class="ty pbi"></span>AB#61044<span class="sp"></span><span class="chip bad sm">Waiting on you · 2 d</span></div>
+              <div style="margin-top:4px;font-size:15.5px;font-weight:600">Offline basket for the mobile app</div>
+              <div style="margin-top:6px;font-size:13px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b style="color:var(--tx);font-weight:500">Agent —</b> Plan ready: 5 steps, IndexedDB store…</div>
+            </div>
+            <div class="cell" style="display:block;padding:12px 16px">
+              <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--tx2)"><span class="ty bug"></span>AB#60988<span class="sp"></span><span class="chip run sm"><i class="dot pulse" style="width:6px;height:6px"></i>Agent on it</span></div>
+              <div style="margin-top:4px;font-size:15.5px;font-weight:600">Refund email sent twice</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>The morning walk</b>Same order as the desktop: Code Review, Development In Progress, Testing Failed, Needs Human, New. The verdict chip is the first rule that matches, from <code>verdict.ts</code>.
+        <ul><li>The briefing's "out of sync" count matches the Fix button, as on the desktop.</li><li>Fix out of sync and Sync all open the run sheet; they start one T3 thread for many items.</li></ul></figcaption>
+    </figure>
+
+    <!-- M · Thread: your turn -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Offline basket for the mobile app</b><span>mac-mini · shop · offline-basket</span></div><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div style="display:flex;gap:6px;padding:4px 16px 10px;justify-content:center"><span class="chip bad">Your turn · 2 d</span><span class="chip">Opus 5.5</span><span class="chip">AB#61044</span></div>
+          <div style="padding:0 16px">
+            <div style="margin-left:56px;padding:10px 14px;border-radius:20px 20px 6px 20px;background:var(--ac-soft);font-size:14px;line-height:1.42;color:var(--tx)">Implement AB#61044: keep the basket on the phone while offline and replay it when the connection is back. Plan first.</div>
+            <div style="margin:12px 0 0;display:flex;align-items:center;gap:7px;font-size:13px;color:var(--tx3)"><i class="ic" data-i="term" style="--s:14px"></i>Read 23 files · ran 4 commands · 3 min<i class="ic" data-i="chev-d" style="--s:14px"></i></div>
+            <div style="margin-top:10px;font-size:14.5px;line-height:1.5">
+              <b style="font-size:16px">Plan</b>
+              <ol style="margin:6px 0 0;padding-left:20px;display:grid;gap:4px">
+                <li>Persist the basket in IndexedDB (<code style="color:var(--ac-tx)">basket-db.ts</code>), one store per device.</li>
+                <li>Queue adds and removes while offline; replay them on reconnect.</li>
+                <li>Merge server and local lines by line id, newest change wins.</li>
+                <li>Show a banner when the basket came from offline.</li>
+                <li>Specs: offline add, reconnect merge, conflict.</li>
+              </ol>
+              <div style="margin-top:8px;color:var(--tx2);font-size:13.5px">Touches <code>basket-store.ts</code> and 2 new files.</div>
+            </div>
+            <div class="card" style="margin-top:14px;background:var(--card2);padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600"><i class="ic" data-i="help" style="--s:17px;color:var(--yl)"></i>The agent waits for your go-ahead</div>
+              <div style="display:flex;gap:8px;margin-top:12px"><div class="btn sm">Change something</div><div class="btn sm pri">Approve plan</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="actbar" style="bottom:28px">
+          <span class="gb" style="width:50px;height:50px"><i class="ic" data-i="plus"></i></span>
+          <div class="glass" style="flex:1;height:50px;border-radius:25px;display:flex;align-items:center;padding:0 6px 0 18px;gap:8px;color:var(--tx3);font-size:16px"><span style="flex:1">Message the agent…</span><i class="ic" data-i="mic" style="--s:20px;color:var(--tx2)"></i><span style="width:38px;height:38px;border-radius:50%;background:var(--fill2);color:var(--tx3);display:grid;place-items:center"><i class="ic" data-i="up" style="--s:19px;--sw:2.6"></i></span></div>
+        </div>
+      </div>
+      <figcaption><b>Your turn</b>The bounded thread snapshot from T3: your first message, the agent's work folded to one line, and its last message in full.
+        <ul><li>Approve plan sends the desktop's go-ahead message (Plan first is an instruction, not T3's plan mode).</li><li>Change something opens the composer with the plan quoted.</li><li>Dictation is the fastest way to reply on a walk.</li></ul></figcaption>
+    </figure>
+
+    <!-- N · Start an agent -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="dim" style="background:#000"></div>
+          <div class="sheet" style="top:62px;padding-bottom:0;background:#1b1c1f">
+            <div class="grab"></div>
+            <div class="sh-h"><span class="gb"><i class="ic" data-i="x"></i></span><h3>Start an agent</h3><span class="gp pri">Start</span></div>
+            <div class="card" style="margin:4px 16px 0;background:var(--card2)">
+              <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--tx2)"><span class="ty bug"></span>Bug · AB#61063 · New</div>
+              <div style="margin-top:4px;font-size:16px;font-weight:600">Address form loses focus on rotate</div>
+            </div>
+            <div class="grp-h" style="padding-top:14px">Machine</div>
+            <div style="display:flex;gap:8px;padding:0 16px">
+              <div style="flex:1;padding:10px 12px;border-radius:18px;background:var(--ac-soft);border:1.5px solid var(--ac)"><i class="ic" data-i="monitor" style="--s:18px;color:var(--ac-tx)"></i><div style="font-size:14px;font-weight:600;margin-top:5px">mac-mini</div><div style="font-size:12px;color:var(--gr)">● online · 3</div></div>
+              <div style="flex:1;padding:10px 12px;border-radius:18px;background:var(--fill)"><i class="ic" data-i="monitor" style="--s:18px;color:var(--tx2)"></i><div style="font-size:14px;font-weight:600;margin-top:5px">workstation</div><div style="font-size:12px;color:var(--gr)">● online · 1</div></div>
+              <div style="flex:1;padding:10px 12px;border-radius:18px;background:var(--fill);opacity:.55"><i class="ic" data-i="server" style="--s:18px;color:var(--tx2)"></i><div style="font-size:14px;font-weight:600;margin-top:5px">build-vm</div><div style="font-size:12px;color:var(--tx3)">offline 2 h</div></div>
+            </div>
+            <div class="grp" style="margin-top:12px;--indent:52px">
+              <div class="cell" style="min-height:46px"><i class="ic" data-i="folder" style="--s:19px;color:var(--tx2);margin:0 2px"></i><div class="t"><b>Repository</b></div><span class="v">acme/shop</span><i class="ic chev" data-i="chev-r"></i></div>
+              <div class="cell" style="min-height:46px"><i class="ic" data-i="branch" style="--s:19px;color:var(--tx2);margin:0 2px"></i><div class="t"><b>Workspace</b></div><span class="v">New worktree · master</span><i class="ic chev" data-i="chev-r"></i></div>
+              <div class="cell" style="min-height:46px"><i class="ic" data-i="spark" style="--s:19px;color:var(--tx2);margin:0 2px"></i><div class="t"><b>Model</b></div><span class="v">Opus 5.5 · high</span><i class="ic chev" data-i="chev-r"></i></div>
+            </div>
+            <div class="grp" style="margin-top:12px;--indent:16px">
+              <div class="cell" style="min-height:46px"><div class="t"><b>Plan first</b></div><span class="tg"></span></div>
+              <div class="cell" style="min-height:46px"><div class="t"><b>Move to Development In Progress</b></div><span class="tg"></span></div>
+            </div>
+            <div class="grp-h" style="padding-top:14px">First message</div>
+            <div style="margin:0 16px;padding:12px 14px;border-radius:20px;background:var(--card);border:.5px solid var(--sep);font-size:14.5px;line-height:1.45">Fix AB#61063. Reproduce it on an iPhone first: rotate while typing in the address form. Keep the focus and the caret where they were.</div>
+            <div style="margin:8px 32px 0;font-size:12.5px;color:var(--tx3);line-height:1.45">Your notes that mention AB#61063 and the vault line are added for the agent.</div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Start an agent anywhere</b>The desktop's <code>LaunchTarget</code> as a sheet: machine, repository, workspace, model. An offline host still shows, greyed, with when it was last seen.
+        <ul><li>Workspace offers a new worktree from a branch, or an existing thread to continue.</li><li>The state toggle is the one ADO write BorgDock makes itself; it applies when the thread starts.</li></ul></figcaption>
+    </figure>
+
+    <!-- O · Work item -->
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="ext"></i></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div style="padding:2px 16px 0">
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--tx2)"><span class="ty bug"></span>Bug · AB#61021<span class="sp"></span><span class="chip run">Code Review</span></div>
+            <div style="margin-top:6px;font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.22">Basket empties after a payment timeout</div>
+            <div style="margin-top:12px;display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:14px;background:var(--rd-soft);font-size:13.5px;line-height:1.4"><i class="ic" data-i="fail" style="--s:16px;color:var(--rd);margin-top:1px"></i><span><b style="font-weight:600;color:var(--rd)">CI red.</b> #3712 fails e2e / checkout on the timeout path.</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:12px 16px 0;border-radius:18px;overflow:hidden;background:var(--sep)">
+            <div style="background:var(--card);padding:9px 14px"><div style="font-size:12px;color:var(--tx3)">Assigned to</div><div style="font-size:14.5px;font-weight:500;display:flex;align-items:center;gap:6px;margin-top:2px"><span class="av" style="--h:245">KB</span>You</div></div>
+            <div style="background:var(--card);padding:9px 14px"><div style="font-size:12px;color:var(--tx3)">Sprint</div><div style="font-size:14.5px;font-weight:500;margin-top:2px">2026.22</div></div>
+            <div style="background:var(--card);padding:9px 14px"><div style="font-size:12px;color:var(--tx3)">Priority</div><div style="font-size:14.5px;font-weight:500;margin-top:2px">2</div></div>
+            <div style="background:var(--card);padding:9px 14px"><div style="font-size:12px;color:var(--tx3)">Area</div><div style="font-size:14.5px;font-weight:500;margin-top:2px">Shop\Checkout</div></div>
+          </div>
+          <div style="margin:14px 16px 0;font-size:14.5px;line-height:1.5;color:var(--tx)">Pay with the test provider set to a 35 s delay. After the timeout the header shows <b>Basket (0)</b> and the lines are gone; refreshing doesn't bring them back.</div>
+          <div class="grp-h">Pull request · agent</div>
+          <div class="grp" style="--indent:52px">
+            <div class="cell"><i class="ic" data-i="pr" style="--s:20px;color:var(--gr);margin:0 2px"></i><div class="t"><b>#3712 Checkout: keep the basket…</b><span>2 failing · approved by Tom</span></div><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell"><i class="ic" data-i="bot" style="--s:20px;color:var(--ac);margin:0 2px"></i><div class="t"><b>basket-timeout · mac-mini</b><span>Settled 1 h · "Pushed the banner and a spec"</span></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="grp-h">Latest</div>
+          <div class="grp"><div class="cell" style="align-items:flex-start"><span class="av lg" style="--h:280">V</span><div class="t"><b style="font-size:14px">Vera · qa-check</b><span style="white-space:normal;line-height:1.4">e2e fails on the timeout path, the banner never renders. Back to you.</span></div><span class="when">40 min</span></div></div>
+        </div>
+        <div class="edge" style="height:120px"></div>
+        <div class="actbar"><span class="gp" style="height:52px;border-radius:26px;padding:0 18px">Move to…</span><div class="btn pri"><i class="ic" data-i="bot"></i>Ask an agent</div></div>
+      </div>
+      <figcaption><b>Work item</b>The verdict banner leads, then the fields, the description, its pull request and agent, and the newest message from ADO comments, Developer Notes or the agent.
+        <ul><li>"Move to…" opens the run sheet: a move needs notes only the repo's skills know, so BorgDock never changes a state on a button.</li><li>Ask an agent continues the thread that worked on it.</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 5 · ACTIVITY ============================== -->
+<section class="sec" id="activity">
+  <div class="sec-h"><span class="n">05</span><h2>Activity, notifications and widgets</h2></div>
+  <p class="sec-lead">The Activity journal is the phone's inbox: what changed since you last looked, kept until you read it. The server keeps the journal with the desktop's rules and drains its outbox to APNs, so a burst becomes one summary, nothing pops twice, and an entry you read on any device clears everywhere. Widgets and Live Activities answer "do I need to look?" without opening the app.</p>
+  <div class="row">
+
+    <!-- P · Activity -->
+    <figure class="shot">
+      <div class="phone dark" data-tab="activity">
+        <div class="view">
+          <div class="nav"><span class="sp"></span><span class="gp">Mark all read</span></div>
+          <div class="lt">Activity</div>
+          <div class="sub">12 new since you left your desk at 17:40</div>
+          <div class="pills"><span class="pill on">All <span class="c">12</span></span><span class="pill">Reviews <span class="c">3</span></span><span class="pill">CI <span class="c">2</span></span><span class="pill">Agents <span class="c">3</span></span><span class="pill">Merges <span class="c">2</span></span></div>
+          <div class="card" style="margin:10px 16px 0;padding:14px 16px">
+            <div style="font-size:13px;color:var(--tx2);font-weight:600">While you were away · 17:40 – 21:05</div>
+            <div style="display:flex;margin-top:10px">
+              <div style="flex:1"><div style="font-size:24px;font-weight:700;color:var(--mg)">2</div><div style="font-size:12.5px;color:var(--tx2)">merged</div></div>
+              <div style="flex:1"><div style="font-size:24px;font-weight:700;color:var(--rd)">2</div><div style="font-size:12.5px;color:var(--tx2)">CI failures</div></div>
+              <div style="flex:1"><div style="font-size:24px;font-weight:700;color:var(--ac)">3</div><div style="font-size:12.5px;color:var(--tx2)">agents done</div></div>
+              <div style="flex:1"><div style="font-size:24px;font-weight:700">5</div><div style="font-size:12.5px;color:var(--tx2)">other</div></div>
+            </div>
+          </div>
+          <div class="grp-h">Tonight</div>
+          <div class="grp" style="--indent:58px">
+            <div class="cell"><i class="ud"></i><span class="ico r soft" style="--c:var(--gr)"><i class="ic" data-i="check"></i></span><div class="t"><b>Tom approved shop #3698</b><span>Search: debounce the product filter</span></div><span class="when">21:02</span></div>
+            <div class="cell"><i class="ud"></i><span class="ico r soft" style="--c:var(--rd)"><i class="ic" data-i="x"></i></span><div class="t"><b>CI broke on master</b><span>e2e / checkout · also on #3712, #3715</span></div><span class="when">20:47</span></div>
+            <div class="cell"><i class="ud"></i><span class="ico r soft" style="--c:var(--ac)"><i class="ic" data-i="bot"></i></span><div class="t"><b>Agent finished AB#60988</b><span>Opened #2296 · Refund email sent twice</span></div><span class="when">20:31</span></div>
+            <div class="cell"><span class="ico r soft" style="--c:var(--mg)"><i class="ic" data-i="merge"></i></span><div class="t"><b>Lars merged shop #3690</b><span>Coupon field accepts lowercase codes</span></div><span class="when">19:58</span></div>
+            <div class="cell"><span class="ico r soft" style="--c:var(--bl)"><i class="ic" data-i="arrow"></i></span><div class="t"><b>AB#61002 moved to Code Review</b><span>By the agent on export-csv</span></div><span class="when">19:40</span></div>
+            <div class="cell"><span class="ico r soft" style="--c:var(--tx2)"><i class="ic" data-i="msg"></i></span><div class="t"><b>Sanne replied on #3712</b><span>It comes back as aborted, so it keeps…</span></div><span class="when">18:12</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Activity</b>The journal the server keeps with the desktop's <code>derive/*</code> rules, grouped by evening and filtered by category. Swipe an entry to mark it read; tap to land on the PR, item or thread.
+        <ul><li>The summary card is the catch-up the desktop shows after a restart.</li><li>Read state belongs to your account, so the desktop and the phone agree.</li></ul></figcaption>
+    </figure>
+
+    <!-- Q · Lock screen -->
+    <figure class="shot">
+      <div class="phone wall" data-sb="w" data-time="">
+        <div class="view" style="color:#fff">
+          <div style="display:flex;justify-content:center;margin-top:8px"><i class="ic" data-i="lock" style="--s:18px;color:rgba(255,255,255,.9)"></i></div>
+          <div class="lk-date" style="margin-top:6px">Friday 30 October</div>
+          <div class="lk-time">21:05</div>
+          <div class="lk-w">
+            <div class="lw-c"><svg viewBox="0 0 70 70" style="position:absolute;inset:0"><circle cx="35" cy="35" r="29" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="5"/><circle cx="35" cy="35" r="29" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-dasharray="109 183" transform="rotate(-90 35 35)"/></svg><div><div style="font-size:24px;font-weight:700;line-height:1">3</div><div style="font-size:9.5px;opacity:.8">need you</div></div></div>
+            <div class="lw-r"><div style="display:flex;align-items:center;gap:5px;opacity:.85;font-size:12px"><svg viewBox="0 0 32 32" style="width:12px;height:12px;fill:#fff"><use href="#mark"/></svg>Agents</div><b style="display:block;font-size:15px;margin-top:3px">2 wait on you</b><span style="opacity:.75">4 running</span></div>
+            <div class="lw-c"><div><i class="ic" data-i="fail" style="--s:24px"></i><div style="font-size:9.5px;opacity:.8;margin-top:1px">master</div></div></div>
+          </div>
+          <div style="position:absolute;left:12px;right:12px;bottom:118px;display:flex;flex-direction:column;gap:8px">
+            <div class="nt" style="flex-direction:column;gap:8px;padding:14px 16px">
+              <div style="display:flex;align-items:center;gap:8px;font-size:13px"><svg viewBox="0 0 32 32" style="width:16px;height:16px;fill:#7f7eff"><use href="#mark"/></svg><b style="flex:1;font-weight:600">AB#60988 · Refund email sent twice</b><span style="opacity:.6">mac-mini</span></div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:16px;font-weight:600">Running the tests</span><span style="font-size:16px;font-weight:600;color:#7f7eff;font-variant-numeric:tabular-nums">7:12</span></div>
+              <div style="display:flex;gap:4px"><i style="flex:1;height:5px;border-radius:3px;background:#7f7eff"></i><i style="flex:1;height:5px;border-radius:3px;background:#7f7eff"></i><i style="flex:1;height:5px;border-radius:3px;background:#7f7eff"></i><i style="flex:1;height:5px;border-radius:3px;background:linear-gradient(90deg,#7f7eff 50%,rgba(255,255,255,.2) 50%)"></i><i style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.2)"></i><i style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.2)"></i></div>
+            </div>
+            <div class="nt"><span class="app"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="bd"><div class="hd"><b>AB#61044 asks a question</b><span>now</span></div><div class="tx">Where should the offline basket live? IndexedDB (recommended), the SQLite plugin or localStorage.</div></div></div>
+            <div style="position:relative">
+              <div class="nt" style="position:relative;z-index:2"><span class="app"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="bd"><div class="hd"><b>shop #3712 · 2 checks failed</b><span>4m</span></div><div class="tx">e2e / checkout is new in this PR. build / windows also fails on master.</div></div></div>
+              <div style="position:absolute;left:10px;right:10px;bottom:-8px;height:20px;border-radius:0 0 20px 20px;background:rgba(28,29,36,.45);z-index:1"></div>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:42px;left:46px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.16);backdrop-filter:blur(10px);display:grid;place-items:center"><i class="ic" data-i="torch" style="--s:21px"></i></div>
+          <div style="position:absolute;bottom:42px;right:46px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.16);backdrop-filter:blur(10px);display:grid;place-items:center"><i class="ic" data-i="camera" style="--s:21px"></i></div>
+        </div>
+      </div>
+      <figcaption><b>Lock screen</b>Three accessory widgets under the clock, a Live Activity for the agent that's running, and notifications only for things worth a buzz.
+        <ul><li>The Live Activity follows the T3 thread's steps and ends when it settles.</li><li>An entry you read on another device disappears here (a silent <code>push-clear</code>).</li></ul></figcaption>
+    </figure>
+
+    <!-- R · Expanded notification -->
+    <figure class="shot">
+      <div class="phone" data-sb="w" data-time="" style="background:#0a0b12">
+        <div class="wall wall-blur"></div>
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.35)"></div>
+        <div class="view" style="color:#fff;padding-top:110px">
+          <div class="nt" style="margin:0 12px;flex-direction:column;gap:0;padding:0;overflow:hidden;background:rgba(36,37,44,.78)">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 12px;border-bottom:.5px solid rgba(255,255,255,.1)"><span class="app" style="width:30px;height:30px;border-radius:8px"><svg viewBox="0 0 32 32" style="width:19px;height:19px"><use href="#mark"/></svg></span><b style="flex:1;font-size:14px;font-weight:600">BorgDock · Agent question</b><span style="opacity:.55;font-size:13px">2m</span></div>
+            <div style="padding:14px 16px 4px">
+              <div style="font-size:13px;opacity:.6">AB#61044 · Offline basket · mac-mini</div>
+              <div style="font-size:19px;font-weight:700;margin-top:4px;line-height:1.25">Where should the offline basket live?</div>
+            </div>
+            <div style="padding:10px 12px 14px;display:grid;gap:8px">
+              <div style="padding:11px 13px;border-radius:16px;background:rgba(127,126,255,.2);border:1.5px solid #7f7eff;display:flex;gap:11px"><span style="width:20px;height:20px;border-radius:50%;border:6px solid #7f7eff;flex:none;margin-top:1px"></span><div style="font-size:14.5px;line-height:1.35"><b style="font-weight:600">IndexedDB via idb-keyval</b> <span style="font-size:12px;color:#b4b3ff;font-weight:600">Recommended</span><br><span style="opacity:.7">Works in the WebView, no native plugin.</span></div></div>
+              <div style="padding:11px 13px;border-radius:16px;background:rgba(255,255,255,.07);display:flex;gap:11px"><span style="width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);flex:none;margin-top:1px"></span><div style="font-size:14.5px;line-height:1.35"><b style="font-weight:600">SQLite plugin</b><br><span style="opacity:.7">Faster queries, one more native dependency.</span></div></div>
+              <div style="padding:11px 13px;border-radius:16px;background:rgba(255,255,255,.07);display:flex;gap:11px"><span style="width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);flex:none;margin-top:1px"></span><div style="font-size:14.5px;line-height:1.35"><b style="font-weight:600">localStorage</b><br><span style="opacity:.7">Simplest; 5 MB cap and no indexes.</span></div></div>
+            </div>
+          </div>
+          <div style="margin:10px 12px 0;border-radius:22px;overflow:hidden;background:rgba(44,45,52,.8);backdrop-filter:blur(24px)">
+            <div class="mi" style="color:#fff"><span>Answer: IndexedDB</span><i class="ic" data-i="check"></i></div>
+            <div class="mi" style="color:#fff;--sep:rgba(255,255,255,.1)"><span>Reply…</span><i class="ic" data-i="msg"></i></div>
+            <div class="mi" style="color:#fff;--sep:rgba(255,255,255,.1)"><span>Open the thread</span><i class="ic" data-i="ext"></i></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Answer from the notification</b>Touch and hold an agent question: the options T3 sent come with the agent's reasons, and the recommended one is preselected.
+        <ul><li>"Answer" asks for Face ID first, as Dispatch does today: the agent has full access to its machine.</li><li>"Reply…" opens an inline text field, dictation included.</li></ul></figcaption>
+    </figure>
+
+    <!-- S · Home screen widgets -->
+    <figure class="shot">
+      <div class="phone wall" data-sb="w">
+        <div class="view" style="padding:62px 18px 0">
+          <div class="wg" style="height:164px">
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600"><svg viewBox="0 0 32 32" style="width:15px;height:15px;fill:#7f7eff"><use href="#mark"/></svg>Focus<span class="sp"></span><span style="color:#f0616d">3 need you</span></div>
+            <div style="margin-top:9px;display:grid;gap:8px;font-size:13px">
+              <div style="display:flex;align-items:center;gap:8px"><span style="display:flex;gap:1.5px;width:30px"><i style="flex:1;height:4px;border-radius:2px;background:#5cc98f"></i><i style="flex:1;height:4px;border-radius:2px;background:#f0616d"></i><i style="flex:1;height:4px;border-radius:2px;background:#5cc98f"></i><i style="flex:1;height:4px;border-radius:2px;background:#f0616d"></i></span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b style="font-weight:600">#3712</b> Checkout: keep the basket…</span><span style="opacity:.55">2 h</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><span style="display:flex;gap:1.5px;width:30px"><i style="flex:1;height:4px;border-radius:2px;background:#5cc98f"></i><i style="flex:1;height:4px;border-radius:2px;background:#5cc98f"></i><i style="flex:1;height:4px;border-radius:2px;background:#5cc98f"></i><i style="flex:1;height:4px;border-radius:2px;background:#5cc98f"></i></span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b style="font-weight:600">#108</b> Activity: one summary per…</span><span style="opacity:.55">40m</span></div>
+              <div style="display:flex;align-items:center;gap:8px"><span style="display:flex;gap:1.5px;width:30px"><i style="flex:1;height:4px;border-radius:2px;background:#5cc98f"></i><i style="flex:1;height:4px;border-radius:2px;background:#5cc98f"></i><i style="flex:1;height:4px;border-radius:2px;background:#5cc98f"></i><i style="flex:1;height:4px;border-radius:2px;background:#e5b454"></i></span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b style="font-weight:600">#2291</b> Orders: fix VAT rounding…</span><span style="opacity:.55">1 d</span></div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:6px"><span style="font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:10px;background:rgba(255,255,255,.12)">2 ready to merge</span><span style="font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:10px;background:rgba(255,255,255,.12)">5 waiting</span></div>
+          </div>
+          <div style="display:flex;gap:17px;margin-top:17px">
+            <div class="wg" style="flex:1;height:164px;display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600"><i class="ic" data-i="bot" style="--s:15px;color:#b4b3ff"></i>Agents</div>
+              <div style="font-size:44px;font-weight:700;line-height:1;margin-top:10px;color:#f0616d">2</div>
+              <div style="font-size:13px;font-weight:600">wait on you</div>
+              <div class="sp"></div>
+              <div style="font-size:12px;opacity:.7;display:flex;align-items:center;gap:5px"><i style="width:6px;height:6px;border-radius:3px;background:#6fa8ff"></i>4 running</div>
+            </div>
+            <div class="wg" style="flex:1;height:164px;display:flex;flex-direction:column;background:rgba(80,20,30,.55)">
+              <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600"><i class="ic" data-i="fail" style="--s:15px;color:#f0616d"></i>master</div>
+              <div style="font-size:15px;font-weight:700;margin-top:10px;line-height:1.25">e2e / checkout</div>
+              <div style="font-size:12.5px;opacity:.75;margin-top:2px">red 24 min · 3 PRs</div>
+              <div class="sp"></div>
+              <div style="display:flex;align-items:center;gap:6px;font-size:12px"><span class="av" style="--h:30">LJ</span>Lars is on it</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);margin-top:22px;row-gap:16px">
+            <div><div class="app-ic" style="background:linear-gradient(#5aa6ff,#2563eb)"><i class="ic" data-i="mail"></i></div><div class="app-lbl">Mail</div></div>
+            <div><div class="app-ic" style="background:#fff;color:#e5484d"><i class="ic" data-i="cal"></i></div><div class="app-lbl">Calendar</div></div>
+            <div><div class="app-ic" style="background:linear-gradient(#ffcf5c,#f59e0b)"><i class="ic" data-i="note"></i></div><div class="app-lbl">Notes</div></div>
+            <div><div class="app-ic" style="background:linear-gradient(#ff7a7a,#e11d48)"><i class="ic" data-i="music"></i></div><div class="app-lbl">Music</div></div>
+          </div>
+          <div style="display:flex;justify-content:center;margin-top:22px"><span style="height:32px;padding:0 14px;border-radius:16px;background:rgba(255,255,255,.16);backdrop-filter:blur(10px);display:inline-flex;align-items:center;gap:6px;color:#fff;font-size:14px;font-weight:600"><i class="ic" data-i="search" style="--s:14px"></i>Search</span></div>
+        </div>
+        <div style="position:absolute;left:12px;right:12px;bottom:12px;height:96px;border-radius:38px;background:rgba(255,255,255,.14);backdrop-filter:blur(24px);display:grid;grid-template-columns:repeat(4,1fr);align-items:center">
+          <div class="app-ic" style="background:linear-gradient(#5ee07a,#16a34a)"><i class="ic" data-i="phone"></i></div>
+          <div class="app-ic" style="background:#fff;color:#2563eb"><i class="ic" data-i="compass"></i></div>
+          <div class="app-ic" style="background:linear-gradient(#5ee07a,#16a34a)"><i class="ic" data-i="msg"></i></div>
+          <div class="app-ic" style="background:#151618;border:.5px solid #3f4046"><svg viewBox="0 0 32 32" style="width:40px;height:40px;fill:#7f7eff"><use href="#mark"/></svg></div>
+        </div>
+      </div>
+      <figcaption><b>Home screen widgets</b>A medium Focus widget with the top three cards, a small Agents widget and a master-health widget that only turns red when master does.
+        <ul><li>Tapping a row deep-links to the PR or thread.</li><li>The app icon is the Workbench tile on graphite, as on the desktop.</li></ul></figcaption>
+    </figure>
+
+    <!-- Dynamic Island strip -->
+    <figure class="shot" style="width:100%">
+      <div style="display:flex;gap:44px;flex-wrap:wrap">
+        <div>
+          <div class="phone wall crop" data-sb="w" data-no-island data-no-hi>
+            <div style="position:absolute;top:11px;left:50%;width:200px;margin-left:-100px;height:37px;border-radius:19px;background:#000;z-index:95;display:flex;align-items:center;justify-content:space-between;padding:0 11px 0 9px;color:#fff">
+              <span style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 32 32" style="width:19px;height:19px;fill:#7f7eff"><use href="#mark"/></svg></span>
+              <span style="font-size:14px;font-weight:600;color:#7f7eff;font-variant-numeric:tabular-nums">7:12</span>
+            </div>
+          </div>
+          <div style="margin-top:14px;font-size:14px;color:#9c9da4;width:393px"><b style="color:#ededef">Compact.</b> An agent is running; the timer is how long since it started.</div>
+        </div>
+        <div>
+          <div class="phone wall crop nosb" data-sb="w" data-no-island data-no-hi>
+            <div style="position:absolute;top:9px;left:10px;right:10px;height:196px;border-radius:46px;background:#000;z-index:95;color:#fff;padding:20px 22px 0">
+              <div style="display:flex;align-items:center;gap:10px"><span style="width:40px;height:40px;border-radius:11px;background:#151618;border:.5px solid #3f4046;display:grid;place-items:center"><svg viewBox="0 0 32 32" style="width:26px;height:26px;fill:#7f7eff"><use href="#mark"/></svg></span><div style="flex:1;min-width:0"><div style="font-size:12.5px;opacity:.6">AB#60988 · mac-mini</div><div style="font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Refund email sent twice</div></div><span style="font-size:18px;font-weight:600;color:#7f7eff;font-variant-numeric:tabular-nums">7:12</span></div>
+              <div style="margin-top:14px;font-size:14px;display:flex;justify-content:space-between"><span>Running the tests</span><span style="opacity:.6">step 4 of 6</span></div>
+              <div style="display:flex;gap:4px;margin-top:8px"><i style="flex:1;height:5px;border-radius:3px;background:#7f7eff"></i><i style="flex:1;height:5px;border-radius:3px;background:#7f7eff"></i><i style="flex:1;height:5px;border-radius:3px;background:#7f7eff"></i><i style="flex:1;height:5px;border-radius:3px;background:linear-gradient(90deg,#7f7eff 50%,#333 50%)"></i><i style="flex:1;height:5px;border-radius:3px;background:#333"></i><i style="flex:1;height:5px;border-radius:3px;background:#333"></i></div>
+              <div style="display:flex;gap:8px;margin-top:14px"><span style="flex:1;height:36px;border-radius:18px;background:#2a2a30;display:grid;place-items:center;font-size:14px;font-weight:600">Open thread</span><span style="flex:1;height:36px;border-radius:18px;background:rgba(240,97,109,.2);color:#f0616d;display:grid;place-items:center;font-size:14px;font-weight:600">Stop</span></div>
+            </div>
+          </div>
+          <div style="margin-top:14px;font-size:14px;color:#9c9da4;width:393px"><b style="color:#ededef">Expanded.</b> Touch and hold: the step, progress, open or stop the agent.</div>
+        </div>
+        <div>
+          <div class="phone wall crop nosb" data-sb="w" data-no-island data-no-hi>
+            <div style="position:absolute;top:11px;left:50%;width:196px;margin-left:-118px;height:37px;border-radius:19px;background:#000;z-index:95;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 8px;color:#fff">
+              <svg viewBox="0 0 24 24" style="width:22px;height:22px"><circle cx="12" cy="12" r="9" fill="none" stroke="#333" stroke-width="3"/><circle cx="12" cy="12" r="9" fill="none" stroke="#5cc98f" stroke-width="3" stroke-dasharray="50 57" transform="rotate(-90 12 12)" stroke-linecap="round"/><circle cx="12" cy="12" r="9" fill="none" stroke="#f0616d" stroke-width="3" stroke-dasharray="3.5 57" stroke-dashoffset="-51" transform="rotate(-90 12 12)" stroke-linecap="round"/></svg>
+              <span style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums">16/18</span>
+            </div>
+            <div style="position:absolute;top:11px;left:50%;margin-left:86px;width:37px;height:37px;border-radius:50%;background:#000;z-index:95;display:grid;place-items:center"><svg viewBox="0 0 32 32" style="width:17px;height:17px;fill:#7f7eff"><use href="#mark"/></svg></div>
+          </div>
+          <div style="margin-top:14px;font-size:14px;color:#9c9da4;width:393px"><b style="color:#ededef">Two at once.</b> Checks on #3712 (16 of 18, one red) beside the agent, minimised.</div>
+        </div>
+        <div>
+          <div class="phone wall crop" data-sb="w" data-no-island data-no-hi>
+            <div style="position:absolute;top:11px;left:50%;width:210px;margin-left:-105px;height:37px;border-radius:19px;background:#000;z-index:95;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 9px;color:#fff">
+              <i class="ic" data-i="check" style="--s:20px;--sw:3;color:#5cc98f"></i>
+              <span style="font-size:13.5px;font-weight:600">Approving #3712</span>
+              <span style="font-size:13.5px;font-weight:600;color:#7f7eff">Undo</span>
+            </div>
+          </div>
+          <div style="margin-top:14px;font-size:14px;color:#9c9da4;width:393px"><b style="color:#ededef">Undo, anywhere.</b> Leave the app inside the five seconds and the countdown moves to the island.</div>
+        </div>
+      </div>
+      <figcaption style="max-width:900px"><b>Dynamic Island</b>Live Activities for the two things that run while you wait: an agent's thread and a PR's checks. Both end on their own when the work settles, and only one agent per machine gets an activity; the rest roll up into the Agents widget.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 6 · NOTES & SEARCH ============================== -->
+<section class="sec" id="notes">
+  <div class="sec-h"><span class="n">06</span><h2>Notes and search</h2></div>
+  <p class="sec-lead">The phone is where thoughts arrive: on a walk, in a meeting, right after a call. Notes opens on today's daily note with what happened since yesterday already written in, and a quick note is one press of the Action button away. Search reaches everything BorgDock knows by number or by word.</p>
+  <div class="row">
+
+    <!-- T · Daily note -->
+    <figure class="shot">
+      <div class="phone light" data-tab="notes">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="tasks"></i></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="eyebrow">Daily · Friday 30 October</div>
+          <div style="padding:2px 16px 0;font-size:28px;font-weight:700;letter-spacing:-.01em">2026-10-30</div>
+          <div style="margin:12px 16px 0;padding:11px 14px 12px;border-radius:16px;background:var(--ac-soft);border-left:3px solid var(--ac);font-size:14px;line-height:1.5">
+            <div style="font-size:12px;font-weight:600;color:var(--ac-tx);margin-bottom:4px">Since yesterday · written by BorgDock</div>
+            <div>• Merged <span class="rc"><i class="ic" data-i="merge" style="color:var(--mg)"></i>shop#3690</span> and <span class="rc"><i class="ic" data-i="merge" style="color:var(--mg)"></i>BorgDock#106</span></div>
+            <div>• <span class="rc"><span class="ty pbi" style="width:8px;height:8px"></span>AB#61002</span> moved to Code Review</div>
+            <div>• Agent finished <span class="rc"><span class="ty bug" style="width:8px;height:8px"></span>AB#60988</span>, opened #2296</div>
+            <div>• CI broke on master: e2e / checkout</div>
+          </div>
+          <div style="padding:16px 16px 0;font-size:15px;line-height:1.55">
+            <div style="font-size:19px;font-weight:700;margin-bottom:4px">Checkout</div>
+            The timeout fix in <span class="rc"><i class="ic" data-i="x" style="color:var(--rd)"></i>shop#3712 · 2 failing</span> waits on the e2e fix. Lars is on the master failure.
+            <div style="display:grid;gap:8px;margin-top:10px">
+              <div style="display:flex;gap:10px;align-items:flex-start"><span style="width:20px;height:20px;border-radius:6px;border:1.5px solid var(--tx3);flex:none;margin-top:1px"></span><span>Ask Tom whether hard declines should keep the basket</span></div>
+              <div style="display:flex;gap:10px;align-items:flex-start;color:var(--tx3)"><span style="width:20px;height:20px;border-radius:6px;background:var(--ac);color:#fff;flex:none;margin-top:1px;display:grid;place-items:center"><i class="ic" data-i="check" style="--s:13px;--sw:3"></i></span><span style="text-decoration:line-through">Answer the agent on</span> <span class="rc" style="color:var(--tx3)">AB#61044 · Your turn</span></div>
+              <div style="display:flex;gap:10px;align-items:flex-start"><span style="width:20px;height:20px;border-radius:6px;border:1.5px solid var(--tx3);flex:none;margin-top:1px"></span><span>Read <span class="wl">Offline basket decisions</span> before the demo</span></div>
+            </div>
+            <div style="font-size:19px;font-weight:700;margin:16px 0 4px">Ideas</div>
+            Quick Review on the phone: start with re-reviews, they're short.
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Today's note</b>The vault in your sync folder, the same Markdown files Obsidian and the desktop open. BorgDock's block sits between its markers; the rest is yours.
+        <ul><li>Chips show live state: #3712's failing checks, AB#61044's verdict.</li><li>Tick a task here and the file changes, with the same "never write over text you haven't read" check.</li></ul></figcaption>
+    </figure>
+
+    <!-- U · Quick capture -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="blurred">
+            <div class="nav"><span class="gb me">KB</span><span class="sp"></span></div>
+            <div class="lt">Focus</div>
+            <div class="list"><div class="card" style="height:130px"></div><div class="card" style="height:130px"></div></div>
+          </div>
+          <div class="dim" style="background:rgba(0,0,0,.45)"></div>
+          <div class="sheet float" style="bottom:300px;padding:12px 0 14px;background:#232428">
+            <div style="display:flex;align-items:center;gap:8px;padding:0 12px 0 20px"><b style="font-size:17px">Quick note</b><span class="chip sm">→ Today</span><span class="sp"></span><span class="gp pri" style="height:38px">Add</span></div>
+            <div style="padding:10px 20px 0"><span class="chip ac"><i class="ic" data-i="link"></i>Links shop#3712 · last opened<i class="ic" data-i="x" style="opacity:.6"></i></span></div>
+            <div style="padding:10px 20px 0;font-size:16px;line-height:1.45">Tom: hard declines clear the basket, timeouts and 3-D Secure aborts keep it. Add the 3DS case to the spec<span style="display:inline-block;width:2px;height:19px;background:var(--ac);vertical-align:-4px;margin-left:1px"></span></div>
+            <div style="margin:12px 14px 0;padding:8px 8px 8px 14px;border-radius:18px;background:var(--fill);display:flex;align-items:center;gap:10px">
+              <span style="display:flex;align-items:center;gap:2.5px;height:22px;flex:1">
+                <i style="width:3px;height:6px;border-radius:2px;background:var(--ac)"></i><i style="width:3px;height:14px;border-radius:2px;background:var(--ac)"></i><i style="width:3px;height:20px;border-radius:2px;background:var(--ac)"></i><i style="width:3px;height:10px;border-radius:2px;background:var(--ac)"></i><i style="width:3px;height:16px;border-radius:2px;background:var(--ac)"></i><i style="width:3px;height:22px;border-radius:2px;background:var(--ac)"></i><i style="width:3px;height:12px;border-radius:2px;background:var(--ac)"></i><i style="width:3px;height:8px;border-radius:2px;background:var(--ac)"></i><i style="width:3px;height:18px;border-radius:2px;background:var(--ac)"></i><i style="width:3px;height:9px;border-radius:2px;background:var(--ac)"></i><i style="width:3px;height:5px;border-radius:2px;background:var(--tx3)"></i><i style="width:3px;height:4px;border-radius:2px;background:var(--tx3)"></i><i style="width:3px;height:4px;border-radius:2px;background:var(--tx3)"></i>
+                <span style="margin-left:8px;font-size:13.5px;color:var(--tx2)">Listening…</span>
+              </span>
+              <span style="width:36px;height:36px;border-radius:50%;background:var(--rd);color:#fff;display:grid;place-items:center"><i class="ic" data-i="stop" style="--s:14px" ></i></span>
+            </div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;height:292px;background:rgba(43,43,47,.94);backdrop-filter:blur(20px);z-index:55;padding:8px 4px 0;font-size:22px;color:#fff">
+            <div style="display:flex;gap:6px;justify-content:center">
+              <span class="key">q</span><span class="key">w</span><span class="key">e</span><span class="key">r</span><span class="key">t</span><span class="key">y</span><span class="key">u</span><span class="key">i</span><span class="key">o</span><span class="key">p</span>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center;margin-top:11px">
+              <span class="key">a</span><span class="key">s</span><span class="key">d</span><span class="key">f</span><span class="key">g</span><span class="key">h</span><span class="key">j</span><span class="key">k</span><span class="key">l</span>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center;margin-top:11px">
+              <span class="key fn" style="width:44px;margin-right:8px"><i class="ic" data-i="shift" style="--s:20px"></i></span><span class="key">z</span><span class="key">x</span><span class="key">c</span><span class="key">v</span><span class="key">b</span><span class="key">n</span><span class="key">m</span><span class="key fn" style="width:44px;margin-left:8px"><i class="ic" data-i="del" style="--s:20px"></i></span>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center;margin-top:11px">
+              <span class="key fn" style="width:92px;font-size:16px">123</span><span class="key" style="width:190px;font-size:16px">space</span><span class="key fn" style="width:92px;font-size:16px">return</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:12px 26px 0;color:#d0d0d5"><i class="ic" data-i="smile" style="--s:26px;--sw:1.6"></i><i class="ic" data-i="mic" style="--s:26px;--sw:1.6;color:#7f7eff"></i></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Quick note</b>The desktop's Ctrl+F8 becomes the Action button, a Control Center control and a lock-screen widget. It lands in today's note and links what you last had open.
+        <ul><li>Dictation by default; "Tom" stays text, AB# and # numbers become chips.</li><li>The share sheet sends a link, a screenshot or selected text to the same place.</li></ul></figcaption>
+    </figure>
+
+    <!-- V · Search -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div style="height:12px"></div>
+          <div class="lt">Search</div>
+          <div class="pills" style="padding-top:10px"><span class="pill on">All</span><span class="pill">PRs <span class="c">4</span></span><span class="pill">Items <span class="c">3</span></span><span class="pill">Notes <span class="c">6</span></span><span class="pill">Threads <span class="c">2</span></span></div>
+          <div class="grp-h">Pull requests</div>
+          <div class="grp" style="--indent:52px">
+            <div class="cell"><i class="ic" data-i="pr" style="--s:20px;color:var(--gr);margin:0 2px"></i><div class="t"><b><mark style="background:var(--yl-soft);color:var(--yl);border-radius:3px">Checkout</mark>: keep the basket when…</b><span>shop #3712 · 2 failing</span></div></div>
+            <div class="cell"><i class="ic" data-i="merge" style="--s:20px;color:var(--mg);margin:0 2px"></i><div class="t"><b><mark style="background:var(--yl-soft);color:var(--yl);border-radius:3px">Checkout</mark>: Apple Pay button</b><span>shop #3655 · merged 12 Oct</span></div></div>
+          </div>
+          <div class="grp-h">Work items</div>
+          <div class="grp" style="--indent:52px">
+            <div class="cell"><span class="ty bug" style="width:14px;height:14px;margin:0 5px"></span><div class="t"><b>Basket empties after a payment timeout</b><span>AB#61021 · Code Review · CI red</span></div></div>
+            <div class="cell"><span class="ty pbi" style="width:14px;height:14px;margin:0 5px"></span><div class="t"><b>Gift cards in <mark style="background:var(--yl-soft);color:var(--yl);border-radius:3px">checkout</mark></b><span>AB#60971 · In progress · quiet 6 d</span></div></div>
+          </div>
+          <div class="grp-h">Notes</div>
+          <div class="grp" style="--indent:52px">
+            <div class="cell"><i class="ic" data-i="note" style="--s:20px;color:var(--yl);margin:0 2px"></i><div class="t"><b>2026-10-30</b><span>…# <mark style="background:var(--yl-soft);color:var(--yl);border-radius:3px">Checkout</mark> The timeout fix in #3712 waits…</span></div></div>
+            <div class="cell"><i class="ic" data-i="note" style="--s:20px;color:var(--yl);margin:0 2px"></i><div class="t"><b><mark style="background:var(--yl-soft);color:var(--yl);border-radius:3px">Checkout</mark> decisions</b><span>Updated Tuesday · 4 backlinks</span></div></div>
+          </div>
+        </div>
+        <div class="edge" style="height:130px"></div>
+        <div class="actbar" style="bottom:24px;left:20px;right:20px">
+          <span class="gb" style="width:58px;height:58px"><i class="ic" data-i="target" style="--s:22px"></i></span>
+          <div class="glass" style="flex:1;height:58px;border-radius:29px;display:flex;align-items:center;gap:10px;padding:0 10px 0 18px;font-size:17px"><i class="ic" data-i="search" style="--s:19px;color:var(--tx2)"></i><span style="flex:1">checkout<span style="display:inline-block;width:2px;height:20px;background:var(--ac);vertical-align:-4px;margin-left:1px"></span></span><span style="width:22px;height:22px;border-radius:50%;background:var(--tx3);color:var(--bg);display:grid;place-items:center"><i class="ic" data-i="x" style="--s:13px;--sw:3"></i></span></div>
+        </div>
+      </div>
+      <figcaption><b>Search</b>The tab bar folds into a field at the bottom, iOS 26 style. Type <code>3712</code> or <code>AB#61021</code> and the first result is that item; words search titles, notes and threads.
+        <ul><li>Notes are searched on the phone; the vault never goes to the server.</li><li>Spotlight indexes open PRs and items too, so the system search finds them.</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 7 · WORKSTREAMS & CI ============================== -->
+<section class="sec" id="workstreams">
+  <div class="sec-h"><span class="n">07</span><h2>Workstreams and related CI failures</h2></div>
+  <p class="sec-lead">Two read-mostly screens for the bigger picture. A workstream shows a goal, the outcomes it needs and the live evidence behind each one. A CI failure group shows one failure across master and every PR it hits, who claimed it, and what a rerun will and won't fix.</p>
+  <div class="row">
+
+    <!-- W · Workstream -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="note"></i></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="eyebrow">Workstream</div>
+          <div style="padding:2px 16px 0;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.2">Offline-first mobile checkout</div>
+          <div style="padding:8px 16px 0;font-size:14.5px;color:var(--tx2);line-height:1.45">Shoppers keep their basket without a connection and pay once they're back online.</div>
+          <div style="padding:14px 16px 0;display:flex;align-items:center;gap:10px"><span style="flex:1;height:6px;border-radius:3px;background:var(--fill2);overflow:hidden;display:flex"><i style="width:50%;background:var(--gr)"></i><i style="width:25%;background:var(--bl);opacity:.7"></i></span><span style="font-size:13px;color:var(--tx2)">2 of 4 verified</span></div>
+          <div class="grp-h">Outcomes</div>
+          <div class="grp" style="--indent:52px">
+            <div class="cell" style="align-items:flex-start"><i class="ic" data-i="ok" style="--s:21px;color:var(--gr);margin-top:1px"></i><div class="t"><b>Basket survives an app restart</b><span style="display:flex;gap:5px;margin-top:5px"><span class="chip sm ok"><i class="ic" data-i="merge"></i>#3650 merged</span><span class="chip sm">live</span></span></div></div>
+            <div class="cell" style="align-items:flex-start"><i class="ic" data-i="ok" style="--s:21px;color:var(--gr);margin-top:1px"></i><div class="t"><b>Prices refresh on reconnect</b><span style="display:flex;gap:5px;margin-top:5px"><span class="chip sm ok">AB#60940 Done</span></span></div></div>
+            <div class="cell" style="align-items:flex-start"><i class="ic" data-i="pending" style="--s:21px;color:var(--bl);margin-top:1px"></i><div class="t"><b>Offline changes replay on reconnect</b><span style="display:flex;gap:5px;margin-top:5px"><span class="chip sm bad">AB#61044 · your turn</span></span></div></div>
+            <div class="cell" style="align-items:flex-start"><i class="ic" data-i="fail" style="--s:21px;color:var(--rd);margin-top:1px"></i><div class="t"><b>Payment timeouts keep the basket</b><span style="display:flex;gap:5px;margin-top:5px"><span class="chip sm bad">#3712 · CI red</span></span></div></div>
+          </div>
+          <div class="grp-h">Decisions</div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell"><div class="t"><b>Storage: IndexedDB, not SQLite</b><span>Decided 22 Oct · note "Offline basket decisions"</span></div></div>
+            <div class="cell"><div class="t"><b>Conflicts: newest line or server wins?</b><span>2 alternatives · agent proposal waiting</span></div><span class="chip warn sm">Needs you</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Workstream</b>Read-mostly on the phone: the goal, outcomes with their evidence, and open decisions. Only live evidence verifies an outcome, as on the desktop.
+        <ul><li>"Needs you" on a decision opens the alternatives and the agent's proposal.</li><li>Edits merge three-way with your other machines, by revision.</li></ul></figcaption>
+    </figure>
+
+    <!-- X · CI failure group -->
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="eyebrow">Related CI failure</div>
+          <div style="padding:2px 16px 0;font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.25">e2e / checkout › keeps the basket on timeout</div>
+          <div style="margin:12px 16px 0" class="code"><span style="color:var(--tx3)">checkout-timeout.spec.ts:84</span>
+<span style="color:var(--gr)">Expected: "Basket (3)"</span>
+<span style="color:var(--rd)">Received: "Basket (0)"</span></div>
+          <div style="display:flex;margin:14px 16px 0;border-radius:18px;background:var(--card);padding:12px 0">
+            <div style="flex:1;text-align:center;border-right:.5px solid var(--sep)"><div style="font-size:20px;font-weight:700">4</div><div style="font-size:12px;color:var(--tx2)">failures</div></div>
+            <div style="flex:1;text-align:center;border-right:.5px solid var(--sep)"><div style="font-size:20px;font-weight:700">3</div><div style="font-size:12px;color:var(--tx2)">branches</div></div>
+            <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:700">20:21</div><div style="font-size:12px;color:var(--tx2)">first failed</div></div>
+          </div>
+          <div class="grp-h">Where it fails</div>
+          <div class="grp" style="--indent:46px">
+            <div class="cell"><i class="ic" data-i="branch" style="--s:18px;color:var(--rd)"></i><div class="t"><b>master</b><span>Red since a7c03e1 · Merge #3690 coupon codes</span></div><span class="chip sm warn">suspect</span></div>
+            <div class="cell"><i class="ic" data-i="pr" style="--s:18px;color:var(--rd)"></i><div class="t"><b>#3712 Checkout: keep the basket…</b><span>Failed 2× on 4f2a91c</span></div></div>
+            <div class="cell"><i class="ic" data-i="pr" style="--s:18px;color:var(--rd)"></i><div class="t"><b>#3715 Search: keep filters in the URL</b><span>Failed 1× on 9b10e2d</span></div></div>
+          </div>
+          <div class="card" style="margin:14px 16px 0;display:flex;gap:10px;align-items:flex-start"><span class="av lg" style="--h:30">LJ</span><div style="font-size:14px;line-height:1.45"><b style="font-weight:600">Lars claimed it</b> <span style="color:var(--tx3);font-size:12.5px">40 min ago</span><br>"The coupon merge changed the payment mock. Fix in a few minutes."</div></div>
+          <div style="margin:12px 24px 0;font-size:12.5px;color:var(--tx3);line-height:1.5">A rerun uses the original commit and won't pick up Lars's fix. Update #3712 from master once it lands.</div>
+        </div>
+        <div class="actbar"><div class="btn">Message Lars</div><div class="btn pri"><i class="ic" data-i="term"></i>Investigate</div></div>
+      </div>
+      <figcaption><b>Related CI failure</b>One fingerprint across master and two PRs, with the suspect commit, the claim and the rerun caveat from the desktop's Rerun sheet.
+        <ul><li>Dates are failure times, not when BorgDock read them.</li><li>Investigate opens a T3 thread on your chosen machine; a live claim warns before it starts.</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 8 · ACCOUNT & SETUP ============================== -->
+<section class="sec" id="setup">
+  <div class="sec-h"><span class="n">08</span><h2>Account and setup, no desktop needed</h2></div>
+  <p class="sec-lead">The phone works on its own. You sign in with a BorgDock account (Clerk), BorgDock's server reads GitHub and Azure DevOps for you, and each machine that runs T3 joins by running a small connector. The desktop app is optional: sign it in to the same account and it shares read state and tells the server when you're at your desk.</p>
+  <div class="row">
+
+    <!-- Y1 · Sign in -->
+    <figure class="shot">
+      <div class="phone dark">
+        <div style="position:absolute;inset:0;background:radial-gradient(90% 50% at 50% 18%, rgba(127,126,255,.22), transparent 70%)"></div>
+        <div class="view" style="display:flex;flex-direction:column;align-items:center">
+          <div style="margin-top:96px;width:92px;height:92px;border-radius:22px;background:#151618;border:1px solid #2f3036;display:grid;place-items:center;box-shadow:0 18px 50px -10px rgba(127,126,255,.5)"><svg viewBox="0 0 32 32" style="width:58px;height:58px;fill:#7f7eff"><use href="#mark"/></svg></div>
+          <div style="margin-top:22px;font-size:32px;font-weight:700;letter-spacing:-.02em">BorgDock</div>
+          <div style="margin-top:6px;font-size:16px;color:var(--tx2);text-align:center;line-height:1.4;padding:0 40px">Your pull requests, work items and agents. On every device.</div>
+          <div class="sp"></div>
+          <div style="width:100%;padding:0 20px 58px;display:grid;gap:10px">
+            <div class="btn" style="flex:none;background:#fff;color:#000"><i class="ic" data-i="apple" style="--s:20px"></i>Continue with Apple</div>
+            <div class="btn" style="flex:none"><i class="ic" data-i="git" style="--s:19px"></i>Continue with GitHub</div>
+            <div class="btn" style="flex:none"><span style="display:grid;grid-template-columns:8px 8px;gap:1.5px"><i style="width:8px;height:8px;background:#f25022"></i><i style="width:8px;height:8px;background:#7fba00"></i><i style="width:8px;height:8px;background:#00a4ef"></i><i style="width:8px;height:8px;background:#ffb900"></i></span>Continue with Microsoft</div>
+            <div style="display:flex;align-items:center;gap:12px;color:var(--tx3);font-size:13px;margin:4px 6px"><i style="flex:1;height:.5px;background:var(--sep)"></i>or<i style="flex:1;height:.5px;background:var(--sep)"></i></div>
+            <div class="btn" style="flex:none;background:transparent;border:1px solid var(--glass-brd)"><i class="ic" data-i="face" style="--s:19px"></i>Sign in with a passkey</div>
+            <div style="text-align:center;font-size:12px;color:var(--tx3);margin-top:6px">Accounts by Clerk · Terms · Privacy</div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Sign in</b>Clerk's native iOS sign-in, in BorgDock's colours: Apple, GitHub, Microsoft or a passkey. No passwords, as in Dispatch today.
+        <ul><li>Signing in with GitHub or Microsoft also connects that source: Clerk keeps the OAuth token and the server asks Clerk for it.</li><li>Sign in with Apple is there for App Review, and for anyone who'd rather not lead with a work account.</li></ul></figcaption>
+    </figure>
+
+    <!-- Y2 · Connect sources -->
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div style="height:22px"></div>
+          <div class="lt" style="font-size:30px;line-height:36px">Connect your work</div>
+          <div class="sub" style="line-height:1.45;padding-top:6px">BorgDock's server reads these for you, so this iPhone works even when your computers are asleep.</div>
+          <div class="grp-h">GitHub</div>
+          <div class="grp">
+            <div class="cell"><span class="ico" style="background:#17181c"><i class="ic" data-i="git"></i></span><div class="t"><b>Personal account</b><span>Through your sign-in</span></div><span class="chip ok sm"><i class="ic" data-i="check"></i>Connected</span></div>
+            <div class="cell"><span class="ico" style="background:#17181c"><i class="ic" data-i="git"></i></span><div class="t"><b>Work account</b><span>Through mac-mini's <code>gh</code></span></div><span class="chip ac sm">via machine</span></div>
+          </div>
+          <div class="grp-h">Azure DevOps</div>
+          <div class="grp">
+            <div class="cell"><span class="ico" style="background:#2d6be4"><i class="ic" data-i="board"></i></span><div class="t"><b>acme · Shop</b><span>Through mac-mini's <code>az</code> sign-in</span></div><span class="chip ac sm">via machine</span></div>
+          </div>
+          <div class="grp-h">T3 machines</div>
+          <div class="grp">
+            <div class="cell"><span class="ico" style="background:var(--ac)"><i class="ic" data-i="monitor"></i></span><div class="t"><b>mac-mini</b><span><span style="color:var(--gr)">●</span> Connector online · 3 threads</span></div></div>
+            <div class="cell" style="color:var(--ac)"><span class="ico" style="background:var(--ac-soft);color:var(--ac)"><i class="ic" data-i="plus"></i></span><div class="t"><b style="color:var(--ac)">Add a machine</b></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="grp-h">Desktop app · optional</div>
+          <div class="grp">
+            <div class="cell"><span class="ico" style="background:#151618"><svg viewBox="0 0 32 32" style="width:18px;height:18px;fill:#7f7eff"><use href="#mark"/></svg></span><div class="t"><b>Not signed in</b><span>Shares read state and when you're at your desk</span></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+        </div>
+        <div class="actbar"><div class="btn pri">Done</div></div>
+      </div>
+      <figcaption><b>Connect your work</b>Every source has two ways in: through your account (Clerk holds the token) or through a connected machine's own sign-in (<code>gh</code>, <code>az</code>), which is how Dispatch reads ADO today.
+        <ul><li>The machine route covers work accounts whose company blocks third-party OAuth apps.</li><li>With only GitHub connected you still get Focus, reviews and CI, just no agents.</li></ul></figcaption>
+    </figure>
+
+    <!-- Y3 · Add a machine -->
+    <figure class="shot">
+      <div class="phone" data-sb="w" style="background:#08090c">
+        <div style="position:absolute;inset:0;background:radial-gradient(60% 40% at 50% 44%, rgba(160,165,255,.2), transparent 70%), radial-gradient(80% 50% at 30% 90%, #2a2116, transparent 70%), linear-gradient(#111216,#07080a)"></div>
+        <div style="position:absolute;left:50%;top:176px;width:318px;height:338px;margin-left:-159px;border-radius:12px;background:#0d0e12;border:1px solid #2c2d33;box-shadow:0 0 70px rgba(160,165,255,.28);transform:rotate(-2deg);overflow:hidden;font:10.5px/16px 'SF Mono',ui-monospace,Menlo,monospace;color:#c9cad0">
+          <div style="display:flex;align-items:center;gap:5px;padding:7px 10px;background:#1a1b20;color:#8e8f96;font-size:10px"><i style="width:8px;height:8px;border-radius:4px;background:#f0616d"></i><i style="width:8px;height:8px;border-radius:4px;background:#e5b454"></i><i style="width:8px;height:8px;border-radius:4px;background:#5cc98f"></i><span style="margin-left:auto;margin-right:auto">mac-mini — zsh</span></div>
+          <div style="padding:8px 12px">
+            <div><span style="color:#7f7eff">~</span> npx borgdock connect</div>
+            <div style="color:#8e8f96">BorgDock connector 1.0.0</div>
+            <div><span style="color:#5cc98f">✓</span> T3 Code Nightly · 4 projects</div>
+            <div><span style="color:#5cc98f">✓</span> gh · 2 accounts  <span style="color:#5cc98f">✓</span> az · acme</div>
+            <div style="margin-top:4px">Scan with BorgDock on your iPhone:</div>
+          </div>
+          <div style="margin:2px auto 0;width:138px;height:138px;background:#fff;border-radius:6px;padding:8px"><div class="qr" style="width:122px;height:122px;display:grid"></div></div>
+          <div style="text-align:center;margin-top:8px">or enter <b style="color:#fff;letter-spacing:2px">KQ7-M2D</b> · 1:52</div>
+        </div>
+        <div class="view" style="color:#fff">
+          <div class="nav"><span class="gb" style="--glass:rgba(255,255,255,.14);--glass-brd:rgba(255,255,255,.2);color:#fff"><i class="ic" data-i="x"></i></span></div>
+          <div style="text-align:center;font-size:22px;font-weight:700;margin-top:2px">Add a machine</div>
+          <div style="text-align:center;font-size:14px;opacity:.7;margin-top:4px">On it, run <span class="mono">npx borgdock connect</span></div>
+          <div style="position:absolute;left:50%;top:268px;width:178px;height:178px;margin-left:-91px">
+            <i style="position:absolute;left:0;top:0;width:34px;height:34px;border-left:4px solid #fff;border-top:4px solid #fff;border-radius:14px 0 0 0"></i>
+            <i style="position:absolute;right:0;top:0;width:34px;height:34px;border-right:4px solid #fff;border-top:4px solid #fff;border-radius:0 14px 0 0"></i>
+            <i style="position:absolute;left:0;bottom:0;width:34px;height:34px;border-left:4px solid #fff;border-bottom:4px solid #fff;border-radius:0 0 0 14px"></i>
+            <i style="position:absolute;right:0;bottom:0;width:34px;height:34px;border-right:4px solid #fff;border-bottom:4px solid #fff;border-radius:0 0 14px 0"></i>
+          </div>
+          <div style="position:absolute;left:12px;right:12px;bottom:12px;border-radius:44px;background:rgba(30,31,36,.74);backdrop-filter:blur(26px) saturate(1.6);-webkit-backdrop-filter:blur(26px) saturate(1.6);border:.5px solid rgba(255,255,255,.12);padding:18px 20px 22px">
+            <div style="font-size:13px;font-weight:600;opacity:.6">What the connector does</div>
+            <div style="display:grid;gap:11px;margin-top:11px;font-size:14.5px;line-height:1.35">
+              <div style="display:flex;gap:11px"><i class="ic" data-i="globe" style="--s:19px;margin-top:1px"></i><span>Dials out to BorgDock. No open ports, no VPN on your phone.</span></div>
+              <div style="display:flex;gap:11px"><i class="ic" data-i="face" style="--s:19px;margin-top:1px"></i><span>Runs T3 commands only when you confirmed them with Face ID.</span></div>
+              <div style="display:flex;gap:11px"><i class="ic" data-i="key" style="--s:19px;margin-top:1px"></i><span>Lends its <span class="mono">gh</span> and <span class="mono">az</span> sign-ins, if you allow it.</span></div>
+            </div>
+            <div style="margin-top:14px;font-size:12.5px;opacity:.6;line-height:1.45">Only someone at the machine can add it: the code appears there, works once and expires in two minutes.</div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Add a machine</b>Dispatch's T3 fleet code moves into a connector that runs where T3 runs and holds an outbound connection to the server. One connector on the Mac mini can also reach other machines over Tailscale, as Dispatch does now.
+        <ul><li>Dispatch's rule that enrolment needs physical access to the Mac stays: the code only ever appears on the machine.</li><li>Agent commands carry a Face ID signature from the phone that the connector checks, so a server breach can't start an agent.</li></ul></figcaption>
+    </figure>
+
+    <!-- Z · Settings -->
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="x"></i></span></div>
+          <div class="lt">Settings</div>
+          <div class="grp-h">Account</div>
+          <div class="grp">
+            <div class="cell"><span class="av lg" style="--h:245">KB</span><div class="t"><b>Koen</b><span>Apple · GitHub · 2 passkeys</span></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="grp-h">Sources</div>
+          <div class="grp">
+            <div class="cell"><span class="ico" style="background:#17181c"><i class="ic" data-i="git"></i></span><div class="t"><b>GitHub</b></div><span class="v">2 accounts</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell"><span class="ico" style="background:#2d6be4"><i class="ic" data-i="board"></i></span><div class="t"><b>Azure DevOps</b></div><span class="v">via mac-mini</span><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="grp-h">Machines</div>
+          <div class="grp">
+            <div class="cell"><span class="ico" style="background:var(--ac)"><i class="ic" data-i="monitor"></i></span><div class="t"><b>mac-mini</b><span><span style="color:var(--gr)">●</span> Online · 3 threads</span></div><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell"><span class="ico" style="background:var(--ac)"><i class="ic" data-i="monitor"></i></span><div class="t"><b>workstation</b><span><span style="color:var(--gr)">●</span> Online · 1 thread</span></div><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell"><span class="ico" style="background:#a0a3ad"><i class="ic" data-i="server"></i></span><div class="t"><b>build-vm</b><span>Offline · seen 2 h ago · threads still shown</span></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="grp-h">Notifications</div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell"><div class="t"><b>Quiet while I'm at my desk</b><span>Needs the desktop app signed in</span></div><span class="tg"></span></div>
+          </div>
+          <div class="grp-h">Safety</div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell"><div class="t"><b>Face ID for agents, merges, approvals</b></div><span class="tg"></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Settings</b>Your account, where each source comes from, and the machines. "Quiet while I'm at my desk" uses the desktop's idle check when the desktop app runs; without it, every category you turned on pushes.
+        <ul><li>An offline machine keeps showing its last known threads, marked unavailable (Dispatch's offline snapshots).</li><li>Signing out here ends this device's session only.</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 9 · HOW IT WORKS ============================== -->
+<section class="sec" id="how">
+  <div class="sec-h"><span class="n">09</span><h2>How it would work</h2></div>
+  <p class="sec-lead">BorgDock grows the Dispatch project (<code>borght-dev/dispatch</code>) into its backend. Dispatch already runs the hard parts every day: an always-on server reachable without Tailscale, APNs pushes that answer agent questions from the lock screen, the T3 protocol 2 fleet with offline snapshots, and a tested SwiftUI app. BorgDock brings its rules, its GitHub side and its design.</p>
+  <div class="arch">
+    <div class="arch-col">
+      <h4>Your devices</h4>
+      <div class="arch-box"><b>iPhone app</b><span>SwiftUI, grown from Dispatch's app: sign-in, push categories, the start sheet and answers already work. Widgets and Live Activities live in the same project.</span></div>
+      <div class="arch-box"><b>Web app</b><span>Dispatch's installable web app, for any browser.</span></div>
+      <div class="arch-box"><b>Desktop app, optional</b><span>Signs in to the same account. Shares read state and your idle status; later it can read from the server instead of polling GitHub itself.</span></div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-col accent">
+      <h4>BorgDock server</h4>
+      <div class="arch-box"><b>Dispatch's server</b><span>Node 24 and Hono, TypeScript run directly. SQLite on the Mac mini; Postgres if it's ever hosted for other people.</span></div>
+      <div class="arch-box"><b>One copy of the rules</b><span>BorgDock's pure services as a shared package the server and desktop both import: <code>focus-bucket</code>, <code>dispatch/verdict.ts</code>, <code>engine.ts</code>, activity <code>derive/*</code>, CI fingerprints.</span></div>
+      <div class="arch-box"><b>Journal and outbox</b><span>The activity journal moves server-side; its outbox drains to APNs (Dispatch's <code>push/apns.ts</code>), Web Push and Live Activity updates.</span></div>
+      <div class="arch-box"><b>Accounts: Clerk</b><span>Clerk's iOS SDK draws sign-in and the server checks the Clerk token once, then issues its own device session as Dispatch does today. No passwords anywhere.</span></div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-col">
+      <h4>Sources and machines</h4>
+      <div class="arch-box"><b>GitHub</b><span>The OAuth token Clerk keeps from your sign-in (<code>getUserOauthAccessToken</code>), or a machine's <code>gh</code>.</span></div>
+      <div class="arch-box"><b>Azure DevOps</b><span>Microsoft sign-in through Clerk, or a machine's <code>az</code> sign-in, which is how Dispatch reads ADO today.</span></div>
+      <div class="arch-box"><b>T3 machines</b><span>The connector: Dispatch's <code>t3/fleet.ts</code> and <code>t3/client.ts</code> in a small process on the machine, dialling out over WebSocket.</span></div>
+      <div class="arch-box"><b>Notes vault</b><span>Stays in your sync folder. The phone opens it through Files; the server never sees notes.</span></div>
+    </div>
+  </div>
+
+  <div class="plan">
+    <div class="plan-col">
+      <h4><span>Recommendation</span>Grow Dispatch into BorgDock's backend</h4>
+      <p>Most of the risky work is already done and running: an internet-reachable server with a careful security model, APNs with lock-screen answers, the T3 fleet and a SwiftUI app with 81 unit tests. Rebuilding that in Tauri would cost more than restyling it. The rules stay single-sourced because the server is TypeScript too.</p>
+      <p class="muted">What changes in Dispatch: Clerk replaces its own passkey and setup-code sign-in (the physical-access rule moves to adding a machine), BorgDock 4.9's fresh worktrees replace the M/V/W slots, GitHub polling joins ADO and T3, and the app takes BorgDock's tokens instead of paper and teal.</p>
+    </div>
+    <div class="plan-col">
+      <h4><span>Phase 0</span>Dispatch becomes BorgDock</h4>
+      <ul><li>Clerk sign-in in app, web and server</li><li>Shared rules package</li><li>Worktrees instead of slots</li><li>BorgDock design; still on the Mac mini behind Funnel</li></ul>
+    </div>
+    <div class="plan-col">
+      <h4><span>Phase 1–2</span>Read, answer, act</h4>
+      <ul><li>GitHub on the server: Focus, PR detail, Checks</li><li>Activity journal and push</li><li>Widgets, Live Activities</li><li>Merge and approve with Face ID and Undo, Quick Review</li></ul>
+    </div>
+    <div class="plan-col">
+      <h4><span>Phase 3</span>Capture and beyond</h4>
+      <ul><li>Notes, quick capture, share sheet</li><li>Search and Spotlight</li><li>Workstreams, related CI failures</li><li>Desktop reads from the server</li></ul>
+    </div>
+  </div>
+
+  <div class="plan" style="grid-template-columns:1fr 1fr">
+    <div class="plan-col">
+      <h4><span>Security</span>A session can start agents</h4>
+      <p>Dispatch's security note holds for BorgDock too: a signed-in session can start full-access agents, so a stolen session is remote code execution. The design keeps three locks:</p>
+      <ul><li><b>Sign-in</b> through Clerk with a passkey, Apple, GitHub or Microsoft. No passwords.</li><li><b>Machines join from the machine.</b> The connector prints the code; it works once, for two minutes.</li><li><b>Agent commands are signed on the phone.</b> Start, answer and approve need Face ID and a Secure Enclave key the connector trusts. The server relays them but can't forge one.</li></ul>
+    </div>
+    <div class="plan-col">
+      <h4><span>Settled</span>From your answers</h4>
+      <ul><li><b>Independent of the desktop:</b> the server watches and pushes; you sign in with a Clerk account.</li><li><b>No Tailscale on the phone:</b> the server is public (Funnel now, your own domain later); only connectors talk to T3.</li><li><b>Rate limits:</b> the server reads each account once for all your devices; once the desktop reads from the server too, nothing polls twice.</li><li><b>Distribution:</b> TestFlight now (Dispatch has <code>deploy/testflight.sh</code>), the App Store when BorgDock goes public. App Review expects Sign in with Apple next to GitHub and Microsoft; Clerk has it.</li></ul>
+    </div>
+  </div>
+
+  <div class="open">
+    <h4>Still open</h4>
+    <ul>
+      <li><b>Where the server lives after phase 0.</b> The Mac mini (one user, free, data stays home) or hosted (anyone can sign up; needs per-user isolation and the connector split for everyone, not just you).</li>
+      <li><b>Work tenants.</b> An Enterprise Managed GitHub account may block third-party OAuth apps, and Entra may need admin consent for the Azure DevOps scope. The machine route (<code>gh</code>, <code>az</code>) covers both; test the account route early.</li>
+      <li><b>Clerk as a dependency.</b> Sign-in then needs Clerk to be up, where Dispatch's own passkeys needed nothing. Clerk's session tokens live about a minute, so the server should trade a Clerk sign-in for its own device session (Dispatch's 180-day app token); then an outage only blocks new sign-ins.</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+<script>
+  const TABS = [['focus', 'target', 'Focus'], ['dispatch', 'bot', 'Dispatch', '2'], ['activity', 'inbox', 'Activity', '12'], ['notes', 'note', 'Notes']];
+  for (const phone of document.querySelectorAll('.phone')) {
+    const d = phone.dataset;
+    const time = d.time ?? '9:41';
+    const statusBar = `<div class="sb ${d.sb || ''}"><span>${time}</span><span class="sb-r"><svg viewBox="0 0 18 12"><use href="#sb-sig"/></svg><svg viewBox="0 0 16 12"><use href="#sb-wifi"/></svg><svg class="bat" viewBox="0 0 27 13"><use href="#sb-bat"/></svg></span></div>`;
+    phone.insertAdjacentHTML('afterbegin', statusBar + ('noIsland' in d ? '' : '<div class="di"></div>'));
+    if (d.tab) {
+      const tabs = TABS.map(([id, icon, label, badge]) => `<div class="tb-tab${id === d.tab ? ' on' : ''}"><i class="ic" data-i="${icon}"></i>${label}${badge ? `<span class="tb-badge">${badge}</span>` : ''}</div>`).join('');
+      phone.insertAdjacentHTML('beforeend', `<div class="edge"></div><div class="tabbar"><div class="tb-tabs">${tabs}</div><div class="tb-search"><i class="ic" data-i="search"></i></div></div>`);
+    }
+    if (!('noHi' in d)) phone.insertAdjacentHTML('beforeend', `<div class="hi ${d.sb || ''}"></div>`);
+  }
+  for (const qr of document.querySelectorAll('.qr')) {
+    const n = 25;
+    let seed = 11;
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    const finder = (r, c) => {
+      for (const [fr, fc] of [[0, 0], [0, n - 7], [n - 7, 0]]) {
+        const y = r - fr, x = c - fc;
+        if (y >= -1 && y <= 7 && x >= -1 && x <= 7) {
+          if (y < 0 || y > 6 || x < 0 || x > 6) return 0;
+          return y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4) ? 1 : 0;
+        }
+      }
+      return -1;
+    };
+    let cells = '';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      const f = finder(r, c);
+      const on = f === -1 ? rnd() > 0.5 : f === 1;
+      cells += `<i style="background:${on ? '#111' : 'transparent'}"></i>`;
+    }
+    qr.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+    qr.innerHTML = cells;
+  }
+  for (const el of document.querySelectorAll('[data-i]')) {
+    el.innerHTML = `<svg viewBox="0 0 24 24"><use href="#i-${el.dataset.i}"/></svg>`;
+  }
+</script>
+</body>
+</html>
