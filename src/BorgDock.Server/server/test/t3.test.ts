@@ -98,7 +98,10 @@ test('two hosts with identical IDs stay separate; remote first messages survive 
   const { loadConfig } = await import('../src/config.ts');
   const { T3Fleet } = await import('../src/t3/fleet.ts');
   const dataDir = mkdtempSync(join(tmpdir(), 'dispatch-fleet-'));
-  writeFileSync(join(dataDir, 't3-session.json'), JSON.stringify({ token: 'test-only', expiresAt: '2099-01-01' }));
+  // Both hosts need a session file; without one a host asks the installed T3 app to issue a session.
+  for (const file of ['t3-session.json', 't3-session-windows.json']) {
+    writeFileSync(join(dataDir, file), JSON.stringify({ token: 'test-only', expiresAt: '2099-01-01' }));
+  }
   const server = createServer((req, res) => {
     res.setHeader('Content-Type', 'application/json');
     const host = req.url!.startsWith('/windows') ? 'windows' : 'mac';
