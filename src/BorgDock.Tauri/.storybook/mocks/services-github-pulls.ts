@@ -51,10 +51,10 @@ export async function getCommitFiles(
   _client: unknown,
   _owner: string,
   _repo: string,
-  _commitSha: string,
+  commitSha: string,
 ): Promise<PullRequestFileChange[]> {
   const r = getControl().githubResponses.getCommitFiles;
-  if (typeof r === 'function') return r();
+  if (typeof r === 'function') return r({ commitSha });
   return r ?? [];
 }
 

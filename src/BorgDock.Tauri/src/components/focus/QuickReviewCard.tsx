@@ -71,6 +71,8 @@ export interface QuickReviewCardProps {
   reviewed: readonly string[];
   /** Load, stale or submission problems, drawn above the body. */
   alert?: ReactNode;
+  /** The review guide, first in the overview's reading column. */
+  guide?: ReactNode;
   /** Replaces the summary body (the review composer). */
   body?: ReactNode;
   /** The action row. */
@@ -93,6 +95,7 @@ export function QuickReviewCard({
   onReloadFiles,
   reviewed,
   alert,
+  guide,
   body,
   actions,
   actionsNote,
@@ -138,6 +141,7 @@ export function QuickReviewCard({
           linkedWorkItemIds={links.workItemIds}
           linkedWorkItems={workItems}
           onFileSelect={onFileSelect}
+          guide={guide}
         />
       )}
       <div className="qr-card__actions">

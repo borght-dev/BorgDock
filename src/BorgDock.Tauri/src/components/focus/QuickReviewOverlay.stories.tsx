@@ -4,6 +4,7 @@ import { ToastViewport } from '@/components/shared/Toast';
 import { useLinkStore } from '@/stores/link-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
+import { useReviewGuideStore } from '@/stores/review-guide-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestFileChange } from '@/types';
 import type { ClaudeReviewComment } from '@/types/claude-review';
@@ -11,6 +12,12 @@ import beforeDispatch from '../../../../../docs/whats-new/4.0.0/dispatch.png?inl
 import afterDispatch from '../../../../../docs/whats-new/4.0.1/dispatch-width.png?inline';
 import { getControl } from '../../../.storybook/mocks/control';
 import { LARGE_PR_BODY, LARGE_PR_FILES, LARGE_PR_TITLE } from './__fixtures__/quick-review-large';
+import {
+  NOISE_FILES,
+  PLANBOARD_COMMITS,
+  PLANBOARD_GUIDE,
+  planboardCommitFiles,
+} from './__fixtures__/quick-review-reading';
 import {
   PLANBOARD_BODY,
   PLANBOARD_FILES,
@@ -34,6 +41,8 @@ function resetReviewDisplayPreferences() {
   ]) {
     localStorage.removeItem(`borgdock-quick-review-${preference}`);
   }
+  // The design frames predate the review guide; the guide stories choose it themselves.
+  localStorage.setItem('borgdock-quick-review-order', 'folders');
 }
 
 const files: PullRequestFileChange[] = [
@@ -803,5 +812,155 @@ export const LastFileThenNext: Story = {
       LAST_TEST,
     );
     await continueReviewing(canvasElement);
+  },
+};
+
+/** The summary agent answers with PLANBOARD_GUIDE. */
+const guideDecorator: Decorator = (Story) => {
+  getControl().invokeResponses.run_headless_prompt = {
+    text: JSON.stringify(PLANBOARD_GUIDE),
+    provider: 'claude',
+    model: 'sonnet',
+    durationMs: 41_000,
+  };
+  return <Story />;
+};
+
+function startInOrder(order: 'guide' | 'folders' | 'commits', pr = planboard) {
+  resetReviewDisplayPreferences();
+  localStorage.setItem('borgdock-quick-review-order', order);
+  useQuickReviewStore.setState({ documents: {} });
+  useReviewGuideStore.setState({ entries: {} });
+  useQuickReviewStore.getState().startSinglePr(pr);
+}
+
+/** The card with the review guide: what the PR does, what to watch, the chapters. */
+export const GuideOnCard: Story = {
+  decorators: [planboardDecorator, guideDecorator],
+  beforeEach: () => startInOrder('guide'),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(/A saved search could fill a filter field/);
+    await canvas.findByRole('button', { name: /Workspace lists them/ });
+  },
+};
+
+/** The guide is still being written: the card says so and the walk starts in folders. */
+export const GuideWriting: Story = {
+  decorators: [
+    planboardDecorator,
+    (Story) => {
+      getControl().invokeResponses.run_headless_prompt = () => new Promise(() => {});
+      return <Story />;
+    },
+  ],
+  beforeEach: () => startInOrder('guide'),
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByText(/Claude is reading the diff/);
+  },
+};
+
+/** Guides are not written automatically (Settings → Summaries): the card offers to write one. */
+export const GuideOnClick: Story = {
+  decorators: [planboardDecorator, guideDecorator],
+  beforeEach: () => {
+    const settings = useSettingsStore.getState().settings;
+    useSettingsStore.setState({
+      settings: { ...settings, summaries: { ...settings.summaries!, autoReviewGuide: false } },
+    });
+    startInOrder('guide');
+    return () => useSettingsStore.setState({ settings });
+  },
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('button', { name: 'Write guide' });
+  },
+};
+
+/** The walk in Guide order: chapters in the tree, the file's chapter above the diff. */
+export const GuideWalk: Story = {
+  decorators: [planboardDecorator, guideDecorator],
+  beforeEach: () => startInOrder('guide'),
+  play: async ({ canvasElement }) => {
+    await seedPlanboard(
+      [
+        'FSP/FSP.Portal/src/types/planboardFilters.ts',
+        'Tests/types/planboardFilters.test.ts',
+        'FSP/FSP.Portal/src/hooks/planboard/usePlanboardFilterLayout.ts',
+        'Tests/hooks/usePlanboardFilterLayout.test.ts',
+      ],
+      WORKSPACE,
+    );
+    const canvas = await continueReviewing(canvasElement);
+    await canvas.findByText('Chapter 3 of 4');
+  },
+};
+
+/** A refactor: the moved method, the re-indented block and the usings fold to one line each. */
+const refactor = {
+  ...makePr({
+    number: 4830,
+    repoOwner: 'gomocha',
+    repoName: 'FSP',
+    title: 'Timesheets: move shift rounding into its own class',
+    headSha: 'f0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d',
+    headRef: 'refactor/shift-rounding',
+    baseRef: 'develop',
+    authorLogin: 'sbakker',
+    body: 'Moves `RoundPerShift` into `ShiftRounding` so payroll can use it. Worked hours can no longer go below zero.',
+    changedFiles: NOISE_FILES.length,
+    additions: 20,
+    deletions: 14,
+    commitCount: 2,
+    updatedAt: ago(HOUR),
+  }),
+  passedCount: 6,
+  totalCheckCount: 6,
+};
+
+export const NoiseFolded: Story = {
+  decorators: [
+    (Story) => {
+      const control = getControl();
+      control.githubResponses.getPRReviewDetails = { pr: refactor.pullRequest, baseSha: 'develop' };
+      control.githubResponses.getPRFiles = NOISE_FILES;
+      control.githubResponses.getReviews = [];
+      control.githubResponses.getAllComments = [];
+      return <Story />;
+    },
+  ],
+  beforeEach: () => {
+    startInOrder('folders', refactor);
+    localStorage.setItem('borgdock-quick-review-context-open', 'false');
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = await canvas.findByRole('button', { name: 'Review files' });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+    await userEvent.click(await canvas.findByRole('button', { name: /BreakRounding\.cs/ }));
+    await canvas.findByRole('button', { name: /Moved to ShiftRounding\.cs/ });
+  },
+};
+
+/** Commits order: the PR read commit by commit, the first one read. */
+export const CommitsWalk: Story = {
+  decorators: [
+    planboardDecorator,
+    (Story) => {
+      const control = getControl();
+      control.githubResponses.getPRCommits = PLANBOARD_COMMITS;
+      control.githubResponses.getCommitFiles = ({ commitSha }) => planboardCommitFiles(commitSha);
+      return <Story />;
+    },
+  ],
+  beforeEach: () => startInOrder('commits'),
+  play: async ({ canvasElement }) => {
+    await seedPlanboard([], WORKSPACE);
+    const canvas = await continueReviewing(canvasElement);
+    await canvas.findByText('Find the filter fields a saved search fills but the layout hides', {
+      selector: 'b',
+    });
+    await userEvent.keyboard('v');
+    await canvas.findByText('Commit 2 of 4');
   },
 };

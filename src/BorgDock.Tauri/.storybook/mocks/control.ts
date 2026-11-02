@@ -131,7 +131,7 @@ export type GithubResponses = {
     | ((args: { prNumber: number }) => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
   getCommitFiles?:
     | PullRequestFileChange[]
-    | (() => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
+    | ((args: { commitSha: string }) => PullRequestFileChange[] | Promise<PullRequestFileChange[]>);
   getPRCommits?: PullRequestCommit[] | (() => PullRequestCommit[] | Promise<PullRequestCommit[]>);
   getReviewThreads?: ReviewThread[] | (() => ReviewThread[] | Promise<ReviewThread[]>);
   // DiscussionTab additions

@@ -204,6 +204,8 @@ export interface SummarySettings {
   enabled: boolean;
   provider: AgentProvider;
   model: string;
+  /** Quick Review writes a PR's review guide as soon as it opens; off, only on a click. */
+  autoReviewGuide?: boolean;
 }
 
 export interface ClaudeReviewSettings {

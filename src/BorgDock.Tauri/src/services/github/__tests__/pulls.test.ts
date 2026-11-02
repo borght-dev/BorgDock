@@ -284,7 +284,7 @@ describe('getPRCommits', () => {
       date: '2025-01-16T10:00:00Z',
     });
 
-    expect(client.get).toHaveBeenCalledWith('repos/owner/repo/pulls/42/commits');
+    expect(client.get).toHaveBeenCalledWith('repos/owner/repo/pulls/42/commits?per_page=100');
   });
 
   it('handles null commit and author fields', async () => {

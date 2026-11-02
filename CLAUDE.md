@@ -33,6 +33,8 @@ The repo has `core.autocrlf=true` set locally, so a **fresh `git worktree add` c
 
 Two other fresh-worktree facts: run `bun install` at the worktree root before anything else (node_modules is per-worktree), and Playwright e2e (`bun run test:e2e`) reuses any server already listening on :1420 (`reuseExistingServer`) — if the main checkout's dev server is running, e2e silently tests the *main checkout's* code, not the worktree's. Stop it first or the results are meaningless. A new Tauri command needs a default in `tests/e2e/helpers/mock-tauri.ts` when anything calls it at boot: an unhandled command logs an error and the boot smoke check fails every e2e test.
 
+Cargo in a fresh worktree builds every C dependency (`ring`, `libgit2-sys`) again, and outside a VS developer prompt `cl.exe` fails them with exit code 2. Point `CARGO_TARGET_DIR` at the main checkout's `src/BorgDock.Tauri/src-tauri/target` (Windows path, from PowerShell) to reuse what is built there; `bun run bindings` then works too.
+
 If every e2e test hangs on the splash screen (`waitForSelector('[data-app-ready="true"]')` timeout) and the WebServer log shows `ENOENT ... src/BorgDock.Tauri/node_modules/react-dom/index.js`, Vite's pre-bundle cache is stale: `rm -rf src/BorgDock.Tauri/node_modules/.vite/deps`.
 
 ## React Compiler escape hatch
@@ -377,6 +379,16 @@ Capturing from Storybook in a fresh worktree: `src/BorgDock.Tauri/public/whats-n
 Approve (card, walk, composer) moves the deck on at once and posts the review only when its Undo toast runs out (`components/focus/quick-review-approval.ts`, `APPROVAL_UNDO_MS`); GitHub cannot take a review back. A test that expects `submitReview` after an approval must run the toast out first (`sendHeldApproval()` in `QuickReviewOverlay.test.tsx`), and e2e specs `expect.poll` the posted review with a timeout above 5 s. A refused approval brings the PR back with the error (`reopen`). Request changes and Comment still post immediately.
 
 The walk's design reference is `design/quick-review-v2/mockups.html`; the stories `WalkWithProof`, `AllFilesReviewed` and `ReReviewSinceLastReview` render its three frames.
+
+## Quick Review reading order: Guide, Folders, Commits
+
+The walk's tree reads a PR in one of three orders (`ReadingOrderSwitch`, `O` cycles them, kept in `localStorage` as `borgdock-quick-review-order`, Guide by default).
+
+- **Guide** is written by the summary agent (Settings → Summaries: provider and model) through `run_headless_prompt`, once per head commit. `stores/review-guide-store.ts` `ensureReviewGuide` runs it and caches it in prcache as tab data `reviewGuide`. `services/review-guide.ts` is pure: the prompt (a patch budget; generated files by name only) and `parseGuide`, which puts every changed file in exactly one chapter and anything the agent left out in "Other changes". A failed run stays failed until Retry (`force`), so a broken CLI is not started on every render. Only Guide order runs the agent, and only on its own while `summaries.autoReviewGuide` is on (Settings → Agents → Summaries, default on); off, a cached guide still shows and otherwise the entry is `idle` with a Write guide button (`force` again). While the guide is written, when it failed or before it is asked for, the tree shows folders.
+- **Noise** (`services/review-noise.ts`, pure): a hunk is whitespace only, imports only, or moved (its significant lines found, in order, on the other side of another hunk anywhere in the PR). Only the hunk's own lines must be found, so a block pasted into a new class folds where it was cut, not where it landed. `DiffFileSection`'s `hunkFolds` draws the fold lines; a hunk that holds a draft comment never folds. Mechanical files are muted in the tree but still count for Approve.
+- **Commits**: `useReviewCommits` reads the PR's commits and each commit's files (kept by SHA for the session). Reading a commit is `commitsRead` on the review document, separate from `reviewed`; once every commit is read, the tree offers to mark the files reviewed. A commit's diff takes no line comments.
+- **Tests**: mock `getClientForRepo` with one stable object (`vi.hoisted`). A new client per call re-runs `useReviewSince`'s effect forever, and the vitest worker dies of OOM without a failing test to show for it.
+- **Stories**: `resetReviewDisplayPreferences` pins the design-frame stories to Folders. `GuideOnCard`, `GuideWriting`, `GuideOnClick`, `GuideWalk`, `NoiseFolded` and `CommitsWalk` show the new parts; the story mock's `getCommitFiles` gets `{ commitSha }`.
 
 ## Self-Improvement
 

@@ -42,10 +42,19 @@ export interface ReviewDocument {
    * not walked.
    */
   walked?: boolean;
+  /**
+   * Commits read in the walk's Commits view, by SHA. Separate from
+   * `reviewed`: reading a commit is not reading where its files ended up.
+   */
+  commitsRead?: string[];
 }
 export interface ReviewFileGroup {
   name: string;
   files: DiffFile[];
+  /** A review guide's chapter number, drawn before the name. */
+  number?: number;
+  /** One line under the name: the chapter's intent, or the commit's author and date. */
+  note?: string;
 }
 export interface ReviewSnapshot {
   pr: PullRequest;

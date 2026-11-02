@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { PrDescription } from '@/components/shared/PrDescription';
 import type { useReviewReadiness } from '@/hooks/useReviewReadiness';
@@ -26,6 +27,7 @@ export function QuickReviewOverview({
   linkedWorkItemIds,
   linkedWorkItems,
   onFileSelect,
+  guide,
 }: {
   pr: PullRequestWithChecks;
   detail: PullRequest;
@@ -37,11 +39,14 @@ export function QuickReviewOverview({
   linkedWorkItemIds: readonly number[];
   linkedWorkItems: ReadonlyMap<number, WorkItem>;
   onFileSelect?: (path: string) => void;
+  /** The review guide, above the description. */
+  guide?: ReactNode;
 }) {
   const progress = files ? reviewProgress(files, reviewed) : null;
   return (
     <div className="qr-overview-grid">
       <div className="qr-overview-reading">
+        {guide}
         <section className="qr-overview-section" aria-label="PR description">
           <h3>PR description</h3>
           {p.body ? (

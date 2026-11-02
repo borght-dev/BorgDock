@@ -39,6 +39,7 @@ export type QuickReviewKey =
   | 's'
   | 'r'
   | 'c'
+  | 'o'
   | 'z';
 
 export type QuickReviewKeymap = Partial<Record<QuickReviewKey, () => void>>;

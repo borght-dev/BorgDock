@@ -69,6 +69,7 @@ const defaultSettings: AppSettings = {
     enabled: true,
     provider: 'claude',
     model: 'sonnet',
+    autoReviewGuide: true,
   },
   claudeReview: {
     botUsername: 'claude[bot]',

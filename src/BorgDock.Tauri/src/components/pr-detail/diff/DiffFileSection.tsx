@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Copy, ExternalLink } from 'lucide-react';
 import {
+  Fragment,
   forwardRef,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
@@ -12,9 +13,79 @@ import {
 import { IconButton, Pill, type PillTone } from '@/components/shared/primitives';
 import { useSyntaxHighlight } from '@/hooks/useSyntaxHighlight';
 import { parsePatch } from '@/services/diff-parser';
-import type { DiffFile, DiffLine, DiffViewMode, ReviewThread } from '@/types';
+import type {
+  DiffFile,
+  DiffHunk,
+  DiffLine,
+  DiffViewMode,
+  HighlightSpan,
+  ReviewThread,
+} from '@/types';
 import { SplitDiffView } from './SplitDiffView';
 import { UnifiedDiffView } from './UnifiedDiffView';
+
+/**
+ * A hunk drawn as one line (`row`) instead of its lines, or with that line
+ * above it once opened (`folded: false`). Keyed by the hunk's index.
+ */
+export type HunkFolds = ReadonlyMap<number, { folded: boolean; row: ReactNode }>;
+
+type Segment =
+  | { kind: 'hunks'; hunks: DiffHunk[]; offset: number; length: number }
+  | { kind: 'fold'; index: number };
+
+/**
+ * Which hunks have a fold line and which of those are folded, as a string:
+ * the host rebuilds `HunkFolds` on every render, and the segments (and the
+ * views' inline diffs) must only be rebuilt when this changes.
+ */
+function foldStateOf(folds: HunkFolds | undefined): string {
+  return folds ? [...folds].map(([i, fold]) => `${i}${fold.folded ? 'f' : 'o'}`).join(',') : '';
+}
+
+/**
+ * The hunks split around their fold lines. `offset` is where a run of hunks
+ * starts in the file's flat line list, which the syntax highlights are keyed by.
+ */
+function segmentsOf(hunks: DiffHunk[], foldState: string): Segment[] {
+  if (!foldState) return [{ kind: 'hunks', hunks, offset: 0, length: Number.POSITIVE_INFINITY }];
+  const folds = new Map(
+    foldState.split(',').map((entry) => [Number(entry.slice(0, -1)), entry.endsWith('f')]),
+  );
+  const segments: Segment[] = [];
+  let offset = 0;
+  let run: Extract<Segment, { kind: 'hunks' }> | null = null;
+  for (const [index, hunk] of hunks.entries()) {
+    const folded = folds.get(index);
+    if (folded !== undefined) {
+      run = null;
+      segments.push({ kind: 'fold', index });
+    }
+    if (!folded) {
+      if (!run) {
+        run = { kind: 'hunks', hunks: [], offset, length: 0 };
+        segments.push(run);
+      }
+      run.hunks.push(hunk);
+      run.length += hunk.lines.length;
+    }
+    offset += hunk.lines.length;
+  }
+  return segments;
+}
+
+function shiftHighlights(
+  highlights: Map<number, HighlightSpan[]> | null,
+  offset: number,
+  length: number,
+): Map<number, HighlightSpan[]> | null {
+  if (!highlights || offset === 0) return highlights;
+  const shifted = new Map<number, HighlightSpan[]>();
+  for (const [i, spans] of highlights) {
+    if (i >= offset && i < offset + length) shifted.set(i - offset, spans);
+  }
+  return shifted;
+}
 
 interface DiffFileSectionProps {
   file: DiffFile;
@@ -37,6 +108,8 @@ interface DiffFileSectionProps {
   richContent?: ReactNode;
   /** The sticky header with the path, sizes and hunk buttons, and the N / P hunk keys. Default true; Quick Review draws its own. */
   header?: boolean;
+  /** Hunks Quick Review folds to one line (whitespace, imports, moved code). */
+  hunkFolds?: HunkFolds;
 }
 
 function statusPillTone(status: DiffFile['status']): PillTone {
@@ -77,6 +150,7 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
       renderLineAttachment,
       richContent,
       header = true,
+      hunkFolds,
     },
     ref,
   ) {
@@ -93,6 +167,17 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
     }, [file.hunks, file.patch]);
 
     const syntaxHighlights = useSyntaxHighlight(file.filename, hunks);
+    const foldState = foldStateOf(hunkFolds);
+    const segments = useMemo(() => segmentsOf(hunks, foldState), [hunks, foldState]);
+    const segmentHighlights = useMemo(
+      () =>
+        segments.map((segment) =>
+          segment.kind === 'hunks'
+            ? shiftHighlights(syntaxHighlights, segment.offset, segment.length)
+            : null,
+        ),
+      [segments, syntaxHighlights],
+    );
 
     const threadsByLine = useMemo(() => {
       const map = new Map<number, ReviewThread[]>();
@@ -261,32 +346,45 @@ export const DiffFileSection = forwardRef<HTMLDivElement, DiffFileSectionProps>(
                     ? 'File renamed without changes'
                     : 'No changes to display'}
                 </div>
-              ) : viewMode === 'unified' ? (
-                <UnifiedDiffView
-                  onAddComment={onAddComment}
-                  renderLineAttachment={renderLineAttachment}
-                  hunks={hunks}
-                  syntaxHighlights={syntaxHighlights}
-                  threadsByLine={threadsByLine}
-                  openThreadIds={openThreadIds}
-                  onToggleThread={onToggleThread}
-                  onResolve={onResolve}
-                  onUnresolve={onUnresolve}
-                  onReply={onReply}
-                  highlightLine={highlightLine ?? null}
-                />
               ) : (
-                <SplitDiffView
-                  hunks={hunks}
-                  syntaxHighlights={syntaxHighlights}
-                  threadsByLine={threadsByLine}
-                  openThreadIds={openThreadIds}
-                  onToggleThread={onToggleThread}
-                  onResolve={onResolve}
-                  onUnresolve={onUnresolve}
-                  onReply={onReply}
-                  highlightLine={highlightLine ?? null}
-                />
+                segments.map((segment, i) => {
+                  if (segment.kind === 'fold')
+                    return (
+                      <Fragment key={`fold-${segment.index}`}>
+                        {hunkFolds?.get(segment.index)?.row}
+                      </Fragment>
+                    );
+                  const highlights = segmentHighlights[i] ?? null;
+                  return viewMode === 'unified' ? (
+                    <UnifiedDiffView
+                      key={`hunks-${segment.offset}`}
+                      onAddComment={onAddComment}
+                      renderLineAttachment={renderLineAttachment}
+                      hunks={segment.hunks}
+                      syntaxHighlights={highlights}
+                      threadsByLine={threadsByLine}
+                      openThreadIds={openThreadIds}
+                      onToggleThread={onToggleThread}
+                      onResolve={onResolve}
+                      onUnresolve={onUnresolve}
+                      onReply={onReply}
+                      highlightLine={highlightLine ?? null}
+                    />
+                  ) : (
+                    <SplitDiffView
+                      key={`hunks-${segment.offset}`}
+                      hunks={segment.hunks}
+                      syntaxHighlights={highlights}
+                      threadsByLine={threadsByLine}
+                      openThreadIds={openThreadIds}
+                      onToggleThread={onToggleThread}
+                      onResolve={onResolve}
+                      onUnresolve={onUnresolve}
+                      onReply={onReply}
+                      highlightLine={highlightLine ?? null}
+                    />
+                  );
+                })
               ))}
           </div>
         )}

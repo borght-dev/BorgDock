@@ -640,6 +640,9 @@ pub struct SummarySettings {
     pub model: String,
     #[serde(default = "default_true")]
     pub enabled: bool,
+    /// Quick Review writes a PR's review guide as soon as it opens; off, only on a click.
+    #[serde(default = "default_true")]
+    pub auto_review_guide: bool,
 }
 
 fn default_summary_provider() -> String {
@@ -655,6 +658,7 @@ impl Default for SummarySettings {
             provider: default_summary_provider(),
             model: default_summary_model(),
             enabled: true,
+            auto_review_guide: true,
         }
     }
 }
@@ -962,5 +966,6 @@ mod redesign_field_tests {
         assert_eq!(s.summaries.provider, "claude");
         assert_eq!(s.summaries.model, "sonnet");
         assert!(s.summaries.enabled);
+        assert!(s.summaries.auto_review_guide);
     }
 }
