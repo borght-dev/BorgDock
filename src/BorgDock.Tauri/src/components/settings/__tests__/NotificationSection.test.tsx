@@ -10,7 +10,11 @@ vi.mock('@/generated/commands', () => ({
     ),
     activityPushSave: vi.fn(() => Promise.resolve({ status: 'ok', data: null })),
     activityPushTest: vi.fn(() => Promise.resolve({ status: 'ok', data: null })),
+    phoneLinkState: vi.fn(() =>
+      Promise.resolve({ status: 'ok', data: { linked: false, server: null, serverName: null } }),
+    ),
   },
+  events: { phoneLinkChanged: { listen: vi.fn(async () => () => {}) } },
 }));
 
 function makeNotifications(overrides?: Partial<NotificationSettings>): NotificationSettings {

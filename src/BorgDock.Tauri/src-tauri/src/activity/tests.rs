@@ -888,3 +888,67 @@ async fn export_writes_sources_and_entries() {
     assert_eq!(document["entries"][0]["id"], format!("{SOURCE}|a"));
     assert_eq!(document["sources"][0]["sourceId"], SOURCE);
 }
+
+#[tokio::test]
+async fn read_since_shares_my_reads_but_not_roll_ups_or_reads_from_the_phone() {
+    let (_dir, store) = seeded().await;
+    commit(
+        &store,
+        with_entries(
+            2,
+            vec![
+                entry("a", false),
+                entry("b", false),
+                entry("c", false),
+                entry("d", false),
+            ],
+        ),
+    )
+    .await
+    .unwrap();
+    for (id, read, reason) in [
+        ("a", "read", "user"),
+        ("b", "dismissed", "user"),
+        ("c", "read", "phone"),
+    ] {
+        mark(
+            &store,
+            ActivityMarkRequest {
+                ids: vec![format!("{SOURCE}|{id}")],
+                entity_keys: vec![],
+                before: None,
+                read: read.into(),
+                reason: Some(reason.into()),
+            },
+        )
+        .await
+        .unwrap();
+    }
+
+    let read = |since: String, after: String| {
+        let store = store.clone();
+        async move {
+            store
+                .db
+                .with_store(move |conn| queries::read_since(conn, &since, &after, 100))
+                .await
+                .unwrap()
+                .into_iter()
+                .map(|row| row.id)
+                .collect::<Vec<_>>()
+        }
+    };
+    let b = format!("{SOURCE}|b");
+    assert_eq!(
+        read(String::new(), String::new()).await,
+        vec![format!("{SOURCE}|a"), b.clone()]
+    );
+    let id = b.clone();
+    let read_at: String = query(&store, move |conn| {
+        conn.query_row("SELECT read_at FROM entries WHERE id = ?1", [id], |row| {
+            row.get(0)
+        })
+    })
+    .await;
+    assert!(read(read_at, b).await.is_empty());
+}

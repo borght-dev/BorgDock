@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { create } from 'zustand';
 import type { AppSettings } from '@/types';
+import { DEFAULT_PHONE_LINK } from '@/types/settings';
 import {
   SETTINGS_CHANGED_EVENT,
   SETTINGS_SOURCE_ID,
@@ -55,6 +56,7 @@ const defaultSettings: AppSettings = {
       markReadOnOpen: true,
       taskbarBadge: true,
       push: { enabled: false, preset: 'home-assistant', awayMinutes: 10, hideTitles: false },
+      phoneLink: DEFAULT_PHONE_LINK,
     },
   },
   agents: {

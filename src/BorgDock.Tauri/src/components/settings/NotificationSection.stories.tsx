@@ -1,7 +1,7 @@
 // src/components/settings/NotificationSection.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { NotificationSettings } from '@/types/settings';
+import { DEFAULT_PHONE_LINK, type NotificationSettings } from '@/types/settings';
 import { getControl } from '../../../.storybook/mocks/control';
 import { configuredSettings, SectionFrame, withSettings } from './__fixtures__/settings-data';
 import { NotificationSection } from './NotificationSection';
@@ -84,6 +84,7 @@ export const PhonePush: Story = {
         markReadOnOpen: true,
         taskbarBadge: true,
         push: { enabled: true, preset: 'home-assistant', awayMinutes: 10, hideTitles: false },
+        phoneLink: DEFAULT_PHONE_LINK,
       },
     },
     onChange: () => {},

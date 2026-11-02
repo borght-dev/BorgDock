@@ -22,7 +22,21 @@ pub fn seconds_since_input() -> Option<u64> {
     Some(u64::from(now.wrapping_sub(info.dwTime)) / 1000)
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+pub fn seconds_since_input() -> Option<u64> {
+    #[link(name = "CoreGraphics", kind = "framework")]
+    extern "C" {
+        fn CGEventSourceSecondsSinceLastEventType(state: i32, event_type: u32) -> f64;
+    }
+    const COMBINED_SESSION_STATE: i32 = 0;
+    const ANY_INPUT_EVENT: u32 = u32::MAX;
+    // SAFETY: a pure query with constant arguments the API documents.
+    let seconds =
+        unsafe { CGEventSourceSecondsSinceLastEventType(COMBINED_SESSION_STATE, ANY_INPUT_EVENT) };
+    seconds.is_finite().then(|| seconds.max(0.0) as u64)
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn seconds_since_input() -> Option<u64> {
     None
 }

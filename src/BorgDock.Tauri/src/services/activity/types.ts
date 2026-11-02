@@ -60,7 +60,14 @@ export type ActivitySourceKind = 't3' | 'gh' | 'deploy' | 'ci' | 'ado' | 'workst
 export type ActivitySeverity = 'info' | 'success' | 'warning' | 'error';
 export type ActivityStatus = 'open' | 'resolved' | 'superseded';
 export type ActivityRead = 'unread' | 'read' | 'dismissed';
-export type ActivityReadReason = 'user' | 'action' | 'viewed' | 'seen-in-t3' | 'bulk' | 'rolled-up';
+export type ActivityReadReason =
+  | 'user'
+  | 'action'
+  | 'viewed'
+  | 'seen-in-t3'
+  | 'bulk'
+  | 'rolled-up'
+  | 'phone';
 export type ActivityCoverage = 'live' | 'catch-up';
 
 /** `source` is the roll-up the store writes when old updates fold. */

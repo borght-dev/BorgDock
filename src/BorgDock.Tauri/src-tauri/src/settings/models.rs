@@ -356,6 +356,40 @@ pub struct ActivityNotificationSettings {
     pub taskbar_badge: bool,
     #[serde(default)]
     pub push: ActivityPushSettings,
+    /// BorgDock for iPhone. The session token lives in the keychain as
+    /// `borgdock:phone-link`, never here.
+    #[serde(default)]
+    pub phone_link: PhoneLinkSettings,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct PhoneLinkSettings {
+    #[serde(default = "default_phone_server")]
+    pub server_url: String,
+    /// Tell the server how long I have been idle, so the phone stays quiet while I'm at my desk.
+    #[serde(default = "default_true")]
+    pub share_desk: bool,
+    /// Send what I read here and mark what I read on the phone.
+    #[serde(default = "default_true")]
+    pub share_reads: bool,
+}
+
+pub const DEFAULT_PHONE_SERVER: &str = "https://gomocha-mac-mini-nl.tail5e171a.ts.net/borgdock";
+
+fn default_phone_server() -> String {
+    DEFAULT_PHONE_SERVER.to_string()
+}
+
+impl Default for PhoneLinkSettings {
+    fn default() -> Self {
+        Self {
+            server_url: default_phone_server(),
+            share_desk: true,
+            share_reads: true,
+        }
+    }
 }
 
 impl Default for ActivityNotificationSettings {
@@ -366,6 +400,7 @@ impl Default for ActivityNotificationSettings {
             mark_read_on_open: true,
             taskbar_badge: true,
             push: ActivityPushSettings::default(),
+            phone_link: PhoneLinkSettings::default(),
         }
     }
 }
