@@ -1,7 +1,7 @@
 //! The link to BorgDock for iPhone's server. The desktop asks the server for
 //! a code, the phone approves it, and the desktop gets a session that may only
-//! send presence, share reads and sign out. Contract: borgdock-mobile
-//! `shared/src/borgdock.ts`, "Owners, desktop link and read sync".
+//! send presence, share reads and sign out. Contract:
+//! `src/BorgDock.Server/shared/src/borgdock.ts`, "Owners, desktop link and read sync".
 //!
 //! Every request goes through here: the webview's CSP can't reach a server
 //! address the user types. The session token lives in the keychain as

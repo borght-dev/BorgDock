@@ -272,7 +272,7 @@ What changed since I last checked, kept until I read or dismiss it (#88). Plan: 
 
 ## BorgDock for iPhone: the desktop link
 
-Settings → Notifications → "BorgDock for iPhone" links this desktop to the iPhone app's server (contract: borgdock-mobile `shared/src/borgdock.ts`, "Owners, desktop link and read sync").
+Settings → Notifications → "BorgDock for iPhone" links this desktop to the iPhone app's server (contract: `src/BorgDock.Server/shared/src/borgdock.ts`, "Owners, desktop link and read sync").
 
 - **Rust does every request** (`src-tauri/src/phone_link.rs`): the CSP can't reach a server address the user types. The session sits in the keychain as `borgdock:phone-link` (server, token, server name); a pending link's poll secret never leaves Rust. A 401 forgets the session. Storing or forgetting a session emits `phone-link-changed` (`{ linked, at }`); the Settings card reloads on it, so it shows "Link" again. Cancel (or closing Settings) calls `phone_link_cancel`, and a poll stores the approved token only if it can still take its link off the pending list. Every request sends `X-Dispatch-Intent: 1`.
 - **Presence** is a Rust task: every 60 s while linked and `phoneLink.shareDesk` is on, `POST /api/presence` with `platform::idle::seconds_since_input()` (Windows and macOS; other platforms send nothing).
