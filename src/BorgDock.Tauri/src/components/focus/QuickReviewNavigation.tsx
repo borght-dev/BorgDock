@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/shared/primitives';
 import {
   isGeneratedPath,
@@ -7,6 +7,7 @@ import {
   type ReviewFileGroup,
   type ReviewProgress,
 } from '@/services/quick-review';
+import type { FileNoise } from '@/services/review-noise';
 
 interface Props {
   document: ReviewDocument;
@@ -21,6 +22,10 @@ interface Props {
   unchanged?: { count: number; reviewedAgo: string; onShowAll: () => void };
   /** The file's checkbox marks it reviewed, or takes the mark back. */
   onToggleReviewed?: (path: string) => void;
+  /** Drawn above the progress: the reading order switch and the guide's state. */
+  header?: ReactNode;
+  /** Files whose every hunk is noise are drawn muted, with what they hold. */
+  noise?: ReadonlyMap<string, FileNoise>;
 }
 
 /** Characters a long file name keeps at its end when it is cut in the middle. */
@@ -57,6 +62,8 @@ export function QuickReviewNavigation({
   changed,
   unchanged,
   onToggleReviewed,
+  header,
+  noise,
 }: Props) {
   const [open, setOpen] = useState(false);
   const reviewed = new Set(doc.reviewed);
@@ -82,6 +89,7 @@ export function QuickReviewNavigation({
           Files
         </Button>
       </div>
+      {header}
       <div className="qr-tree__progress" data-quick-review-progress="">
         <div className="qr-tree__counts">
           <span>
@@ -98,8 +106,19 @@ export function QuickReviewNavigation({
         {groups.map((group) => {
           const done = group.files.filter((f) => reviewed.has(f.filename)).length;
           return (
-            <div key={group.name} className="qr-fold" role="group" aria-label={group.name}>
+            <div
+              key={group.name}
+              className="qr-fold"
+              data-chapter={group.number ? 'true' : undefined}
+              role="group"
+              aria-label={group.number ? `${group.number}. ${group.name}` : group.name}
+            >
               <div className="qr-fold__head">
+                {group.number && (
+                  <span className="qr-fold__num" aria-hidden="true">
+                    {group.number}
+                  </span>
+                )}
                 <span className="qr-fold__name" title={group.name}>
                   {group.name}
                 </span>
@@ -111,10 +130,14 @@ export function QuickReviewNavigation({
                   {done}/{group.files.length}
                 </span>
               </div>
+              {group.note && <p className="qr-fold__note">{group.note}</p>}
               {group.files.map((file) => {
                 const isDone = reviewed.has(file.filename);
                 const current = currentPath === file.filename;
                 const name = file.filename.split('/').pop() ?? file.filename;
+                const mechanical = noise?.get(file.filename)?.mechanical
+                  ? noise.get(file.filename)?.label
+                  : null;
                 return (
                   <div key={file.filename} className="qr-file-row">
                     <button
@@ -137,6 +160,7 @@ export function QuickReviewNavigation({
                       className="qr-file"
                       data-done={isDone ? 'true' : undefined}
                       data-generated={isGeneratedPath(file.filename) ? 'true' : undefined}
+                      data-mechanical={mechanical ? 'true' : undefined}
                       aria-current={current ? 'step' : undefined}
                       title={file.filename}
                       onClick={() => {
@@ -149,6 +173,16 @@ export function QuickReviewNavigation({
                         {commented.has(file.filename) && (
                           <span className="qr-has-draft" role="img" aria-label="Has draft comment">
                             •
+                          </span>
+                        )}
+                        {mechanical && (
+                          <span
+                            className="qr-mechanical"
+                            role="img"
+                            aria-label={`Mechanical: ${mechanical}`}
+                            title={`${mechanical}: folded in the diff`}
+                          >
+                            ≈
                           </span>
                         )}
                         {changed?.has(file.filename) && (

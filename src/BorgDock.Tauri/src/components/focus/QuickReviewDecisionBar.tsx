@@ -97,6 +97,8 @@ interface Props {
   canGoBack: boolean;
   canGoOn: boolean;
   hasFile: boolean;
+  /** What Previous / Next step through: files, or commits in the Commits view. Default file. */
+  unit?: 'file' | 'commit';
   /** The overall comment posted with the review. */
   body: string;
   onBodyChange: (body: string) => void;
@@ -130,6 +132,7 @@ export function QuickReviewDecisionBar({
   canGoBack,
   canGoOn,
   hasFile,
+  unit = 'file',
   body,
   onBodyChange,
   bodyRef,
@@ -251,7 +254,7 @@ export function QuickReviewDecisionBar({
         disabled={!ready || !canGoOn}
         onClick={onNext}
       >
-        Next file <Key>N</Key>
+        Next {unit} <Key>N</Key>
       </Button>
       <Button
         variant="primary"
@@ -261,7 +264,7 @@ export function QuickReviewDecisionBar({
         disabled={!ready || !hasFile}
         onClick={onMark}
       >
-        Mark reviewed &amp; next <Key>V</Key>
+        {unit === 'commit' ? 'Mark read' : 'Mark reviewed'} &amp; next <Key>V</Key>
       </Button>
       <span className="qr-foot__divider" aria-hidden="true" />
       <Button

@@ -3054,12 +3054,16 @@ export type SummarySettings_Deserialize = {
 	provider?: string,
 	model?: string,
 	enabled?: boolean,
+	/**  Quick Review writes a PR's review guide as soon as it opens; off, only on a click. */
+	autoReviewGuide?: boolean,
 };
 
 export type SummarySettings_Serialize = {
 	provider: string,
 	model: string,
 	enabled: boolean,
+	/**  Quick Review writes a PR's review guide as soon as it opens; off, only on a click. */
+	autoReviewGuide: boolean,
 };
 
 export type T3HostSettings = {

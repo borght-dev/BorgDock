@@ -223,7 +223,7 @@ export async function getPRCommits(
   prNumber: number,
 ): Promise<PullRequestCommit[]> {
   const dtos = await client.get<GitHubCommitDto[]>(
-    `repos/${owner}/${repo}/pulls/${prNumber}/commits`,
+    `repos/${owner}/${repo}/pulls/${prNumber}/commits?per_page=100`,
   );
 
   return dtos.map((d) => ({

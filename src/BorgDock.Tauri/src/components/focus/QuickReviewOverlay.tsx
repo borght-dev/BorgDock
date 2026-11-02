@@ -31,6 +31,7 @@ import { usePrConversation } from '@/hooks/usePrConversation';
 import { usePrefetchReviewSnapshot } from '@/hooks/usePrefetchReviewSnapshot';
 import { useQuickReviewDocument } from '@/hooks/useQuickReviewDocument';
 import { type QuickReviewKeymap, useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
+import { useReviewCommits } from '@/hooks/useReviewCommits';
 import { useReviewReadiness } from '@/hooks/useReviewReadiness';
 import { useReviewSince } from '@/hooks/useReviewSince';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
@@ -47,9 +48,12 @@ import {
   reviewProgress,
   unreviewedLabel,
 } from '@/services/quick-review';
+import { guideEntryFor, guideGroups } from '@/services/review-guide';
+import { classifyNoise } from '@/services/review-noise';
 import { reviewVerb } from '@/services/review-since';
 import { usePrStore } from '@/stores/pr-store';
 import { type ReviewDecision, useQuickReviewStore } from '@/stores/quick-review-store';
+import { ensureReviewGuide, guideKey, useReviewGuideStore } from '@/stores/review-guide-store';
 import { toastError } from '@/stores/toast-store';
 import type { DiffLine, PullRequest, PullRequestWithChecks } from '@/types';
 import { motionMs, motionOK } from '@/utils/motion';
@@ -61,11 +65,19 @@ import {
 import { ApproveButton, QuickReviewCard } from './QuickReviewCard';
 import { QuickReviewChecks } from './QuickReviewChecks';
 import { QuickReviewComment } from './QuickReviewComment';
+import { CommitDiff, CommitHead, QuickReviewCommitList } from './QuickReviewCommits';
 import { type ContextTab, QuickReviewContext } from './QuickReviewContext';
 import { QuickReviewDecisionBar } from './QuickReviewDecisionBar';
 import { QuickReviewDiscussion } from './QuickReviewDiscussion';
 import { QuickReviewFinish } from './QuickReviewFinish';
+import {
+  ChapterStrip,
+  QuickReviewGuideSection,
+  type ReadingOrder,
+  ReadingOrderSwitch,
+} from './QuickReviewGuide';
 import { QuickReviewNavigation } from './QuickReviewNavigation';
+import { noiseFolds } from './QuickReviewNoise';
 import { QuickReviewPrHeader } from './QuickReviewPrHeader';
 import { proofCount, proofsFor, QuickReviewProof } from './QuickReviewProof';
 import { QuickReviewSummary } from './QuickReviewSummary';
@@ -81,6 +93,17 @@ const WRAP_LINES_KEY = 'borgdock-quick-review-wrap-lines';
 const RICH_DIFF_KEY = 'borgdock-quick-review-rich-diff';
 const SPLIT_DIFF_KEY = 'borgdock-quick-review-split-diff';
 const CONTEXT_OPEN_KEY = 'borgdock-quick-review-context-open';
+const ORDER_KEY = 'borgdock-quick-review-order';
+const ORDERS: readonly ReadingOrder[] = ['guide', 'folders', 'commits'];
+
+function readOrder(): ReadingOrder {
+  try {
+    const value = localStorage.getItem(ORDER_KEY);
+    return ORDERS.find((order) => order === value) ?? 'guide';
+  } catch {
+    return 'guide';
+  }
+}
 /**
  * Below this window width the walk opens with its context panel folded to
  * the rail, so the diff keeps room for the file name and the code; the same
@@ -538,6 +561,9 @@ function QuickReviewWorkspace({
   const [contextTab, setContextTab] = useState<ContextTab>('proof');
   const [describing, setDescribing] = useState(false);
   const [scope, setScope] = useState<Scope>('since');
+  const [order, setOrder] = useState<ReadingOrder>(readOrder);
+  const [commitSha, setCommitSha] = useState<string | null>(null);
+  const [openedFolds, setOpenedFolds] = useState<ReadonlySet<string>>(() => new Set());
   const [reattachId, setReattachId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [endNotice, setEndNotice] = useState('');
@@ -565,12 +591,25 @@ function QuickReviewWorkspace({
 
   const files = snapshot?.files ?? [];
   const paths = files.map((f) => f.filename);
-  const walkFiles = sinceScoped ? files.filter((f) => changed.has(f.filename)) : files;
-  const walkGroups = (snapshot?.groups ?? [])
+  const guideEntry = useReviewGuideStore((s) =>
+    snapshot ? (s.entries[guideKey(snapshot.pr)] ?? null) : null,
+  );
+  const guide = guideEntry?.status === 'ready' ? guideEntry.guide : null;
+  const guided = order === 'guide' && !!guide;
+  const walkGroups = (guided ? guideGroups(guide, files) : (snapshot?.groups ?? []))
     .map((group) =>
       sinceScoped ? { ...group, files: group.files.filter((f) => changed.has(f.filename)) } : group,
     )
     .filter((group) => group.files.length > 0);
+  const walkFiles = walkGroups.flatMap((group) => group.files);
+  const noise = classifyNoise(files);
+  const commitsView = order === 'commits';
+  const reviewCommits = useReviewCommits(detail, commitsView, commitSha);
+  const commitList = reviewCommits.commits?.status === 'ready' ? reviewCommits.commits.value : [];
+  const commitIndex = commitList.findIndex((c) => c.sha === commitSha);
+  const commit = commitList[commitIndex];
+  const commitFiles = reviewCommits.files?.status === 'ready' ? reviewCommits.files.value : null;
+  const commitsRead = new Set(doc.commitsRead ?? []);
   const progress = reviewProgress(paths, doc.reviewed);
   const walkProgress = reviewProgress(
     walkFiles.map((f) => f.filename),
@@ -583,8 +622,12 @@ function QuickReviewWorkspace({
     ? since?.files?.find((f) => f.filename === prFile?.filename && f.patch)
     : undefined;
   const file = sinceFile ?? prFile;
+  const fileNoise = file
+    ? (sinceFile && since?.files ? classifyNoise(since.files) : noise).get(file.filename)
+    : undefined;
+  const chapter = guided && prFile ? guideEntryFor(guide, prFile.filename) : null;
   const imageFile = !!file && isImagePath(file.filename);
-  const richDiffVisible = imageFile && richDiff;
+  const richDiffVisible = imageFile && richDiff && !commitsView;
   const commentsByLine = new Map<string, ReviewCommentDraft[]>();
   for (const comment of doc.comments) {
     if (comment.outdated || comment.path !== file?.filename) continue;
@@ -632,6 +675,18 @@ function QuickReviewWorkspace({
   const approveIssue = approveBlocker();
 
   useEffect(() => onWalkingChange(mode === 'walk'), [mode, onWalkingChange]);
+
+  // Guide order asks the summary agent for this head's guide; the card
+  // shows it as soon as it is written.
+  useEffect(() => {
+    if (snapshot && order === 'guide') void ensureReviewGuide(snapshot);
+  }, [snapshot, order]);
+
+  // Commits order opens on the first commit not read yet.
+  useEffect(() => {
+    if (!commitList.length || commitList.some((c) => c.sha === commitSha)) return;
+    setCommitSha((commitList.find((c) => !commitsRead.has(c.sha)) ?? commitList[0])?.sha ?? null);
+  });
 
   // Focus follows the view: into the tree when the walk opens, back to the
   // button that opened it when the walk closes.
@@ -727,6 +782,60 @@ function QuickReviewWorkspace({
     setContextTab(tab);
     if (!contextOpen) toggleContext();
   }
+  function chooseOrder(next: ReadingOrder) {
+    setOrder(next);
+    try {
+      localStorage.setItem(ORDER_KEY, next);
+    } catch {
+      // The order still changes for this session.
+    }
+    mainRef.current?.scrollTo?.(0, 0);
+  }
+  function cycleOrder() {
+    chooseOrder(ORDERS[(ORDERS.indexOf(order) + 1) % ORDERS.length] ?? 'guide');
+  }
+  function writeGuide() {
+    if (snapshot) void ensureReviewGuide(snapshot, { force: true });
+  }
+  function toggleFold(key: string) {
+    setOpenedFolds((before) => {
+      const next = new Set(before);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  }
+  function goCommit(sha: string) {
+    setCommitSha(sha);
+    mainRef.current?.scrollTo?.(0, 0);
+  }
+  function stepCommit(delta: number) {
+    const target = commitList[commitIndex + delta];
+    if (target) goCommit(target.sha);
+  }
+  function toggleCommitRead(sha: string) {
+    update((d) => {
+      const read = d.commitsRead ?? [];
+      return {
+        ...d,
+        commitsRead: read.includes(sha) ? read.filter((s) => s !== sha) : [...read, sha],
+      };
+    });
+  }
+  /** Marks the current commit read and moves to the next one not read yet. */
+  function markCommitAndNext() {
+    if (!commit) return;
+    const done = new Set([...commitsRead, commit.sha]);
+    update((d) => ({ ...d, commitsRead: [...new Set([...(d.commitsRead ?? []), commit.sha])] }));
+    const next =
+      commitList.slice(commitIndex + 1).find((c) => !done.has(c.sha)) ??
+      commitList.find((c) => !done.has(c.sha));
+    if (next) goCommit(next.sha);
+  }
+  /** Every commit was read, so every file was seen: mark them all reviewed. */
+  function markAllFilesReviewed() {
+    if (!ready || busy) return;
+    update((d) => ({ ...d, reviewed: [...new Set([...d.reviewed, ...paths])] }));
+  }
   function chooseScope(next: Scope) {
     setScope(next);
     if (next === 'since' && changed && doc.step && !changed.has(doc.step)) {
@@ -797,10 +906,11 @@ function QuickReviewWorkspace({
     ? undefined
     : mode === 'walk'
       ? {
-          v: markAndNext,
-          n: () => step(1),
+          v: commitsView ? markCommitAndNext : markAndNext,
+          n: () => (commitsView ? stepCommit(1) : step(1)),
           j: () => scrollFile(1),
-          p: () => step(-1),
+          p: () => (commitsView ? stepCommit(-1) : step(-1)),
+          o: cycleOrder,
           k: () => scrollFile(-1),
           h: () => scrollFileHorizontally(-1),
           l: () => scrollFileHorizontally(1),
@@ -1021,14 +1131,15 @@ function QuickReviewWorkspace({
         ...(detail.autoMergeEnabled ? [] : [['A', 'approve'] as const]),
         ['R', 'request changes'],
         ['C', 'comment'],
-        ['N/P', 'file'],
+        ['N/P', commitsView ? 'commit' : 'file'],
         ['Esc', 'overview'],
       ]
     : [
         ...(wrapLines || richDiffVisible ? [] : [['H/L', 'scroll horizontally'] as const]),
         ['J/K', 'scroll'],
-        ['N/P', 'file'],
-        ['V', 'mark & next'],
+        ['N/P', commitsView ? 'commit' : 'file'],
+        ['V', commitsView ? 'read & next' : 'mark & next'],
+        ['O', 'reading order'],
         ['D', 'description'],
         [']', 'context panel'],
         ['1–4', 'panel tab'],
@@ -1075,6 +1186,14 @@ function QuickReviewWorkspace({
     ),
     comments: <QuickReviewDiscussion pr={detail} enabled conversation={conversation} />,
   };
+  const orderSwitch = (
+    <ReadingOrderSwitch
+      order={order}
+      onChange={chooseOrder}
+      guide={guideEntry}
+      onWrite={writeGuide}
+    />
+  );
 
   return (
     <fieldset className="qr-workspace" disabled={busy} aria-busy={busy} data-mode={mode}>
@@ -1109,6 +1228,24 @@ function QuickReviewWorkspace({
               onReloadFiles={reload}
               reviewed={doc.reviewed}
               alert={alert}
+              guide={
+                order === 'guide' ? (
+                  <QuickReviewGuideSection
+                    entry={guideEntry}
+                    onOpenFile={
+                      ready
+                        ? (path) => {
+                            if (sinceScoped && !changed?.has(path)) setScope('all');
+                            go(path);
+                            setMode('walk');
+                            update((d) => ({ ...d, walked: true }));
+                          }
+                        : undefined
+                    }
+                    onWrite={writeGuide}
+                  />
+                ) : undefined
+              }
               body={
                 mode === 'compose' ? (
                   <QuickReviewFinish
@@ -1194,24 +1331,40 @@ function QuickReviewWorkspace({
                 </div>
               )}
             </QuickReviewPrHeader>
-            <QuickReviewNavigation
-              document={doc}
-              groups={walkGroups}
-              currentPath={prFile?.filename ?? null}
-              onNavigate={go}
-              onToggleReviewed={toggleReviewed}
-              progress={walkProgress}
-              changed={changed ?? undefined}
-              unchanged={
-                sinceScoped && since
-                  ? {
-                      count: files.length - walkFiles.length,
-                      reviewedAgo: formatAgo(since.review.submittedAt),
-                      onShowAll: () => chooseScope('all'),
-                    }
-                  : undefined
-              }
-            />
+            {commitsView ? (
+              <QuickReviewCommitList
+                header={orderSwitch}
+                commits={reviewCommits.commits}
+                currentSha={commitSha}
+                read={commitsRead}
+                onNavigate={goCommit}
+                onToggleRead={toggleCommitRead}
+                onRetry={reviewCommits.retry}
+                filesLeft={progress.left}
+                onMarkFiles={markAllFilesReviewed}
+              />
+            ) : (
+              <QuickReviewNavigation
+                header={orderSwitch}
+                noise={noise}
+                document={doc}
+                groups={walkGroups}
+                currentPath={prFile?.filename ?? null}
+                onNavigate={go}
+                onToggleReviewed={toggleReviewed}
+                progress={walkProgress}
+                changed={changed ?? undefined}
+                unchanged={
+                  sinceScoped && since
+                    ? {
+                        count: files.length - walkFiles.length,
+                        reviewedAgo: formatAgo(since.review.submittedAt),
+                        onShowAll: () => chooseScope('all'),
+                      }
+                    : undefined
+                }
+              />
+            )}
             <div className="qr-pane">
               {alert}
               {reattachId && (
@@ -1223,7 +1376,15 @@ function QuickReviewWorkspace({
                 </div>
               )}
               <div className="qr-pane__head">
-                {file && prFile ? (
+                {commitsView ? (
+                  <span className="qr-muted qr-pane__count">
+                    {commit
+                      ? `Commit ${commitIndex + 1} of ${commitList.length}`
+                      : reviewCommits.commits?.status === 'error'
+                        ? "Commits didn't load."
+                        : 'Loading commits…'}
+                  </span>
+                ) : file && prFile ? (
                   <>
                     <button
                       type="button"
@@ -1279,7 +1440,7 @@ function QuickReviewWorkspace({
                 >
                   Wrap
                 </Button>
-                {imageFile && (
+                {imageFile && !commitsView && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1293,7 +1454,7 @@ function QuickReviewWorkspace({
                     Rich diff
                   </Button>
                 )}
-                {prFile && (
+                {prFile && !commitsView && (
                   <label
                     className="qr-pane__check"
                     data-done={reviewed.has(prFile.filename) || undefined}
@@ -1308,11 +1469,24 @@ function QuickReviewWorkspace({
                       ? 'Reviewed'
                       : generatedFile
                         ? 'Generated, skippable'
-                        : 'Mark reviewed'}
+                        : fileNoise?.mechanical
+                          ? `${fileNoise.label}, mark reviewed`
+                          : 'Mark reviewed'}
                   </label>
                 )}
               </div>
-              {sinceFile && since && (
+              {commitsView && commit && <CommitHead commit={commit} files={commitFiles} />}
+              {!commitsView && chapter && (
+                <ChapterStrip
+                  number={chapter.number}
+                  total={guide?.chapters.length ?? 0}
+                  title={chapter.chapter.title}
+                  intent={chapter.chapter.intent}
+                  check={chapter.chapter.check}
+                  why={chapter.why}
+                />
+              )}
+              {!commitsView && sinceFile && since && (
                 <div className="qr-interdiff">
                   <GitCommitHorizontal size={14} strokeWidth={2.25} aria-hidden="true" />
                   <span>
@@ -1328,58 +1502,87 @@ function QuickReviewWorkspace({
                 data-quick-review-content
                 data-wrap-lines={wrapLines}
               >
-                {file && (
-                  <div key={file.filename} className="qr-diff">
-                    <DiffFileSection
-                      key={`${file.filename}:${doc.headSha}:${doc.baseSha}:${sinceFile ? 'since' : 'all'}`}
-                      file={file}
-                      header={false}
-                      viewMode={splitDiff && !richDiffVisible ? 'split' : 'unified'}
-                      richContent={
-                        richDiffVisible ? (
-                          <ImageDiff
-                            key={`${file.filename}:${doc.headSha}:${doc.baseSha}`}
-                            file={file}
-                            owner={detail.repoOwner}
-                            repo={detail.repoName}
-                            baseSha={doc.baseSha}
-                            headSha={doc.headSha}
-                          />
-                        ) : undefined
-                      }
-                      onCopyPath={(path) =>
-                        void writeText(path).catch(() => setNotice('Could not copy file path.'))
-                      }
-                      onOpenInGitHub={() => void openGitHub()}
-                      onAddComment={inlineDrafts && ready ? addComment : undefined}
-                      renderLineAttachment={(line) => {
-                        const anchor = inlineDrafts ? reviewLineAnchor(line) : null;
-                        return anchor
-                          ? commentsByLine.get(`${anchor.side}:${anchor.line}`)?.map(commentView)
-                          : null;
-                      }}
-                    />
-                    {!inlineDrafts && !richDiffVisible && fileDrafts.map(commentView)}
-                    {allReviewed ? (
-                      <p className="qr-notice qr-notice--done">
-                        <CircleCheck size={16} strokeWidth={2.25} aria-hidden="true" />
-                        {fileIndex === walkFiles.length - 1
-                          ? 'That was the last file.'
-                          : 'Every file is reviewed.'}{' '}
-                        <span className="qr-muted">Add an overall comment and decide below.</span>
-                      </p>
-                    ) : (
-                      <p className="qr-notice qr-muted">
-                        {richDiffVisible
-                          ? 'Check both image revisions, then mark the file reviewed.'
-                          : sinceFile
-                            ? 'End of the changes since your review. Press S for the whole PR to comment on a line.'
-                            : splitDiff
-                              ? 'End of file. Switch to Unified to comment on a line.'
-                              : 'End of file. Use + beside a line to add a draft comment.'}
-                      </p>
-                    )}
-                  </div>
+                {commitsView ? (
+                  <CommitDiff
+                    load={reviewCommits.files}
+                    commitSha={commit?.sha ?? null}
+                    splitDiff={splitDiff}
+                    openedFolds={openedFolds}
+                    onToggleFold={toggleFold}
+                    onRetry={reviewCommits.retry}
+                    onCopyPath={(path) =>
+                      void writeText(path).catch(() => setNotice('Could not copy file path.'))
+                    }
+                  />
+                ) : (
+                  file && (
+                    <div key={file.filename} className="qr-diff">
+                      <DiffFileSection
+                        key={`${file.filename}:${doc.headSha}:${doc.baseSha}:${sinceFile ? 'since' : 'all'}`}
+                        file={file}
+                        header={false}
+                        viewMode={splitDiff && !richDiffVisible ? 'split' : 'unified'}
+                        richContent={
+                          richDiffVisible ? (
+                            <ImageDiff
+                              key={`${file.filename}:${doc.headSha}:${doc.baseSha}`}
+                              file={file}
+                              owner={detail.repoOwner}
+                              repo={detail.repoName}
+                              baseSha={doc.baseSha}
+                              headSha={doc.headSha}
+                            />
+                          ) : undefined
+                        }
+                        onCopyPath={(path) =>
+                          void writeText(path).catch(() => setNotice('Could not copy file path.'))
+                        }
+                        onOpenInGitHub={() => void openGitHub()}
+                        onAddComment={inlineDrafts && ready ? addComment : undefined}
+                        hunkFolds={noiseFolds(
+                          file,
+                          fileNoise,
+                          sinceFile ? 'since' : 'pr',
+                          openedFolds,
+                          toggleFold,
+                          (hunk) =>
+                            inlineDrafts &&
+                            hunk.lines.some((line) => {
+                              const anchor = reviewLineAnchor(line);
+                              return (
+                                !!anchor && commentsByLine.has(`${anchor.side}:${anchor.line}`)
+                              );
+                            }),
+                        )}
+                        renderLineAttachment={(line) => {
+                          const anchor = inlineDrafts ? reviewLineAnchor(line) : null;
+                          return anchor
+                            ? commentsByLine.get(`${anchor.side}:${anchor.line}`)?.map(commentView)
+                            : null;
+                        }}
+                      />
+                      {!inlineDrafts && !richDiffVisible && fileDrafts.map(commentView)}
+                      {allReviewed ? (
+                        <p className="qr-notice qr-notice--done">
+                          <CircleCheck size={16} strokeWidth={2.25} aria-hidden="true" />
+                          {fileIndex === walkFiles.length - 1
+                            ? 'That was the last file.'
+                            : 'Every file is reviewed.'}{' '}
+                          <span className="qr-muted">Add an overall comment and decide below.</span>
+                        </p>
+                      ) : (
+                        <p className="qr-notice qr-muted">
+                          {richDiffVisible
+                            ? 'Check both image revisions, then mark the file reviewed.'
+                            : sinceFile
+                              ? 'End of the changes since your review. Press S for the whole PR to comment on a line.'
+                              : splitDiff
+                                ? 'End of file. Switch to Unified to comment on a line.'
+                                : 'End of file. Use + beside a line to add a draft comment.'}
+                        </p>
+                      )}
+                    </div>
+                  )
                 )}
               </div>
             </div>
@@ -1408,13 +1611,18 @@ function QuickReviewWorkspace({
               ready={ready}
               approveIssue={approveIssue}
               autoMergeEnabled={!!detail.autoMergeEnabled}
-              canGoBack={fileIndex > 0}
-              canGoOn={fileIndex >= 0 && fileIndex < walkFiles.length - 1}
-              hasFile={!!prFile}
+              unit={commitsView ? 'commit' : 'file'}
+              canGoBack={commitsView ? commitIndex > 0 : fileIndex > 0}
+              canGoOn={
+                commitsView
+                  ? commitIndex >= 0 && commitIndex < commitList.length - 1
+                  : fileIndex >= 0 && fileIndex < walkFiles.length - 1
+              }
+              hasFile={commitsView ? !!commit : !!prFile}
               onSkipGenerated={skipGenerated}
-              onPrevious={() => step(-1)}
-              onNext={() => step(1)}
-              onMark={markAndNext}
+              onPrevious={() => (commitsView ? stepCommit(-1) : step(-1))}
+              onNext={() => (commitsView ? stepCommit(1) : step(1))}
+              onMark={commitsView ? markCommitAndNext : markAndNext}
               onApprove={(autoMerge) => approve(autoMerge)}
               onRequestChanges={() => decide('REQUEST_CHANGES')}
               onComment={() => decide('COMMENT')}

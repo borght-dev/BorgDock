@@ -2081,3 +2081,377 @@ body:has(.qr-overlay) .bd-toasts {
     display: none;
   }
 }
+
+/* Reading order: Guide, Folders or Commits, over the tree. */
+.qr-order {
+  margin: -2px 0 12px;
+}
+.qr-order__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  margin: 8px 2px 0;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--color-text-tertiary);
+}
+.qr-order__status > svg {
+  flex: none;
+}
+.qr-order__status[data-tone="ready"] > svg {
+  color: var(--color-accent);
+}
+.qr-order__status[data-tone="error"] > svg {
+  color: var(--color-status-red);
+}
+.qr-order__status > span {
+  flex: 1;
+  min-width: 0;
+}
+.qr-order__error {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .qr-spin {
+    animation: qr-spin 0.9s linear infinite;
+  }
+}
+@keyframes qr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A guide chapter in the tree: its number, its title, why it exists. */
+.qr-fold[data-chapter] + .qr-fold[data-chapter] {
+  margin-top: 10px;
+}
+.qr-fold[data-chapter] .qr-fold__head {
+  align-items: flex-start;
+  justify-content: flex-start;
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: 12px;
+}
+.qr-fold[data-chapter] .qr-fold__name {
+  flex: 1;
+  direction: ltr;
+  white-space: normal;
+}
+.qr-fold[data-chapter] .qr-fold__count {
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+.qr-fold__num {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.qr-fold__note {
+  display: -webkit-box;
+  margin: 0;
+  padding: 1px 8px 4px 33px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--color-text-tertiary);
+}
+
+/* A file whose every change is noise: muted, with a ≈ before its counts. */
+.qr-file[data-mechanical="true"]:not([aria-current]) .qr-path {
+  color: var(--color-text-tertiary);
+}
+.qr-mechanical {
+  margin-right: 5px;
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+}
+
+/* Above the diff: the file's guide chapter, or the commit in Commits order. */
+.qr-chapter,
+.qr-commit-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--color-separator);
+  background: var(--color-review-head-bg);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+.qr-chapter > svg,
+.qr-commit-head > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--color-accent);
+}
+.qr-chapter__text,
+.qr-commit-head__text {
+  flex: 1;
+  min-width: 0;
+}
+.qr-chapter p,
+.qr-commit-head p {
+  margin: 0;
+}
+.qr-chapter b,
+.qr-commit-head b {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.qr-chapter__num {
+  color: var(--color-text-tertiary);
+}
+.qr-chapter .qr-chapter__more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin-top: 2px;
+}
+.qr-chapter__more em {
+  margin-right: 4px;
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+.qr-commit-head code,
+.qr-commit__meta code {
+  font-family: var(--font-code);
+  font-size: 11px;
+}
+.qr-commit-head .qr-commit-head__body {
+  max-height: 96px;
+  margin: 3px 0;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: var(--color-text-secondary);
+}
+
+/* A folded hunk: one line that says what it is and opens it. */
+.qr-noise {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 12px;
+  border: 0;
+  border-block: 1px dashed var(--color-strong-border);
+  background: var(--color-diff-hunk-header-bg);
+  color: var(--color-diff-hunk-header-text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.qr-noise:hover {
+  color: var(--color-text-primary);
+}
+.qr-noise:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.qr-noise__what {
+  font-weight: 500;
+}
+.qr-noise__size {
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.qr-noise__act {
+  margin-left: auto;
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+/* Commits order: the tree lists commits, the pane shows one at a time. */
+.qr-commits {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.qr-file.qr-commit {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.qr-commit__msg {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qr-commit__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+.qr-file-row > .qr-cb:has(+ .qr-commit) {
+  top: 9px;
+  transform: none;
+}
+.qr-commits__done {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--color-success-badge-border);
+  border-radius: 8px;
+  background: var(--color-success-badge-bg);
+  font-size: 12px;
+  color: var(--color-success-badge-fg);
+}
+.qr-tree__note {
+  margin: 10px 8px;
+  font-size: 12px;
+}
+.qr-tree > .qr-warning {
+  margin-top: 10px;
+}
+.qr-commit-file + .qr-commit-file {
+  margin-top: 14px;
+}
+.qr-commit-file__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-block: 1px solid var(--color-separator);
+  background: var(--color-surface);
+  font-size: 12px;
+}
+.qr-commit-file__head > .qr-pane__path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-code);
+  font-size: 11.5px;
+}
+.qr-commit-file__head > .qr-pane__delta {
+  margin-left: auto;
+}
+.qr-commit-error {
+  margin: 14px;
+}
+
+/* The card's review guide: what the PR does, what to watch, the chapters. */
+.qr-guide__summary {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-text-primary);
+}
+.qr-guide__pending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+.qr-guide__focus {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-text-primary);
+}
+.qr-guide__focus li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.qr-guide__focus svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--color-status-amber);
+}
+.qr-guide__chapters {
+  display: grid;
+  gap: 2px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.qr-guide__chapters button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.qr-guide__chapters button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+.qr-guide__chapters button:disabled {
+  cursor: default;
+}
+.qr-guide__chapters button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.qr-guide__num {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.qr-guide__chapter {
+  display: grid;
+  gap: 1px;
+}
+.qr-guide__chapter b {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.qr-guide__chapter span {
+  color: var(--color-text-tertiary);
+  font-size: 12.5px;
+}
+.qr-guide__count {
+  padding-top: 2px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-tertiary);
+}

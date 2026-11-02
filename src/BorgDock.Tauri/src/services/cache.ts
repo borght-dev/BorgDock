@@ -11,7 +11,8 @@ export type TabDataType =
   | 'reviews'
   | 'comments'
   | 'reviewThreads'
-  | 'summary';
+  | 'summary'
+  | 'reviewGuide';
 
 export interface CachedTabData<T> {
   data: T;

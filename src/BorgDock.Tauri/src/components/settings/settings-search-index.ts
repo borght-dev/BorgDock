@@ -208,6 +208,12 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
     label: 'Dispatch prompts',
     keywords: ['t3', 'launch', 'pick up', 'qa'],
   },
+  {
+    sectionId: 'agents',
+    anchorId: 'review-guide-auto',
+    label: 'Write review guides automatically',
+    keywords: ['quick review', 'guide', 'summaries', 'claude', 'codex'],
+  },
 
   // Updates
   { sectionId: 'updates', anchorId: 'auto-check', label: 'Auto-check for updates' },
