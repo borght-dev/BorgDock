@@ -23,6 +23,10 @@ Highlighting and file-symbol extraction share a module worker. Tree traversal vi
 
 The worker admits at most 16 requests, limits a source to approximately 2 MiB of string storage, and resets after a 15-second job timeout. Unsupported, oversized, cancelled or failed requests fall back to plain text or no symbols. No parsing fallback runs on the renderer thread. Packaged CSP explicitly permits the worker and WebAssembly compilation.
 
+PR details preload validated Quick Review snapshots. After the current review loads, Quick Review preloads the next queued PR. Each account client retains at most three snapshots for 30 seconds, keyed by repository, PR, known head, update time and state. Concurrent opens share the pending load. Reload bypasses reuse; failures are evicted. Reuse preserves the original validation timestamp, so submission freshness is never extended. Cold loads still check the head and base before and after fetching every file.
+
+The browser regression opens PR details, observes the preload, then opens review and its file walk with exactly one files request across both screens. Captures: [ready review](proof/preloaded-review-ready.png), [file walk](proof/preloaded-review-files.png). These fixtures verify reuse and rendering; they do not measure production network latency.
+
 ## SQL
 
 Results stream through a bounded collector instead of collecting the entire query first. A batch retains at most 10,000 rows, 16 MiB of row/column data including cell overhead, and 100 result sets. Truncation is explicit. Empty result sets keep their column metadata. Excess rows drain without being retained, preserving later statements in the batch; the deadline still bounds execution.
