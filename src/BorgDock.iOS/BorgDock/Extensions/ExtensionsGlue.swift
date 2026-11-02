@@ -47,8 +47,8 @@ struct ExtensionsGlue: ViewModifier {
         let router = app.router
         switch router.tab {
         case .focus: return router.focusPath.last
+        case .pullRequests: return router.pullRequestsPath.last
         case .dispatch: return router.dispatchPath.last
-        case .activity: return router.activityPath.last
         case .notes: return router.notesPath.last
         case .search: return router.searchPath.last
         }

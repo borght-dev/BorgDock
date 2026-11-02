@@ -53,7 +53,10 @@ final class ExtensionsTests: XCTestCase {
     func testTheRouterOpensTabAndWorkstreamLinks() {
         let router = Router()
         XCTAssertTrue(router.handle(BorgDockLink.tab("activity")))
-        XCTAssertEqual(router.tab, .activity)
+        XCTAssertEqual(router.tab, .focus)
+        XCTAssertEqual(router.focusPath, [.activity])
+        XCTAssertTrue(router.handle(BorgDockLink.tab("prs")))
+        XCTAssertEqual(router.tab, .pullRequests)
         XCTAssertTrue(router.handle(BorgDockLink.workstream("ws-1")))
         XCTAssertEqual(router.tab, .notes)
         XCTAssertEqual(router.notesPath, [.workstream("ws-1")])

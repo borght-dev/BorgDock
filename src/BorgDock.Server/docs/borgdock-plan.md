@@ -78,7 +78,10 @@ Owns `src/BorgDock.iOS/BorgDock/Features/{Focus,PullRequest,Review,CI}/**`, `src
 `e2e/fixtures/10-github.mjs`, its tests. Mockup sections 1, 2, 3 and 7 (CI failure).
 - Focus: bucket pills, PR cards (check bar, reason, chips, diff stat), agents-waiting strip, pull to refresh,
   swipe actions (snooze, merge, review), context menu (Review, Fix with Claude, Rerun failed, Open in T3, Snooze,
-  Open AB#, Copy branch, Open on GitHub), avatar → Settings sheet.
+  Open AB#, Copy branch, Open on GitHub), avatar → Settings sheet, bell → Activity.
+- Pull requests tab (`Features/PullRequests`): every open pull request the server reads, the desktop list's filters
+  (All, Needs you, Mine, Failing), search, grouped by author or repository with Needs you pinned, the Focus swipes
+  and menu.
 - Pull request: header, labels, chips, tabs (Overview, Files, Checks, Proof, Comments), reviews, work item card,
   bottom bar (Fix → launch sheet with `prKey`, Start review). Checks sheet with failure reasons, Rerun failed,
   Hand to Claude. Comments with diff lines, reply, resolve. Merge sheet with method, delete branch, Face ID
@@ -99,8 +102,8 @@ Owns `src/BorgDock.iOS/BorgDock/Features/{Overview,ItemDetail,StartThread,Browse
 - Dispatch states walk (briefing, Fix out of sync / Sync all, lanes with verdicts, evidence, latest message),
   Thread (chat, folded activity, plan approval, composer), Launch sheet (machine, repository, workspace, model,
   plan first, move toggle, first message, signed launch), Work item restyled, Browse kept behind a toolbar button.
-- Activity tab: filter pills, away card, entries, swipe to mark read, tap opens the target, mark all read;
-  unread badge.
+- Activity (behind the bell on Focus, not a tab: the tab bar holds five items with Search): filter pills, away
+  card, entries, swipe to mark read, tap opens the target, mark all read; the bell shows unread.
 - Notifications: register BORGDOCK_* categories, signed answers from actions, open targets, `read` pushes.
 
 ### I3 · iPhone: extensions, Notes, Search, Workstreams

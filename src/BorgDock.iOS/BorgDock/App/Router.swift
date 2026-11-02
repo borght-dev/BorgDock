@@ -64,6 +64,7 @@ enum Route: Hashable {
     /// A note by its path inside the vault, e.g. "Daily/2026-10-30.md".
     case note(String)
     case browse
+    case activity
     case settings
     case machines
 }
@@ -109,14 +110,14 @@ enum CoverRoute: Identifiable, Hashable {
 @Observable
 final class Router {
     enum Tab: Hashable {
-        case focus, dispatch, activity, notes, search
+        case focus, pullRequests, dispatch, notes, search
 
         /// borgdock://tab/<name>, from the widgets.
         init?(link: String) {
             switch link {
             case "focus": self = .focus
+            case "prs": self = .pullRequests
             case "dispatch": self = .dispatch
-            case "activity": self = .activity
             case "notes": self = .notes
             case "search": self = .search
             default: return nil
@@ -126,8 +127,8 @@ final class Router {
 
     var tab: Tab = .focus
     var focusPath: [Route] = []
+    var pullRequestsPath: [Route] = []
     var dispatchPath: [Route] = []
-    var activityPath: [Route] = []
     var notesPath: [Route] = []
     var searchPath: [Route] = []
     var sheet: SheetRoute?
@@ -139,8 +140,8 @@ final class Router {
     func push(_ route: Route) {
         switch tab {
         case .focus: focusPath.append(route)
+        case .pullRequests: pullRequestsPath.append(route)
         case .dispatch: dispatchPath.append(route)
-        case .activity: activityPath.append(route)
         case .notes: notesPath.append(route)
         case .search: searchPath.append(route)
         }
@@ -153,8 +154,8 @@ final class Router {
         self.tab = tab
         switch tab {
         case .focus: focusPath = [route]
+        case .pullRequests: pullRequestsPath = [route]
         case .dispatch: dispatchPath = [route]
-        case .activity: activityPath = [route]
         case .notes: notesPath = [route]
         case .search: searchPath = [route]
         }
@@ -176,6 +177,11 @@ final class Router {
         open(.pullRequest(key), in: .focus)
     }
 
+    /// Activity lives behind the bell on Focus, not in the tab bar.
+    func openActivity() {
+        open(.activity, in: .focus)
+    }
+
     func openThread(_ id: String) {
         open(.thread(id), in: .dispatch)
     }
@@ -192,8 +198,8 @@ final class Router {
     func reset() {
         tab = .focus
         focusPath = []
+        pullRequestsPath = []
         dispatchPath = []
-        activityPath = []
         notesPath = []
         searchPath = []
         sheet = nil
@@ -202,7 +208,7 @@ final class Router {
 
     /// borgdock://pr/owner/repo/12, borgdock://item/123, borgdock://thread/<id>, borgdock://ci/<id>,
     /// borgdock://note/<path>, borgdock://capture, borgdock://review/owner/repo/12, borgdock://workstream/<id>,
-    /// borgdock://tab/<focus|dispatch|activity|notes|search>.
+    /// borgdock://tab/<focus|prs|dispatch|activity|notes|search> (activity opens on Focus).
     /// Pairing and desktop links (borgdock://pair?…, borgdock://link-desktop?…) are handled by the account flow and
     /// the island's Undo (borgdock://approval/<id>/undo) by the approval hold, not here. Returns false if unknown.
     @discardableResult
@@ -222,13 +228,15 @@ final class Router {
         case "thread" where parts.count == 2:
             openThread(parts[1])
         case "ci" where parts.count == 2:
-            open(.ciGroup(parts[1]), in: .activity)
+            open(.ciGroup(parts[1]), in: .focus)
         case "note" where parts.count >= 2:
             open(.note(parts.dropFirst().joined(separator: "/")), in: .notes)
         case "capture":
             present(.quickCapture)
         case "workstream" where parts.count == 2:
             open(.workstream(parts[1]), in: .notes)
+        case "tab" where parts.count == 2 && parts[1] == "activity":
+            openActivity()
         case "tab" where parts.count == 2:
             guard let tab = Tab(link: parts[1]) else { return false }
             sheet = nil

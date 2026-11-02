@@ -19,7 +19,7 @@ struct RootView: View {
     }
 }
 
-/// Four tabs and Search, iOS 26 style: the tab bar floats in glass and folds into a search field on the Search tab.
+/// Four tabs and Search (Activity sits behind the bell on Focus), iOS 26 style: the tab bar floats in glass and folds into a search field on the Search tab.
 struct MainTabView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.scenePhase) private var scenePhase
@@ -30,14 +30,13 @@ struct MainTabView: View {
             Tab("Focus", systemImage: "scope", value: Router.Tab.focus) {
                 NavigationStack(path: $router.focusPath) { FocusView().routeDestinations() }
             }
+            Tab("Pull requests", systemImage: "arrow.triangle.pull", value: Router.Tab.pullRequests) {
+                NavigationStack(path: $router.pullRequestsPath) { PullRequestsView().routeDestinations() }
+            }
             Tab("Dispatch", systemImage: "cpu", value: Router.Tab.dispatch) {
                 NavigationStack(path: $router.dispatchPath) { OverviewView().routeDestinations() }
             }
             .badge(app.dispatchBadge)
-            Tab("Activity", systemImage: "tray", value: Router.Tab.activity) {
-                NavigationStack(path: $router.activityPath) { ActivityView().routeDestinations() }
-            }
-            .badge(app.activity.unread)
             Tab("Notes", systemImage: "note.text", value: Router.Tab.notes) {
                 NavigationStack(path: $router.notesPath) { NotesView().routeDestinations() }
             }
@@ -76,6 +75,7 @@ struct RouteView: View {
         case .workstream(let id): WorkstreamView(id: id)
         case .note(let path): NoteView(path: path)
         case .browse: BrowseView()
+        case .activity: ActivityView()
         case .settings: SettingsView()
         case .machines: MachinesView()
         }
@@ -111,7 +111,7 @@ struct CoverHost: View {
     }
 }
 
-/// `-BorgDockRoute item/59657 | start/59463 | start/59463/qa | tab/<focus|dispatch|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<bay>` (DEBUG only).
+/// `-BorgDockRoute item/59657 | start/59463 | start/59463/qa | tab/<focus|prs|dispatch|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<bay>` (DEBUG only).
 enum DebugRoute {
     @MainActor
     static func apply(to app: AppModel) async {
@@ -131,10 +131,12 @@ enum DebugRoute {
                 for _ in 0..<40 where app.config == nil { try? await Task.sleep(for: .milliseconds(250)) }
                 app.router.start(entry.item, fromBrowse: false, mode: target.count > 1 ? StartMode(rawValue: target[1]) ?? .plan : .plan)
             }
+        case "tab" where parts[1] == "activity":
+            app.router.openActivity()
         case "tab":
             app.router.tab = switch parts[1] {
+            case "prs": .pullRequests
             case "dispatch": .dispatch
-            case "activity": .activity
             case "notes": .notes
             case "search": .search
             default: .focus

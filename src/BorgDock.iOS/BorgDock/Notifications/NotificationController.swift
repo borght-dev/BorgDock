@@ -98,9 +98,8 @@ final class NotificationController: NSObject, UNUserNotificationCenterDelegate, 
         default:
             guard let route = target.route else { return }
             let tab: Router.Tab = switch target {
-            case .pr: .focus
+            case .pr, .ci, .none: .focus
             case .item, .thread: .dispatch
-            case .ci, .none: .activity
             }
             app.router.open(route, in: tab)
         }

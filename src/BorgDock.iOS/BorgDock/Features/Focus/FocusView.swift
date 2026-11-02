@@ -120,6 +120,17 @@ struct FocusView: View {
         }
         ToolbarSpacer(.fixed, placement: .topBarTrailing)
         ToolbarItem(placement: .topBarTrailing) {
+            Button { app.router.push(.activity) } label: {
+                if app.activity.unread > 0 {
+                    Image(systemName: "bell.badge").symbolRenderingMode(.palette).foregroundStyle(BD.red, BD.text)
+                } else {
+                    Image(systemName: "bell").foregroundStyle(BD.text)
+                }
+            }
+            .accessibilityLabel(app.activity.unread > 0 ? "Activity, \(app.activity.unread) new" : "Activity")
+            .accessibilityIdentifier("open-activity")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Toggle("Hide drafts", systemImage: "doc.badge.ellipsis", isOn: $hideDrafts)
                 Toggle("Only mine", systemImage: "person", isOn: $onlyMine)
