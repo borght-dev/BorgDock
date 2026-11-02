@@ -17,7 +17,12 @@ export class GithubError extends UserError {
 }
 
 /** Where tokens come from: `gh` on this machine. Tests pass their own. */
-export type TokenSource = { accounts(): Promise<string[]>; token(login: string): Promise<string> };
+export type TokenSource = {
+  accounts(): Promise<string[]>;
+  token(login: string): Promise<string>;
+  /** Drops a token GitHub refused, so the next `token` asks gh again. */
+  forget?(login: string): void;
+};
 
 export class GhTokens implements TokenSource {
   private readonly cache = new Map<string, { token: string; at: number }>();
@@ -43,6 +48,10 @@ export class GhTokens implements TokenSource {
     } catch {
       throw new GithubError(401, `gh has no token for ${login}. Run gh auth login on the server's machine.`);
     }
+  }
+
+  forget(login: string) {
+    this.cache.delete(login);
   }
 }
 
@@ -72,7 +81,7 @@ export class GithubClient {
   }
 
   async graphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-    const response = await this.send(`${API}/graphql`, { method: 'POST', headers: await this.headers({ 'content-type': 'application/json' }), body: JSON.stringify({ query, variables }) });
+    const response = await this.sendAuthorized(`${API}/graphql`, { method: 'POST', body: JSON.stringify({ query, variables }) }, { 'content-type': 'application/json' });
     const body = (await response.json().catch(() => null)) as { data?: T; errors?: { message: string; type?: string }[] } | null;
     if (!response.ok) throw new GithubError(response.status, failure(response.status, body));
     if (body?.errors?.length && !body.data) throw new GithubError(body.errors[0].type === 'NOT_FOUND' ? 404 : 502, `GitHub: ${body.errors[0].message}`);
@@ -86,11 +95,10 @@ export class GithubClient {
   async rest<T>(method: string, path: string, body?: unknown): Promise<T> {
     const url = `${API}${path}`;
     const cached = method === 'GET' ? this.etags.get(url) : undefined;
-    const headers = await this.headers({
+    const response = await this.sendAuthorized(url, { method, body: body === undefined ? undefined : JSON.stringify(body) }, {
       ...(body === undefined ? {} : { 'content-type': 'application/json' }),
       ...(cached ? { 'if-none-match': cached.etag } : {}),
     });
-    const response = await this.send(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
     if (response.status === 304 && cached) return cached.body as T;
     const text = await response.text();
     const parsed = text ? safeJson(text) : null;
@@ -109,7 +117,7 @@ export class GithubClient {
    * never reaches the storage host, and storage is asked for the tail only.
    */
   async logTail(owner: string, repo: string, jobId: number, maxBytes = 65_536): Promise<string | null> {
-    const response = await this.send(`${API}/repos/${owner}/${repo}/actions/jobs/${jobId}/logs`, { method: 'GET', headers: await this.headers(), redirect: 'manual' });
+    const response = await this.sendAuthorized(`${API}/repos/${owner}/${repo}/actions/jobs/${jobId}/logs`, { method: 'GET', redirect: 'manual' });
     let storage: Response = response;
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location');
@@ -125,6 +133,14 @@ export class GithubClient {
     // A tail starts mid-line; that first part line is noise.
     if (truncated && text.includes('\n')) text = text.slice(text.indexOf('\n') + 1);
     return text;
+  }
+
+  /** Sends with this account's token. gh may have replaced a token GitHub refuses: ask for it again, once. */
+  private async sendAuthorized(url: string, init: RequestInit, extra: Record<string, string> = {}): Promise<Response> {
+    const response = await this.send(url, { ...init, headers: await this.headers(extra) });
+    if (response.status !== 401 || !this.tokens.forget) return response;
+    this.tokens.forget(this.login);
+    return this.send(url, { ...init, headers: await this.headers(extra) });
   }
 
   private async send(url: string, init: RequestInit): Promise<Response> {
