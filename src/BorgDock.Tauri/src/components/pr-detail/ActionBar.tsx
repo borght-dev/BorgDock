@@ -17,10 +17,12 @@ import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { useProgressAction } from '@/hooks/useProgressAction';
+import { agentName, fixLabel } from '@/services/agent-labels';
 import { type PrActionId, primaryFor, shapeFromPrWithChecks } from '@/services/pr-action-resolver';
 import { mergePrWithToast, rerunChecks, reviewPr } from '@/services/pr-actions';
 import { isMyPr, isWaitingOnMe } from '@/services/pr-grouping';
 import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import type { PrActions } from './usePrActions';
 
@@ -199,6 +201,7 @@ export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchAction
 
   const barRef = useRef<HTMLDivElement>(null);
   const { fixWithClaude } = useClaudeActions();
+  const provider = useSettingsStore((s) => s.settings.agents?.defaultProvider ?? 'claude');
   const more = usePrCardActions(pr);
 
   const merge = useProgressAction(
@@ -221,10 +224,13 @@ export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchAction
       }),
     'Failed to re-run checks',
   );
-  const fix = useProgressAction(async () => {
-    await fixWithClaude(pr, pr.failedCheckNames.length > 0 ? pr.failedCheckNames : ['unknown']);
-    return true;
-  }, 'Fix with Claude failed');
+  const fix = useProgressAction(
+    async () => {
+      await fixWithClaude(pr, pr.failedCheckNames.length > 0 ? pr.failedCheckNames : ['unknown']);
+      return true;
+    },
+    `${fixLabel(provider)} failed`,
+  );
 
   const canRerun = failing;
   useDetailViewKeys(barRef, {
@@ -344,9 +350,9 @@ export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchAction
           leading={<Sparkles {...ICON} />}
           state={fix.state}
           onTrigger={() => void fix.trigger()}
-          label="Fix with Claude"
-          busyLabel="Starting Claude"
-          doneLabel="Claude is on it"
+          label={fixLabel(provider)}
+          busyLabel={provider === 't3' ? 'Opening T3' : `Starting ${agentName(provider)}`}
+          doneLabel={provider === 't3' ? 'Pick where it runs' : `${agentName(provider)} is on it`}
           aria-keyshortcuts="F"
           data-action-bar-action="fix"
         />

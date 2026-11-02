@@ -17,8 +17,10 @@ import {
 
 export interface ChecksGroupedProps {
   checks: CheckRun[];
-  /** "Fix with Claude" on a failed row. Omitted: no fix button. */
+  /** The fix button on a failed row. Omitted: no fix button. */
   onFix?: (run: CheckRun) => void;
+  /** Its label, which names the agent provider: "Fix with Claude", "Start thread in T3". */
+  fixLabel?: string;
   /**
    * Rerun a failing suite. Resolves false when it failed (and the user was
    * told). Omitted: no rerun button.
@@ -75,10 +77,12 @@ function RerunButton({
 function Suite({
   group,
   onFix,
+  fixLabel,
   onRerun,
 }: {
   group: CheckGroup;
   onFix?: ChecksGroupedProps['onFix'];
+  fixLabel: string;
   onRerun?: ChecksGroupedProps['onRerun'];
 }) {
   const canRerun = onRerun !== undefined && group.state === 'failed' && group.canRerun;
@@ -131,7 +135,7 @@ function Suite({
                     data-check-action="fix"
                     onClick={() => onFix(run)}
                   >
-                    Fix with Claude
+                    {fixLabel}
                   </button>
                 )}
                 <RowStatus run={run} />
@@ -152,7 +156,13 @@ function Suite({
  * with the duration on the right; a failed row offers "Fix with Claude" and
  * a failing suite "Rerun". The first failure's log excerpt sits underneath.
  */
-export function ChecksGrouped({ checks, onFix, onRerun, firstFailure }: ChecksGroupedProps) {
+export function ChecksGrouped({
+  checks,
+  onFix,
+  fixLabel = 'Fix',
+  onRerun,
+  firstFailure,
+}: ChecksGroupedProps) {
   const groups = groupChecks(checks);
   const skipped = checks.filter((c) => checkStateOf(c) === 'skipped').length;
   const { passed, counted } = passedOfCounted({
@@ -171,7 +181,13 @@ export function ChecksGrouped({ checks, onFix, onRerun, firstFailure }: ChecksGr
       </h3>
       <div className="bd-checks-grouped__suites">
         {groups.map((group) => (
-          <Suite key={group.name} group={group} onFix={onFix} onRerun={onRerun} />
+          <Suite
+            key={group.name}
+            group={group}
+            onFix={onFix}
+            fixLabel={fixLabel}
+            onRerun={onRerun}
+          />
         ))}
       </div>
       {firstFailure && firstFailure.lines.length > 0 && (

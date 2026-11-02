@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
+import { fixLabel, monitorLabel } from '@/services/agent-labels';
 import { sendOsNotification } from '@/services/notification';
 import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
 import { findRepoConfig } from '@/services/repo-lookup';
@@ -57,7 +58,6 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   const settings = useSettingsStore((s) => s.settings);
   const { fixWithClaude, monitorPr, getMonitorPrompt, getFixPrompt } = useClaudeActions();
   const defaultProvider = settings.agents?.defaultProvider ?? 'claude';
-  const providerLabel = defaultProvider === 'codex' ? 'Codex' : 'Claude';
   // A click opens the detail inside the main window, so the pop-out is the
   // explicit "Open in window" action.
   const popOutLabel = 'Open in window';
@@ -175,13 +175,19 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     });
   }, 'Failed to re-run checks');
 
-  const handleFixWithClaude = handleAction(async () => {
-    await fixWithClaude(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown']);
-  }, 'Fix with Claude failed');
+  const handleFixWithClaude = handleAction(
+    async () => {
+      await fixWithClaude(pr, failedCheckNames.length > 0 ? failedCheckNames : ['unknown']);
+    },
+    `${fixLabel(defaultProvider)} failed`,
+  );
 
-  const handleMonitorWithClaude = handleAction(async () => {
-    await monitorPr(pr);
-  }, 'Monitor with Claude failed');
+  const handleMonitorWithClaude = handleAction(
+    async () => {
+      await monitorPr(pr);
+    },
+    `${monitorLabel(defaultProvider)} failed`,
+  );
 
   const handleOpenInT3 = handleAction(async () => {
     await requestT3Thread(pullRequest);
@@ -269,8 +275,8 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
         onClick={handleRerunFailed}
         disabled={!hasFailingChecks}
       />
-      <MenuItem label={`Fix with ${providerLabel}`} onClick={handleFixWithClaude} />
-      <MenuItem label={`Monitor with ${providerLabel}`} onClick={handleMonitorWithClaude} />
+      <MenuItem label={fixLabel(defaultProvider)} onClick={handleFixWithClaude} />
+      <MenuItem label={monitorLabel(defaultProvider)} onClick={handleMonitorWithClaude} />
 
       <Separator />
 

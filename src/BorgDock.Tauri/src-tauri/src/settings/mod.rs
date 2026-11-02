@@ -109,7 +109,7 @@ fn apply_dev_overlay(settings: AppSettings) -> Result<AppSettings, String> {
 /// Current settings schema version. Bump together with a new arm in
 /// [`migrate`]. Migrations are one-off, in-memory rewrites that run on load
 /// and are written straight back so they never run twice.
-pub const CURRENT_SCHEMA_VERSION: u32 = 3;
+pub const CURRENT_SCHEMA_VERSION: u32 = 4;
 
 const AGENT_CATEGORIES: &[&str] = &[
     "agent.question",
@@ -144,6 +144,12 @@ fn seed_popups(
     for name in names {
         categories.entry(name.to_string()).or_default().popup = Some(false);
     }
+}
+
+/// The GitHub login in an owner that an older remote parser stored with the
+/// SSH host of an alias remote still on it: `git@github-work:acme` → `acme`.
+fn owner_without_ssh_host(owner: &str) -> &str {
+    owner.rsplit([':', '/']).next().unwrap_or(owner)
 }
 
 /// Apply one-off migrations for settings written by older versions. Returns
@@ -215,6 +221,17 @@ pub fn migrate(settings: &mut AppSettings) -> bool {
         n.channels.tray = None;
         n.channels.system = None;
         n.channels.email_digest = None;
+    }
+    if from < 4 {
+        // v4: repositories added from an SSH alias remote before the remote
+        // parser learned aliases carry the host in their owner, and every poll
+        // of them answers 404. Settings shows the owner but cannot edit it.
+        for repo in &mut settings.repos {
+            repo.owner = owner_without_ssh_host(&repo.owner).to_string();
+        }
+        for repo in &mut settings.remote_worktree_repos {
+            repo.owner = owner_without_ssh_host(&repo.owner).to_string();
+        }
     }
     settings.schema_version = CURRENT_SCHEMA_VERSION;
     log::info!("settings: migrated schema {from} -> {CURRENT_SCHEMA_VERSION}");
@@ -318,6 +335,25 @@ mod tests {
         assert!(saved["agents"].get("dispatchNotifications").is_none());
         assert!(saved["workstreams"].get("notifications").is_none());
         assert!(!super::migrate(&mut settings), "it runs once");
+    }
+
+    #[test]
+    fn v4_strips_the_ssh_host_from_repository_owners() {
+        let mut settings: super::AppSettings = serde_json::from_value(json!({
+            "schemaVersion": 3,
+            "repos": [
+                { "owner": "git@github-borghtdev:borght-dev", "name": "BorgDock" },
+                { "owner": "Gomocha-FSP", "name": "fsp-horizon" }
+            ],
+            "remoteWorktreeRepos": [
+                { "id": "mini", "owner": "ssh://git@github-work/acme", "name": "shop" }
+            ]
+        }))
+        .unwrap();
+        assert!(super::migrate(&mut settings));
+        assert_eq!(settings.repos[0].owner, "borght-dev");
+        assert_eq!(settings.repos[1].owner, "Gomocha-FSP");
+        assert_eq!(settings.remote_worktree_repos[0].owner, "acme");
     }
 
     #[test]

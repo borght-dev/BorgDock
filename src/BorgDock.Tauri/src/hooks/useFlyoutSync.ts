@@ -18,7 +18,7 @@ import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useT3SessionStore } from '@/stores/t3-session-store';
-import type { PullRequestWithChecks } from '@/types';
+import type { InteractiveProvider, PullRequestWithChecks } from '@/types';
 import { parseError } from '@/utils/parse-error';
 
 type TrayWorstState = 'failing' | 'pending' | 'passing' | 'idle';
@@ -174,6 +174,7 @@ export function buildFlyoutPayload(
   reduceMotion: boolean,
   teams: readonly string[] = [],
   agents: FlyoutAgent[] = [],
+  agentProvider: InteractiveProvider = 'claude',
 ) {
   const lowerUser = username.toLowerCase();
   const failingCount = pullRequests.filter((p) => p.overallStatus === 'red').length;
@@ -224,6 +225,7 @@ export function buildFlyoutPayload(
     lastSyncAgo,
     hotkey,
     agents,
+    agentProvider,
   };
 }
 
@@ -242,6 +244,7 @@ export function useFlyoutSync() {
   const theme = useSettingsStore((s) => s.settings.ui.theme);
   const reduceMotion = useSettingsStore((s) => s.settings.ui.reduceMotion ?? false);
   const hotkey = useSettingsStore((s) => s.settings.ui.globalHotkey);
+  const agentProvider = useSettingsStore((s) => s.settings.agents?.defaultProvider ?? 'claude');
   const agentAwaitingCount = useT3SessionStore(
     (s) =>
       s.sessions.filter(
@@ -282,6 +285,7 @@ export function useFlyoutSync() {
       st.ui.reduceMotion ?? false,
       usePrStore.getState().teams,
       waitingAgents(useDispatchStore.getState().overview),
+      st.agents?.defaultProvider ?? 'claude',
     );
     try {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -308,7 +312,7 @@ export function useFlyoutSync() {
       const pendingCount = pullRequests.filter((p) => p.overallStatus === 'yellow').length;
 
       // Cheap hash to skip redundant IPC
-      const hash = `${count}:${worstState}:${failingCount}:${pendingCount}:${theme}:${reduceMotion}:${lastPollTime}:${agentAwaitingCount}:${agentsKey}`;
+      const hash = `${count}:${worstState}:${failingCount}:${pendingCount}:${theme}:${reduceMotion}:${lastPollTime}:${agentAwaitingCount}:${agentsKey}:${agentProvider}`;
       if (hash === prevHashRef.current) return;
       prevHashRef.current = hash;
 
@@ -347,6 +351,7 @@ export function useFlyoutSync() {
     lastPollTime,
     agentAwaitingCount,
     agentsKey,
+    agentProvider,
   ]);
 
   // Respond to flyout-request-data: re-send the current payload through the

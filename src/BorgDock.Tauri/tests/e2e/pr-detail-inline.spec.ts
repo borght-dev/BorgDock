@@ -259,7 +259,8 @@ test('tabs switch by click and with J / K; Checks groups by suite', async ({ pag
     'data-check-state',
     'failed',
   );
-  await expect(detail(page).getByRole('button', { name: 'Fix with Claude' })).toHaveCount(2);
+  // The seeded settings pick T3 as the agent provider, so Fix starts a T3 thread.
+  await expect(detail(page).getByRole('button', { name: 'Start thread in T3' })).toHaveCount(2);
   // The first failure's excerpt, from the evidence the CI failure store keeps.
   await expect(detail(page).getByRole('region', { name: 'First failure' })).toContainText(
     'Type string is not assignable to type number.',

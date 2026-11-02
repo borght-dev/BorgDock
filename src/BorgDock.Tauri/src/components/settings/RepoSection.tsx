@@ -89,11 +89,16 @@ export function RepoSection({
             onClick={async () => {
               const folder = await open({ directory: true, multiple: false });
               if (typeof folder === 'string') {
+                // The owner comes from the clone's GitHub remote; without one
+                // the repository is listed by folder name and can't be polled.
+                const remote = await invoke<{ owner: string; name: string }>('resolve_repo_path', {
+                  path: folder,
+                }).catch(() => null);
                 onChange([
                   ...repos,
                   {
-                    owner: '',
-                    name: folder.split(/[\\/]/).pop() ?? '',
+                    owner: remote?.owner ?? '',
+                    name: remote?.name ?? folder.split(/[\\/]/).pop() ?? '',
                     enabled: true,
                     worktreeBasePath: folder,
                     worktreeSubfolder: '.worktrees',

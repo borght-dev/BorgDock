@@ -146,9 +146,12 @@ export interface CiFailureSettings {
   notifyThreshold: number;
 }
 
-/** Terminal agents used by Fix / Resolve / Monitor. T3 is not a provider:
- * "Open a new thread in T3" is its own action (see services/t3-thread.ts). */
+/** Agents that run in a terminal on a worktree, and the CLIs behind summaries. */
 export type AgentProvider = 'claude' | 'codex';
+
+/** Where Fix / Resolve / Monitor start: a terminal agent, or a T3 thread
+ * (the PR thread dialog, started on the action's prompt). */
+export type InteractiveProvider = AgentProvider | 't3';
 
 /** A T3 Code server on another machine that Dispatch follows. */
 export interface T3HostSettings {
@@ -160,7 +163,7 @@ export interface T3HostSettings {
 }
 
 export interface AgentSettings {
-  defaultProvider: AgentProvider;
+  defaultProvider: InteractiveProvider;
   defaultPostFixAction: PostFixAction;
   claudePath?: string;
   codexPath?: string;

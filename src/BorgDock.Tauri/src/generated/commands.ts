@@ -291,8 +291,9 @@ export const commands = {
 	/**  Settle a thread: it is done, and its project is free for other work. */
 	t3Settle: (host: HostRef_Deserialize, threadId: string) => typedError<null, string>(__TAURI_INVOKE("t3_settle", { host, threadId })),
 	/**
-	 *  Open a fresh, empty T3 thread for a pull request on `host` and bring T3 to
-	 *  the front on it. Returns the new thread's id.
+	 *  Open a fresh T3 thread for a pull request on `host`, empty or started on
+	 *  the request's prompt, and bring T3 to the front on it. Returns the new
+	 *  thread's id.
 	 */
 	t3OpenPrThread: (host: HostRef_Deserialize, request: PrThreadRequest_Deserialize, executable: string | null) => typedError<string, string>(__TAURI_INVOKE("t3_open_pr_thread", { host, request, executable })),
 	/**  The branches a new worktree of the checkout at `checkout` can start from. */
@@ -1104,7 +1105,10 @@ export type AgentAvailability = {
 export type AgentSettings = AgentSettings_Serialize | AgentSettings_Deserialize;
 
 export type AgentSettings_Deserialize = {
-	/**  Terminal agent for Fix / Resolve / Monitor: "claude" or "codex". */
+	/**
+	 *  Where Fix / Resolve / Monitor start: "claude" or "codex" in a terminal,
+	 *  or "t3" for a T3 thread on the action's prompt.
+	 */
 	defaultProvider?: string,
 	defaultPostFixAction?: string,
 	claudePath?: string | null,
@@ -1127,7 +1131,10 @@ export type AgentSettings_Deserialize = {
 };
 
 export type AgentSettings_Serialize = {
-	/**  Terminal agent for Fix / Resolve / Monitor: "claude" or "codex". */
+	/**
+	 *  Where Fix / Resolve / Monitor start: "claude" or "codex" in a terminal,
+	 *  or "t3" for a T3 thread on the action's prompt.
+	 */
 	defaultProvider: string,
 	defaultPostFixAction: string,
 	claudePath: string | null,
@@ -2473,10 +2480,10 @@ export type PhoneReadsSince_Serialize = {
 
 export type PrDetailSettings = Record<string, never>;
 
-/**  A new, empty thread for a pull request. */
+/**  A new thread for a pull request: empty, or started on `prompt`. */
 export type PrThreadRequest = PrThreadRequest_Serialize | PrThreadRequest_Deserialize;
 
-/**  A new, empty thread for a pull request. */
+/**  A new thread for a pull request: empty, or started on `prompt`. */
 export type PrThreadRequest_Deserialize = {
 	projectId: string,
 	workspace: PrWorkspace_Deserialize,
@@ -2488,9 +2495,11 @@ export type PrThreadRequest_Deserialize = {
 	/**  Used when neither the project nor an earlier thread names a model. */
 	model: string,
 	modelInstance: string,
+	/**  The first message; the agent starts on it at once. Absent: an empty thread. */
+	prompt?: string | null,
 };
 
-/**  A new, empty thread for a pull request. */
+/**  A new thread for a pull request: empty, or started on `prompt`. */
 export type PrThreadRequest_Serialize = {
 	projectId: string,
 	workspace: PrWorkspace_Serialize,
@@ -2502,6 +2511,8 @@ export type PrThreadRequest_Serialize = {
 	/**  Used when neither the project nor an earlier thread names a model. */
 	model: string,
 	modelInstance: string,
+	/**  The first message; the agent starts on it at once. Absent: an empty thread. */
+	prompt: string | null,
 };
 
 /**  Where a pull request thread works. */

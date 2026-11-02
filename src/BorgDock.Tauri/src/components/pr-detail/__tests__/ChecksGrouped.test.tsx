@@ -224,7 +224,9 @@ describe('ChecksGrouped', () => {
   it('offers Fix with Claude on failed rows only and Rerun on failing suites', () => {
     const onFix = vi.fn();
     const onRerun = vi.fn().mockResolvedValue(true);
-    render(<ChecksGrouped checks={checks} onFix={onFix} onRerun={onRerun} />);
+    render(
+      <ChecksGrouped checks={checks} onFix={onFix} fixLabel="Fix with Claude" onRerun={onRerun} />,
+    );
     const fixes = screen.getAllByRole('button', { name: 'Fix with Claude' });
     expect(fixes).toHaveLength(1);
     fireEvent.click(fixes[0]!);

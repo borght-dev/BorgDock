@@ -466,7 +466,8 @@ impl Default for NotificationChannels {
 #[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSettings {
-    /// Terminal agent for Fix / Resolve / Monitor: "claude" or "codex".
+    /// Where Fix / Resolve / Monitor start: "claude" or "codex" in a terminal,
+    /// or "t3" for a T3 thread on the action's prompt.
     #[serde(default = "default_agent_provider")]
     pub default_provider: String,
     #[serde(default = "default_post_fix_action")]

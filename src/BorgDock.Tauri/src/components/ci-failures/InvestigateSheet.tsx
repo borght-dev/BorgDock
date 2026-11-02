@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { useEffect, useMemo, useState } from 'react';
 import { LaunchChoiceFields, useLaunchChoice } from '@/components/dispatch/LaunchChoice';
 import { Button } from '@/components/shared/primitives';
+import { agentName, terminalAgent } from '@/services/agent-labels';
 import { parseScope } from '@/services/ci-failures/identity';
 import { AlreadyOwnedError, launchInvestigation } from '@/services/ci-failures/investigate';
 import {
@@ -112,7 +113,7 @@ export function InvestigateSheet({ groupId, onClose }: InvestigateSheetProps) {
               effort: choice.effort,
               openInT3,
             }
-          : { kind: 'terminal', provider: defaultProvider },
+          : { kind: 'terminal', provider: terminalAgent(defaultProvider) },
       );
       showToast({
         tone: 'success',
@@ -200,7 +201,7 @@ export function InvestigateSheet({ groupId, onClose }: InvestigateSheetProps) {
                   )}
                   onClick={() => setMode('terminal')}
                 >
-                  Terminal ({defaultProvider === 'codex' ? 'Codex' : 'Claude'})
+                  Terminal ({agentName(terminalAgent(defaultProvider))})
                 </button>
               </div>
               {!t3Known && (

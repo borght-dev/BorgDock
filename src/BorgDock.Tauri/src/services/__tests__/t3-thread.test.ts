@@ -4,6 +4,7 @@ import type { PullRequest } from '@/types';
 
 const t3 = vi.hoisted(() => ({
   t3OpenPrThread: vi.fn(async (..._args: unknown[]) => 'new-thread'),
+  t3SendMessage: vi.fn(async (..._args: unknown[]) => {}),
   t3ShowThread: vi.fn(async () => {}),
   t3Snapshot: vi.fn(),
 }));
@@ -130,6 +131,8 @@ const REQUEST = {
   modelInstance: 'claudeAgent',
 };
 
+const FIX = { prompt: 'Fix the failing build on PR #42', intent: 'Fix the failing checks' };
+
 describe('requestT3Thread', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -157,9 +160,20 @@ describe('requestT3Thread', () => {
     window.main = false;
     await requestT3Thread(pr);
 
-    expect(mockEmitTo).toHaveBeenCalledWith('main', OPEN_PR_THREAD_EVENT, pr);
+    expect(mockEmitTo).toHaveBeenCalledWith('main', OPEN_PR_THREAD_EVENT, { pr });
     expect(mockGuardLaunch).not.toHaveBeenCalled();
     expect(useT3ThreadStore.getState().pendingPr).toBeNull();
+  });
+
+  it('hands over the prompt a thread starts on, and leaves the guard to the action that wrote it', async () => {
+    await requestT3Thread(pr, FIX);
+
+    expect(mockGuardLaunch).not.toHaveBeenCalled();
+    expect(useT3ThreadStore.getState()).toMatchObject({ pendingPr: pr, pendingStart: FIX });
+
+    window.main = false;
+    await requestT3Thread(pr, FIX);
+    expect(mockEmitTo).toHaveBeenCalledWith('main', OPEN_PR_THREAD_EVENT, { pr, start: FIX });
   });
 });
 
@@ -207,7 +221,26 @@ describe('openPrThread', () => {
       'C:/t3/T3.exe',
     );
     expect(t3.t3OpenPrThread).not.toHaveBeenCalled();
+    expect(t3.t3SendMessage).not.toHaveBeenCalled();
     expect(id).toBe('mac:t-1');
+  });
+
+  it('starts a new thread on the prompt, or sends it to a thread it continues', async () => {
+    await openPrThread(pr, { kind: 'worktree', hostId: 'mac', project, baseRef: null }, FIX);
+    await openPrThread(pr, { kind: 'continue', hostId: 'mac', thread: thread() }, FIX);
+
+    expect(t3.t3OpenPrThread).toHaveBeenCalledWith(
+      { id: 'mac', baseUrl: undefined },
+      { ...REQUEST, projectId: 'p-repo', workspace: { type: 'checkOut' }, prompt: FIX.prompt },
+      'C:/t3/T3.exe',
+    );
+    expect(t3.t3SendMessage).toHaveBeenCalledWith(
+      { id: 'mac', baseUrl: undefined },
+      't-1',
+      FIX.prompt,
+      false,
+    );
+    expect(t3.t3ShowThread).toHaveBeenCalled();
   });
 });
 

@@ -39,6 +39,11 @@ vi.mock('@/services/ci-failures/prompts', () => ({
   fixEvidence: (...args: unknown[]) => mockFixEvidence(...args),
 }));
 
+const mockRequestT3Thread = vi.fn();
+vi.mock('@/services/t3-thread', () => ({
+  requestT3Thread: (...args: unknown[]) => mockRequestT3Thread(...args),
+}));
+
 vi.mock('@/stores/settings-store', () => ({
   useSettingsStore: (selector: (s: Record<string, unknown>) => unknown) =>
     selector({
@@ -271,6 +276,50 @@ describe('useClaudeActions', () => {
         expect.any(String),
         expect.any(String),
       );
+    });
+  });
+
+  describe('with T3 as the provider', () => {
+    it('Fix starts a T3 thread on the fix prompt, after the launch guard, without a terminal', async () => {
+      const { result } = renderHook(() => useClaudeActions());
+
+      await result.current.fixWithClaude(makePr(), ['build'], 't3');
+
+      expect(mockGuardLaunch).toHaveBeenCalledWith(
+        expect.objectContaining({ prNumber: 1, checkNames: ['build'] }),
+        'Fix',
+      );
+      expect(mockRequestT3Thread).toHaveBeenCalledWith(
+        expect.objectContaining({ number: 1, headRef: 'feature-branch' }),
+        { prompt: expect.stringContaining('fix prompt'), intent: 'Fix the failing checks' },
+      );
+      expect(mockInvoke).not.toHaveBeenCalled();
+      expect(mockLaunchClaude).not.toHaveBeenCalled();
+    });
+
+    it('Fix opens nothing when the launch guard cancels', async () => {
+      mockGuardLaunch.mockResolvedValue('cancel');
+      const { result } = renderHook(() => useClaudeActions());
+
+      await result.current.fixWithClaude(makePr(), ['build'], 't3');
+
+      expect(mockRequestT3Thread).not.toHaveBeenCalled();
+    });
+
+    it('Resolve and Monitor start T3 threads on their own prompts', async () => {
+      const { result } = renderHook(() => useClaudeActions());
+
+      await result.current.resolveConflicts(makePr(), 't3');
+      await result.current.monitorPr(makePr(), 't3');
+
+      expect(mockRequestT3Thread.mock.calls.map((call) => call[1])).toEqual([
+        {
+          prompt: expect.stringContaining('conflict prompt'),
+          intent: 'Resolve the merge conflicts',
+        },
+        { prompt: expect.stringContaining('monitor prompt'), intent: 'Monitor' },
+      ]);
+      expect(mockLaunchClaude).not.toHaveBeenCalled();
     });
   });
 });

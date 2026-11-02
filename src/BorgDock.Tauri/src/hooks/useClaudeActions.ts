@@ -11,10 +11,11 @@ import {
 import { withNotesFor } from '@/services/notes/agents';
 import { sendOsNotification } from '@/services/notification';
 import { findRepoConfig } from '@/services/repo-lookup';
+import { requestT3Thread } from '@/services/t3-thread';
 import { ensureWorktree } from '@/services/worktree-lookup';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
-import type { AgentProvider } from '@/types/settings';
+import type { AgentProvider, InteractiveProvider } from '@/types/settings';
 
 const log = (step: string, detail?: string) =>
   console.log(`[claude-actions] ${step}${detail ? `: ${detail}` : ''}`);
@@ -37,12 +38,7 @@ export function useClaudeActions() {
   };
 
   const launch = useCallback(
-    (
-      worktreePath: string,
-      promptFile: string,
-      title: string,
-      provider: AgentProvider = agentSettings.defaultProvider,
-    ) =>
+    (worktreePath: string, promptFile: string, title: string, provider: AgentProvider) =>
       launchAgentSession({
         provider,
         worktreePath,
@@ -73,7 +69,11 @@ export function useClaudeActions() {
   );
 
   const fixWithClaude = useCallback(
-    async (pr: PullRequestWithChecks, failedCheckNames: string[], provider?: AgentProvider) => {
+    async (
+      pr: PullRequestWithChecks,
+      failedCheckNames: string[],
+      provider: InteractiveProvider = agentSettings.defaultProvider,
+    ) => {
       const p = pr.pullRequest;
       log('fixWithClaude', `PR #${p.number} checks=${failedCheckNames.join(', ')}`);
 
@@ -89,18 +89,31 @@ export function useClaudeActions() {
       };
       if ((await guardLaunch(target, 'Fix')) === 'cancel') return;
 
+      const fixPrompt = async () => {
+        const evidence = await fixEvidence(
+          p.repoOwner,
+          p.repoName,
+          p.number,
+          target.checkNames,
+        ).catch(() => null);
+        log('building fix prompt');
+        return withNotesFor(
+          buildFixPrompt(pr, failedCheckNames, evidence, repo),
+          p.repoOwner,
+          p.repoName,
+          p.number,
+        );
+      };
+      if (provider === 't3') {
+        await requestT3Thread(p, { prompt: await fixPrompt(), intent: 'Fix the failing checks' });
+        return;
+      }
+
       notifyLaunching(p.number, p.headRef);
-      const [worktreePath, evidence] = await Promise.all([
+      const [worktreePath, prompt] = await Promise.all([
         getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef),
-        fixEvidence(p.repoOwner, p.repoName, p.number, target.checkNames).catch(() => null),
+        fixPrompt(),
       ]);
-      log('building fix prompt');
-      const prompt = withNotesFor(
-        buildFixPrompt(pr, failedCheckNames, evidence, repo),
-        p.repoOwner,
-        p.repoName,
-        p.number,
-      );
       log('writing prompt file');
       const promptFile = await writePromptFile(prompt);
       log('prompt written', promptFile);
@@ -112,36 +125,50 @@ export function useClaudeActions() {
       await launch(worktreePath, promptFile, `Fix ${checksLabel}`, provider);
       log('claude launched');
     },
-    [findRepoSettings, getOrCreateWorktree, launch],
+    [agentSettings.defaultProvider, findRepoSettings, getOrCreateWorktree, launch],
   );
 
   const resolveConflicts = useCallback(
-    async (pr: PullRequestWithChecks, provider?: AgentProvider) => {
+    async (
+      pr: PullRequestWithChecks,
+      provider: InteractiveProvider = agentSettings.defaultProvider,
+    ) => {
       const p = pr.pullRequest;
       log('resolveConflicts', `PR #${p.number}`);
 
+      const prompt = withNotesFor(buildConflictPrompt(pr), p.repoOwner, p.repoName, p.number);
+      if (provider === 't3') {
+        await requestT3Thread(p, { prompt, intent: 'Resolve the merge conflicts' });
+        return;
+      }
       notifyLaunching(p.number, p.headRef);
       const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
-      const prompt = withNotesFor(buildConflictPrompt(pr), p.repoOwner, p.repoName, p.number);
       const promptFile = await writePromptFile(prompt);
       await launch(worktreePath, promptFile, 'Resolve merge conflicts', provider);
       log('claude launched for conflict resolution');
     },
-    [getOrCreateWorktree, launch],
+    [agentSettings.defaultProvider, getOrCreateWorktree, launch],
   );
 
   const monitorPr = useCallback(
-    async (pr: PullRequestWithChecks, provider?: AgentProvider) => {
+    async (
+      pr: PullRequestWithChecks,
+      provider: InteractiveProvider = agentSettings.defaultProvider,
+    ) => {
       const p = pr.pullRequest;
       log('monitorPr', `PR #${p.number} branch=${p.headRef}`);
 
       const repo = findRepoSettings(p.repoOwner, p.repoName);
       if (!repo) throw new Error(`Repo ${p.repoOwner}/${p.repoName} not found in settings`);
 
-      notifyLaunching(p.number, p.headRef);
-      const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
       log('building monitor prompt');
       const prompt = withNotesFor(buildMonitorPrompt(pr, repo), p.repoOwner, p.repoName, p.number);
+      if (provider === 't3') {
+        await requestT3Thread(p, { prompt, intent: 'Monitor' });
+        return;
+      }
+      notifyLaunching(p.number, p.headRef);
+      const worktreePath = await getOrCreateWorktree(p.repoOwner, p.repoName, p.headRef);
       log('writing prompt file');
       const promptFile = await writePromptFile(prompt);
       log('prompt written', promptFile);
@@ -149,7 +176,7 @@ export function useClaudeActions() {
       await launch(worktreePath, promptFile, `Monitor PR #${p.number}`, provider);
       log('claude launched');
     },
-    [findRepoSettings, getOrCreateWorktree, launch],
+    [agentSettings.defaultProvider, findRepoSettings, getOrCreateWorktree, launch],
   );
 
   const getMonitorPrompt = useCallback(

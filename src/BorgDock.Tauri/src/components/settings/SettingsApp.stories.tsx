@@ -20,22 +20,20 @@ type Story = StoryObj<typeof SettingsApp>;
 
 const githubAuthOk = { authenticated: true, login: 'borght-dev' };
 
-export const Default: Story = {
-  decorators: [
-    withSettings(configuredSettings, {
-      invokeResponses: {
-        check_github_auth: githubAuthOk,
-        az_cli_available: true,
-        get_cache_size: 1024 * 1024 * 24,
-        agent_provider_availability: { claude: true, codex: true },
-        t3_probe: { running: true, paired: true },
-        gh_cli_accounts: [
-          { login: 'borght-dev', active: true },
-          { login: 'koenvdb-work', active: false },
-        ],
-      },
-    }),
+const configuredInvokes = {
+  check_github_auth: githubAuthOk,
+  az_cli_available: true,
+  get_cache_size: 1024 * 1024 * 24,
+  agent_provider_availability: { claude: true, codex: true },
+  t3_probe: { running: true, paired: true },
+  gh_cli_accounts: [
+    { login: 'borght-dev', active: true },
+    { login: 'koenvdb-work', active: false },
   ],
+};
+
+export const Default: Story = {
+  decorators: [withSettings(configuredSettings, { invokeResponses: configuredInvokes })],
 };
 
 export const FirstLaunch: Story = {
@@ -59,6 +57,29 @@ export const Agents: Story = {
   },
   decorators: [
     ...(Default.decorators as Decorator[]),
+    (Story) => {
+      localStorage.setItem('settings.lastSection', 'agents');
+      history.replaceState(null, '', '#section=agents');
+      return <Story />;
+    },
+  ],
+};
+
+/** T3 Code as the agent provider: Fix, Resolve and Monitor start T3 threads. */
+export const AgentsWithT3: Story = {
+  decorators: [
+    withSettings(
+      {
+        ...configuredSettings,
+        agents: {
+          defaultProvider: 't3',
+          defaultPostFixAction: 'commitAndNotify',
+          t3Model: 'claude-fable-5',
+          t3ModelInstance: 'claudeAgent',
+        },
+      },
+      { invokeResponses: configuredInvokes },
+    ),
     (Story) => {
       localStorage.setItem('settings.lastSection', 'agents');
       history.replaceState(null, '', '#section=agents');
