@@ -28,6 +28,7 @@ import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge'
 import { DetailDialog } from '@/components/shared/DetailDialog';
 import { Button, checkBarSummary, IconButton, Seg2 } from '@/components/shared/primitives';
 import { usePrConversation } from '@/hooks/usePrConversation';
+import { usePrefetchReviewSnapshot } from '@/hooks/usePrefetchReviewSnapshot';
 import { useQuickReviewDocument } from '@/hooks/useQuickReviewDocument';
 import { type QuickReviewKeymap, useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
 import { useReviewReadiness } from '@/hooks/useReviewReadiness';
@@ -523,6 +524,7 @@ function QuickReviewWorkspace({
     prepare,
     submit,
   } = useQuickReviewDocument(pr.pullRequest);
+  usePrefetchReviewSnapshot(snapshot && !loading ? peeks[0]?.pullRequest : undefined);
   const state = useQuickReviewStore((s) => s.state);
   const error = useQuickReviewStore((s) => s.error);
   const heldApproval = useHeldApproval();

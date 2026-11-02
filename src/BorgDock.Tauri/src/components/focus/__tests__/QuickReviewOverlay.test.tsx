@@ -1,9 +1,11 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { prRowKey } from '@/components/pr/pr-card-data';
+import type { GitHubClient } from '@/services/github/client';
 import { enableAutoMerge, submitReview } from '@/services/github/mutations';
 import { getPRFiles, getPRReviewDetails } from '@/services/github/pulls';
 import { getAllComments, getReviews } from '@/services/github/reviews';
+import { loadCachedReviewSnapshot } from '@/services/quick-review';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useToastStore } from '@/stores/toast-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -19,7 +21,7 @@ vi.mock('@/services/github/reviews', () => ({
   getAllComments: vi.fn().mockResolvedValue([]),
   getReviews: vi.fn().mockResolvedValue([]),
 }));
-const mockClient = vi.hoisted(() => ({
+let mockClient = vi.hoisted(() => ({
   account: 'reviewer',
   get: vi.fn().mockRejectedValue(new Error('Unavailable')),
 }));
@@ -76,6 +78,7 @@ const WALK = ['src/Service.cs', 'bun.lock', 'App.Tests/ServiceTests.cs', 'src/se
 let pr = makePr();
 beforeEach(() => {
   vi.clearAllMocks();
+  mockClient = { ...mockClient };
   reviewCandidates.prs = [];
   resetSeq();
   // Transitions finish at once: the walk unmounts and the overlay closes
@@ -162,6 +165,24 @@ function reviewEverything() {
 }
 
 describe('Quick review card', () => {
+  it('preloads the next PR after the current files are ready and reuses it on advance', async () => {
+    const next = makePr({ number: 42, changedFiles: files.length });
+    vi.mocked(getPRReviewDetails).mockImplementation(async (_client, _owner, _repo, number) => ({
+      pr: number === 42 ? next.pullRequest : pr.pullRequest,
+      baseSha: 'base',
+    }));
+    useQuickReviewStore.getState().startSession([pr, next]);
+    render(<QuickReviewOverlay />);
+    await waitFor(() => expect(filesButton()).toBeEnabled());
+    await waitFor(() => expect(getPRFiles).toHaveBeenCalledWith(mockClient, 'owner', 'repo', 42));
+    await act(async () => {
+      await loadCachedReviewSnapshot(mockClient as unknown as GitHubClient, next.pullRequest);
+      useQuickReviewStore.getState().advance('skipped');
+    });
+    await waitFor(() => expect(filesButton()).toBeEnabled());
+    expect(getPRFiles).toHaveBeenCalledTimes(2);
+  });
+
   it('A defaults to approval and auto merge when auto merge is off', async () => {
     await start();
     reviewEverything();

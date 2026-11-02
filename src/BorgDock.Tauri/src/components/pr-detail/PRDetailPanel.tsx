@@ -18,6 +18,7 @@ import { BorgDockLogo } from '@/components/shared/icons';
 import type { TabDef } from '@/components/shared/primitives';
 import { Avatar, IconButton, Pill, Ring, Tabs, TitleBar } from '@/components/shared/primitives';
 import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
+import { usePrefetchReviewSnapshot } from '@/hooks/usePrefetchReviewSnapshot';
 import { createLogger } from '@/services/logger';
 import { computeMergeScore } from '@/services/merge-score';
 import { popView } from '@/services/navigation';
@@ -138,6 +139,7 @@ export function PrDetailPanel({
   embedded = false,
   initialTab,
 }: PrDetailPanelProps) {
+  usePrefetchReviewSnapshot(pr.pullRequest);
   const selectPr = useUiStore((s) => s.selectPr);
   const handleClose = useCallback(() => {
     if (popOutWindow) {

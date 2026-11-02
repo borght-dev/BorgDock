@@ -23,10 +23,11 @@ const pendingPr = {
     mergeable: false,
   },
 };
-async function mockChanges(page: Page) {
+async function mockChanges(page: Page, onFiles = () => {}) {
   await page.route('https://api.github.com/repos/test-org/borgdock/pulls/42**', (route) => {
     const url = route.request().url();
-    if (url.includes('/files'))
+    if (url.includes('/files')) {
+      onFiles();
       return route.fulfill({
         json: filenames.map((filename, i) => ({
           filename,
@@ -38,6 +39,7 @@ async function mockChanges(page: Page) {
             '@@ -1,2 +1,4 @@\n export function isDragging() {\n-  return false;\n+  return dragState.active;\n+}\n+export const delay = 300;',
         })),
       });
+    }
     if (url.includes('/commits') || url.includes('/comments') || url.includes('/reviews'))
       return route.fulfill({ json: [] });
     return route.fulfill({
@@ -59,6 +61,37 @@ async function mockChanges(page: Page) {
     });
   });
 }
+
+test('preloads review files from the detail and reuses them when review opens', async ({ page }) => {
+  test.slow();
+  await bootApp(page, 'pr-detail.html?owner=test-org&repo=borgdock&number=42', 'happy-path', {
+    cache_load_prs: [pendingPr],
+  });
+  let fileRequests = 0;
+  await mockChanges(page, () => {
+    fileRequests++;
+  });
+  await page.reload();
+  await expect.poll(() => fileRequests).toBe(1);
+  // Join the actual preload to wait for both head/base checks to finish.
+  await page.evaluate(async (pr) => {
+    const clientPath = '/src/services/github/singleton.ts';
+    const snapshotPath = '/src/services/quick-review.ts';
+    const { getClientForRepo } = await import(clientPath);
+    const { loadCachedReviewSnapshot } = await import(snapshotPath);
+    const client = getClientForRepo('test-org', 'borgdock');
+    if (!client || !pr) throw new Error('Missing review fixture');
+    await loadCachedReviewSnapshot(client, pr);
+  }, pendingPr.pullRequest);
+  await page.getByRole('button', { name: 'Review', exact: true }).click();
+  const reviewFiles = page.getByRole('button', { name: 'Review files', exact: true });
+  await expect(reviewFiles).toBeEnabled({ timeout: 20_000 });
+  expect(fileRequests).toBe(1);
+  await page.screenshot({ path: test.info().outputPath('preloaded-review-ready.png') });
+  await reviewFiles.click();
+  await expect(page.getByRole('navigation', { name: 'Review path' })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('preloaded-review-files.png') });
+});
 
 test('detail file navigator groups readable names and launches a single PR review in its own window', async ({
   page,

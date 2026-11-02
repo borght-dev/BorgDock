@@ -324,6 +324,61 @@ export async function loadReviewSnapshot(
 /** How long a snapshot stands in for GitHub's current head when submitting. */
 const SNAPSHOT_TRUSTED_MS = 30_000;
 
+interface CachedReviewSnapshot {
+  promise: Promise<ReviewSnapshot>;
+  startedAt: number;
+  snapshot?: ReviewSnapshot;
+}
+const snapshotCaches = new WeakMap<GitHubClient, Map<string, CachedReviewSnapshot>>();
+
+export function loadCachedReviewSnapshot(
+  client: GitHubClient,
+  pr: PullRequest,
+  reload = false,
+): Promise<ReviewSnapshot> {
+  let cache = snapshotCaches.get(client);
+  if (!cache) {
+    cache = new Map();
+    snapshotCaches.set(client, cache);
+  }
+  const key = JSON.stringify([
+    pr.repoOwner.toLowerCase(),
+    pr.repoName.toLowerCase(),
+    pr.number,
+    pr.headSha,
+    pr.updatedAt,
+    pr.state,
+  ]);
+  const cached = cache.get(key);
+  if (
+    !reload &&
+    cached &&
+    pr.headSha &&
+    Date.now() - (cached.snapshot?.loadedAt ?? cached.startedAt) < SNAPSHOT_TRUSTED_MS &&
+    (!cached.snapshot || cached.snapshot.pr.headSha === pr.headSha)
+  )
+    return cached.promise;
+
+  const entry: CachedReviewSnapshot = {
+    startedAt: Date.now(),
+    promise: loadReviewSnapshot(client, pr),
+  };
+  entry.promise = entry.promise
+    .then((snapshot) => {
+      entry.snapshot = snapshot;
+      return snapshot;
+    })
+    .catch((error) => {
+      if (cache.get(key) === entry) cache.delete(key);
+      throw error;
+    });
+  cache.delete(key);
+  cache.set(key, entry);
+  // Current detail, current review and the next queued PR are enough.
+  while (cache.size > 3) cache.delete(cache.keys().next().value!);
+  return entry.promise;
+}
+
 /**
  * The PR's head and base to check a submission against. A snapshot loaded
  * moments ago is used as is, saving a round trip on a quick approval.

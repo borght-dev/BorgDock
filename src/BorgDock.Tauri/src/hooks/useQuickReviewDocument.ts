@@ -3,7 +3,7 @@ import { getClientForRepo } from '@/services/github/singleton';
 import { submitPrReview } from '@/services/pr-review';
 import {
   currentReviewDetails,
-  loadReviewSnapshot,
+  loadCachedReviewSnapshot,
   normalizeReviewDocument,
   type ReviewDocument,
   type ReviewEvent,
@@ -40,7 +40,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
     (async () => {
       try {
         if (!client) throw new Error('No GitHub account is connected for this repository.');
-        const result = await loadReviewSnapshot(client, pr);
+        const result = await loadCachedReviewSnapshot(client, pr, revision > 0);
         if (cancelled) return;
         updateDocument(key, (doc) => reconcileReviewDocument(doc, result));
         setSnapshot(result);
