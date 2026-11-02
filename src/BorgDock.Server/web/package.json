@@ -1,0 +1,25 @@
+{
+  "name": "@dispatch/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "test": "node --test test/*.test.ts",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2"
+  },
+  "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@simplewebauthn/browser": "^14.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}

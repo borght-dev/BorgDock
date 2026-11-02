@@ -1,0 +1,424 @@
+diff --git a/apps/desktop/src/app/DesktopClerk.test.ts b/apps/desktop/src/app/DesktopClerk.test.ts
+index b629301b..747a0855 100644
+--- a/apps/desktop/src/app/DesktopClerk.test.ts
++++ b/apps/desktop/src/app/DesktopClerk.test.ts
+@@ -34,6 +34,7 @@ import * as FileSystem from "effect/FileSystem";
+ import * as ElectronApp from "../electron/ElectronApp.ts";
+ import * as ElectronShell from "../electron/ElectronShell.ts";
+ import * as ElectronWindow from "../electron/ElectronWindow.ts";
++import * as DesktopWindow from "../window/DesktopWindow.ts";
+ import * as DesktopClerk from "./DesktopClerk.ts";
+ import * as DesktopEnvironment from "./DesktopEnvironment.ts";
+ import * as DesktopPreReadyFileSystem from "./DesktopPreReadyFileSystem.ts";
+@@ -50,6 +51,7 @@ const makeDesktopClerkLayer = (
+     openSystemSettings: () => Effect.succeed(false),
+     copyText: () => Effect.void,
+   },
++  openThread: DesktopWindow.DesktopWindow["Service"]["openThread"] = () => Effect.void,
+ ) => {
+   const environment = DesktopEnvironment.DesktopEnvironment.of({
+     stateDir: "/tmp/t3-state",
+@@ -65,14 +67,17 @@ const makeDesktopClerkLayer = (
+       }),
+   } as unknown as ElectronApp.ElectronApp["Service"];
+ 
+-  return DesktopClerk.layer.pipe(
+-    Layer.provide(
+-      Layer.mergeAll(
+-        NodePath.layerPosix,
+-        Layer.succeed(DesktopEnvironment.DesktopEnvironment, environment),
+-        Layer.succeed(ElectronApp.ElectronApp, electronApp),
+-        Layer.succeed(ElectronShell.ElectronShell, shell),
+-        fileSystemLayer,
++  return Layer.merge(
++    Layer.mock(DesktopWindow.DesktopWindow)({ openThread }),
++    DesktopClerk.layer.pipe(
++      Layer.provide(
++        Layer.mergeAll(
++          NodePath.layerPosix,
++          Layer.succeed(DesktopEnvironment.DesktopEnvironment, environment),
++          Layer.succeed(ElectronApp.ElectronApp, electronApp),
++          Layer.succeed(ElectronShell.ElectronShell, shell),
++          fileSystemLayer,
++        ),
+       ),
+     ),
+   );
+@@ -384,3 +389,44 @@ it.effect.each(["startup", "open-url"] as const)(
+       );
+     }).pipe(Effect.scoped),
+ );
++
++it.effect.each(["startup", "second-instance", "open-url"] as const)(
++  "opens the exact Windows thread from %s",
++  (entry) => {
++    storageMock.mockReturnValue(storageAdapter);
++    createClerkBridgeMock.mockReturnValue({ cleanup: vi.fn(), isPrimaryInstance: true });
++    const listeners = new Map<string, (...args: unknown[]) => void>();
++    const opened = Promise.withResolvers<{ environmentId: string; threadId: string }>();
++    const link = "t3code://threads/remote-mini/thread-one";
++    const electronApp = {
++      on: (name: string, listener: (...args: unknown[]) => void) =>
++        Effect.sync(() => listeners.set(name, listener)),
++    } as unknown as ElectronApp.ElectronApp["Service"];
++    return Effect.gen(function* () {
++      const clerk = yield* DesktopClerk.DesktopClerk;
++      yield* clerk.configure;
++      if (entry === "second-instance") listeners.get(entry)!({}, ["T3.exe", link]);
++      if (entry === "open-url") listeners.get(entry)!({ preventDefault: vi.fn() }, link);
++      assert.deepEqual(yield* Effect.promise(() => opened.promise), {
++        environmentId: "remote-mini",
++        threadId: "thread-one",
++      });
++    }).pipe(
++      Effect.scoped,
++      Effect.provide(
++        makeDesktopClerkLayer(false, [], "win32", undefined, undefined, (target) =>
++          Effect.sync(() => opened.resolve(target)),
++        ),
++      ),
++      Effect.provideService(ElectronApp.ElectronApp, electronApp),
++      Effect.provideService(
++        ElectronWindow.ElectronWindow,
++        {} as ElectronWindow.ElectronWindow["Service"],
++      ),
++      Effect.provideService(
++        HostProcessArguments,
++        entry === "startup" ? ["T3.exe", link] : ["T3.exe"],
++      ),
++    );
++  },
++);
+diff --git a/apps/desktop/src/app/DesktopClerk.ts b/apps/desktop/src/app/DesktopClerk.ts
+index 1bc390ac..b8674d9b 100644
+--- a/apps/desktop/src/app/DesktopClerk.ts
++++ b/apps/desktop/src/app/DesktopClerk.ts
+@@ -17,6 +17,8 @@ import * as ElectronApp from "../electron/ElectronApp.ts";
+ import * as ElectronProtocol from "../electron/ElectronProtocol.ts";
+ import * as ElectronWindow from "../electron/ElectronWindow.ts";
+ import * as DesktopUserData from "./DesktopUserData.ts";
++import * as DesktopWindow from "../window/DesktopWindow.ts";
++import { parseDesktopThreadLink } from "./DesktopThreadLink.ts";
+ import * as DesktopEnvironment from "./DesktopEnvironment.ts";
+ 
+ declare const __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: string | undefined;
+@@ -53,7 +55,10 @@ export class DesktopClerk extends Context.Service<
+     readonly configure: Effect.Effect<
+       void,
+       never,
+-      ElectronApp.ElectronApp | ElectronWindow.ElectronWindow | Scope.Scope
++      | ElectronApp.ElectronApp
++      | ElectronWindow.ElectronWindow
++      | DesktopWindow.DesktopWindow
++      | Scope.Scope
+     >;
+   }
+ >()("@t3tools/desktop/app/DesktopClerk") {}
+@@ -125,7 +130,9 @@ export const make = Effect.gen(function* () {
+     configure: Effect.gen(function* () {
+       const electronApp = yield* ElectronApp.ElectronApp;
+       const electronWindow = yield* ElectronWindow.ElectronWindow;
+-      const context = yield* Effect.context<ElectronWindow.ElectronWindow>();
++      const context = yield* Effect.context<
++        ElectronWindow.ElectronWindow | DesktopWindow.DesktopWindow
++      >();
+       const runPromise = Effect.runPromiseWith(context);
+ 
+       // The SDK bridge holds Electron's single-instance lock (acquired at
+@@ -138,6 +145,19 @@ export const make = Effect.gen(function* () {
+         return yield* Effect.interrupt;
+       }
+ 
++      const openThreadLink = (value: string | undefined) => {
++        const link = parseDesktopThreadLink(value, environment.isDevelopment);
++        if (!link) return false;
++        void runPromise(
++          Effect.gen(function* () {
++            const desktopWindow = yield* DesktopWindow.DesktopWindow;
++            yield* desktopWindow.openThread(link);
++          }).pipe(
++            Effect.catchCause((cause) => Effect.logWarning("Could not open linked thread", cause)),
++          ),
++        );
++        return true;
++      };
+       const startProviderAuthHandoff = (value: string | undefined) => {
+         if (!value) return false;
+         const request = readCodexAuthHandoff(value, environment.isDevelopment);
+@@ -183,12 +203,18 @@ export const make = Effect.gen(function* () {
+         return true;
+       };
+       const args = yield* HostProcessArguments;
+-      args.some((value) => startProviderAuthHandoff(value));
++      args.some((value) => openThreadLink(value) || startProviderAuthHandoff(value));
+       yield* electronApp.on("open-url", (event: { preventDefault: () => void }, url: string) => {
+-        if (startProviderAuthHandoff(url) || resumeProviderAuth(url)) event.preventDefault();
++        if (openThreadLink(url) || startProviderAuthHandoff(url) || resumeProviderAuth(url))
++          event.preventDefault();
+       });
+       yield* electronApp.on("second-instance", (_event: unknown, argv: readonly string[]) => {
+-        if (argv?.some((value) => startProviderAuthHandoff(value) || resumeProviderAuth(value)))
++        if (
++          argv?.some(
++            (value) =>
++              openThreadLink(value) || startProviderAuthHandoff(value) || resumeProviderAuth(value),
++          )
++        )
+           return;
+         void runPromise(
+           Effect.gen(function* () {
+diff --git a/apps/desktop/src/app/DesktopLifecycle.test.ts b/apps/desktop/src/app/DesktopLifecycle.test.ts
+index 9e24f9db..00ed67dd 100644
+--- a/apps/desktop/src/app/DesktopLifecycle.test.ts
++++ b/apps/desktop/src/app/DesktopLifecycle.test.ts
+@@ -83,6 +83,7 @@ function makeDesktopWindowLayer(
+   } = {},
+ ) {
+   return Layer.succeed(DesktopWindow.DesktopWindow, {
++    openThread: () => Effect.void,
+     createMain: Effect.die("unexpected window creation"),
+     ensureMain: Effect.die("unexpected window creation"),
+     revealOrCreateMain: Effect.die("unexpected window creation"),
+diff --git a/apps/desktop/src/app/DesktopThreadLink.test.ts b/apps/desktop/src/app/DesktopThreadLink.test.ts
+new file mode 100644
+index 00000000..e7a7518e
+--- /dev/null
++++ b/apps/desktop/src/app/DesktopThreadLink.test.ts
+@@ -0,0 +1,32 @@
++import { describe, expect, it } from "vite-plus/test";
++import { desktopThreadUrl, parseDesktopThreadLink } from "./DesktopThreadLink.ts";
++
++const environmentId = "0f1e2d3c-4b5a-4697-8877-665544332211";
++const threadId = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
++
++describe("desktop thread links", () => {
++  it.each([false, true])("routes the exact environment and thread, dev=%s", (dev) => {
++    const scheme = dev ? "t3code-dev" : "t3code";
++    const link = parseDesktopThreadLink(`${scheme}://threads/${environmentId}/${threadId}`, dev);
++    expect(link).toEqual({ environmentId, threadId });
++    expect(desktopThreadUrl(link!, dev)).toBe(`${scheme}://app/#/${environmentId}/${threadId}`);
++  });
++
++  it.each([
++    undefined,
++    "",
++    "invalid",
++    "http://threads/env/thread",
++    "t3code-dev://threads/env/thread",
++    "t3code://app/env/thread",
++    "t3code://threads:123/env/thread",
++    "t3code://user@threads/env/thread",
++    "t3code://threads/env/thread?prompt=run",
++    "t3code://threads/env/thread#anything",
++    "t3code://threads/env",
++    "t3code://threads/env/thread/extra",
++    "t3code://threads/env/%2F",
++  ])("ignores unsupported link %s", (url) => {
++    expect(parseDesktopThreadLink(url, false)).toBeUndefined();
++  });
++});
+diff --git a/apps/desktop/src/app/DesktopThreadLink.ts b/apps/desktop/src/app/DesktopThreadLink.ts
+new file mode 100644
+index 00000000..080c2e36
+--- /dev/null
++++ b/apps/desktop/src/app/DesktopThreadLink.ts
+@@ -0,0 +1,34 @@
++export type DesktopThreadLink = {
++  readonly environmentId: string;
++  readonly threadId: string;
++};
++
++export function parseDesktopThreadLink(
++  value: string | undefined,
++  isDevelopment: boolean,
++): DesktopThreadLink | undefined {
++  if (!value) return undefined;
++  try {
++    const url = new URL(value);
++    const protocol = isDevelopment ? "t3code-dev:" : "t3code:";
++    if (
++      url.protocol !== protocol ||
++      url.host !== "threads" ||
++      url.username ||
++      url.password ||
++      url.search ||
++      url.hash
++    )
++      return undefined;
++    const match = /^\/([\w-]+)\/([\w-]+)$/.exec(url.pathname);
++    if (!match?.[1] || !match[2]) return undefined;
++    return { environmentId: match[1], threadId: match[2] };
++  } catch {
++    return undefined;
++  }
++}
++
++export function desktopThreadUrl(link: DesktopThreadLink, isDevelopment: boolean): string {
++  const scheme = isDevelopment ? "t3code-dev" : "t3code";
++  return `${scheme}://app/#/${encodeURIComponent(link.environmentId)}/${encodeURIComponent(link.threadId)}`;
++}
+diff --git a/apps/desktop/src/backend/DesktopBackendPool.test.ts b/apps/desktop/src/backend/DesktopBackendPool.test.ts
+index 8373437a..c0155149 100644
+--- a/apps/desktop/src/backend/DesktopBackendPool.test.ts
++++ b/apps/desktop/src/backend/DesktopBackendPool.test.ts
+@@ -86,6 +86,7 @@ function makePoolLayer(
+         DesktopWslEnvironment.layerTest(),
+         ElectronDialog.layer,
+         Layer.succeed(DesktopWindow.DesktopWindow, {
++          openThread: () => Effect.void,
+           createMain: Effect.die("unexpected window create"),
+           ensureMain: Effect.die("unexpected window ensure"),
+           revealOrCreateMain: Effect.die("unexpected window reveal"),
+diff --git a/apps/desktop/src/window/DesktopApplicationMenu.test.ts b/apps/desktop/src/window/DesktopApplicationMenu.test.ts
+index d24ffdcb..6484ed2c 100644
+--- a/apps/desktop/src/window/DesktopApplicationMenu.test.ts
++++ b/apps/desktop/src/window/DesktopApplicationMenu.test.ts
+@@ -73,6 +73,7 @@ const desktopUpdatesLayer = Layer.succeed(DesktopUpdates.DesktopUpdates, {
+ 
+ const makeDesktopWindowLayer = (selectedAction: Deferred.Deferred<string>) =>
+   Layer.succeed(DesktopWindow.DesktopWindow, {
++    openThread: () => Effect.void,
+     createMain: Effect.die("unexpected createMain"),
+     ensureMain: Effect.die("unexpected ensureMain"),
+     revealOrCreateMain: Effect.die("unexpected revealOrCreateMain"),
+diff --git a/apps/desktop/src/window/DesktopWindow.test.ts b/apps/desktop/src/window/DesktopWindow.test.ts
+index 1345c37b..127ed2f2 100644
+--- a/apps/desktop/src/window/DesktopWindow.test.ts
++++ b/apps/desktop/src/window/DesktopWindow.test.ts
+@@ -431,6 +431,53 @@ const captureOne = DesktopSnapShotId.make("11111111-1111-4111-8111-111111111111"
+ const captureTwo = DesktopSnapShotId.make("22222222-2222-4222-8222-222222222222");
+ 
+ describe("DesktopWindow", () => {
++  it.effect.each(["running", "startup", "loading"] as const)(
++    "opens the exact linked thread while %s, keeping the latest request",
++    (phase) =>
++      Effect.gen(function* () {
++        const fakeWindow = makeFakeBrowserWindow();
++        const createCount = yield* Ref.make(0);
++        const mainWindow = yield* Ref.make<Option.Option<Electron.BrowserWindow>>(
++          phase === "running" ? Option.some(fakeWindow.window) : Option.none(),
++        );
++        const revealed = Promise.withResolvers<void>();
++        const layer = makeTestLayer({
++          window: fakeWindow.window,
++          createCount,
++          mainWindow,
++          onReveal: () => revealed.resolve(),
++        });
++        vi.mocked(fakeWindow.window.webContents.isLoadingMainFrame).mockReturnValue(
++          phase !== "running",
++        );
++        yield* Effect.gen(function* () {
++          const desktopWindow = yield* DesktopWindow.DesktopWindow;
++          if (phase === "loading")
++            yield* desktopWindow.handleBackendReady(new URL("http://localhost:3773"));
++          yield* desktopWindow.openThread({ environmentId: "remote-mini", threadId: "thread-one" });
++          if (phase !== "running") {
++            yield* desktopWindow.openThread({
++              environmentId: "remote-mini",
++              threadId: "thread-two",
++            });
++            if (phase === "startup") {
++              assert.equal(fakeWindow.loadURL.mock.calls.length, 0);
++              yield* desktopWindow.handleBackendReady(new URL("http://localhost:3773"));
++            }
++            assert.deepEqual(fakeWindow.loadURL.mock.calls, [["t3code-dev://app/"]]);
++            vi.mocked(fakeWindow.window.webContents.isLoadingMainFrame).mockReturnValue(false);
++            fakeWindow.webContentsListeners.get("did-finish-load")!();
++          }
++          yield* Effect.promise(() => revealed.promise);
++          const thread = phase === "running" ? "thread-one" : "thread-two";
++          assert.deepEqual(fakeWindow.loadURL.mock.calls.at(-1), [
++            `t3code-dev://app/#/remote-mini/${thread}`,
++          ]);
++          assert.equal(yield* Ref.get(createCount), phase === "running" ? 0 : 1);
++        }).pipe(Effect.provide(layer));
++      }),
++  );
++
+   it.effect("shows native context menus for browser guests and sign-in popups", () =>
+     Effect.gen(function* () {
+       const host = makeFakeBrowserWindow();
+diff --git a/apps/desktop/src/window/DesktopWindow.ts b/apps/desktop/src/window/DesktopWindow.ts
+index aa5aa085..184b1f46 100644
+--- a/apps/desktop/src/window/DesktopWindow.ts
++++ b/apps/desktop/src/window/DesktopWindow.ts
+@@ -11,6 +11,7 @@ import * as Electron from "electron";
+ import { type DesktopSnapShotEvent, DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts";
+ 
+ import * as DesktopAssets from "../app/DesktopAssets.ts";
++import { desktopThreadUrl, type DesktopThreadLink } from "../app/DesktopThreadLink.ts";
+ import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
+ import { makeComponentLogger } from "../app/DesktopObservability.ts";
+ import * as ElectronMenu from "../electron/ElectronMenu.ts";
+@@ -95,6 +96,7 @@ export type MainWindowZoomDirection = "in" | "out" | "reset";
+ export class DesktopWindow extends Context.Service<
+   DesktopWindow,
+   {
++    readonly openThread: (link: DesktopThreadLink) => Effect.Effect<void, DesktopWindowError>;
+     readonly createMain: Effect.Effect<Electron.BrowserWindow, DesktopWindowError>;
+     readonly ensureMain: Effect.Effect<Electron.BrowserWindow, DesktopWindowError>;
+     readonly revealOrCreateMain: Effect.Effect<Electron.BrowserWindow, DesktopWindowError>;
+@@ -334,6 +336,18 @@ export const make = Effect.gen(function* () {
+   const context = yield* Effect.context<DesktopWindowRuntimeServices>();
+   const runFork = Effect.runForkWith(context);
+   const runPromise = Effect.runPromiseWith(context);
++  let pendingThread: DesktopThreadLink | undefined;
++  const flushThreadLink = (window: Electron.BrowserWindow) => {
++    if (!pendingThread || window.isDestroyed() || window.webContents.isLoadingMainFrame()) return;
++    const destination = desktopThreadUrl(pendingThread, environment.isDevelopment);
++    pendingThread = undefined;
++    void runPromise(
++      Effect.tryPromise(() => window.loadURL(destination)).pipe(
++        Effect.andThen(electronWindow.reveal(window)),
++        Effect.catchCause((cause) => logWindowWarning("Could not open linked thread", { cause })),
++      ),
++    );
++  };
+   let flushMainWindowBounds: Effect.Effect<void> = Effect.void;
+ 
+   const dismissConnectingSplash = Effect.gen(function* () {
+@@ -733,6 +747,7 @@ export const make = Effect.gen(function* () {
+     };
+ 
+     window.webContents.on("did-finish-load", () => {
++      flushThreadLink(window);
+       if (
+         environment.isDevelopment &&
+         !isSameOriginRendererNavigation({
+@@ -846,6 +861,7 @@ export const make = Effect.gen(function* () {
+   const createMain = Effect.gen(function* () {
+     const window = yield* createWindow();
+     yield* electronWindow.setMain(window);
++    flushThreadLink(window);
+     yield* logWindowInfo("main window created");
+     return window;
+   }).pipe(Effect.withSpan("desktop.window.createMain"));
+@@ -949,6 +965,12 @@ export const make = Effect.gen(function* () {
+   });
+ 
+   return DesktopWindow.of({
++    openThread: Effect.fn("desktop.window.openThread")(function* (link) {
++      pendingThread = link;
++      const existingWindow = yield* currentMainWindow;
++      if (Option.isSome(existingWindow)) flushThreadLink(existingWindow.value);
++      else yield* createMainIfBackendReady;
++    }),
+     createMain,
+     ensureMain,
+     revealOrCreateMain,
+diff --git a/docs/user/install.md b/docs/user/install.md
+index 98083719..dc9a8e5e 100644
+--- a/docs/user/install.md
++++ b/docs/user/install.md
+@@ -96,6 +96,10 @@ Pass a path, such as `t3 app ../my-project`, to open another directory. It requi
+ the desktop app, so a standalone server or an SSH session is not enough. If the
+ command cannot reach the app, start or update the desktop app and try again.
+ 
++### Open an existing thread from another app
++
++Open `t3code://threads/<environmentId>/<threadId>` to select that conversation in the desktop app. T3 must already have a connection to the thread's environment. Links also work when the desktop app starts cold.
++
+ ## Mobile app
+ 
+ Install T3 Code from the

@@ -1,0 +1,658 @@
+{
+ "apiVersion": 1,
+ "user": {
+  "name": "Koen van der Borght",
+  "email": "koen@example.com"
+ },
+ "models": [
+  {
+   "id": "claudeAgent/claude-opus-5-5",
+   "label": "Claude Opus 5.5",
+   "provider": "Claude",
+   "recent": true,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultracode",
+     "label": "Ultracode"
+    },
+    {
+     "id": "ultrathink",
+     "label": "Ultrathink"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "codex/gpt-6.1-sol",
+   "label": "GPT-6.1-Sol",
+   "provider": "Codex",
+   "recent": true,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra high"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultra",
+     "label": "Ultra"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "codex/gpt-6-astra",
+   "label": "GPT-6-Astra",
+   "provider": "Codex",
+   "recent": true,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra high"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultra",
+     "label": "Ultra"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "codex/gpt-6-sol",
+   "label": "GPT-6-Sol",
+   "provider": "Codex",
+   "recent": true,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra high"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultra",
+     "label": "Ultra"
+    }
+   ],
+   "defaultEffort": "medium"
+  },
+  {
+   "id": "claudeAgent/claude-fable-5-1",
+   "label": "Claude Fable 5.1",
+   "provider": "Claude",
+   "recent": true,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultracode",
+     "label": "Ultracode"
+    },
+    {
+     "id": "ultrathink",
+     "label": "Ultrathink"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "codex/gpt-6-luna",
+   "label": "GPT-6-Luna",
+   "provider": "Codex",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra high"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    }
+   ],
+   "defaultEffort": "medium"
+  },
+  {
+   "id": "codex/gpt-5.6-sol",
+   "label": "GPT-5.6-Sol",
+   "provider": "Codex",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra high"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultra",
+     "label": "Ultra"
+    }
+   ],
+   "defaultEffort": "medium"
+  },
+  {
+   "id": "codex/gpt-5.6-terra",
+   "label": "GPT-5.6-Terra",
+   "provider": "Codex",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra high"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultra",
+     "label": "Ultra"
+    }
+   ],
+   "defaultEffort": "medium"
+  },
+  {
+   "id": "codex/gpt-5.6-luna",
+   "label": "GPT-5.6-Luna",
+   "provider": "Codex",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra high"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    }
+   ],
+   "defaultEffort": "medium"
+  },
+  {
+   "id": "codex/gpt-5.5",
+   "label": "GPT-5.5",
+   "provider": "Codex",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra high"
+    }
+   ],
+   "defaultEffort": "medium"
+  },
+  {
+   "id": "claudeAgent/claude-sonnet-5-5",
+   "label": "Claude Sonnet 5.5",
+   "provider": "Claude",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultrathink",
+     "label": "Ultrathink"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "claudeAgent/claude-fable-5",
+   "label": "Claude Fable 5",
+   "provider": "Claude",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultracode",
+     "label": "Ultracode"
+    },
+    {
+     "id": "ultrathink",
+     "label": "Ultrathink"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "claudeAgent/claude-opus-5",
+   "label": "Claude Opus 5",
+   "provider": "Claude",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultracode",
+     "label": "Ultracode"
+    },
+    {
+     "id": "ultrathink",
+     "label": "Ultrathink"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "claudeAgent/claude-opus-4-8",
+   "label": "Claude Opus 4.8",
+   "provider": "Claude",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultracode",
+     "label": "Ultracode"
+    },
+    {
+     "id": "ultrathink",
+     "label": "Ultrathink"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "claudeAgent/claude-opus-4-7",
+   "label": "Claude Opus 4.7",
+   "provider": "Claude",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultrathink",
+     "label": "Ultrathink"
+    }
+   ],
+   "defaultEffort": "xhigh"
+  },
+  {
+   "id": "claudeAgent/claude-opus-4-6",
+   "label": "Claude Opus 4.6",
+   "provider": "Claude",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultrathink",
+     "label": "Ultrathink"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "claudeAgent/claude-opus-4-5",
+   "label": "Claude Opus 4.5",
+   "provider": "Claude",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "claudeAgent/claude-sonnet-5",
+   "label": "Claude Sonnet 5",
+   "provider": "Claude",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "xhigh",
+     "label": "Extra High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultrathink",
+     "label": "Ultrathink"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "claudeAgent/claude-sonnet-4-6",
+   "label": "Claude Sonnet 4.6",
+   "provider": "Claude",
+   "recent": false,
+   "efforts": [
+    {
+     "id": "low",
+     "label": "Low"
+    },
+    {
+     "id": "medium",
+     "label": "Medium"
+    },
+    {
+     "id": "high",
+     "label": "High"
+    },
+    {
+     "id": "max",
+     "label": "Max"
+    },
+    {
+     "id": "ultrathink",
+     "label": "Ultrathink"
+    }
+   ],
+   "defaultEffort": "high"
+  },
+  {
+   "id": "claudeAgent/claude-haiku-4-5",
+   "label": "Claude Haiku 4.5",
+   "provider": "Claude",
+   "recent": false,
+   "efforts": [],
+   "defaultEffort": null
+  }
+ ],
+ "defaultModel": "codex/gpt-6.1-sol",
+ "agents": [
+  {
+   "id": "codex",
+   "label": "GPT-6.1-Sol"
+  },
+  {
+   "id": "claude",
+   "label": "Claude Opus 5.5"
+  }
+ ],
+ "defaultAgent": "codex",
+ "worktrees": [
+  "M0",
+  "M1",
+  "M2",
+  "M3",
+  "M4",
+  "M5",
+  "M6",
+  "M7",
+  "M8",
+  "M9"
+ ],
+ "promptTemplate": "Pick up AB#{id}: {title}\n\nRead the work item with the ado skill first. Work on branch {branch} and open a PR that links AB#{id}.",
+ "vapidPublicKey": null
+}
