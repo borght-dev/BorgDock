@@ -20,6 +20,8 @@ chmod 700 ~/.dispatch
 sed -e "s|__NODE__|$NODE|g" -e "s|__NODE_DIR__|${NODE:h}|g" -e "s|__REPO__|$REPO|g" -e "s|__HOME__|$HOME|g" \
   deploy/dev.borght.dispatch.plist > "$PLIST"
 launchctl bootout "gui/$(id -u)/dev.borght.dispatch" 2>/dev/null || true
+# bootout returns before launchd lets go of the job; bootstrap fails with "5: Input/output error" until it has.
+for i in {1..20}; do launchctl print "gui/$(id -u)/dev.borght.dispatch" >/dev/null 2>&1 || break; sleep 0.5; done
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
 # Public HTTPS on its own port: its own origin. Cookies are still host-wide; see docs/security.md.

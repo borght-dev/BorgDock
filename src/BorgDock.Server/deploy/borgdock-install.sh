@@ -33,6 +33,8 @@ fi
 sed -e "s|__NODE__|$NODE|g" -e "s|__NODE_DIR__|${NODE:h}|g" -e "s|__REPO__|$REPO|g" -e "s|__HOME__|$HOME|g" \
   -e "s|__ORIGIN__|https://$HOST/borgdock|g" deploy/borgdock-server.plist > "$PLIST"
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+# bootout returns before launchd lets go of the job; bootstrap fails with "5: Input/output error" until it has.
+for i in {1..20}; do launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || break; sleep 0.5; done
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
 # A path route on 443 beside what already serves there. Tailscale strips /borgdock, so the server sees /api/...
