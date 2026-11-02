@@ -28,7 +28,10 @@ xcrun devicectl device install app --device <device> build/Build/Products/Debug-
 ```
 
 - **Signing:** team `2YU6RWHUWX`, automatic, through the App Store Connect API key (Xcode on the Mac mini has no
-  personal Apple account). App Store Connect app "BorgDock", Apple ID 6829171084.
+  personal Apple account). Over SSH the login keychain stays locked and `codesign` fails with
+  `errSecInternalComponent`; run `testflight.sh` in a tmux window started from the Mac's own desktop session
+  (`tmux new-window -d "./testflight.sh > /tmp/tf.log 2>&1"` against the tmux server the desktop's Terminal runs).
+  Terminal's `do script` doesn't work there: the shell starts tmux and swallows the command. App Store Connect app "BorgDock", Apple ID 6829171084.
 - **Server address:** a fresh install talks to `BORGDOCK_SERVER_URL`, which `testflight.sh` takes from the server's
   `publicOrigin` in `~/.borgdock-server/config.json`. Without it the app starts on `http://127.0.0.1:8797`; the sign-in
   screen changes it.
