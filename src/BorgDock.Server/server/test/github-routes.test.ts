@@ -41,7 +41,7 @@ test('GET /api/focus?refresh=1 polls first', async () => {
   const { app, gh } = setup();
   const response = await app.request('/api/focus?refresh=1');
   assert.equal(response.status, 200);
-  assert.equal(gh.operations('FocusSearch').length, 1);
+  assert.equal(gh.operations('FocusSearch').length, 3, 'one request per search');
 });
 
 test('pull request detail, files and comments have the contract\'s shape', async () => {

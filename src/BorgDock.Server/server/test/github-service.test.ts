@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Focus } from '../../shared/src/api.ts';
 import { UserError } from '../src/service.ts';
-import { checkRun, rawPr, type Seen } from './github-fixtures/fake.ts';
+import { checkRun, rawPr, searchAnswer, type Seen } from './github-fixtures/fake.ts';
 import { githubWorld } from './github-fixtures/world.ts';
 
 const ONE = { owner: 'acme', repo: 'shop', number: 1 };
@@ -26,14 +26,47 @@ test('a poll buckets the pull requests that involve you, with reasons and the ag
   assert.deepEqual(second.approvedBy, ['mira']);
   assert.deepEqual(focus.agentsWaiting, [{ itemId: 60379, threadId: 't-1', title: 'Keep the basket on timeout', detail: 'Retry once or twice?', tone: 'warn' }]);
   assert.deepEqual(focus.accounts.map((a) => [a.login, a.ok]), [['koen', true]]);
-  assert.equal(gh.operations('FocusSearch').length, 1);
-  assert.match(gh.operations('FocusSearch')[0].body.variables.involves, /involves:@me/);
+  assert.deepEqual(gh.operations('FocusSearch').map((r) => /\S+:@me/.exec(r.body.variables.query)?.[0]), ['involves:@me', 'review-requested:@me', 'reviewed-by:@me']);
 
   await service.ciSettled();
   const before = events.length;
   await service.refresh();
   await service.ciSettled();
   assert.equal(events.length, before, 'an unchanged poll emits nothing');
+});
+
+test('review requests and your reviews come from their own searches: involves:@me never finds them', async () => {
+  const { service, gh, prs } = githubWorld();
+  const teamAsks = Array.from({ length: 25 }, (_, i) => rawPr({ number: 100 + i, title: `Team change ${i}`, author: 'tom', teams: ['platform'] }));
+  const reviewed = rawPr({ number: 4, title: 'Split the checkout', author: 'mira', headSha: 'new', commits: ['old', 'new'], reviews: [{ login: 'koen', state: 'APPROVED', sha: 'old' }] });
+  gh.onGraphql('FocusSearch', (r) => {
+    const { query, after } = r.body.variables;
+    if (query.includes('involves:@me')) return { body: { data: searchAnswer([prs[1], prs[2]]) } };
+    if (query.includes('reviewed-by:@me')) return { body: { data: searchAnswer([reviewed]) } };
+    return { body: { data: after === 'page-2' ? searchAnswer([...teamAsks.slice(20), prs[1]]) : searchAnswer(teamAsks.slice(0, 20), 'koen', 'page-2') } };
+  });
+  const focus = (await service.refresh())!;
+  assert.equal(focus.pullRequests.length, 28, '#1, #2, #4 and 25 team requests, each once');
+  assert.equal(focus.pullRequests.find((p) => p.key === 'acme/shop#124')!.bucket, 'you', 'a request to your team needs you');
+  assert.equal(gh.operations('FocusSearch').filter((r) => r.body.variables.query.includes('review-requested:@me')).length, 2, 'two pages');
+  assert.equal(focus.accounts[0].ok, true);
+});
+
+test('a search that times out keeps its last answer and says so; the others refresh', async () => {
+  const { service, gh, prs } = githubWorld();
+  const teamAsk = rawPr({ number: 3, title: 'Cache the price list', author: 'tom', teams: ['platform'] });
+  let requestedDown = false;
+  gh.onGraphql('FocusSearch', (r) => {
+    const { query } = r.body.variables;
+    if (query.includes('review-requested:@me')) return requestedDown ? { status: 504, text: '<!DOCTYPE html>' } : { body: { data: searchAnswer([teamAsk]) } };
+    return { body: { data: searchAnswer(query.includes('involves:@me') ? [prs[1], prs[2]] : []) } };
+  });
+  await service.refresh();
+  requestedDown = true;
+  const focus = (await service.refresh())!;
+  assert.deepEqual(focus.pullRequests.map((p) => p.key).sort(), ['acme/shop#1', 'acme/shop#2', 'acme/shop#3']);
+  assert.equal(focus.accounts[0].ok, false);
+  assert.match(focus.accounts[0].error!, /^Showing older results for review-requested:@me/);
 });
 
 test('an account that fails keeps its error; the others still count', async () => {

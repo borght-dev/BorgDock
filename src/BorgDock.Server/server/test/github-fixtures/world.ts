@@ -37,7 +37,7 @@ export function githubWorld(o: { accounts?: string[] } = {}) {
 
   gh.onGraphql('FocusSearch', (r) => (r.headers.authorization.includes('broken')
     ? { status: 502, body: { message: 'Server Error' } }
-    : { body: { data: searchAnswer([review, mine]) } }));
+    : { body: { data: searchAnswer(/involves:@me/.test(r.body.variables.query) ? [review, mine] : []) } }));
   gh.onGraphql('ViewerTeams', { viewer: { organizations: { nodes: [{ teams: { nodes: [{ slug: 'platform' }] } }] } } });
   gh.onGraphql('PrDetail', (r) => {
     const pr = prs[r.body.variables.number as 1 | 2];

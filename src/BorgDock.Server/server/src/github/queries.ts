@@ -26,16 +26,37 @@ export const PR_FIELDS = /* GraphQL */ `
   head: commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100) { ${CHECK_CONTEXTS} } } } } }
   recent: commits(last: 20) { nodes { commit { oid } } }`;
 
-/** Open pull requests that involve the account, plus (for the first account) the configured repositories. */
-export function focusQuery(withRepos: boolean): string {
-  return /* GraphQL */ `
-    query FocusSearch($involves: String!${withRepos ? ', $repos: String!' : ''}) {
-      viewer { login }
-      involves: search(query: $involves, type: ISSUE, first: 50) { nodes { ... on PullRequest { ${PR_FIELDS} } } }
-      ${withRepos ? `repos: search(query: $repos, type: ISSUE, first: 50) { nodes { ... on PullRequest { ${PR_FIELDS} } } }` : ''}
-      rateLimit { cost remaining }
-    }`;
-}
+/**
+ * The searches behind Focus, one per alias. GitHub's `involves` is author, assignee, mentions and commenter only:
+ * a review request (yours or your team's) never matches it, and neither does a review without a comment.
+ */
+export const FOCUS_SEARCHES = [
+  'is:open is:pr involves:@me archived:false',
+  'is:open is:pr review-requested:@me archived:false',
+  'is:open is:pr reviewed-by:@me archived:false',
+] as const;
+
+/**
+ * Each search is its own request, a page at a time: with every check of every head commit, 40 pull requests in one
+ * answer took GitHub longer than its 10 s limit (a 504), and 25 took 8 s.
+ */
+export const FOCUS_PAGE_SIZE = 20;
+export const FOCUS_MAX_PAGES = 5;
+
+export const FOCUS_QUERY = /* GraphQL */ `
+  query FocusSearch($query: String!, $after: String) {
+    viewer { login }
+    found: search(query: $query, type: ISSUE, first: ${FOCUS_PAGE_SIZE}, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      nodes { ... on PullRequest { ${PR_FIELDS} } }
+    }
+    rateLimit { cost remaining }
+  }`;
+
+export type FocusPage = {
+  viewer: { login: string };
+  found: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: (RawPr | Record<string, never>)[] };
+};
 
 export const TEAMS_QUERY = /* GraphQL */ `
   query ViewerTeams($login: String!) {

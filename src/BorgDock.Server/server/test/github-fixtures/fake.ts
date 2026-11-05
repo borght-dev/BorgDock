@@ -94,6 +94,10 @@ export function rawPr(o: Partial<{
   };
 }
 
-export function searchAnswer(nodes: RawPr[], login = 'koen') {
-  return { viewer: { login }, involves: { nodes }, rateLimit: { cost: 3, remaining: 4990 } };
+/** One page of a FocusSearch answer; `next` is the cursor of the page after it. */
+export function searchAnswer(nodes: RawPr[], login = 'koen', next: string | null = null) {
+  return {
+    viewer: { login }, found: { pageInfo: { hasNextPage: next !== null, endCursor: next }, nodes },
+    rateLimit: { cost: 1, remaining: 4990 },
+  };
 }
