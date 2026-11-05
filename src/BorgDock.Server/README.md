@@ -57,7 +57,7 @@ Nothing changes in ADO unless you press the button.
 - `docs/security.md`: who gets in and what leaves the Mac. `docs/t3-protocol.md`: how Dispatch talks to T3.
 
 ## Run it on the Mac mini
-Run the services from a checkout that follows `master` (not a development worktree): the launchd jobs point at it.
+Run the services from a checkout that follows `main` (not a development worktree): the launchd jobs point at it.
 `~/.dispatch/config.json` needs `ado` (`orgUrl`, `project`, `team`) and, for a public address, `publicOrigin`.
 ```sh
 deploy/install.sh        # install, typecheck, test, build, launchd service, public Funnel route

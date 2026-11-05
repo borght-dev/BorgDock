@@ -2,13 +2,13 @@ name: test
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 # Cancel an in-progress run when a newer one is queued for the same ref
-# (PR push, master push). Master keeps its own group via refs/heads/master,
-# so master commits don't cancel each other across runs.
+# (PR push, main push). Main keeps its own group via refs/heads/main,
+# so main commits don't cancel each other across runs.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -84,7 +84,7 @@ jobs:
 
   site:
     name: site (build and link check)
-    # Pull requests only: master pushes are built by deploy-site.yml.
+    # Pull requests only: main pushes are built by deploy-site.yml.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -118,7 +118,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src/BorgDock.Tauri/src-tauri -> target
-          save-if: ${{ github.ref == 'refs/heads/master' }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Native tests and generated command contracts
         working-directory: src/BorgDock.Tauri/src-tauri
         run: cargo test --locked --lib

@@ -3,7 +3,7 @@
 The site at [borgdock.dev](https://borgdock.dev): what BorgDock does for
 you, a page each for Dispatch and Quick review, a gallery of every screen, the download page and
 the changelog. It is an Astro 5 site with one
-React island (the theme toggle), deployed to GitHub Pages from `master` by
+React island (the theme toggle), deployed to GitHub Pages from `main` by
 `.github/workflows/deploy-site.yml`.
 
 Every picture and video on the site is captured from BorgDock's own Storybook stories with sample
@@ -266,7 +266,7 @@ dated before today, with a message to run `bun run site:release`. An app version
 release (the normal state between a version bump and its release) only prints a warning.
 
 `deploy-site.yml` runs `site:release` before `site:build`, so a deploy always picks up the latest
-release. It deploys on pushes to `master` that touch the site, its manifests, the changelog, the
+release. It deploys on pushes to `main` that touch the site, its manifests, the changelog, the
 app's version or tokens, and on `release: published`. Pull requests build the site in the `site`
 job of `test.yml`.
 

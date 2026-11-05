@@ -26,7 +26,7 @@ const structuredData = {
       description, applicationCategory: 'DeveloperApplication',
       operatingSystem: [...new Set(installers.map((installer) => OS_NAME[installer.os]))].join(', '),
       softwareVersion: latestRelease.version, downloadUrl: new URL('/download/', Astro.site).href,
-      isAccessibleForFree: true, license: `${REPO_URL}/blob/master/LICENSE`, sameAs: [REPO_URL],
+      isAccessibleForFree: true, license: `${REPO_URL}/blob/main/LICENSE`, sameAs: [REPO_URL],
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     },
   ],
