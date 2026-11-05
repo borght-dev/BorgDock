@@ -985,6 +985,10 @@ function e2eReportBody(failed: Array<[file: string, test: string, error: string]
 /** Every PR's comments hold `body` as its latest E2E report. */
 function e2eReportDecorator(body: string): Decorator {
   return (Story) => {
+    getControl().githubResponses.getPRReviewDetails = {
+      pr: redE2e.pullRequest,
+      baseSha: 'review-base',
+    };
     getControl().githubResponses.getRepositoryObject = (path) =>
       path.includes('/issues/')
         ? [
@@ -1005,8 +1009,15 @@ function e2eReportDecorator(body: string): Decorator {
   };
 }
 
+/** The PR of the meta, in a made-up repository: this story is a release hero. */
 const redE2e = {
   ...pr,
+  pullRequest: {
+    ...pr.pullRequest,
+    repoOwner: 'acme',
+    repoName: 'shop',
+    htmlUrl: 'https://github.com/acme/shop/pull/3668',
+  },
   overallStatus: 'red' as const,
   failedCheckNames: [E2E_CHECK],
   passedCount: 41,

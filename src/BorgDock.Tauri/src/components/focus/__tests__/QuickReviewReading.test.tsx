@@ -193,6 +193,28 @@ describe('Review guide', () => {
     expect(prompt.prompt).toContain('### src/Workspace.tsx');
   });
 
+  it('starts the walk at the top of the guide once it is written', async () => {
+    let answer: (value: ReturnType<typeof guideAnswer>) => void = () => {};
+    vi.mocked(commands.runHeadlessPrompt).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const button = await start();
+    fireEvent.click(button);
+    // While the guide is written the tree shows folders; read on to another file.
+    expect(groupNames()).toEqual(['src/hooks', 'src']);
+    press('n');
+    expect(currentFile()).toBe('src/rounding.ts');
+
+    answer(guideAnswer());
+    await within(tree()).findByText('3 chapters by Claude · sonnet');
+    expect(currentFile()).toBe('src/hooks/useLayout.ts');
+    expect(document.querySelector('[data-quick-review-chapter]')).toHaveTextContent(
+      'Chapter 1 of 3',
+    );
+  });
+
   it('opens the walk at a chapter chosen on the card', async () => {
     await start();
     fireEvent.click(await screen.findByRole('button', { name: /Workspace renders them/ }));
