@@ -3,40 +3,11 @@ import XCTest
 
 /// The Pull requests tab: the desktop list's filters, search, order and groups.
 final class PrListTests: XCTestCase {
-    private let now = Date(timeIntervalSince1970: 1_800_000_000)
-    private func iso(hoursAgo: Double) -> String { now.addingTimeInterval(-hoursAgo * 3600).formatted(.iso8601) }
-
-    private func pr(
-        _ number: Int,
-        repo: String = "shop",
-        author: String = "sanne",
-        mine: Bool = false,
-        draft: Bool = false,
-        bucket: String = "wait",
-        failed: Int = 0,
-        updatedHoursAgo: Double = 1,
-        title: String? = nil
-    ) throws -> PrSummary {
-        let json: [String: Any] = [
-            "owner": "acme", "repo": repo, "number": number, "key": "acme/\(repo)#\(number)", "account": "koen",
-            "title": title ?? "Change \(number)", "url": "https://github.com/acme/\(repo)/pull/\(number)",
-            "author": ["login": author, "name": author.capitalized + " Example", "avatarUrl": NSNull()],
-            "isMine": mine, "isDraft": draft, "state": "open", "headRef": "feature-\(number)", "baseRef": "master", "headSha": "abc",
-            "createdAt": iso(hoursAgo: 48), "updatedAt": iso(hoursAgo: updatedHoursAgo), "mergedAt": NSNull(),
-            "additions": 10, "deletions": 2, "changedFiles": 1, "labels": [],
-            "checks": ["total": 2, "passed": 2 - failed, "failed": failed, "pending": 0, "skipped": 0, "segments": []],
-            "reviewDecision": NSNull(), "approvedBy": [], "mergeable": "mergeable", "bucket": bucket,
-            "reason": ["text": "", "tone": "mute", "icon": "review"], "workItemIds": [61000 + number],
-            "snoozedUntil": NSNull(), "autoMerge": false, "reviewedHeadSha": NSNull(),
-        ]
-        return try JSONDecoder().decode(PrSummary.self, from: JSONSerialization.data(withJSONObject: json))
-    }
-
     func testFiltersMatchTheDesktopControl() throws {
         let prs = [
-            try pr(1, mine: true, failed: 1),
-            try pr(2, bucket: "you"),
-            try pr(3),
+            try samplePR(1, mine: true, failed: 1),
+            try samplePR(2, bucket: "you"),
+            try samplePR(3),
         ]
         let query = PrListQuery()
         XCTAssertEqual(query.count(.all, in: prs), 3)
@@ -47,7 +18,7 @@ final class PrListTests: XCTestCase {
     }
 
     func testSearchMatchesEveryWordAcrossTitleBranchAuthorAndWorkItem() throws {
-        let prs = [try pr(1, author: "tom", title: "Basket timeout"), try pr(2, title: "Basket colours")]
+        let prs = [try samplePR(1, author: "tom", title: "Basket timeout"), try samplePR(2, title: "Basket colours")]
         XCTAssertEqual(PrListQuery(search: "basket tom").visible(prs).map(\.number), [1])
         XCTAssertEqual(PrListQuery(search: "feature-2").visible(prs).map(\.number), [2])
         XCTAssertEqual(PrListQuery(search: "AB#61001").visible(prs).map(\.number), [1])
@@ -55,7 +26,7 @@ final class PrListTests: XCTestCase {
     }
 
     func testHideDraftsAppliesToCountsToo() throws {
-        let prs = [try pr(1, draft: true), try pr(2)]
+        let prs = [try samplePR(1, draft: true), try samplePR(2)]
         let query = PrListQuery(hideDrafts: true)
         XCTAssertEqual(query.visible(prs).map(\.number), [2])
         XCTAssertEqual(query.count(.all, in: prs), 1)
@@ -63,21 +34,21 @@ final class PrListTests: XCTestCase {
 
     func testMineFirstDraftsLastThenNewestUpdate() throws {
         let prs = [
-            try pr(1, updatedHoursAgo: 1),
-            try pr(2, draft: true, updatedHoursAgo: 0.5),
-            try pr(3, mine: true, updatedHoursAgo: 10),
-            try pr(4, updatedHoursAgo: 0.2),
+            try samplePR(1, updatedHoursAgo: 1),
+            try samplePR(2, draft: true, updatedHoursAgo: 0.5),
+            try samplePR(3, mine: true, updatedHoursAgo: 10),
+            try samplePR(4, updatedHoursAgo: 0.2),
         ]
         XCTAssertEqual(PrListQuery(grouping: .flat).groups(prs).flatMap(\.pullRequests).map(\.number), [3, 4, 1, 2])
     }
 
     func testNeedsYouIsPinnedAboveAuthorGroupsOnlyForAll() throws {
         let prs = [
-            try pr(1, author: "tom", bucket: "you"),
-            try pr(2, author: "tom"),
-            try pr(3, author: "koen", mine: true),
-            try pr(4, author: "sanne", updatedHoursAgo: 2),
-            try pr(5, author: "sanne", updatedHoursAgo: 0.5),
+            try samplePR(1, author: "tom", bucket: "you"),
+            try samplePR(2, author: "tom"),
+            try samplePR(3, author: "koen", mine: true),
+            try samplePR(4, author: "sanne", updatedHoursAgo: 2),
+            try samplePR(5, author: "sanne", updatedHoursAgo: 0.5),
         ]
         let groups = PrListQuery().groups(prs)
         XCTAssertEqual(groups.map(\.title), ["Needs you", "You", "Sanne Example", "Tom Example"])
@@ -86,7 +57,40 @@ final class PrListTests: XCTestCase {
     }
 
     func testRepositoryGroupsPutReposWithYourPullRequestsFirst() throws {
-        let prs = [try pr(1, repo: "api"), try pr(2, repo: "web", mine: true), try pr(3, repo: "docs")]
+        let prs = [try samplePR(1, repo: "api"), try samplePR(2, repo: "web", mine: true), try samplePR(3, repo: "docs")]
         XCTAssertEqual(PrListQuery(grouping: .repository).groups(prs).map(\.title), ["acme/web", "acme/api", "acme/docs"])
+    }
+
+    func testStatusGroupsGoNeedsYouReadyWaitingStale() throws {
+        let prs = [
+            try samplePR(1, bucket: "stale"),
+            try samplePR(2, bucket: "wait"),
+            try samplePR(3, bucket: "ready"),
+            try samplePR(4, bucket: "you"),
+            try samplePR(5, mine: true, bucket: "wait"),
+        ]
+        let groups = PrListQuery(grouping: .status).groups(prs)
+        XCTAssertEqual(groups.map(\.title), ["Needs you", "Ready to merge", "Waiting on others", "Stale"])
+        XCTAssertEqual(groups.map { $0.pullRequests.map(\.number) }, [[4], [3], [5, 2], [1]])
+        XCTAssertEqual(groups.first?.id, PrListQuery.needsYouGroupId, "the pinned group's icon")
+        XCTAssertNil(groups.first { $0.title == "Needs you" && $0.id != PrListQuery.needsYouGroupId }, "not pinned twice")
+    }
+
+    func testTheTrackShowsWhereAPullRequestIsStuck() throws {
+        let toReview = try samplePR(1, bucket: "you")
+        XCTAssertEqual(toReview.track, [
+            PrTrackStep(label: "Checks", mark: .done), PrTrackStep(label: "Your review", mark: .yours), PrTrackStep(label: "Merge", mark: .open),
+        ])
+        let failing = try samplePR(2, mine: true, bucket: "you", failed: 1)
+        XCTAssertEqual(failing.track.map(\.mark), [.failed, .open, .open])
+        XCTAssertEqual(failing.track[0].label, "1 failing")
+        let changes = try samplePR(3, mine: true, extra: ["reviewDecision": "changes_requested"])
+        XCTAssertEqual(changes.track[1], PrTrackStep(label: "Changes", mark: .attention))
+        let ready = try samplePR(4, mine: true, bucket: "ready", extra: ["reviewDecision": "approved", "approvedBy": ["sanne", "tom"]])
+        XCTAssertEqual(ready.track.map(\.label), ["Checks", "2 approvals", "Ready"])
+        let conflicting = try samplePR(5, extra: ["mergeable": "conflicting", "approvedBy": ["sanne"]])
+        XCTAssertEqual(conflicting.track.map(\.label), ["Checks", "Approved", "Conflicts"], "an approval counts without branch protection")
+        let auto = try samplePR(6, extra: ["autoMerge": true, "checks": ["total": 3, "passed": 1, "failed": 0, "pending": 2, "skipped": 0, "segments": []]])
+        XCTAssertEqual(auto.track.map(\.mark), [.running, .open, .running])
     }
 }

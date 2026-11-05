@@ -13,7 +13,6 @@ final class FocusStore {
     private(set) var error: String?
     private(set) var isLoading = false
     private(set) var syncedAt: Date?
-    var bucket: FocusBucket = .you
 
     /// Details and files by PR key, kept while the app runs so going back and forth stays instant.
     private(set) var details: [String: PrDetail] = [:]

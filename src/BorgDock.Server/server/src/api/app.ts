@@ -308,6 +308,8 @@ export function createApp({ config, db, service, notifier, github }: AppDeps) {
 
   api.get('/browse', async (c) => c.json(await service.browse(c.req.query('query') ?? null, c.req.query('search') ?? null)));
 
+  api.get('/sprint', async (c) => c.json(await service.sprint()));
+
   api.post('/threads', deps.requireSignature, async (c) => {
     const request = await body<StartThreadRequest>(c);
     const result = await service.startThread(request);

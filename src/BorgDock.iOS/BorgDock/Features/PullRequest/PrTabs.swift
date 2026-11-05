@@ -18,7 +18,7 @@ struct PrOverviewTab: View {
                 PrGroupCard(indent: 64) {
                     ForEach(rows, id: \.login) { row in
                         HStack(spacing: 14) {
-                            PersonAvatar(name: row.name == "You" ? FocusView.firstAndLast(app.config?.user.name ?? row.login) : row.name, size: 36)
+                            PersonAvatar(name: row.name == "You" ? PersonNames.firstAndLast(app.config?.user.name ?? row.login) : row.name, size: 36)
                             Text(row.name).font(.system(size: 17)).foregroundStyle(BD.text)
                             Spacer(minLength: 8)
                             PrChipView(chip: row.chip)

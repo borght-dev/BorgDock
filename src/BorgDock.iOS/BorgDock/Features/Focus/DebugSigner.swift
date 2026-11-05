@@ -20,7 +20,7 @@ struct DebugSigner: RequestSigner {
 }
 
 /// Screenshot states for the GitHub screens: `-BorgDockRoute i1/<what>/…` (DebugRoute in RootView ignores these).
-///   i1/bucket/ready · i1/checks/o/r/n · i1/merge/o/r/n · i1/pr/<overview|files|checks|proof|comments>/o/r/n
+///   i1/checks/o/r/n · i1/merge/o/r/n · i1/pr/<overview|files|checks|proof|comments>/o/r/n
 ///   i1/walk/o/r/n/<reviewed> · i1/decide/o/r/n · i1/approving · i1/faceid
 @MainActor
 enum I1DebugRoute {
@@ -37,8 +37,6 @@ enum I1DebugRoute {
         for _ in 0..<40 where app.focus.focus == nil { try? await Task.sleep(for: .milliseconds(150)) }
         let store = app.focus
         switch what {
-        case "bucket":
-            store.bucket = FocusBucket(rawValue: rest.first ?? "") ?? .you
         case "checks":
             guard let key = key(rest[...]) else { return }
             await store.loadDetail(key)

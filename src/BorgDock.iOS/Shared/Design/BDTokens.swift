@@ -3,6 +3,8 @@ import UIKit
 
 /// BorgDock's design tokens, the same values as the desktop app's `src/styles/index.css` and the
 /// iPhone mockups (`design/ios-app/mockups.html` in the BorgDock repo). Every colour follows the system appearance.
+/// The light status tones (green, red, yellow, blue, merged) are darker than the desktop's: they colour small text
+/// on white, on the grey background and on their own soft tint, and the desktop values stay under 4.5:1 there.
 enum BD {
     // Surfaces
     static let bg = Color(light: 0xF2F2F7, dark: 0x111214)
@@ -23,16 +25,16 @@ enum BD {
     static let accentSoft = Color(light: (0x4F46E5, 0.10), dark: (0x7F7EFF, 0.16))
     static let accentText = Color(light: 0x4338CA, dark: 0xB4B3FF)
     static let onAccent = Color(light: 0xFFFFFF, dark: 0x12121A)
-    static let green = Color(light: 0x1F9D6B, dark: 0x5CC98F)
+    static let green = Color(light: 0x137A52, dark: 0x5CC98F)
     static let greenSoft = Color(light: (0xE3F5EC, 1), dark: (0x5CC98F, 0.14))
     static let onGreen = Color(light: 0xFFFFFF, dark: 0x0B2416)
-    static let red = Color(light: 0xD64560, dark: 0xF0616D)
+    static let red = Color(light: 0xC0354F, dark: 0xF0616D)
     static let redSoft = Color(light: (0xFBE9EC, 1), dark: (0xF0616D, 0.15))
-    static let yellow = Color(light: 0xB07A0E, dark: 0xE5B454)
+    static let yellow = Color(light: 0x8F6400, dark: 0xE5B454)
     static let yellowSoft = Color(light: (0xFBF1DC, 1), dark: (0xE5B454, 0.15))
-    static let blue = Color(light: 0x2D6BE4, dark: 0x6FA8FF)
+    static let blue = Color(light: 0x2762D6, dark: 0x6FA8FF)
     static let blueSoft = Color(light: (0xE6EEFC, 1), dark: (0x6FA8FF, 0.15))
-    static let merged = Color(light: 0x8250DF, dark: 0xA371F7)
+    static let merged = Color(light: 0x7444CF, dark: 0xA371F7)
     static let mergedSoft = Color(light: (0xF0E8FC, 1), dark: (0xA371F7, 0.16))
 
     // Work item types

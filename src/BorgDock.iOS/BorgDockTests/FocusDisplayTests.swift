@@ -22,23 +22,6 @@ final class FocusDisplayTests: XCTestCase {
         XCTAssertEqual(ShortTime.duration(nil), "")
     }
 
-    private func focus(you: Int, agents: Int, ready: Int = 0) -> Focus {
-        Focus(
-            generatedAt: iso(minutesAgo: 0),
-            counts: ["you": you, "wait": 0, "ready": ready, "stale": 0],
-            pullRequests: [],
-            agentsWaiting: (0..<agents).map { AgentWaiting(itemId: nil, threadId: "t\($0)", title: "T", detail: "D", tone: .warn) }
-        )
-    }
-
-    func testSubtitles() {
-        XCTAssertEqual(FocusBucket.you.subtitle(focus(you: 3, agents: 2)), "3 pull requests and 2 agents need you")
-        XCTAssertEqual(FocusBucket.you.subtitle(focus(you: 1, agents: 0)), "1 pull request needs you")
-        XCTAssertEqual(FocusBucket.you.subtitle(focus(you: 0, agents: 1)), "1 agent needs you")
-        XCTAssertEqual(FocusBucket.you.subtitle(focus(you: 0, agents: 0)), "Nothing needs you right now")
-        XCTAssertEqual(FocusBucket.ready.subtitle(focus(you: 0, agents: 0, ready: 2)), "2 ready to merge")
-    }
-
     private func pr(_ json: [String: Any] = [:]) throws -> PrSummary {
         var base: [String: Any] = [
             "owner": "acme", "repo": "shop", "number": 3712, "key": "acme/shop#3712", "account": "koen", "title": "Checkout",

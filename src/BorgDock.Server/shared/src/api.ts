@@ -144,6 +144,27 @@ export type BrowseQuery = { id: string; name: string; group: string };
 
 export type BrowseResult = { items: WorkItemSummary[]; truncated: boolean };
 
+/* ---------- sprint ---------- */
+
+/** A backlog item in the current sprint. Finished items stay in, so the iPhone's Sprint tab can count progress. */
+export type SprintItem = WorkItemSummary & {
+  /** When the item last changed state (Microsoft.VSTS.Common.StateChangeDate). */
+  stateChangedAt: string | null;
+  /** When it reached a Completed state; null while it is open. */
+  finishedAt: string | null;
+};
+
+/** GET /api/sprint: the team's current sprint and every backlog item in it, whoever has it. */
+export type Sprint = {
+  /** As work items show it: "5.2.8". */
+  name: string;
+  path: string;
+  startDate: string | null;
+  finishDate: string | null;
+  items: SprintItem[];
+  generatedAt: string;
+};
+
 /* ---------- actions ---------- */
 
 /** @deprecated Use ModelOption ids. Kept so older app builds can still start threads. */

@@ -1,8 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The Notes tab: the vault folder you picked in Files, today's note first, then workstreams and recent notes.
-/// It opens on today's daily note once per launch.
+/// Notes, behind Today's notes button: the vault folder you picked in Files, today's note first, then workstreams
+/// and recent notes.
 struct NotesView: View {
     @Environment(AppModel.self) private var app
     @State private var picking = false
@@ -50,11 +50,9 @@ struct NotesView: View {
             }
         }
         .task(id: notes.location?.picked) {
-            openTodayOnce()
             await notes.reload()
             await notes.indexAll()
         }
-        .onChange(of: app.router.tab) { openTodayOnce() }
     }
 
     private var vaultList: some View {
@@ -104,15 +102,6 @@ struct NotesView: View {
         Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(BD.text2).textCase(nil)
     }
 
-    /// Once per launch, the first time the Notes tab shows: today's note.
-    private func openTodayOnce() {
-        guard !notes.openedTodayThisLaunch, app.router.tab == .notes, app.router.notesPath.isEmpty, notes.location != nil else { return }
-        notes.openedTodayThisLaunch = true
-        #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-BorgDockNotesList") { return }
-        #endif
-        app.router.notesPath = [.note(notes.todayPath)]
-    }
 }
 
 private struct ChooseVaultView: View {

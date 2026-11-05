@@ -15,6 +15,7 @@ final class AppModel {
     let account = AccountStore()
     let notes = NotesStore()
     let search = SearchStore()
+    let sprint = SprintStore()
 
     private(set) var serverURL: URL
     private(set) var token: String?
@@ -50,11 +51,12 @@ final class AppModel {
         account.app = self
         notes.app = self
         search.app = self
+        sprint.app = self
     }
 
     var isSignedIn: Bool { token != nil }
 
-    /// Agents waiting on you, for the Dispatch tab's badge.
+    /// Agents waiting on you, for the Work tab's badge.
     var dispatchBadge: Int { overview.map { $0.walk?.briefing.needYou ?? OverviewSummary($0).waiting } ?? 0 }
 
     /// Deep links. Pairing and desktop links go to the account flow, the island's Undo to the approval hold, the rest to the router.

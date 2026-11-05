@@ -37,37 +37,6 @@ enum ShortTime {
     }
 }
 
-extension FocusBucket {
-    var title: String {
-        switch self {
-        case .you: "Needs you"
-        case .wait: "Waiting"
-        case .ready: "Ready"
-        case .stale: "Stale"
-        }
-    }
-
-    /// The line under the large title.
-    func subtitle(_ focus: Focus) -> String {
-        let count = focus.count(self)
-        switch self {
-        case .you:
-            let agents = focus.agentsWaiting.count
-            let prs = count == 1 ? "1 pull request" : "\(count) pull requests"
-            let bots = agents == 1 ? "1 agent" : "\(agents) agents"
-            switch (count, agents) {
-            case (0, 0): return "Nothing needs you right now"
-            case (_, 0): return "\(prs) \(count == 1 ? "needs" : "need") you"
-            case (0, _): return "\(bots) \(agents == 1 ? "needs" : "need") you"
-            default: return "\(prs) and \(bots) need you"
-            }
-        case .wait: return count == 0 ? "Nothing waiting on others" : "\(count) waiting on others"
-        case .ready: return count == 0 ? "Nothing ready to merge" : "\(count) ready to merge"
-        case .stale: return count == 0 ? "Nothing stale" : "\(count) gone quiet"
-        }
-    }
-}
-
 /// A chip on a pull request card or header.
 struct PrChip: Hashable {
     enum Style: Hashable { case tone(Tone), accent }

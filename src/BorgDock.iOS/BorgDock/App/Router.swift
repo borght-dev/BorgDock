@@ -67,6 +67,9 @@ enum Route: Hashable {
     case activity
     case settings
     case machines
+    /// The vault; Today's notes button and note links open it.
+    case notes
+    case sprintItems(SprintList)
 }
 
 /// Sheets, presented over whatever tab is showing.
@@ -110,26 +113,26 @@ enum CoverRoute: Identifiable, Hashable {
 @Observable
 final class Router {
     enum Tab: Hashable {
-        case focus, pullRequests, dispatch, notes, search
+        case today, pullRequests, work, sprint, search
 
-        /// borgdock://tab/<name>, from the widgets.
+        /// borgdock://tab/<name>, from the widgets. Builds before Today keep sending "focus" and "dispatch".
         init?(link: String) {
             switch link {
-            case "focus": self = .focus
+            case "today", "focus": self = .today
             case "prs": self = .pullRequests
-            case "dispatch": self = .dispatch
-            case "notes": self = .notes
+            case "work", "dispatch": self = .work
+            case "sprint": self = .sprint
             case "search": self = .search
             default: return nil
             }
         }
     }
 
-    var tab: Tab = .focus
-    var focusPath: [Route] = []
+    var tab: Tab = .today
+    var todayPath: [Route] = []
     var pullRequestsPath: [Route] = []
-    var dispatchPath: [Route] = []
-    var notesPath: [Route] = []
+    var workPath: [Route] = []
+    var sprintPath: [Route] = []
     var searchPath: [Route] = []
     var sheet: SheetRoute?
     var cover: CoverRoute?
@@ -139,25 +142,29 @@ final class Router {
     /// Pushes onto the current tab's stack.
     func push(_ route: Route) {
         switch tab {
-        case .focus: focusPath.append(route)
+        case .today: todayPath.append(route)
         case .pullRequests: pullRequestsPath.append(route)
-        case .dispatch: dispatchPath.append(route)
-        case .notes: notesPath.append(route)
+        case .work: workPath.append(route)
+        case .sprint: sprintPath.append(route)
         case .search: searchPath.append(route)
         }
     }
 
     /// Switches to `tab` and shows `route` as its only screen, e.g. from a notification.
     func open(_ route: Route, in tab: Tab) {
+        open([route], in: tab)
+    }
+
+    func open(_ path: [Route], in tab: Tab) {
         sheet = nil
         cover = nil
         self.tab = tab
         switch tab {
-        case .focus: focusPath = [route]
-        case .pullRequests: pullRequestsPath = [route]
-        case .dispatch: dispatchPath = [route]
-        case .notes: notesPath = [route]
-        case .search: searchPath = [route]
+        case .today: todayPath = path
+        case .pullRequests: pullRequestsPath = path
+        case .work: workPath = path
+        case .sprint: sprintPath = path
+        case .search: searchPath = path
         }
     }
 
@@ -170,20 +177,25 @@ final class Router {
     }
 
     func openItem(_ id: Int) {
-        open(.workItem(ItemRoute(id: id)), in: .dispatch)
+        open(.workItem(ItemRoute(id: id)), in: .work)
     }
 
     func openPullRequest(_ key: PrKey) {
-        open(.pullRequest(key), in: .focus)
+        open(.pullRequest(key), in: .pullRequests)
     }
 
-    /// Activity lives behind the bell on Focus, not in the tab bar.
+    /// Activity lives behind the bell on Today, not in the tab bar.
     func openActivity() {
-        open(.activity, in: .focus)
+        open(.activity, in: .today)
     }
 
     func openThread(_ id: String) {
-        open(.thread(id), in: .dispatch)
+        open(.thread(id), in: .work)
+    }
+
+    /// Notes live behind Today's notes button; a note opens on top of the vault, so Back shows the rest.
+    func openNote(_ path: String) {
+        open([.notes, .note(path)], in: .today)
     }
 
     func start(_ item: WorkItemSummary, fromBrowse: Bool, mode: StartMode = .plan) {
@@ -196,11 +208,11 @@ final class Router {
     }
 
     func reset() {
-        tab = .focus
-        focusPath = []
+        tab = .today
+        todayPath = []
         pullRequestsPath = []
-        dispatchPath = []
-        notesPath = []
+        workPath = []
+        sprintPath = []
         searchPath = []
         sheet = nil
         cover = nil
@@ -208,7 +220,7 @@ final class Router {
 
     /// borgdock://pr/owner/repo/12, borgdock://item/123, borgdock://thread/<id>, borgdock://ci/<id>,
     /// borgdock://note/<path>, borgdock://capture, borgdock://review/owner/repo/12, borgdock://workstream/<id>,
-    /// borgdock://tab/<focus|prs|dispatch|activity|notes|search> (activity opens on Focus).
+    /// borgdock://tab/<today|prs|work|sprint|activity|notes|search> (activity and notes open on Today).
     /// Pairing and desktop links (borgdock://pair?…, borgdock://link-desktop?…) are handled by the account flow and
     /// the island's Undo (borgdock://approval/<id>/undo) by the approval hold, not here. Returns false if unknown.
     @discardableResult
@@ -228,15 +240,17 @@ final class Router {
         case "thread" where parts.count == 2:
             openThread(parts[1])
         case "ci" where parts.count == 2:
-            open(.ciGroup(parts[1]), in: .focus)
+            open(.ciGroup(parts[1]), in: .pullRequests)
         case "note" where parts.count >= 2:
-            open(.note(parts.dropFirst().joined(separator: "/")), in: .notes)
+            openNote(parts.dropFirst().joined(separator: "/"))
         case "capture":
             present(.quickCapture)
         case "workstream" where parts.count == 2:
-            open(.workstream(parts[1]), in: .notes)
+            open([.notes, .workstream(parts[1])], in: .today)
         case "tab" where parts.count == 2 && parts[1] == "activity":
             openActivity()
+        case "tab" where parts.count == 2 && parts[1] == "notes":
+            open(.notes, in: .today)
         case "tab" where parts.count == 2:
             guard let tab = Tab(link: parts[1]) else { return false }
             sheet = nil

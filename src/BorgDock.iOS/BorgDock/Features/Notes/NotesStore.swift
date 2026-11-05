@@ -22,9 +22,6 @@ final class NotesStore {
     /// Whether the full text of every note has been read, for search and backlinks.
     private(set) var indexed = false
 
-    /// The Notes tab opens on today's note once per launch.
-    var openedTodayThisLaunch = false
-
     @ObservationIgnored private var resolvedAt: [String: Date] = [:]
     @ObservationIgnored private let defaults: UserDefaults
     private static let contextKey = "notes.captureContext"
@@ -50,7 +47,6 @@ final class NotesStore {
             texts = [:]
             conflicts = [:]
             indexed = false
-            openedTodayThisLaunch = false
             await reload()
         } catch {
             self.error = "Couldn't keep access to \(url.lastPathComponent): \(error.localizedDescription)"

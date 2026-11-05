@@ -70,7 +70,7 @@ final class AccountStore {
     private func openDebugLaunch() async {
         #if DEBUG
         guard let app, let route = LaunchOverrides.route, route.hasPrefix("launch/"), let id = Int(route.dropFirst(7)) else { return }
-        app.router.tab = .dispatch
+        app.router.tab = .work
         for _ in 0..<40 where app.overview == nil { try? await Task.sleep(for: .milliseconds(250)) }
         app.router.present(.launch(LaunchContext(itemId: id)))
         #endif

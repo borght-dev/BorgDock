@@ -1,10 +1,11 @@
 import SwiftUI
 
 /// The desktop's Pull requests tab: every open pull request the server reads, not only the ones that need you.
-/// Filter pills, a search field, grouped by author or repository; the same swipes and menu as Focus.
+/// Filter pills, a search field, grouped by status, author or repository; swipes to review, merge or snooze.
 struct PullRequestsView: View {
     @Environment(AppModel.self) private var app
-    @AppStorage("prs.grouping") private var grouping: PrListGrouping = .author
+    @AppStorage("prs.grouping") private var grouping: PrListGrouping = .status
+    @AppStorage(PrSwipeHint.key) private var swipeHintSeen = false
     @AppStorage("prs.sort") private var sort: PrListSort = .updated
     @AppStorage("prs.hideDrafts") private var hideDrafts = false
     @State private var filter: PrListFilter = .all
@@ -33,6 +34,14 @@ struct PullRequestsView: View {
                     } header: {
                         PrGroupHeader(group: group)
                     }
+                }
+                if !groups.isEmpty, !swipeHintSeen {
+                    Text(PrSwipeHint.text)
+                        .font(.system(size: 14))
+                        .foregroundStyle(BD.text3)
+                        .lineSpacing(2)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 6, bottom: 4, trailing: 6))
                 }
             } else if let error = store.error {
                 ContentUnavailableView {
@@ -143,6 +152,10 @@ private struct PrGroupHeader: View {
         HStack(spacing: 8) {
             if group.id == PrListQuery.needsYouGroupId {
                 Image(systemName: "scope").foregroundStyle(BD.yellow)
+            } else if group.id == "status:ready" {
+                Image(systemName: "arrow.triangle.merge").foregroundStyle(BD.green)
+            } else if group.id.hasPrefix("status:") {
+                Image(systemName: group.id == "status:stale" ? "moon.zzz" : "clock").foregroundStyle(BD.text3)
             } else if let author = group.author {
                 PersonAvatar(name: author.displayName, size: 20)
             } else if group.id.hasPrefix("repo:") {
@@ -186,9 +199,10 @@ struct PrListRow: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 ViewThatFits(in: .horizontal) {
-                    ForEach(Array((0...chips.count).reversed()), id: \.self) { shown in
-                        statusRow(chips: chips.prefix(shown))
-                    }
+                    statusRow(workItem: true, diff: true)
+                    statusRow(workItem: false, diff: true)
+                    statusRow(workItem: false, diff: false)
+                    PrTrackView(steps: pr.track, compact: true)
                 }
                 .padding(.top, 4)
             }
@@ -200,16 +214,76 @@ struct PrListRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var chips: [PrChip] { pr.cardChips }
-
-    private func statusRow(chips: ArraySlice<PrChip>) -> some View {
-        HStack(spacing: 6) {
-            if !pr.checks.segments.isEmpty {
-                CheckBar(segments: pr.checks.segments, width: 48).padding(.trailing, 4)
-            }
-            ForEach(chips, id: \.self) { PrChipView(chip: $0, small: true) }
+    private func statusRow(workItem: Bool, diff: Bool) -> some View {
+        HStack(spacing: 8) {
+            PrTrackView(steps: pr.track)
+            if workItem, let id = pr.workItemIds.first { ToneChip(text: "AB#\(id)", small: true, accent: true) }
             Spacer(minLength: 4)
-            DiffStat(additions: pr.additions, deletions: pr.deletions)
+            if diff { DiffStat(additions: pr.additions, deletions: pr.deletions) }
+        }
+    }
+}
+
+/// Checks → Review → Merge, each a mark and a word, so a row shows where the pull request is stuck.
+struct PrTrackView: View {
+    let steps: [PrTrackStep]
+    /// Marks only, for narrow rows.
+    var compact = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                if index > 0 {
+                    Capsule().fill(step.mark == .done && steps[index - 1].mark == .done ? BD.green : BD.fill2).frame(width: compact ? 6 : 9, height: 2)
+                }
+                HStack(spacing: 4) {
+                    mark(step.mark)
+                    if !compact { Text(step.label).lineLimit(1) }
+                }
+                .foregroundStyle(color(step.mark))
+            }
+        }
+        .font(.system(size: 12, weight: .semibold))
+        .fixedSize()
+        .accessibilityElement()
+        .accessibilityLabel(steps.map(\.label).joined(separator: ", "))
+    }
+
+    @ViewBuilder
+    private func mark(_ mark: PrTrackStep.Mark) -> some View {
+        switch mark {
+        case .done: filled("checkmark", BD.green)
+        case .failed: filled("xmark", BD.red)
+        case .attention: filled("exclamationmark", BD.yellow)
+        case .running: ring(BD.blue, dot: true)
+        case .yours: ring(BD.accent, dot: true)
+        case .open: ring(BD.text3, dot: false)
+        }
+    }
+
+    private func filled(_ symbol: String, _ color: Color) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 7.5, weight: .black))
+            .foregroundStyle(BD.card)
+            .frame(width: 15, height: 15)
+            .background(color, in: Circle())
+    }
+
+    private func ring(_ color: Color, dot: Bool) -> some View {
+        Circle()
+            .strokeBorder(color, lineWidth: dot ? 2 : 1.5)
+            .frame(width: 15, height: 15)
+            .overlay { if dot { Circle().fill(color).frame(width: 5, height: 5) } }
+    }
+
+    private func color(_ mark: PrTrackStep.Mark) -> Color {
+        switch mark {
+        case .done: BD.green
+        case .failed: BD.red
+        case .attention: BD.yellow
+        case .running: BD.blue
+        case .yours: BD.accentText
+        case .open: BD.text3
         }
     }
 }

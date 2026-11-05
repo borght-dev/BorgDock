@@ -19,7 +19,8 @@ struct RootView: View {
     }
 }
 
-/// Four tabs and Search (Activity sits behind the bell on Focus), iOS 26 style: the tab bar floats in glass and folds into a search field on the Search tab.
+/// Four tabs and Search (Activity sits behind the bell on Today, Notes behind its notes button), iOS 26 style: the tab
+/// bar floats in glass and folds into a search field on the Search tab.
 struct MainTabView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.scenePhase) private var scenePhase
@@ -27,18 +28,19 @@ struct MainTabView: View {
     var body: some View {
         @Bindable var router = app.router
         TabView(selection: $router.tab) {
-            Tab("Focus", systemImage: "scope", value: Router.Tab.focus) {
-                NavigationStack(path: $router.focusPath) { FocusView().routeDestinations() }
+            Tab("Today", systemImage: "scope", value: Router.Tab.today) {
+                NavigationStack(path: $router.todayPath) { TodayView().routeDestinations() }
             }
             Tab("Pull requests", systemImage: "arrow.triangle.pull", value: Router.Tab.pullRequests) {
                 NavigationStack(path: $router.pullRequestsPath) { PullRequestsView().routeDestinations() }
             }
-            Tab("Dispatch", systemImage: "cpu", value: Router.Tab.dispatch) {
-                NavigationStack(path: $router.dispatchPath) { OverviewView().routeDestinations() }
+            .badge(app.focus.focus?.count(.you) ?? 0)
+            Tab("Work", systemImage: "list.bullet", value: Router.Tab.work) {
+                NavigationStack(path: $router.workPath) { OverviewView().routeDestinations() }
             }
             .badge(app.dispatchBadge)
-            Tab("Notes", systemImage: "note.text", value: Router.Tab.notes) {
-                NavigationStack(path: $router.notesPath) { NotesView().routeDestinations() }
+            Tab("Sprint", systemImage: "chart.line.downtrend.xyaxis", value: Router.Tab.sprint) {
+                NavigationStack(path: $router.sprintPath) { SprintView().routeDestinations() }
             }
             Tab(value: Router.Tab.search, role: .search) {
                 NavigationStack(path: $router.searchPath) { SearchView().routeDestinations() }
@@ -78,6 +80,8 @@ struct RouteView: View {
         case .activity: ActivityView()
         case .settings: SettingsView()
         case .machines: MachinesView()
+        case .notes: NotesView()
+        case .sprintItems(let list): SprintItemsView(list: list)
         }
     }
 }
@@ -111,7 +115,7 @@ struct CoverHost: View {
     }
 }
 
-/// `-BorgDockRoute item/59657 | start/59463 | start/59463/qa | tab/<focus|prs|dispatch|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<bay>` (DEBUG only).
+/// `-BorgDockRoute item/59657 | start/59463 | start/59463/qa | tab/<today|prs|work|sprint|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<bay>` (DEBUG only).
 enum DebugRoute {
     @MainActor
     static func apply(to app: AppModel) async {
@@ -133,14 +137,10 @@ enum DebugRoute {
             }
         case "tab" where parts[1] == "activity":
             app.router.openActivity()
+        case "tab" where parts[1] == "notes":
+            app.router.open(.notes, in: .today)
         case "tab":
-            app.router.tab = switch parts[1] {
-            case "prs": .pullRequests
-            case "dispatch": .dispatch
-            case "notes": .notes
-            case "search": .search
-            default: .focus
-            }
+            app.router.tab = Router.Tab(link: parts[1]) ?? .today
         case "sheet":
             switch parts[1] {
             case "settings": app.router.present(.settings)
@@ -152,7 +152,7 @@ enum DebugRoute {
         case "url":
             if let url = URL(string: parts[1]) { app.open(url) }
         case "scroll":
-            app.router.tab = .dispatch
+            app.router.tab = .work
             app.router.scrollTarget = parts[1]
         default:
             break

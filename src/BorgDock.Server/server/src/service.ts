@@ -2,8 +2,8 @@ import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import type {
-  AgentId, AppConfig, BrowseQuery, BrowseResult, ItemDetail, ModelOption, Overview, PrSummary, SourceStatus, StartOptions, StartThreadRequest, StartThreadResponse,
-  ThreadSummary, WorkItemSummary,
+  AgentId, AppConfig, BrowseQuery, BrowseResult, ItemDetail, ModelOption, Overview, PrSummary, SourceStatus, Sprint, StartOptions, StartThreadRequest,
+  StartThreadResponse, ThreadSummary, WorkItemSummary,
 } from '../../shared/src/api.ts';
 import { API_VERSION } from '../../shared/src/api.ts';
 import { AdoClient, AdoError, type AdoItem } from './ado/client.ts';
@@ -70,6 +70,9 @@ export function donePrompt(item: { id: number; title: string }, branch: string |
 
 const toSummary = ({ states: _s, linkedPullRequests: _l, changedAt: _c, ...summary }: AdoItem): WorkItemSummary => summary;
 
+/** The Sprint tab and Today read the sprint on every visit; ADO is asked at most this often. */
+const SPRINT_CACHE_MS = 60_000;
+
 /** Owns the live picture: ADO items + T3 threads → overview, and every action that changes either side. */
 export class DispatchService extends EventEmitter {
   overview: Overview | null = null;
@@ -89,6 +92,7 @@ export class DispatchService extends EventEmitter {
   private readonly itemFacts: ItemFacts;
   /** GitHub's pull requests for the walk's checks and approvals; the GitHub service plugs in after it starts. */
   pullRequestsForWalk: () => PrSummary[] = () => [];
+  private sprintRead: { at: number; sprint: Promise<Sprint> } | null = null;
 
   constructor(config: Config, db: Db, notifier: Notifier) {
     super();
@@ -444,5 +448,19 @@ export class DispatchService extends EventEmitter {
     if (search?.trim()) return { items: (await this.ado.search(search)).map(toSummary), truncated: false };
     const result = await this.ado.runQuery(query ?? 'sprint');
     return { items: result.items.map(toSummary), truncated: result.truncated };
+  }
+
+  /** The current sprint, read again once the last read is a minute old. A failed read is never kept. */
+  sprint(): Promise<Sprint> {
+    if (this.sprintRead && Date.now() - this.sprintRead.at < SPRINT_CACHE_MS) return this.sprintRead.sprint;
+    const sprint = this.ado.currentSprint().then(({ items, ...iteration }) => ({
+      ...iteration,
+      items: items.map(({ stateChangedAt, finishedAt, ...item }) => ({ ...toSummary(item), stateChangedAt, finishedAt })),
+      generatedAt: now(),
+    }));
+    const read = { at: Date.now(), sprint };
+    this.sprintRead = read;
+    sprint.catch(() => { if (this.sprintRead === read) this.sprintRead = null; });
+    return sprint;
   }
 }
