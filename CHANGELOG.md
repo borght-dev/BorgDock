@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.9.7 — 2026-11-05
+
+### Bug Fixes
+
+- The SQL window colours your queries again: keywords, strings, numbers and functions stand out instead of showing as plain text.
+- Clicking Restart to apply now shows Restarting… while the update installs, and no longer flashes "Restart failed" right before BorgDock restarts.
+
 ## 4.9.6 — 2026-11-05
 
 ### New Features

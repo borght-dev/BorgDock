@@ -4,6 +4,17 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.7",
+    "date": "2026-11-05",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "The SQL window colours your queries again: keywords, strings, numbers and functions stand out instead of showing as plain text.",
+      "Clicking Restart to apply now shows Restarting… while the update installs, and no longer flashes \"Restart failed\" right before BorgDock restarts."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.9.6",
     "date": "2026-11-05",
     "summary": "Review one author's pull requests, oldest first, Know whether a pull request broke its E2E tests, Shape your review guides, and more.",
