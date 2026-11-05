@@ -774,6 +774,18 @@ function QuickReviewWorkspace({
     if (snapshot && order === 'guide') void ensureReviewGuide(snapshot);
   }, [snapshot, order]);
 
+  // A guide written while you read in folders reorders the tree: start it
+  // at its first file not reviewed yet. A cached guide keeps your place.
+  const guideStatus = guideEntry?.status;
+  const lastGuideStatus = useRef(guideStatus);
+  useEffect(() => {
+    const written = lastGuideStatus.current === 'loading' && guideStatus === 'ready';
+    lastGuideStatus.current = guideStatus;
+    if (!written || order !== 'guide') return;
+    const top = walkFiles.find((f) => !reviewed.has(f.filename)) ?? walkFiles[0];
+    if (top && top.filename !== doc.step) go(top.filename);
+  });
+
   // Commits order opens on the first commit not read yet.
   useEffect(() => {
     if (!commitList.length || commitList.some((c) => c.sha === commitSha)) return;
