@@ -88,6 +88,36 @@ export const AgentsWithT3: Story = {
   ],
 };
 
+/** Summaries on Codex: effort, fast mode, and the review guide's instructions and skipped files. */
+export const AgentsCodexSummaries: Story = {
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector('#field-guide-instructions')?.scrollIntoView({ block: 'center' });
+  },
+  decorators: [
+    withSettings(
+      {
+        ...configuredSettings,
+        summaries: {
+          enabled: true,
+          provider: 'codex',
+          model: '',
+          effort: 'high',
+          fast: true,
+          autoReviewGuide: true,
+          guideInstructions: 'Call out every new translation key and every migration.',
+          guideSkip: ['plans/**/*.html'],
+        },
+      },
+      { invokeResponses: configuredInvokes },
+    ),
+    (Story) => {
+      localStorage.setItem('settings.lastSection', 'agents');
+      history.replaceState(null, '', '#section=agents');
+      return <Story />;
+    },
+  ],
+};
+
 export const LoadingSplash: Story = {
   decorators: [
     withSettings(configuredSettings, {

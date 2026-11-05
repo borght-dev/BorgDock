@@ -1,5 +1,6 @@
 import { isGeneratedPath, type ReviewFileGroup, reviewFileCategory } from '@/services/quick-review';
 import type { DiffFile, PullRequest } from '@/types';
+import { matchesAnyGlob } from '@/utils/glob';
 
 /**
  * A reading order for a PR, written by the summary agent (Settings →
@@ -45,8 +46,11 @@ const BODY_BUDGET = 6_000;
 /** Source is worth the most budget, docs the least. */
 const BUDGET_RANK = { source: 0, tests: 1, generated: 2, docs: 3 } as const;
 
-/** How much of each patch goes in the prompt, spent on source first. */
-function patchShares(files: readonly DiffFile[]): Map<string, number> {
+/** How much of each patch goes in the prompt, spent on source first. Skipped files get none. */
+function patchShares(
+  files: readonly DiffFile[],
+  skipped: ReadonlySet<string>,
+): Map<string, number> {
   let budget = PATCH_BUDGET;
   const shares = new Map<string, number>();
   const ranked = [...files].sort(
@@ -54,7 +58,7 @@ function patchShares(files: readonly DiffFile[]): Map<string, number> {
       BUDGET_RANK[reviewFileCategory(a.filename)] - BUDGET_RANK[reviewFileCategory(b.filename)],
   );
   for (const file of ranked) {
-    if (!file.patch || isGeneratedPath(file.filename)) continue;
+    if (!file.patch || isGeneratedPath(file.filename) || skipped.has(file.filename)) continue;
     const share = Math.min(file.patch.length, FILE_BUDGET, Math.max(budget, TAIL_BUDGET));
     shares.set(file.filename, share);
     budget -= share;
@@ -67,13 +71,30 @@ export interface GuideInput {
   files: readonly DiffFile[];
   /** First lines of the PR's commit messages, oldest first. */
   commits: readonly string[];
+  /** The reviewer's own instructions (Settings → Summaries). */
+  instructions?: string;
+  /**
+   * Path patterns of files the guide names but never reads (`*.html`): no
+   * patch in the prompt, and the agent is told not to open them.
+   */
+  skip?: readonly string[];
 }
 
 /** The prompt for the guide: the PR, its commits and its patches, and the JSON shape to answer with. */
-export function buildGuidePrompt({ pr, files, commits }: GuideInput): string {
-  const shares = patchShares(files);
+export function buildGuidePrompt({
+  pr,
+  files,
+  commits,
+  instructions = '',
+  skip = [],
+}: GuideInput): string {
+  const skipped = new Set(
+    files.filter((file) => matchesAnyGlob(file.filename, skip)).map((f) => f.filename),
+  );
+  const shares = patchShares(files, skipped);
   const parts = files.map((file) => {
     const head = `### ${file.filename} (${file.status}, +${file.additions} -${file.deletions})`;
+    if (skipped.has(file.filename)) return `${head}\nSkipped by the reviewer: do not open it.`;
     if (isGeneratedPath(file.filename)) return `${head}\nGenerated or lockfile: patch left out.`;
     if (!file.patch) return `${head}\nNo patch (binary, renamed only, or too large).`;
     const share = shares.get(file.filename) ?? 0;
@@ -103,6 +124,19 @@ export function buildGuidePrompt({ pr, files, commits }: GuideInput): string {
     '- why: a short phrase, what changed in that file and why.',
     '- focus: up to three risks a reviewer must not miss, most important first; [] when the PR is routine.',
     '- Write plainly, no marketing words, no emoji.',
+    ...(skipped.size
+      ? [
+          '- Files marked "Skipped by the reviewer" have no patch on purpose. Never open or read them; place them by their name and path alone.',
+        ]
+      : []),
+    ...(instructions.trim()
+      ? [
+          '',
+          "## The reviewer's instructions",
+          'Follow these unless they conflict with the JSON shape or the rule that every file appears once.',
+          instructions.trim(),
+        ]
+      : []),
     '',
     `# ${pr.title} (#${pr.number})`,
     `Branch: ${pr.headRef} → ${pr.baseRef}`,

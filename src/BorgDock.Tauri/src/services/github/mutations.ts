@@ -205,14 +205,25 @@ export async function enableAutoMerge(
 
 // --- Bypass merge (admin) using gh CLI via Tauri shell ---
 
+/** With `headSha`, GitHub refuses the merge when the PR moved past the commit you reviewed. */
 export async function bypassMergePullRequest(
   owner: string,
   repo: string,
   prNumber: number,
+  headSha?: string,
 ): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
   await invoke('run_gh_command', {
-    args: ['pr', 'merge', String(prNumber), '--squash', '--admin', '--repo', `${owner}/${repo}`],
+    args: [
+      'pr',
+      'merge',
+      String(prNumber),
+      '--squash',
+      '--admin',
+      '--repo',
+      `${owner}/${repo}`,
+      ...(headSha ? ['--match-head-commit', headSha] : []),
+    ],
   });
 }
 

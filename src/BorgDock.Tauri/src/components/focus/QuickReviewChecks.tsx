@@ -1,7 +1,9 @@
 import { checkCountsFor } from '@/components/pr/pr-card-data';
 import { CheckBar } from '@/components/shared/primitives';
 import type { useReviewReadiness } from '@/hooks/useReviewReadiness';
+import { useRunFit } from '@/hooks/useRunFit';
 import type { PullRequestWithChecks } from '@/types';
+import { QuickReviewE2e } from './QuickReviewE2e';
 import { ciNote } from './quick-review-status';
 
 export function QuickReviewChecks({
@@ -13,13 +15,16 @@ export function QuickReviewChecks({
 }) {
   const { result, loading } = readiness;
   const counts = checkCountsFor(pr);
+  const fit = useRunFit(pr);
+  const outside = fit.kind === 'ready' && fit.bypass;
   return (
     <section className="qr-overview-section" aria-label="Checks">
       <h3>Checks</h3>
       <div className="qr-checks">
         <CheckBar {...counts} />
-        <span>{ciNote(pr)}</span>
+        <span>{outside ? "Failing, but not this PR's doing" : ciNote(pr)}</span>
       </div>
+      <QuickReviewE2e pr={pr} />
       {pr.skippedCount > 0 && <p>{pr.skippedCount} skipped checks</p>}
       {loading && <p role="status">Checking required status checks…</p>}
       {!loading && !result?.complete && (

@@ -1,6 +1,8 @@
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ToastViewport } from '@/components/shared/Toast';
+import type { HeldPr } from '@/services/author-run';
+import { useE2eStore } from '@/services/e2e/load';
 import { useLinkStore } from '@/stores/link-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
@@ -962,5 +964,249 @@ export const CommitsWalk: Story = {
     });
     await userEvent.keyboard('v');
     await canvas.findByText('Commit 2 of 4');
+  },
+};
+
+const E2E_CHECK = 'Deploy & Test (staging-2) / E2E Shard 3/4';
+
+function e2eReportBody(failed: Array<[file: string, test: string, error: string]>) {
+  return [
+    '## E2E Test Results',
+    '',
+    `**Environment:** https://staging-2.example.com | **Smoke:** Passed | **E2E:** ${failed.length} failed`,
+    '',
+    '### Failed Tests',
+    '| File | Test | Error |',
+    '|------|------|-------|',
+    ...failed.map(([file, test, error]) => `| \`${file}\` | ${test} | \`${error}\` |`),
+  ].join('\n');
+}
+
+/** Every PR's comments hold `body` as its latest E2E report. */
+function e2eReportDecorator(body: string): Decorator {
+  return (Story) => {
+    getControl().githubResponses.getRepositoryObject = (path) =>
+      path.includes('/issues/')
+        ? [
+            {
+              id: 9,
+              body,
+              html_url: `${pr.pullRequest.htmlUrl}#issuecomment-9`,
+              created_at: '2026-11-05T05:01:17Z',
+            },
+          ]
+        : [];
+    return (
+      <>
+        <Story />
+        <ToastViewport />
+      </>
+    );
+  };
+}
+
+const redE2e = {
+  ...pr,
+  overallStatus: 'red' as const,
+  failedCheckNames: [E2E_CHECK],
+  passedCount: 41,
+  totalCheckCount: 42,
+};
+
+function startRedE2e(neighbours: (typeof redE2e)[] = []) {
+  useE2eStore.setState({ entries: {} });
+  usePrStore.setState({ pullRequests: [redE2e, ...neighbours] });
+  useQuickReviewStore.getState().startSinglePr(redE2e);
+}
+
+/**
+ * Red only from an E2E test this PR doesn't touch, which fails on another PR
+ * too: the card says so under Checks and offers Approve & merge (as admin).
+ */
+export const E2eFailureNotItsOwn: Story = {
+  decorators: [
+    e2eReportDecorator(
+      e2eReportBody([
+        [
+          'planboard/drag-create-keeps-window.spec.ts',
+          'Drag-created order window > keeps the dragged window when an order type is picked @AB60379',
+          'Expected pattern: /^2\\s*[^0-9]+$/',
+        ],
+      ]),
+    ),
+  ],
+  beforeEach: () =>
+    startRedE2e([
+      {
+        ...redE2e,
+        pullRequest: { ...redE2e.pullRequest, number: 3670, authorLogin: 'mira' },
+      },
+    ]),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText('1 E2E test failed, all also failing on other PRs');
+    await canvas.findByText('also fails on #3670');
+    await canvas.findByRole('button', { name: 'Approve & merge' });
+  },
+};
+
+/** The failing E2E spec is one this PR changes: no merge past it. */
+export const E2eFailureItsOwn: Story = {
+  decorators: [
+    e2eReportDecorator(
+      e2eReportBody([
+        [
+          'orders/OrderActions.test.tsx',
+          'Save & Approve saves before approving',
+          'Error: expect(save).toHaveBeenCalledWith(true)',
+        ],
+        ['orders/order-list.spec.ts', 'filters by status', 'Timeout 15000ms exceeded'],
+      ]),
+    ),
+  ],
+  beforeEach: () => startRedE2e(),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText('Fails its own E2E test');
+    await canvas.findByText('spec changed in this PR');
+    await canvas.findByRole('button', { name: 'Approve & auto-merge' });
+  },
+};
+
+function sanderPr(number: number, title: string, createdAt: string) {
+  const made = makePr({
+    number,
+    title,
+    authorLogin: 'sander',
+    repoOwner: 'acme',
+    repoName: 'shop',
+    createdAt,
+    headSha: `head-${number}`,
+  });
+  return made;
+}
+
+const runFirst = sanderPr(3601, 'Timesheets: keep break minutes per shift', '2026-11-01T08:00:00Z');
+const runConflicted = sanderPr(
+  3604,
+  'Planboard: drag a resource row to reorder',
+  '2026-11-02T08:00:00Z',
+);
+runConflicted.pullRequest.mergeable = false;
+const runFailing = {
+  ...sanderPr(3611, 'Orders: refuse a questionnaire the replacement drops', '2026-11-03T08:00:00Z'),
+  overallStatus: 'red' as const,
+  failedCheckNames: ['Build & Test API / Test API (shard 6)'],
+};
+const runSecond = sanderPr(3615, 'Assets: show the next inspection date', '2026-11-03T12:00:00Z');
+const runThird = sanderPr(
+  3620,
+  'Quotes: retry a quote whose details failed',
+  '2026-11-04T09:00:00Z',
+);
+const runLater = sanderPr(
+  3629,
+  'Portal: keep the selected tab after a refresh',
+  '2026-11-05T09:00:00Z',
+);
+const runHeld: HeldPr[] = [
+  { pr: runConflicted, fit: { kind: 'held', reason: 'conflicts', why: 'Has merge conflicts' } },
+  {
+    pr: runFailing,
+    fit: { kind: 'held', reason: 'failing', why: 'Build & Test API / Test API (shard 6) fails' },
+  },
+];
+
+const requestedOfMe = [makePr({ number: 3655, title: 'Requested of me', authorLogin: 'mira' })];
+
+function seedAuthorRun() {
+  resetReviewDisplayPreferences();
+  usePrStore.setState({
+    pullRequests: [runFirst, runConflicted, runFailing, runSecond, runThird, runLater],
+    username: 'koen',
+    needsMyReview: () => requestedOfMe,
+  });
+}
+
+/** An author run: the author in the title bar, their next PR you can merge up next. */
+export const AuthorRun: Story = {
+  decorators: [
+    (Story) => {
+      const control = getControl();
+      control.githubResponses.getPRReviewDetails = {
+        pr: runFirst.pullRequest,
+        baseSha: 'review-base',
+      };
+      return <Story />;
+    },
+  ],
+  beforeEach: () => {
+    seedAuthorRun();
+    const store = useQuickReviewStore.getState();
+    store.startRun('sander', runFirst);
+    store.fillRun('sander', [runSecond, runThird], runHeld);
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(/sander · oldest first/);
+    await canvas.findByTitle('Assets: show the next inspection date');
+  },
+};
+
+/**
+ * The run is done: what it left out and why, the author's next PR (it became
+ * mergeable while you reviewed), and the PR that waits on your review.
+ */
+export const AuthorRunComplete: Story = {
+  beforeEach: () => {
+    seedAuthorRun();
+    useQuickReviewStore.setState({
+      state: 'complete',
+      queue: [runFirst, runSecond, runThird],
+      currentIndex: 2,
+      run: { author: 'sander', held: runHeld, filling: false },
+      decisions: new Map([
+        ['acme/shop#3601', 'approved'],
+        ['acme/shop#3615', 'approved'],
+        ['acme/shop#3620', 'skipped'],
+      ]),
+    });
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('region', { name: 'Left out of this run' });
+    await canvas.findByRole('button', { name: 'Next from sander' });
+  },
+};
+
+/** Long chapter notes read whole, and the tree dragged wider (kept across launches). */
+export const GuideWalkWideTree: Story = {
+  decorators: [
+    planboardDecorator,
+    (Story) => {
+      const guide = structuredClone(PLANBOARD_GUIDE);
+      guide.chapters[0]!.intent =
+        "Turn off Kestrel's Server header once for all hosts built through the shared service defaults, so a scanner can no longer tell which server software to target. Hosts built without them set the option themselves.";
+      getControl().invokeResponses.run_headless_prompt = {
+        text: JSON.stringify(guide),
+        provider: 'codex',
+        model: 'gpt-6.1-terra',
+        durationMs: 38_000,
+      };
+      return <Story />;
+    },
+  ],
+  beforeEach: () => {
+    startInOrder('guide');
+    localStorage.setItem('borgdock-quick-review-tree-width', '420');
+    return () => localStorage.removeItem('borgdock-quick-review-tree-width');
+  },
+  play: async ({ canvasElement }) => {
+    await seedPlanboard(
+      ['FSP/FSP.Portal/src/types/planboardFilters.ts'],
+      'Tests/types/planboardFilters.test.ts',
+    );
+    const canvas = await continueReviewing(canvasElement);
+    await canvas.findByRole('separator', { name: 'File list width' });
   },
 };

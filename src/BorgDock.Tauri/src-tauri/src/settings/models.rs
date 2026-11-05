@@ -644,6 +644,18 @@ pub struct SummarySettings {
     /// Quick Review writes a PR's review guide as soon as it opens; off, only on a click.
     #[serde(default = "default_true")]
     pub auto_review_guide: bool,
+    /// Reasoning effort the summary agent runs with. Absent: the CLI's default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
+    /// Codex's fast service tier.
+    #[serde(default)]
+    pub fast: bool,
+    /// Added to every review guide prompt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guide_instructions: Option<String>,
+    /// `.gitignore`-style patterns of files a review guide names but never reads.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub guide_skip: Vec<String>,
 }
 
 fn default_summary_provider() -> String {
@@ -660,6 +672,10 @@ impl Default for SummarySettings {
             model: default_summary_model(),
             enabled: true,
             auto_review_guide: true,
+            effort: None,
+            fast: false,
+            guide_instructions: None,
+            guide_skip: Vec::new(),
         }
     }
 }

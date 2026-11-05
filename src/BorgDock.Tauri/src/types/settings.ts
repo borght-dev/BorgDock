@@ -209,6 +209,14 @@ export interface SummarySettings {
   model: string;
   /** Quick Review writes a PR's review guide as soon as it opens; off, only on a click. */
   autoReviewGuide?: boolean;
+  /** Reasoning effort; absent or empty uses the CLI's default. Values per provider: `SUMMARY_EFFORTS`. */
+  effort?: string;
+  /** Codex's fast service tier. Claude has none. */
+  fast?: boolean;
+  /** Added to every review guide prompt. */
+  guideInstructions?: string;
+  /** `.gitignore`-style patterns of files a review guide names but never reads. */
+  guideSkip?: string[];
 }
 
 export interface ClaudeReviewSettings {

@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FIXTURE_ME, listPr } from '@/components/pr/__fixtures__/pr-list-data';
 import type { GitHubClient } from '@/services/github/client';
-import { enableAutoMerge, submitReview } from '@/services/github/mutations';
+import { bypassMergePullRequest, enableAutoMerge, submitReview } from '@/services/github/mutations';
 import { workbenchPrimaryAction } from '@/services/pr-action-resolver';
 import { usePrStore } from '@/stores/pr-store';
 import { submitPrReview } from '../pr-review';
 
-vi.mock('@/services/github/mutations', () => ({ submitReview: vi.fn(), enableAutoMerge: vi.fn() }));
+vi.mock('@/services/github/mutations', () => ({
+  submitReview: vi.fn(),
+  enableAutoMerge: vi.fn(),
+  bypassMergePullRequest: vi.fn(),
+}));
 const client = { account: 'another-account' } as GitHubClient;
 const pr = () => usePrStore.getState().pullRequests[0]!;
 const args: Parameters<typeof submitReview> = [
@@ -53,7 +57,7 @@ describe('submitted approval updates', () => {
   });
 
   it('approves before enabling auto merge, and remembers that it is enabled', async () => {
-    const { autoMerge } = await submitPrReview(...args, true);
+    const { autoMerge } = await submitPrReview(...args, 'auto');
     await autoMerge;
     expect(enableAutoMerge).toHaveBeenCalledWith(client, 'acme', 'app', 41, 'reviewed-head');
     expect(vi.mocked(submitReview).mock.invocationCallOrder[0]).toBeLessThan(
@@ -62,11 +66,22 @@ describe('submitted approval updates', () => {
     expect(pr().pullRequest.autoMergeEnabled).toBe(true);
   });
 
+  it('merges as admin at the reviewed head after approving, for a merge past outside failures', async () => {
+    vi.mocked(bypassMergePullRequest).mockResolvedValue(undefined);
+    const { autoMerge } = await submitPrReview(...args, 'bypass');
+    await expect(autoMerge).resolves.toBe('merged');
+    expect(bypassMergePullRequest).toHaveBeenCalledWith('acme', 'app', 41, 'reviewed-head');
+    expect(enableAutoMerge).not.toHaveBeenCalled();
+    expect(vi.mocked(submitReview).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(bypassMergePullRequest).mock.invocationCallOrder[0]!,
+    );
+  });
+
   it('keeps the approval when auto merge fails, without inviting a duplicate review', async () => {
     vi.mocked(enableAutoMerge).mockRejectedValue(
       new Error('Auto merge is disabled for this repository'),
     );
-    const { autoMerge } = await submitPrReview(...args, true);
+    const { autoMerge } = await submitPrReview(...args, 'auto');
     await expect(autoMerge).rejects.toThrow('Auto merge is disabled');
     expect(workbenchPrimaryAction(pr(), FIXTURE_ME)).toBe('merge');
     expect(submitReview).toHaveBeenCalledTimes(1);
@@ -74,7 +89,7 @@ describe('submitted approval updates', () => {
 
   it('returns once the approval is posted, while GitHub is still merging', async () => {
     vi.mocked(enableAutoMerge).mockReturnValue(new Promise(() => {}));
-    const { autoMerge } = await submitPrReview(...args, true);
+    const { autoMerge } = await submitPrReview(...args, 'auto');
     expect(autoMerge).toBeInstanceOf(Promise);
     expect(enableAutoMerge).toHaveBeenCalledOnce();
     expect(workbenchPrimaryAction(pr(), FIXTURE_ME)).toBe('merge');
@@ -82,7 +97,7 @@ describe('submitted approval updates', () => {
 
   it('does not enable auto merge or change review state when approval fails', async () => {
     vi.mocked(submitReview).mockRejectedValue(new Error('Forbidden'));
-    await expect(submitPrReview(...args, true)).rejects.toThrow('Forbidden');
+    await expect(submitPrReview(...args, 'auto')).rejects.toThrow('Forbidden');
     expect(workbenchPrimaryAction(pr(), FIXTURE_ME)).toBe('review');
     expect(enableAutoMerge).not.toHaveBeenCalled();
   });
@@ -98,7 +113,7 @@ describe('submitted approval updates', () => {
 
   it('moves a PR that merged immediately into the closed list', async () => {
     vi.mocked(enableAutoMerge).mockResolvedValue('merged');
-    const { autoMerge } = await submitPrReview(...args, true);
+    const { autoMerge } = await submitPrReview(...args, 'auto');
     await autoMerge;
     expect(usePrStore.getState().pullRequests).toEqual([]);
     expect(usePrStore.getState().closedPullRequests[0]?.pullRequest.mergedAt).toBeTruthy();

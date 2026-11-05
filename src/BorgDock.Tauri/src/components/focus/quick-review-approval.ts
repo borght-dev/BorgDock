@@ -30,7 +30,8 @@ function setHeld(id: string | null) {
 export function holdApproval(
   pr: PullRequestWithChecks,
   send: () => Promise<ReviewDecision>,
-  autoMerge: boolean,
+  /** What follows the approval, for the toast: `auto-merge on`, `then merges`. */
+  followUp: string | null,
 ) {
   const key = prRowKey(pr.pullRequest);
   const earlier = pending.get(key);
@@ -44,7 +45,7 @@ export function holdApproval(
   const id = showToast({
     tone: 'success',
     // Nothing is posted yet: the toast says so until it runs out.
-    message: `Approving #${number}${autoMerge ? ' · auto-merge on' : ''}`,
+    message: `Approving #${number}${followUp ? ` · ${followUp}` : ''}`,
     actionLabel: 'Undo',
     actionKey: 'Z',
     countdown: true,

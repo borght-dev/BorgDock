@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { prRowKey } from '@/components/pr/pr-card-data';
+import type { HeldPr } from '@/services/author-run';
 import {
   normalizeReviewDocument,
   orderQuickReviewPrs,
@@ -12,10 +13,20 @@ import { reviewDraftStorage } from '@/utils/review-draft-storage';
 export type ReviewDecision = 'approved' | 'commented' | 'skipped';
 export type QuickReviewState = 'idle' | 'reviewing' | 'submitting' | 'error' | 'complete';
 
+/** A session over one author's PRs, oldest first (`services/author-run.ts`). */
+export interface AuthorRun {
+  author: string;
+  /** The author's PRs the run leaves out, and why. */
+  held: HeldPr[];
+  /** The rest of the run is still being worked out (E2E reports are read). */
+  filling: boolean;
+}
+
 interface QuickReviewStoreState {
   state: QuickReviewState;
   queue: PullRequestWithChecks[];
   currentIndex: number;
+  run: AuthorRun | null;
   /** Decision per PR, keyed `owner/repo#number` (`prRowKey`): numbers repeat across repos. */
   decisions: Map<string, ReviewDecision>;
   error: string | null;
@@ -28,6 +39,10 @@ interface QuickReviewStoreState {
 
   startSession: (prs: PullRequestWithChecks[]) => void;
   startSinglePr: (pr: PullRequestWithChecks) => void;
+  /** Opens `first` at once as an author run; `fillRun` adds the rest when it is known. */
+  startRun: (author: string, first: PullRequestWithChecks) => void;
+  /** Appends `rest` to the run of `author`, if it is still open. */
+  fillRun: (author: string, rest: PullRequestWithChecks[], held: HeldPr[]) => void;
   advance: (decision: ReviewDecision) => void;
   goBack: () => void;
   /**
@@ -47,6 +62,7 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
       state: 'idle',
       queue: [],
       currentIndex: 0,
+      run: null,
       decisions: new Map(),
       error: null,
       documents: {},
@@ -77,6 +93,7 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
           state: 'reviewing',
           queue: orderQuickReviewPrs(prs),
           currentIndex: 0,
+          run: null,
           decisions: new Map(),
           error: null,
         });
@@ -87,8 +104,35 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
           state: 'reviewing',
           queue: [pr],
           currentIndex: 0,
+          run: null,
           decisions: new Map(),
           error: null,
+        });
+      },
+
+      startRun: (author, first) => {
+        set({
+          state: 'reviewing',
+          queue: [first],
+          currentIndex: 0,
+          run: { author, held: [], filling: true },
+          decisions: new Map(),
+          error: null,
+        });
+      },
+
+      fillRun: (author, rest, held) => {
+        const { run, queue, state } = get();
+        if (!run || run.author !== author || state === 'idle') return;
+        const queued = new Set(queue.map((pr) => prRowKey(pr.pullRequest)));
+        const added = rest.filter((pr) => !queued.has(prRowKey(pr.pullRequest)));
+        set({
+          queue: [...queue, ...added],
+          run: { author, held, filling: false },
+          // The first PR was decided before the rest was known: go on with it.
+          ...(state === 'complete' && added.length > 0
+            ? { state: 'reviewing' as const, currentIndex: queue.length }
+            : {}),
         });
       },
 
@@ -130,7 +174,7 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
           error: error ?? null,
           ...(index >= 0
             ? { currentIndex: index, decisions: next }
-            : { queue: [pr], currentIndex: 0, decisions: new Map() }),
+            : { queue: [pr], currentIndex: 0, run: null, decisions: new Map() }),
         });
       },
 
@@ -145,6 +189,7 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
           state: 'idle',
           queue: [],
           currentIndex: 0,
+          run: null,
           decisions: new Map(),
           error: null,
         }),
