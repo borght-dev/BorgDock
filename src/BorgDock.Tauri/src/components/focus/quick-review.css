@@ -581,7 +581,10 @@
   overflow-y: auto;
 }
 /* An author run's end card also lists what it left out and the author's next PR. */
-.qr-dialog[data-complete="true"]:has(.qr-summary__held, .qr-summary__next) {
+.qr-dialog[data-complete="true"]:not([data-fullscreen="true"]):has(
+  .qr-summary__held,
+  .qr-summary__next
+) {
   height: min(700px, calc(100vh - 40px));
 }
 .qr-summary > [data-quick-review-summary] {
