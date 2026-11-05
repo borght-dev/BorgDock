@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Dispatch's States view, the morning walk: the briefing, Fix out of sync and Sync all, then one lane per ADO
-/// state with each item's verdict, evidence and latest message.
+/// The Work tab (Dispatch's States view), the morning walk: the briefing, Fix out of sync and Sync all, then one lane
+/// per ADO state with each item's verdict, how far it is through its workflow, its evidence and latest message.
 struct OverviewView: View {
     @Environment(AppModel.self) private var app
 
@@ -30,7 +30,7 @@ struct OverviewView: View {
         }
         .background(BD.bg)
         .refreshable { await app.refreshFromSources() }
-        .navigationTitle("Dispatch")
+        .navigationTitle("My work")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { app.router.push(.browse) } label: { Image(systemName: "square.3.layers.3d") }
@@ -163,6 +163,7 @@ struct WalkRow: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
                 .padding(.top, 4)
+            WorkflowProgress(item: entry.item).padding(.top, 9)
             if !evidence.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 5) {
@@ -185,6 +186,23 @@ struct WalkRow: View {
         .padding(.vertical, 13)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+}
+
+/// How far an item is through its workflow: a segment per state, filled up to the one it is in.
+struct WorkflowProgress: View {
+    let item: WorkItemSummary
+
+    var body: some View {
+        if let index = item.workflow.firstIndex(of: item.state) {
+            HStack(spacing: 3) {
+                ForEach(item.workflow.indices, id: \.self) { step in
+                    Capsule().fill(step <= index ? BD.accent : BD.fill2).frame(height: 4)
+                }
+            }
+            .accessibilityElement()
+            .accessibilityLabel("\(item.state), step \(index + 1) of \(item.workflow.count)")
+        }
     }
 }
 

@@ -41,6 +41,7 @@ Passkeys only, with user verification required. There is one user.
 | GET | /api/items/:id/start | | `StartOptions`: the pick-up and QA prompts, the item's branch, and the worktree for a QA handoff |
 | GET | /api/browse/queries | | `BrowseQuery[]` |
 | GET | /api/browse?query=<id>&search=<text> | | `BrowseResult` |
+| GET | /api/sprint | | `Sprint`: the team's current sprint with every backlog item in it, finished ones included; read from ADO at most once a minute |
 | POST | /api/threads | `StartThreadRequest` | `StartThreadResponse` |
 | POST | /api/threads/:id/answers | `AnswerRequest` | `{ok}` |
 | POST | /api/threads/:id/settle | `{}` | `{ok}` |

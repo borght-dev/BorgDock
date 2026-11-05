@@ -1,9 +1,9 @@
 import XCTest
 
-/// Screenshots of what only a gesture shows on the Focus board: the touch-and-hold menu and the swipe actions.
+/// Screenshots of what only a gesture shows in the pull request list: the touch-and-hold menu and the swipe actions.
 /// Runs against the sample server (`PORT=8801 node e2e/ui-fixture.mjs`); set TEST_RUNNER_I1_SHOTS to a folder to
 /// write the PNGs there as well as attaching them.
-final class FocusGesturesUITests: XCTestCase {
+final class PrListGesturesUITests: XCTestCase {
     @MainActor
     private func launch(_ route: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
@@ -28,9 +28,9 @@ final class FocusGesturesUITests: XCTestCase {
     }
 
     @MainActor
-    func testTouchAndHoldShowsTheCardActions() {
-        let app = launch()
-        let card = app.buttons["pr-card-acme/shop#3712"]
+    func testTouchAndHoldShowsTheRowActions() {
+        let app = launch("tab/prs")
+        let card = app.buttons["pr-row-acme/shop#3712"]
         XCTAssertTrue(card.waitForExistence(timeout: 15))
         card.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Fix with Claude"].waitForExistence(timeout: 5))
@@ -42,9 +42,10 @@ final class FocusGesturesUITests: XCTestCase {
 
     @MainActor
     func testSwipesRevealSnoozeMergeAndReview() {
-        let app = launch("i1/bucket/ready")
-        let ready = app.buttons["pr-card-acme/shop#3698"]
+        let app = launch("tab/prs")
+        let ready = app.buttons["pr-row-acme/shop#3698"]
         XCTAssertTrue(ready.waitForExistence(timeout: 15))
+        for _ in 0..<4 where !ready.isHittable { app.swipeUp() }
         ready.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5))
             .press(forDuration: 0.05, thenDragTo: ready.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
         XCTAssertTrue(app.buttons["Merge"].waitForExistence(timeout: 5))
@@ -53,7 +54,8 @@ final class FocusGesturesUITests: XCTestCase {
         capture("swipe-trailing")
         ready.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).tap()
 
-        let other = app.buttons["pr-card-borght-dev/BorgDock#104"]
+        let other = app.buttons["pr-row-borght-dev/BorgDock#104"]
+        for _ in 0..<4 where !other.isHittable { app.swipeUp() }
         other.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5))
             .press(forDuration: 0.05, thenDragTo: other.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)))
         XCTAssertTrue(app.buttons["Review"].waitForExistence(timeout: 5))

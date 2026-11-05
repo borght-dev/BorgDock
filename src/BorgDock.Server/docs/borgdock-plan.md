@@ -76,12 +76,16 @@ Owns `server/src/borgdock/**`, `server/src/api/routes/platform.ts`, `server/src/
 ### I1 · iPhone: Focus, pull requests, Quick Review, CI
 Owns `src/BorgDock.iOS/BorgDock/Features/{Focus,PullRequest,Review,CI}/**`, `src/BorgDock.iOS/BorgDock/Model/GitHub.swift`,
 `e2e/fixtures/10-github.mjs`, its tests. Mockup sections 1, 2, 3 and 7 (CI failure).
-- Focus: bucket pills, PR cards (check bar, reason, chips, diff stat), agents-waiting strip, pull to refresh,
-  swipe actions (snooze, merge, review), context menu (Review, Fix with Claude, Rerun failed, Open in T3, Snooze,
-  Open AB#, Copy branch, Open on GitHub), avatar → Settings sheet, bell → Activity.
+- Today (`Features/Today`, the home tab; it replaced the Focus board): the sprint card (percent done, burndown,
+  pace), four counts (Need you, Ready to merge, My work, Waiting on others) and Up next, which ranks reviews asked
+  of you, agents with a question, plan or approval, your pull requests that need something, then merges, with
+  one-tap Review and Merge. Avatar → Settings sheet, bell → Activity, notes button → quick note (hold: all notes).
 - Pull requests tab (`Features/PullRequests`): every open pull request the server reads, the desktop list's filters
-  (All, Needs you, Mine, Failing), search, grouped by author or repository with Needs you pinned, the Focus swipes
-  and menu.
+  (All, Needs you, Mine, Failing), search, grouped by status (default), author or repository, a Checks → Review →
+  Merge track per row, swipe actions (snooze, merge, review) and the context menu (Review, Fix with Claude, Rerun
+  failed, Open in T3, Snooze, Open AB#, Copy branch, Open on GitHub).
+- Sprint tab (`Features/Sprint`, `GET /api/sprint`): the team's current sprint, team or mine: burndown with the
+  ideal line and the pace so far, items by state, Watch (in review 2+ days, blocked, unassigned), people.
 - Pull request: header, labels, chips, tabs (Overview, Files, Checks, Proof, Comments), reviews, work item card,
   bottom bar (Fix → launch sheet with `prKey`, Start review). Checks sheet with failure reasons, Rerun failed,
   Hand to Claude. Comments with diff lines, reply, resolve. Merge sheet with method, delete branch, Face ID
@@ -99,10 +103,11 @@ Owns `src/BorgDock.iOS/BorgDock/Features/{Overview,ItemDetail,StartThread,Browse
   exchange for a device session with a Secure Enclave key (`RequestSigner` implementation), claim flow, Connect
   your work, Add a machine (camera QR via VisionKit + typed code, HMAC proof), Settings (account, sources,
   machines, notification categories, quiet at desk, Face ID, devices, sign out).
-- Dispatch states walk (briefing, Fix out of sync / Sync all, lanes with verdicts, evidence, latest message),
+- Work tab, Dispatch's states walk titled "My work" (briefing, Fix out of sync / Sync all, lanes with verdicts,
+  workflow progress, evidence, latest message),
   Thread (chat, folded activity, plan approval, composer), Launch sheet (machine, repository, workspace, model,
   plan first, move toggle, first message, signed launch), Work item restyled, Browse kept behind a toolbar button.
-- Activity (behind the bell on Focus, not a tab: the tab bar holds five items with Search): filter pills, away
+- Activity (behind the bell on Today, not a tab: the tab bar holds five items with Search): filter pills, away
   card, entries, swipe to mark read, tap opens the target, mark all read; the bell shows unread.
 - Notifications: register BORGDOCK_* categories, signed answers from actions, open targets, `read` pushes.
 

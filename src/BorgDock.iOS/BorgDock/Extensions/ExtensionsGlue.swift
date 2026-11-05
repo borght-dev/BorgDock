@@ -46,10 +46,10 @@ struct ExtensionsGlue: ViewModifier {
     private var shownRoute: Route? {
         let router = app.router
         switch router.tab {
-        case .focus: return router.focusPath.last
+        case .today: return router.todayPath.last
         case .pullRequests: return router.pullRequestsPath.last
-        case .dispatch: return router.dispatchPath.last
-        case .notes: return router.notesPath.last
+        case .work: return router.workPath.last
+        case .sprint: return router.sprintPath.last
         case .search: return router.searchPath.last
         }
     }

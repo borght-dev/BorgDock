@@ -37,6 +37,12 @@ extension FocusStore {
     }
 }
 
+/// The line under the pull request list that explains the swipes, until the first swipe.
+enum PrSwipeHint {
+    static let key = "focus.swipeHintSeen"
+    static let text = "Swipe left to merge or snooze until tomorrow. Swipe right to start a review. Touch and hold for everything else."
+}
+
 extension View {
     /// Swipe right to review; swipe left to snooze, or merge when it can be merged. A full swipe left opens the merge
     /// sheet, never a blind merge.
@@ -44,7 +50,7 @@ extension View {
         self
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button {
-                    UserDefaults.standard.set(true, forKey: FocusView.swipeHintKey)
+                    UserDefaults.standard.set(true, forKey: PrSwipeHint.key)
                     app.router.review(app.focus.reviewQueue(startingAt: pr))
                 } label: { Label("Review", systemImage: "eye") }
                     .tint(BD.accent)
@@ -52,13 +58,13 @@ extension View {
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 if pr.canMerge {
                     Button {
-                        UserDefaults.standard.set(true, forKey: FocusView.swipeHintKey)
+                        UserDefaults.standard.set(true, forKey: PrSwipeHint.key)
                         app.router.present(.merge(pr.prKey))
                     } label: { Label("Merge", systemImage: "arrow.triangle.merge") }
                         .tint(BD.green)
                 }
                 Button {
-                    UserDefaults.standard.set(true, forKey: FocusView.swipeHintKey)
+                    UserDefaults.standard.set(true, forKey: PrSwipeHint.key)
                     Task { await app.focus.snoozeUntilTomorrow(pr.prKey) }
                 } label: { Label("Snooze", systemImage: "moon") }
                     .tint(Color(hex: 0x8B8BF5))

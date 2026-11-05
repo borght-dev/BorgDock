@@ -12,6 +12,12 @@ export type WorkflowState = { name: string; category: StateCategory };
 /** A work item as the engine needs it: the API summary plus what linking and suggestions use. */
 export type AdoItem = WorkItemSummary & { states: WorkflowState[]; linkedPullRequests: number[]; changedAt: string };
 
+export type AdoSprintItem = AdoItem & { stateChangedAt: string | null; finishedAt: string | null };
+
+export type AdoSprint = { name: string; path: string; startDate: string | null; finishDate: string | null; items: AdoSprintItem[] };
+
+type Iteration = { id: string; name: string; path: string; attributes?: { startDate?: string | null; finishDate?: string | null } };
+
 export class AdoError extends Error {
   readonly status: number;
   constructor(status: number, message: string) {
@@ -31,8 +37,12 @@ const ITEM_FIELDS = [
   'System.Id', 'System.TeamProject', 'System.WorkItemType', 'System.Title', 'System.State', 'System.IterationPath',
   'System.Tags', 'System.AssignedTo', 'System.ChangedDate', 'Microsoft.VSTS.Scheduling.DueDate', 'Microsoft.VSTS.Common.Priority',
 ];
+const STATE_CHANGE_DATE = 'Microsoft.VSTS.Common.StateChangeDate';
+const CLOSED_DATE = 'Microsoft.VSTS.Common.ClosedDate';
+const SPRINT_FIELDS = [...ITEM_FIELDS, STATE_CHANGE_DATE, CLOSED_DATE];
 const GITHUB_PR_LINK = /^vstfs:\/\/\/GitHub\/PullRequest\/[^%]+%2F(\d+)$/i;
 const OPEN_STATES = `[System.State] NOT IN ('Done', 'Closed', 'Removed')`;
+const BACKLOG_ITEM_TYPES = `[System.WorkItemType] IN ('Bug', 'Product Backlog Item', 'Quality Improvement')`;
 
 type RawItem = { id: number; fields: Record<string, any>; relations?: { rel: string; url: string }[] };
 
@@ -99,14 +109,20 @@ export class AdoClient {
     return idsFrom(result);
   }
 
-  private async fetchItems(ids: number[], withRelations: boolean): Promise<AdoItem[]> {
+  /** Raw items in the order of `ids`; ids ADO doesn't return are left out. */
+  private async fetchRaw(ids: number[], select: { relations: true } | { fields: string[] }): Promise<RawItem[]> {
     const raw: RawItem[] = [];
     for (let i = 0; i < ids.length; i += 200) {
-      const body = withRelations ? { ids: ids.slice(i, i + 200), $expand: 'Relations' } : { ids: ids.slice(i, i + 200), fields: ITEM_FIELDS };
+      const body = 'relations' in select ? { ids: ids.slice(i, i + 200), $expand: 'Relations' } : { ids: ids.slice(i, i + 200), fields: select.fields };
       raw.push(...(await this.request<{ value: RawItem[] }>(`_apis/wit/workitemsbatch?${API}`, { method: 'POST', body: JSON.stringify(body) })).value);
     }
-    const byId = new Map(await Promise.all(raw.map(async (r) => [r.id, await this.toItem(r)] as const)));
+    const byId = new Map(raw.map((r) => [r.id, r]));
     return ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : []));
+  }
+
+  private async fetchItems(ids: number[], withRelations: boolean): Promise<AdoItem[]> {
+    const raw = await this.fetchRaw(ids, withRelations ? { relations: true } : { fields: ITEM_FIELDS });
+    return Promise.all(raw.map((r) => this.toItem(r)));
   }
 
   private async toItem(r: RawItem): Promise<AdoItem> {
@@ -203,10 +219,31 @@ export class AdoClient {
     return `${encodeURIComponent(this.project)}/${encodeURIComponent(this.team)}/_apis/work/teamsettings/${path}`;
   }
 
-  private async currentIteration(): Promise<{ id: string; path: string }> {
-    const r = await this.request<{ value: { id: string; path: string }[] }>(this.teamPath(`iterations?$timeframe=current&${API}`));
+  private async currentIteration(): Promise<Iteration> {
+    const r = await this.request<{ value: Iteration[] }>(this.teamPath(`iterations?$timeframe=current&${API}`));
     if (!r.value[0]) throw new AdoError(404, `${this.team} has no current sprint`);
     return r.value[0];
+  }
+
+  /** The team's current sprint with every backlog item in it, finished ones included, whoever has them. */
+  async currentSprint(): Promise<AdoSprint> {
+    const iteration = await this.currentIteration();
+    const [ids, backlogOrder] = await Promise.all([
+      this.wiqlIds(
+        `SELECT [System.Id] FROM WorkItems WHERE [System.IterationPath] = '${iteration.path.replace(/'/g, "''")}' AND ${BACKLOG_ITEM_TYPES} AND [System.State] <> 'Removed'`,
+        1000,
+      ),
+      this.sprintBacklogOrder(iteration.id).catch(() => []),
+    ]);
+    const raw = await this.fetchRaw(inBacklogOrder(ids, backlogOrder), { fields: SPRINT_FIELDS });
+    const items = await Promise.all(raw.map(async (r) => withSprintDates(await this.toItem(r), r.fields)));
+    return {
+      name: sprintLabel(iteration.path, this.project),
+      path: iteration.path,
+      startDate: iteration.attributes?.startDate ?? null,
+      finishDate: iteration.attributes?.finishDate ?? null,
+      items: items.filter((i) => i.stateCategory !== 'Removed'),
+    };
   }
 
   /** The sprint backlog as ADO shows it: backlog priority, each task right under its parent. */
@@ -228,13 +265,12 @@ export class AdoClient {
 
   async runQuery(id: string, limit = 100): Promise<{ items: AdoItem[]; truncated: boolean }> {
     let ids: number[];
-    const backlogItemTypes = `[System.WorkItemType] IN ('Bug', 'Product Backlog Item', 'Quality Improvement')`;
     if (id.startsWith('sprint')) {
       const iteration = await this.currentIteration();
       const extra = id === 'sprint-unassigned' ? `AND [System.AssignedTo] = ''` : id === 'sprint-review' ? `AND [System.State] = 'Code Review'` : '';
       const [matching, backlogOrder] = await Promise.all([
         this.wiqlIds(
-          `SELECT [System.Id] FROM WorkItems WHERE [System.IterationPath] = '${iteration.path.replace(/'/g, "''")}' AND ${backlogItemTypes} AND ${OPEN_STATES} ${extra}`,
+          `SELECT [System.Id] FROM WorkItems WHERE [System.IterationPath] = '${iteration.path.replace(/'/g, "''")}' AND ${BACKLOG_ITEM_TYPES} AND ${OPEN_STATES} ${extra}`,
           1000,
         ),
         this.sprintBacklogOrder(iteration.id),
@@ -274,6 +310,13 @@ export function inBacklogOrder(ids: number[], backlogOrder: number[]): number[] 
 
 function flattenQueries(nodes: any[], group: string): BrowseQuery[] {
   return nodes.flatMap((n) => (n.isFolder ? flattenQueries(n.children ?? [], `${group} / ${n.name}`) : [{ id: n.id, name: n.name, group }]));
+}
+
+/** A finished item counts from its closed date; ADO leaves that empty for some states, so the state change stands in. */
+export function withSprintDates(item: AdoItem, fields: Record<string, any>): AdoSprintItem {
+  const stateChangedAt: string | null = fields[STATE_CHANGE_DATE] ?? null;
+  const finishedAt = item.stateCategory === 'Completed' ? (fields[CLOSED_DATE] ?? stateChangedAt) : null;
+  return { ...item, stateChangedAt, finishedAt };
 }
 
 export function sprintLabel(iterationPath: string, project: string): string {

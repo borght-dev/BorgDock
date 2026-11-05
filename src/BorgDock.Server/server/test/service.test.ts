@@ -146,3 +146,24 @@ test('every project counts for an item; only the worktree rack keeps to M/V/W', 
   assert.deepEqual(s.overview!.worktrees.map((w) => w.name), ['M5', 'V2', 'W4']);
   assert.deepEqual(s.overview!.items[0].threads.map((t) => t.id).sort(), ['Dispatch', 'M5', 'V2', 'W4']);
 });
+
+test('the sprint drops engine-only fields, is read once a minute and a failed read is not kept', async () => {
+  const { s } = service();
+  let reads = 0;
+  const sprintItem = { ...item({ id: 50002, state: 'Done' }), stateChangedAt: '2026-11-03T10:00:00Z', finishedAt: '2026-11-03T10:00:00Z' };
+  (s as any).ado.currentSprint = async () => {
+    reads += 1;
+    if (reads === 1) throw new Error('ADO is down');
+    return { name: '5.2.8', path: 'Shop\\5.2.8', startDate: '2026-11-02T00:00:00Z', finishDate: '2026-11-13T00:00:00Z', items: [sprintItem] };
+  };
+  await assert.rejects(s.sprint(), /ADO is down/);
+  const sprint = await s.sprint();
+  assert.equal(reads, 2, 'the failure was read again');
+  assert.equal(sprint.name, '5.2.8');
+  assert.deepEqual(Object.keys(sprint.items[0]).sort(), [
+    'assignedTo', 'assignedToMe', 'dueDate', 'finishedAt', 'id', 'priority', 'sprint', 'state', 'stateCategory', 'stateChangedAt', 'tags', 'title',
+    'type', 'typeName', 'url', 'workflow',
+  ]);
+  await s.sprint();
+  assert.equal(reads, 2, 'a second visit within a minute uses the same read');
+});

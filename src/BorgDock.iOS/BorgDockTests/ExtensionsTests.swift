@@ -45,7 +45,9 @@ final class ExtensionsTests: XCTestCase {
     func testWidgetLinksOpenTheRightRoutes() {
         XCTAssertEqual(BorgDockLink.pullRequest(key: "shop/shop#3712")?.absoluteString, "borgdock://pr/shop/shop/3712")
         XCTAssertNil(BorgDockLink.pullRequest(key: "nonsense"))
-        XCTAssertEqual(Router.Tab(link: "dispatch"), .dispatch)
+        XCTAssertEqual(Router.Tab(link: "dispatch"), .work, "widgets from before Today")
+        XCTAssertEqual(Router.Tab(link: "focus"), .today)
+        XCTAssertEqual(Router.Tab(link: "sprint"), .sprint)
         XCTAssertNil(Router.Tab(link: "nope"))
     }
 
@@ -53,13 +55,19 @@ final class ExtensionsTests: XCTestCase {
     func testTheRouterOpensTabAndWorkstreamLinks() {
         let router = Router()
         XCTAssertTrue(router.handle(BorgDockLink.tab("activity")))
-        XCTAssertEqual(router.tab, .focus)
-        XCTAssertEqual(router.focusPath, [.activity])
+        XCTAssertEqual(router.tab, .today)
+        XCTAssertEqual(router.todayPath, [.activity])
         XCTAssertTrue(router.handle(BorgDockLink.tab("prs")))
         XCTAssertEqual(router.tab, .pullRequests)
         XCTAssertTrue(router.handle(BorgDockLink.workstream("ws-1")))
-        XCTAssertEqual(router.tab, .notes)
-        XCTAssertEqual(router.notesPath, [.workstream("ws-1")])
+        XCTAssertEqual(router.tab, .today)
+        XCTAssertEqual(router.todayPath, [.notes, .workstream("ws-1")], "Back from a workstream shows the notes")
+        XCTAssertTrue(router.handle(BorgDockLink.tab("notes")))
+        XCTAssertEqual(router.todayPath, [.notes])
+        XCTAssertTrue(router.handle(URL(string: "borgdock://note/Daily/2026-11-05.md")!))
+        XCTAssertEqual(router.todayPath, [.notes, .note("Daily/2026-11-05.md")])
+        XCTAssertTrue(router.handle(URL(string: "borgdock://item/59657")!))
+        XCTAssertEqual(router.tab, .work)
     }
 
     // MARK: Live Activities

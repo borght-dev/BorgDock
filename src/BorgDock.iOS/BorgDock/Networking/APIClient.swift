@@ -115,6 +115,9 @@ extension APIClient {
 
     func browseQueries() async throws -> [BrowseQuery] { try await get("/api/browse/queries") }
 
+    /// The team's current sprint, finished items included.
+    func sprint() async throws -> Sprint { try await get("/api/sprint") }
+
     func browse(query: String?, search: String?) async throws -> BrowseResult {
         if let search, !search.trimmingCharacters(in: .whitespaces).isEmpty {
             return try await get("/api/browse", query: [URLQueryItem(name: "search", value: search)])
