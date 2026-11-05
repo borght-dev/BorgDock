@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BorgDock iPhone, Dispatch and queries</title>
+<!-- Concept mockups. Shares the phone kit (tokens, phone frame, chips, cells) with design/ios-app/mockups.html. -->
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0c0d0f; color: #ededef; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono, code { font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace; }
+  code { font-size: .9em; }
+
+  /* ---------- page ---------- */
+  .wrap { max-width: 1820px; margin: 0 auto; padding: 72px 48px 140px; }
+  .hero { display: grid; grid-template-columns: auto 1fr; gap: 32px; align-items: center; }
+  .hero-icon { width: 112px; height: 112px; border-radius: 26px; background: #151618; border: 1px solid #2f3036; display: grid; place-items: center; box-shadow: 0 20px 50px -10px rgba(127, 126, 255, .35); }
+  .hero-icon svg { width: 72px; height: 72px; fill: #7f7eff; }
+  .hero h1 { margin: 0; font-size: 48px; letter-spacing: -.025em; font-weight: 700; }
+  .hero h1 span { color: #7f7eff; }
+  .hero p { margin: 10px 0 0; color: #9c9da4; font-size: 18px; max-width: 860px; line-height: 1.5; }
+  .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 44px; }
+  .principle { padding: 20px 22px; border-radius: 18px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); }
+  .principle b { display: block; font-size: 16px; margin-bottom: 6px; }
+  .principle span { color: #9c9da4; font-size: 14px; line-height: 1.55; }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+  .toc a { color: #c9c8ff; text-decoration: none; font-size: 13.5px; padding: 7px 13px; border-radius: 18px; background: rgba(127, 126, 255, .1); border: 1px solid rgba(127, 126, 255, .2); }
+  .sec { margin-top: 110px; }
+  .sec-h { display: flex; align-items: baseline; gap: 14px; border-top: 1px solid rgba(255, 255, 255, .08); padding-top: 30px; }
+  .sec-h .n { font: 600 13px/1 "SF Mono", ui-monospace, monospace; color: #7f7eff; }
+  .sec-h h2 { margin: 0; font-size: 30px; letter-spacing: -.02em; }
+  .sec-lead { margin: 12px 0 44px; color: #9c9da4; font-size: 16px; line-height: 1.6; max-width: 940px; }
+  .row { display: flex; flex-wrap: wrap; gap: 72px 44px; align-items: flex-start; }
+  figure.shot { margin: 0; width: 393px; }
+  figure.shot figcaption { margin-top: 34px; font-size: 14px; color: #9c9da4; line-height: 1.55; }
+  figure.shot figcaption b { display: block; color: #ededef; font-size: 16px; margin-bottom: 4px; }
+  figure.shot figcaption ul { margin: 8px 0 0; padding-left: 18px; }
+  figure.shot figcaption li { margin: 4px 0; }
+
+  /* ---------- the phone ---------- */
+  .phone {
+    --bg: #111214; --card: #1b1c1f; --card2: #232428; --sheet: #1b1c1f; --menu: rgba(44, 45, 50, .82);
+    --fill: rgba(255, 255, 255, .07); --fill2: rgba(255, 255, 255, .11); --sep: rgba(255, 255, 255, .08);
+    --tx: #ededef; --tx2: #9c9da4; --tx3: #6c6d74;
+    --ac: #7f7eff; --ac-soft: rgba(127, 126, 255, .16); --ac-tx: #b4b3ff; --onac: #12121a;
+    --gr: #5cc98f; --gr-soft: rgba(92, 201, 143, .14); --ongr: #0b2416;
+    --rd: #f0616d; --rd-soft: rgba(240, 97, 109, .15);
+    --yl: #e5b454; --yl-soft: rgba(229, 180, 84, .15);
+    --bl: #6fa8ff; --bl-soft: rgba(111, 168, 255, .15);
+    --mg: #a371f7; --mg-soft: rgba(163, 113, 247, .16);
+    --glass: rgba(52, 53, 58, .58); --glass-brd: rgba(255, 255, 255, .13);
+    --syk: #c4a7ff; --sys: #9ecbff; --syf: #dcbdfb; --syt: #7ee787; --sycm: #8b949e;
+    position: relative; width: 393px; height: 852px; border-radius: 55px; overflow: hidden; isolation: isolate;
+    background: var(--bg); color: var(--tx); font-size: 15px; line-height: 1.35; letter-spacing: -.01em;
+    box-shadow: 0 0 0 9px #050506, 0 0 0 10.5px #3a3b40, 0 46px 90px -24px rgba(0, 0, 0, .75);
+  }
+  .phone.light {
+    --bg: #f2f2f7; --card: #fff; --card2: #f7f7f9; --sheet: #f2f2f7; --menu: rgba(250, 250, 252, .86);
+    --fill: rgba(23, 24, 28, .055); --fill2: rgba(23, 24, 28, .09); --sep: #e3e4e8;
+    --tx: #17181c; --tx2: #5d606a; --tx3: #8f929c;
+    --ac: #4f46e5; --ac-soft: rgba(79, 70, 229, .1); --ac-tx: #4338ca; --onac: #fff;
+    --gr: #1f9d6b; --gr-soft: #e3f5ec; --ongr: #fff;
+    --rd: #d64560; --rd-soft: #fbe9ec;
+    --yl: #b07a0e; --yl-soft: #fbf1dc;
+    --bl: #2d6be4; --bl-soft: #e6eefc;
+    --mg: #8250df; --mg-soft: #f0e8fc;
+    --glass: rgba(255, 255, 255, .72); --glass-brd: rgba(0, 0, 0, .07);
+    --syk: #8250df; --sys: #0a3069; --syf: #6639ba; --syt: #116329; --sycm: #6e7781;
+  }
+  .sb { position: absolute; top: 0; left: 0; right: 0; height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 32px 0 54px; z-index: 90; font-weight: 600; font-size: 17px; letter-spacing: -.02em; color: var(--tx); pointer-events: none; }
+  .sb.w { color: #fff; }
+  .sb-r { display: flex; gap: 6px; align-items: center; }
+  .sb-r svg { height: 12px; width: auto; fill: currentColor; }
+  .sb-r svg.bat { height: 13px; }
+  .di { position: absolute; top: 11px; left: 50%; width: 125px; height: 37px; margin-left: -62.5px; border-radius: 19px; background: #000; z-index: 95; }
+  .hi { position: absolute; bottom: 8px; left: 50%; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: var(--tx); z-index: 99; }
+  .hi.w { background: #fff; }
+  .view { position: absolute; inset: 0; padding-top: 54px; overflow: hidden; }
+  .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 150px; background: linear-gradient(to bottom, transparent, var(--bg) 72%); z-index: 34; pointer-events: none; }
+
+  /* icons */
+  .ic { display: inline-grid; width: var(--s, 16px); height: var(--s, 16px); flex: none; }
+  .ic svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: var(--sw, 2); stroke-linecap: round; stroke-linejoin: round; }
+  .ic.fill svg { fill: currentColor; stroke: none; }
+
+  /* nav + titles */
+  .nav { height: 54px; display: flex; align-items: center; gap: 8px; padding: 0 16px; position: relative; z-index: 30; }
+  .sp { flex: 1; }
+  .gb, .gp { flex: none; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: var(--glass); border: .5px solid var(--glass-brd); backdrop-filter: blur(18px) saturate(1.7); -webkit-backdrop-filter: blur(18px) saturate(1.7); box-shadow: 0 2px 12px rgba(0, 0, 0, .1), inset 0 1px 0 rgba(255, 255, 255, .07); color: var(--tx); }
+  .gb { width: 44px; border-radius: 50%; }
+  .gb .ic { --s: 19px; }
+  .gp { border-radius: 22px; padding: 0 15px; gap: 6px; font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .gp .ic { --s: 16px; }
+  .gp.pri { background: var(--ac); color: var(--onac); border-color: transparent; }
+  .gp.dimmed { color: var(--tx3); }
+  .me { font-size: 14px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #7f7eff, #4f46e5); border-color: transparent; }
+  .nav-t { flex: 1; text-align: center; min-width: 0; }
+  .nav-t b { display: block; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-t span { display: block; font-size: 12px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lt { padding: 0 16px; font-size: 34px; font-weight: 700; letter-spacing: .005em; line-height: 41px; }
+  .sub { padding: 2px 16px 0; color: var(--tx2); font-size: 15px; }
+  .eyebrow { padding: 0 16px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+
+  /* pills, chips, dots */
+  .pills { display: flex; gap: 8px; padding: 14px 16px 4px; overflow: hidden; }
+  .pill { flex: none; height: 34px; padding: 0 13px; border-radius: 17px; display: inline-flex; align-items: center; gap: 6px; background: var(--fill); font-size: 14px; font-weight: 600; color: var(--tx); white-space: nowrap; }
+  .pill .c { color: var(--tx2); font-variant-numeric: tabular-nums; }
+  .pill.on { background: var(--tx); color: var(--bg); }
+  .pill.on .c { color: inherit; opacity: .6; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border-radius: 12px; font-size: 12.5px; font-weight: 600; background: var(--fill); color: var(--tx2); white-space: nowrap; flex: none; }
+  .chip .ic { --s: 13px; --sw: 2.4; }
+  .chip.bad { background: var(--rd-soft); color: var(--rd); }
+  .chip.ok { background: var(--gr-soft); color: var(--gr); }
+  .chip.warn { background: var(--yl-soft); color: var(--yl); }
+  .chip.run { background: var(--bl-soft); color: var(--bl); }
+  .chip.ac { background: var(--ac-soft); color: var(--ac-tx); }
+  .chip.mg { background: var(--mg-soft); color: var(--mg); }
+  .chip.sm { height: 21px; padding: 0 7px; font-size: 11.5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; display: inline-block; }
+  .pulse { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent); }
+  .unread { width: 9px; height: 9px; border-radius: 50%; background: var(--ac); flex: none; }
+  .av { width: 20px; height: 20px; border-radius: 50%; flex: none; display: inline-grid; place-items: center; font-size: 8.5px; font-weight: 700; color: #fff; background: hsl(var(--h, 245) 52% 50%); letter-spacing: 0; }
+  .av.lg { width: 30px; height: 30px; font-size: 11px; }
+  .lbl { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 11px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--c) 20%, transparent); color: color-mix(in srgb, var(--c) 60%, var(--tx)); border: .5px solid color-mix(in srgb, var(--c) 45%, transparent); }
+  .ty { width: 11px; height: 11px; border-radius: 3px; flex: none; display: inline-block; }
+  .ty.bug { background: #e5484d; } .ty.pbi { background: #3e7bfa; } .ty.task { background: #e5a33d; }
+  .br { font-family: "SF Mono", ui-monospace, monospace; font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--fill); color: var(--tx2); }
+
+  /* cards and lists */
+  .list { padding: 10px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .card { background: var(--card); border-radius: 22px; padding: 13px 16px 14px; border: .5px solid var(--sep); position: relative; }
+  .light .card { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .pr-h { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tx2); }
+  .pr-h b { color: var(--tx); font-weight: 600; }
+  .card h4 { margin: 5px 0 0; font-size: 16px; font-weight: 600; line-height: 1.3; letter-spacing: -.015em; }
+  .why { margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--tx2); }
+  .why .ic { --s: 14px; }
+  .why.ac { color: var(--ac-tx); } .why.bad { color: var(--rd); } .why.ok { color: var(--gr); } .why.warn { color: var(--yl); }
+  .pr-f { margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+  .cbar { display: flex; gap: 2px; width: 64px; height: 5px; flex: none; margin-right: 4px; }
+  .cbar i { flex: 1; border-radius: 2px; background: var(--gr); }
+  .cbar i.r { background: var(--rd); } .cbar i.y { background: var(--yl); } .cbar i.g { background: var(--tx3); opacity: .5; }
+  .ds { margin-left: auto; font: 500 12px "SF Mono", ui-monospace, monospace; color: var(--tx3); white-space: nowrap; }
+  .ds .a { color: var(--gr); } .ds .d { color: var(--rd); }
+  .grp-h { padding: 18px 32px 7px; font-size: 13px; color: var(--tx2); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .grp-h a { color: var(--ac-tx); font-weight: 500; text-decoration: none; }
+  .grp { margin: 0 16px; background: var(--card); border-radius: 22px; overflow: hidden; }
+  .dark .grp { border: .5px solid var(--sep); }
+  .cell { display: flex; align-items: center; gap: 12px; padding: 11px 16px; min-height: 50px; position: relative; }
+  .cell + .cell::before { content: ""; position: absolute; top: 0; left: var(--indent, 58px); right: 0; height: .5px; background: var(--sep); }
+  .cell .t { flex: 1; min-width: 0; }
+  .cell .t b { display: block; font-weight: 500; font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell .t > span { display: block; font-size: 13px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .cell .v { color: var(--tx2); font-size: 15px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+  .cell .chev { color: var(--tx3); --s: 15px; --sw: 2.4; }
+  .cell .when { font-size: 12.5px; color: var(--tx3); align-self: flex-start; margin-top: 2px; white-space: nowrap; }
+  .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; color: #fff; background: var(--ac); }
+  .ico .ic { --s: 17px; }
+  .ico.r { border-radius: 50%; }
+  .ico.soft { color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+
+  /* buttons, toggles, segmented */
+  .btn { height: 52px; border-radius: 26px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 17px; font-weight: 600; background: var(--fill2); color: var(--tx); flex: 1; white-space: nowrap; }
+  .btn .ic { --s: 18px; }
+  .btn.pri { background: var(--ac); color: var(--onac); }
+  .btn.go { background: var(--gr); color: var(--ongr); }
+  .btn.bad { background: var(--rd-soft); color: var(--rd); }
+  .btn.sm { height: 44px; font-size: 15.5px; }
+  .btns { display: flex; gap: 10px; padding: 0 16px; }
+  .tg { width: 52px; height: 31px; border-radius: 16px; background: var(--gr); position: relative; flex: none; }
+  .tg::after { content: ""; position: absolute; top: 2px; right: 2px; width: 35px; height: 27px; border-radius: 14px; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .18); }
+  .tg.off { background: var(--fill2); }
+  .tg.off::after { right: auto; left: 2px; }
+  .segc { display: flex; padding: 3px; border-radius: 13px; background: var(--fill); }
+  .segc span { flex: 1; text-align: center; padding: 7px 0; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: var(--tx2); }
+  .segc span.on { background: var(--card); color: var(--tx); box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
+  .dark .segc span.on { background: #3b3c42; }
+
+  /* tab bar (iOS 26 floating glass) */
+  .tabbar { position: absolute; left: 20px; right: 20px; bottom: 24px; display: flex; gap: 10px; z-index: 40; }
+  .tb-tabs { flex: 1; display: flex; height: 62px; padding: 4px; border-radius: 31px; }
+  .tb-tabs, .tb-search, .glass { background: var(--glass); border: .5px solid var(--glass-brd); backdrop-filter: blur(22px) saturate(1.8); -webkit-backdrop-filter: blur(22px) saturate(1.8); box-shadow: 0 10px 32px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .07); }
+  .tb-tab { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 27px; font-size: 10.5px; font-weight: 600; color: var(--tx); }
+  .tb-tab .ic { --s: 23px; --sw: 1.9; }
+  .tb-tab.on { background: var(--fill2); color: var(--ac); }
+  .tb-badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--rd); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  .tb-search { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .tb-search .ic { --s: 23px; }
+  .actbar { position: absolute; left: 16px; right: 16px; bottom: 30px; display: flex; gap: 10px; z-index: 40; align-items: center; }
+
+  /* sheets, menus, dim */
+  .dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); z-index: 45; }
+  .blurred { filter: blur(14px) saturate(1.2); transform: scale(1.04); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--sheet); border-radius: 40px 40px 0 0; padding-top: 7px; box-shadow: 0 -10px 40px rgba(0, 0, 0, .25); }
+  .sheet.float { left: 8px; right: 8px; bottom: 8px; border-radius: 46px; }
+  .grab { width: 38px; height: 5px; border-radius: 3px; background: var(--tx3); opacity: .45; margin: 0 auto 4px; }
+  .sh-h { display: flex; align-items: center; gap: 10px; padding: 6px 16px 8px; }
+  .sh-h h3 { flex: 1; margin: 0; text-align: center; font-size: 17px; font-weight: 600; }
+  .menu { position: absolute; z-index: 60; width: 262px; border-radius: 22px; overflow: hidden; background: var(--menu); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); box-shadow: 0 20px 60px rgba(0, 0, 0, .45); }
+  .mi { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 16px; position: relative; }
+  .mi + .mi::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: .5px; background: var(--sep); }
+  .mi span { flex: 1; }
+  .mi .ic { --s: 18px; }
+  .mi.gap { border-top: 7px solid rgba(0, 0, 0, .18); }
+  .mi.gap::before { display: none; }
+  .mi.bad { color: var(--rd); }
+
+  /* code */
+  .code { font: 11.5px/18px "SF Mono", ui-monospace, Menlo, monospace; background: var(--fill); border-radius: 12px; padding: 9px 11px; color: var(--tx); white-space: pre; overflow: hidden; }
+  .diff { font: 11px/19px "SF Mono", ui-monospace, Menlo, monospace; }
+  .dl { display: grid; grid-template-columns: 34px 16px 1fr; white-space: pre; overflow: hidden; }
+  .dl .n { color: var(--tx3); text-align: right; padding-right: 6px; }
+  .dl .m { color: var(--tx3); }
+  .dl.a { background: var(--gr-soft); }
+  .dl.a .n, .dl.a .m { color: var(--gr); }
+  .dl.d { background: var(--rd-soft); }
+  .dl.d .n, .dl.d .m { color: var(--rd); }
+  .hk { padding: 3px 12px; background: var(--fill); color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .diff .k { color: var(--syk); } .diff .s { color: var(--sys); } .diff .f { color: var(--syf); } .diff .ty2 { color: var(--syt); } .diff .cm { color: var(--sycm); }
+
+  /* reference chips inside prose (notes, comments) */
+  .rc { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 7px; background: var(--fill); font-size: 13px; font-weight: 600; vertical-align: 1px; white-space: nowrap; color: var(--tx); }
+  .rc .ic { --s: 12px; --sw: 2.4; }
+  .ud { position: absolute; left: 6px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--ac); }
+
+  /* wallpaper, lock screen, widgets, live activities */
+  .wall { background: radial-gradient(110% 70% at 15% 8%, #4a47b8 0%, transparent 55%), radial-gradient(90% 60% at 95% 85%, #1c6170 0%, transparent 60%), linear-gradient(165deg, #1b1a46, #0a0b12 72%); }
+  .wall-blur { position: absolute; inset: -30px; filter: blur(26px); }
+  .lk-date { text-align: center; color: rgba(255, 255, 255, .86); font-size: 20px; font-weight: 600; margin-top: 52px; }
+  .lk-time { text-align: center; color: rgba(255, 255, 255, .93); font-size: 104px; font-weight: 700; letter-spacing: -3px; line-height: 1; margin-top: 2px; text-shadow: 0 2px 30px rgba(127, 126, 255, .35); }
+  .lk-w { display: flex; justify-content: center; gap: 10px; margin-top: 14px; color: #fff; }
+  .lw-c { width: 70px; height: 70px; border-radius: 50%; background: rgba(255, 255, 255, .14); backdrop-filter: blur(10px); display: grid; place-items: center; text-align: center; position: relative; }
+  .lw-r { width: 156px; height: 70px; border-radius: 20px; background: rgba(255, 255, 255, .14); backdrop-filter: blur(10px); padding: 10px 12px; font-size: 13px; line-height: 1.3; }
+  .nt { border-radius: 26px; background: rgba(28, 29, 36, .62); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); color: #fff; padding: 12px 14px; display: flex; gap: 11px; border: .5px solid rgba(255, 255, 255, .1); }
+  .nt .app { width: 38px; height: 38px; border-radius: 10px; background: #151618; display: grid; place-items: center; flex: none; border: .5px solid rgba(255, 255, 255, .14); }
+  .nt .app svg { width: 24px; height: 24px; fill: #7f7eff; }
+  .nt .bd { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.33; }
+  .nt .bd b { font-weight: 600; }
+  .nt .hd { display: flex; justify-content: space-between; font-size: 14.5px; }
+  .nt .hd span { color: rgba(255, 255, 255, .55); font-size: 13px; }
+  .nt .tx { color: rgba(255, 255, 255, .82); }
+  .app-ic { width: 62px; height: 62px; border-radius: 15px; display: grid; place-items: center; color: #fff; margin: 0 auto; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+  .app-ic .ic { --s: 30px; --sw: 1.8; }
+  .app-lbl { text-align: center; color: #fff; font-size: 12px; margin-top: 5px; }
+  .wg { border-radius: 26px; background: rgba(24, 25, 30, .58); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); border: .5px solid rgba(255, 255, 255, .1); color: #fff; padding: 14px 15px; }
+  .crop { height: 270px; border-radius: 55px 55px 26px 26px; }
+  .crop .sb { padding: 6px 20px 0 40px; }
+  .key { width: 33px; height: 42px; border-radius: 8px; background: #6b6b70; display: grid; place-items: center; box-shadow: 0 1px 0 rgba(0, 0, 0, .35); font-weight: 400; }
+  .key.fn { background: #46464b; }
+  .crop.nosb .sb { display: none; }
+  .crop .sb-r { visibility: hidden; }
+  .wl { color: var(--ac-tx); font-weight: 500; }
+
+  /* how it works */
+  .arch { display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr; gap: 0; align-items: stretch; }
+  .arch-col { padding: 22px; border-radius: 22px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); display: grid; gap: 10px; align-content: start; }
+  .arch-col.accent { border-color: rgba(127, 126, 255, .4); background: linear-gradient(#18182a, #151618); }
+  .arch-col h4, .plan-col h4, .open h4 { margin: 0 0 4px; font-size: 17px; }
+  .arch-box { padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .06); font-size: 13.5px; line-height: 1.5; }
+  .arch-box b { display: block; font-size: 14.5px; margin-bottom: 2px; }
+  .arch-box span { color: #9c9da4; }
+  .arch-box code { color: #c9c8ff; }
+  .arch-arrow { display: grid; place-items: center; color: #7f7eff; font-size: 24px; }
+  .plan { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .plan-col { padding: 22px; border-radius: 22px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .plan-col h4 span, .open h4 span { display: block; font: 600 12px/1.4 "SF Mono", ui-monospace, monospace; color: #7f7eff; margin-bottom: 4px; }
+  .plan-col p { margin: 8px 0 0; }
+  .plan-col p.muted { color: #8e8f96; }
+  .plan-col ul, .open ul { margin: 8px 0 0; padding-left: 18px; }
+  .plan-col li, .open li { margin: 4px 0; }
+  .open { margin-top: 16px; padding: 22px 26px; border-radius: 22px; border: 1px dashed rgba(255, 255, 255, .14); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .open b { color: #ededef; }
+
+  /* ---------- this page ---------- */
+  .t-bad { color: var(--rd); font-weight: 600; }
+  .mk { position: absolute; z-index: 120; width: 26px; height: 26px; border-radius: 50%; background: #ff4d5e; color: #fff; font: 700 13px/26px -apple-system, system-ui, sans-serif; text-align: center; letter-spacing: 0; box-shadow: 0 0 0 4px rgba(255, 77, 94, .28), 0 4px 12px rgba(0, 0, 0, .3); }
+  .issues { width: 470px; display: grid; gap: 10px; align-content: start; }
+  .issue { display: grid; grid-template-columns: 26px 1fr; gap: 12px; padding: 13px 16px; border-radius: 16px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 14px; line-height: 1.5; color: #c9cad0; }
+  .issue .mk { position: static; box-shadow: none; }
+  .issue b { color: #ededef; display: block; font-size: 15px; margin-bottom: 2px; }
+  .issue code { color: #c9c8ff; }
+
+  /* today's Browse: strips, square corners, a holder column */
+  .p-search { margin: 0 18px; height: 42px; border-radius: 6px; border: 1px solid var(--sep); background: var(--card); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--tx3); font-size: 14px; }
+  .p-search .ic { --s: 17px; color: var(--tx2); }
+  .p-bar { display: flex; gap: 8px; margin: 16px 18px 0; }
+  .p-pick { flex: 1; height: 36px; border-radius: 6px; border: 1px solid var(--sep); background: var(--card); display: flex; align-items: center; padding: 0 11px; font-size: 12.5px; }
+  .p-pick .ic { --s: 12px; margin-left: auto; }
+  .p-btn { height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--sep); display: inline-flex; align-items: center; font-size: 13.5px; color: var(--tx); background: var(--card); flex: none; }
+  .p-btn.pri { background: var(--ac); color: var(--onac); border-color: transparent; }
+  .p-title { margin: 22px 18px 0; font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
+  .p-count { margin: 12px 22px 10px; font-size: 13px; color: var(--tx2); }
+  .p-strip { margin: 0 18px 6px; display: flex; border: 1px solid var(--sep); border-radius: 8px; background: var(--card); overflow: hidden; box-shadow: inset 3px 0 0 var(--lamp, var(--tx3)); }
+  .p-hold { width: 66px; flex: none; background: var(--card2); padding: 10px 0 10px 12px; font-size: 12px; color: var(--tx2); display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+  .p-hold b { font: 500 13px "SF Mono", ui-monospace, monospace; color: var(--tx); }
+  .p-body { flex: 1; padding: 10px 10px 10px 11px; min-width: 0; }
+  .p-body h5 { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.28; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .p-st { font-size: 12.5px; color: var(--tx2); margin-top: 3px; }
+  .p-due { font-size: 11px; margin-top: 3px; display: flex; gap: 8px; color: var(--tx2); }
+  .p-due .r { color: var(--rd); }
+  .p-act { display: flex; align-items: center; gap: 6px; margin-top: 7px; font-size: 12px; color: var(--tx2); }
+  .p-act .sp + b { font-weight: 600; color: var(--tx); }
+
+  /* scopes, jump bar */
+  .scopes { display: flex; gap: 8px; padding: 14px 16px 2px; overflow: hidden; }
+  .pill.warn { background: var(--yl-soft); color: var(--yl); }
+  .pill .ic { --s: 15px; }
+  .jump { display: flex; gap: 6px; padding: 2px 16px 8px; overflow: hidden; position: relative; z-index: 30; }
+  .jump span { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 15px; background: var(--fill); font-size: 13px; font-weight: 600; color: var(--tx2); font-variant-numeric: tabular-nums; }
+  .jump span.on { background: var(--tx); color: var(--bg); }
+  .jump span.on .sd { box-shadow: 0 0 0 2px var(--tx); }
+
+  /* the overview card: one row per state */
+  .ov { margin: 12px 16px 0; background: var(--card); border-radius: 22px; padding: 13px 0 4px; border: .5px solid var(--sep); }
+  .light .ov { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .ov-h { display: flex; align-items: baseline; padding: 0 16px; font-size: 12.5px; color: var(--tx3); }
+  .ov-h b { color: var(--tx); font-size: 15px; font-weight: 600; }
+  .sbar { display: flex; gap: 2px; height: 9px; margin: 10px 16px 4px; border-radius: 5px; overflow: hidden; }
+  .sbar i { background: var(--c); flex: var(--n) 0 0; min-width: 4px; }
+  .ov-r { display: flex; align-items: center; gap: 11px; padding: 6px 16px; min-height: 46px; position: relative; font-size: 15px; }
+  .ov-r + .ov-r::before { content: ""; position: absolute; top: 0; left: 35px; right: 0; height: .5px; background: var(--sep); }
+  .ov-r .nm { flex: 1; min-width: 0; font-weight: 500; }
+  .ov-r .nm b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ov-r .nm span { display: block; font-size: 12.5px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .ov-r .nm span.bad { color: var(--rd); }
+  .ov-r .nm span span { display: inline; }
+  .ov-r .ct { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--tx2); min-width: 18px; text-align: right; }
+  .ov-r.hot .ct { color: var(--rd); }
+  .ov-r .chev { color: var(--tx3); --s: 14px; --sw: 2.4; }
+  .ov-f { display: flex; gap: 8px; padding: 8px 16px 10px; border-top: .5px solid var(--sep); margin-top: 2px; }
+  .sd { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; display: inline-block; }
+  .pips { display: flex; flex-wrap: wrap; gap: 3px; width: 151px; flex: none; }
+  .pips i { width: 8px; height: 8px; border-radius: 2px; background: var(--tx3); opacity: .32; }
+  .pips i.b { background: var(--rd); } .pips i.w { background: var(--yl); } .pips i.o { background: var(--gr); } .pips i.r { background: var(--bl); } .pips i.me { opacity: 1; }
+  .pips em { font-style: normal; font-size: 11px; color: var(--tx3); line-height: 8px; margin-left: 2px; }
+
+  /* lanes and rows */
+  .lane-h { padding: 20px 32px 7px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+  .lane-h .n { font-variant-numeric: tabular-nums; }
+  .lane-h .sp { flex: 1; }
+  .lane-h .lk { color: var(--ac-tx); font-weight: 500; }
+  .lane-h.bad { color: var(--rd); }
+  .wr { padding: 12px 16px 13px; position: relative; }
+  .wr + .wr::before, .cr + .wr::before, .wr + .cr::before, .cr + .cr::before, .more::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: .5px; background: var(--sep); }
+  .wr .h { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--tx2); }
+  .wr .ti { margin-top: 4px; font-size: 15.5px; font-weight: 600; line-height: 1.3; letter-spacing: -.015em; }
+  .wr .ev { display: flex; gap: 5px; margin-top: 8px; overflow: hidden; align-items: center; }
+  .wr .lm { margin-top: 7px; font-size: 13px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wr .lm b { color: var(--tx); font-weight: 500; }
+  .qa { margin-top: 9px; padding: 8px 12px 9px; border-radius: 14px; background: var(--rd-soft); font-size: 13.5px; line-height: 1.42; color: var(--tx); }
+  .qa .by { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--rd); margin-bottom: 2px; }
+  .qa .by .ic { --s: 13px; --sw: 2.4; }
+  .qa .by span { color: var(--tx2); font-weight: 500; }
+  .qa.one { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 6px 11px; font-size: 13px; }
+  .rbtn { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 14px; border-radius: 16px; font-size: 14px; font-weight: 600; background: var(--fill2); color: var(--tx); flex: none; white-space: nowrap; }
+  .rbtn.pri { background: var(--ac); color: var(--onac); }
+  .rbtn.warn { background: var(--yl-soft); color: var(--yl); }
+  .rbtn .ic { --s: 14px; --sw: 2.4; }
+  .chip.late { color: var(--rd); }
+  .cr { display: flex; align-items: center; gap: 10px; padding: 0 16px; min-height: 46px; position: relative; background: var(--card); }
+  .cr .ti { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
+  .cr .m { font-size: 12.5px; color: var(--tx3); white-space: nowrap; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 5px; }
+  .cr .m.run { color: var(--bl); font-weight: 600; }
+  .cr .m.late { color: var(--rd); }
+  .more { position: relative; padding: 12px 16px; font-size: 14.5px; color: var(--ac-tx); font-weight: 500; }
+  .swipe { position: relative; overflow: hidden; background: var(--card); }
+  .swipe .cr { left: -148px; }
+  .swipe .sa { position: absolute; right: 0; top: 0; bottom: 0; display: flex; }
+  .sa span { width: 74px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #fff; font-size: 11.5px; font-weight: 600; }
+  .sa span .ic { --s: 18px; }
+
+  /* focus tiles */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 16px 0; }
+  .tile { background: var(--card); border-radius: 18px; padding: 9px 12px 10px; border: .5px solid var(--sep); min-width: 0; }
+  .light .tile { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .tile .n { display: block; font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.12; font-variant-numeric: tabular-nums; color: var(--c, var(--tx)); }
+  .tile b { display: block; font-size: 14px; font-weight: 600; margin-top: 1px; }
+  .tile > span:last-child { display: block; font-size: 11.5px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile.quiet .n { color: var(--tx2); }
+
+  /* pull request rows */
+  .lg { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--tx3); }
+  .lg i { width: 7px; height: 7px; border-radius: 2px; background: var(--c); margin-left: 5px; }
+  .rbar { display: flex; gap: 2px; width: 92px; height: 8px; border-radius: 4px; overflow: hidden; flex: none; }
+  .rbar i { flex: var(--n) 0 0; background: var(--c); }
+  .pr { display: flex; gap: 11px; padding: 11px 14px 12px; position: relative; }
+  .pr + .pr::before, .prc + .prc::before, .swipe + .prc::before, .prc + .swipe::before { content: ""; position: absolute; top: 0; left: 14px; right: 0; height: .5px; background: var(--sep); z-index: 1; }
+  .pr .bd { flex: 1; min-width: 0; }
+  .pr .m1 { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--tx3); }
+  .pr .m1 b { color: var(--tx2); font-weight: 600; }
+  .pr .ti { font-size: 15px; font-weight: 600; line-height: 1.3; margin-top: 2px; letter-spacing: -.015em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pr .why { font-size: 13px; margin-top: 4px; }
+  .pr .pf { display: flex; align-items: center; gap: 6px; margin-top: 7px; }
+  .prc { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 52px; position: relative; background: var(--card); }
+  .prc .bd { flex: 1; min-width: 0; }
+  .prc .bd b { display: block; font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prc .bd > span { display: block; font-size: 12px; color: var(--tx3); white-space: nowrap; margin-top: 1px; }
+  .prc .a { color: var(--gr); } .prc .d { color: var(--rd); }
+  .cbar.sm { width: 34px; margin: 0; }
+  .swipe .prc { left: 92px; }
+  .sa.sa-l { right: auto; left: 0; }
+  .sa.sa-l span { width: 92px; }
+
+  /* item detail */
+  .hist { position: relative; padding: 10px 16px 10px 40px; font-size: 14px; }
+  .hist::after { content: ""; position: absolute; left: 21px; top: 0; bottom: 0; width: 1.5px; background: var(--sep); }
+  .hist:first-child::after { top: 50%; }
+  .hist:last-child::after { bottom: 50%; }
+  .hist .sd { position: absolute; left: 17px; top: 50%; margin-top: -5px; z-index: 1; width: 10px; height: 10px; box-shadow: 0 0 0 3px var(--card); }
+  .hist b { font-weight: 600; }
+  .hist span { color: var(--tx2); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="mark" viewBox="0 0 32 32"><rect x="4" y="4" width="6" height="24" rx="1.5"/><path d="M14.5 4H22a6 6 0 0 1 6 6v1a4 4 0 0 1-4 4H14.5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 14.5 4ZM14.5 17H24a4 4 0 0 1 4 4v1a6 6 0 0 1-6 6h-7.5a1.5 1.5 0 0 1-1.5-1.5v-8a1.5 1.5 0 0 1 1.5-1.5Z"/></symbol>
+    <symbol id="sb-sig" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></symbol>
+    <symbol id="sb-wifi" viewBox="0 0 16 12"><path d="M8 2.4c2.3 0 4.4.9 6 2.4l1.2-1.2A10.3 10.3 0 0 0 8 .7C5.2.7 2.7 1.8.8 3.6L2 4.8a8.6 8.6 0 0 1 6-2.4Zm0 3.3c1.4 0 2.7.5 3.7 1.4l1.2-1.2A7 7 0 0 0 8 4c-1.9 0-3.6.7-4.9 1.9l1.2 1.2c1-.9 2.3-1.4 3.7-1.4Zm0 3.3c.6 0 1.2.2 1.6.6L8 11.3 6.4 9.6c.4-.4 1-.6 1.6-.6Z"/></symbol>
+    <symbol id="sb-bat" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.6" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2.2"/><path d="M25 4.5v4c.8-.3 1.4-1.1 1.4-2s-.6-1.7-1.4-2Z" opacity=".45"/></symbol>
+
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-pr" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7M6 9v12"/></symbol>
+    <symbol id="i-merge" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M16 13H8M16 17H8M10 9H8"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-rerun" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.13 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+    <symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-fail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></symbol>
+    <symbol id="i-pending" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-dasharray="3 3.3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 13l-2 2 2 2M14 17l2-2-2-2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+    <symbol id="i-hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4M12 2v13"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+    <symbol id="i-torch" viewBox="0 0 24 24"><path d="M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z"/><path d="M6 6h12M12 12v1"/></symbol>
+    <symbol id="i-face" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4M21 2l-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-git" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+    <symbol id="i-board" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7M12 7v4M16 7v9"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+    <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+    <symbol id="i-del" viewBox="0 0 24 24"><path d="M10 5a2 2 0 0 0-1.34.52l-6.33 5.9a.8.8 0 0 0 0 1.16l6.33 5.9A2 2 0 0 0 10 19h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6M18 9l-6 6"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/></symbol>
+    <symbol id="i-shift" viewBox="0 0 24 24"><path d="M9 18v-6H5l7-7 7 7h-4v6H9z"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 6 4.5Z"/></symbol>
+    <symbol id="i-queue" viewBox="0 0 24 24"><path d="M11 12H3M16 6H3M16 18H3M18 9v6M21 12h-6"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 6h18M7 12h10M10 18h4"/></symbol>
+    <symbol id="i-flask" viewBox="0 0 24 24"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2M6.453 15h11.094M8.5 2h7"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="hero-icon"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></div>
+  <div>
+    <h1>BorgDock for iPhone, <span>with an overview</span></h1>
+    <p>Concept mockups for Focus, Pull requests and Dispatch. Each tab opens on a summary that says what to do before it lists anything. Dispatch's queries become scopes with the same rows, and the server now reads the pull requests you were asked to review. Sample data is the made-up acme shop.</p>
+  </div>
+</header>
+
+<div class="principles">
+  <div class="principle"><b>Start with the overview</b><span>Focus opens on six tiles, Pull requests on a card per repository, Dispatch on a card per ADO state. Every count opens its list.</span></div>
+  <div class="principle"><b>Every PR that involves you</b><span>The server read only <code>involves:@me</code>, which leaves out review requests. It now also reads review requests and your reviews: 57 open on the work account instead of 18.</span></div>
+  <div class="principle"><b>Your requests apart from your team's</b><span>One review asked of you and 39 asked of your team are different jobs. They get separate counts and separate sections.</span></div>
+  <div class="principle"><b>A query is a scope</b><span>Mine, the sprint or a saved ADO query all open in Dispatch's states view with verdicts, evidence and the latest message. Browse goes away.</span></div>
+  <div class="principle"><b>Failed QA can't hide</b><span>Testing Failed comes first, counts in the briefing and shows QA's own words. Today a late due date hides it behind "Overdue · 9 days".</span></div>
+  <div class="principle"><b>Red means act</b><span>A late due date becomes a chip, rows that need nothing take one line, and the Dispatch badge drops from 26 to 5.</span></div>
+</div>
+
+<nav class="toc">
+  <a href="#today">1 · Today</a><a href="#focus">2 · Focus</a><a href="#prs">3 · Pull requests</a><a href="#dispatch">4 · Dispatch</a><a href="#queries">5 · Queries as scopes</a><a href="#item">6 · A failed item</a><a href="#build">7 · What it takes</a>
+</nav>
+
+<!-- ============================== 1 · TODAY ============================== -->
+<section class="sec" id="today">
+  <div class="sec-h"><span class="n">01</span><h2>Today: where the overview goes missing</h2></div>
+  <p class="sec-lead">Pull requests shows mostly your own work, because the server never asks GitHub for review requests. Browse and Dispatch show the same 52 items. Browse lists them in query order with no verdicts. Dispatch has verdicts, but its first rule after the questions is the due date, and the whole sprint is past it. So nearly every row turns red, including the three QA sent back.</p>
+  <div class="row">
+
+    <!-- A · Browse today -->
+    <figure class="shot">
+      <div class="phone light" data-tab="dispatch" data-badge="26">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span></div>
+          <div style="height:128px"></div>
+          <div class="p-search"><i class="ic" data-i="search"></i>Search titles or type an item number</div>
+          <div class="p-bar"><div class="p-pick">Assigned for me<i class="ic" data-i="chev-d"></i></div><span class="p-btn">Refresh</span></div>
+          <div class="p-title">Assigned for me</div>
+          <div class="p-count">52 items open.</div>
+          <div class="p-strip" style="--lamp:var(--rd)">
+            <div class="p-hold"><b>61010</b>Bug P2</div>
+            <div class="p-body"><h5>Stock count goes negative when a return is booked twice</h5><div class="p-st">Code Review</div><div class="p-due"><span class="r">Due 27 Oct, overdue</span><span>Sprint 23</span></div><div class="p-act">You<span class="sp"></span><b>Agent in mac-mini · shop</b></div></div>
+          </div>
+          <div class="p-strip">
+            <div class="p-hold"><b>61021</b>Bug P2</div>
+            <div class="p-body"><h5>Basket empties after a payment timeout</h5><div class="p-st">Testing Failed</div><div class="p-due"><span class="r">Due 27 Oct, overdue</span><span>Sprint 23</span></div><div class="p-act">You<span class="sp"></span><span class="p-btn">Queue</span><span class="p-btn pri">Start</span></div></div>
+          </div>
+          <div class="p-strip">
+            <div class="p-hold"><b>61002</b>PBI P2</div>
+            <div class="p-body"><h5>Export orders to CSV for the accounting team</h5><div class="p-st">Code Review</div><div class="p-due"><span class="r">Due 30 Oct, overdue</span><span>Sprint 23</span></div><div class="p-act">You<span class="sp"></span><span class="p-btn">Queue</span><span class="p-btn pri">Start</span></div></div>
+          </div>
+        </div>
+        <span class="mk" style="top:178px;left:184px">1</span>
+        <span class="mk" style="top:358px;left:232px">2</span>
+        <span class="mk" style="top:402px;left:132px">3</span>
+        <span class="mk" style="top:577px;left:198px">4</span>
+        <span class="mk" style="top:486px;left:8px">5</span>
+        <span class="mk" style="top:612px;left:360px">6</span>
+      </div>
+      <figcaption><b>Browse, "Assigned for me"</b>Recreated from your screenshot with sample data. The Testing Failed row looks like every other row.</figcaption>
+    </figure>
+
+    <!-- B · Dispatch today -->
+    <figure class="shot">
+      <div class="phone light" data-tab="dispatch" data-badge="26">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="layers"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="sync"></i></span><span class="gb"><i class="ic" data-i="plus"></i></span></div>
+          <div class="lt">Dispatch</div>
+          <div class="sub"><b class="t-bad">26 need you</b> · 3 out of sync · 4 agents running</div>
+          <div class="scopes"><span class="pill warn"><i class="ic" data-i="sync"></i>Fix out of sync <span class="c" style="color:inherit;opacity:.7">3</span></span><span class="pill">Sync all</span></div>
+          <div class="lane-h">Code Review<span class="sp"></span><span class="n">9</span></div>
+          <div class="grp">
+            <div class="wr"><div class="h"><span class="ty bug"></span>AB#61010<span class="sp"></span><span class="chip bad sm">CI red</span></div><div class="ti">Stock count goes negative when a return is booked twice</div><div class="ev"><span class="chip sm bad"><i class="ic" data-i="pr"></i>#3715 · checks failing</span></div></div>
+          </div>
+          <div class="lane-h">Development In Progress<span class="sp"></span><span class="n">4</span></div>
+          <div class="grp">
+            <div class="wr"><div class="h"><span class="ty bug"></span>AB#60988<span class="sp"></span><span class="chip bad sm">Overdue · 6 days</span></div><div class="ti">Refund email sent twice</div><div class="ev"><span class="chip sm"><i class="ic" data-i="bot"></i>refund-twice</span></div></div>
+            <div class="wr"><div class="h"><span class="ty pbi"></span>AB#61031<span class="sp"></span><span class="chip bad sm">Overdue · 6 days</span></div><div class="ti">Gift card balance on receipts</div><div class="ev"><span class="chip sm"><i class="ic" data-i="pr"></i>#3731 open</span></div></div>
+          </div>
+          <div class="lane-h">Testing Failed<span class="sp"></span><span class="n">3</span></div>
+          <div class="grp">
+            <div class="wr"><div class="h"><span class="ty bug"></span>AB#61021<span class="sp"></span><span class="chip bad sm">Overdue · 9 days</span></div><div class="ti">Basket empties after a payment timeout</div><div class="lm"><b>Mira Jansen —</b> Timeout banner shows now, but after a refresh…</div></div>
+          </div>
+        </div>
+        <span class="mk" style="top:58px;left:56px">9</span>
+        <span class="mk" style="top:770px;left:228px">7</span>
+        <span class="mk" style="top:681px;left:228px">8</span>
+      </div>
+      <figcaption><b>Dispatch's states walk</b>The verdict chips come from <code>verdict.ts</code>. "Overdue" wins over "Agent on it" and over Testing Failed's "Bounced back".</figcaption>
+    </figure>
+
+    <!-- C · Pull requests today -->
+    <figure class="shot">
+      <div class="phone light" data-tab="prs" data-badge="26">
+        <div class="view">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="filter"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">18 open in 3 repositories</div>
+          <div style="margin:12px 16px 0;height:38px;border-radius:12px;background:var(--fill);display:flex;align-items:center;gap:8px;padding:0 11px;color:var(--tx3);font-size:16px"><i class="ic" data-i="search" style="--s:17px"></i>Title, branch, author, AB#</div>
+          <div class="scopes"><span class="pill on">All <span class="c">18</span></span><span class="pill">Needs you <span class="c">3</span></span><span class="pill">Mine <span class="c">16</span></span><span class="pill">Failing <span class="c">2</span></span></div>
+          <div class="lane-h"><span class="av" style="--h:245">KB</span>You<span class="sp"></span><span class="n">16</span></div>
+          <div class="grp">
+            <div class="pr"><div class="bd"><div class="m1"><b>shop</b>#3740 · yours<span class="sp"></span>3 h</div><div class="ti">Delivery slots: use the shop's time zone</div><div class="pf"><span class="cbar"><i></i><i></i><i class="r"></i><i></i><i></i></span><span class="chip sm bad">1 failing</span><span class="ds"><span class="a">+64</span> <span class="d">−9</span></span></div></div></div>
+            <div class="pr"><div class="bd"><div class="m1"><b>shop-api</b>#2291 · yours<span class="sp"></span>1 d</div><div class="ti">Orders: fix VAT rounding on partial refunds</div><div class="pf"><span class="cbar"><i></i><i></i><i></i><i></i><i></i></span><span class="chip sm ok">Checks pass</span><span class="ds"><span class="a">+58</span> <span class="d">−17</span></span></div></div></div>
+            <div class="pr"><div class="bd"><div class="m1"><b>shop</b>#3731 · yours · draft<span class="sp"></span>2 d</div><div class="ti">Gift card balance on receipts</div><div class="pf"><span class="cbar"><i></i><i></i><i></i><i></i></span><span class="chip sm ok">Checks pass</span><span class="ds"><span class="a">+130</span> <span class="d">−12</span></span></div></div></div>
+            <div class="pr"><div class="bd"><div class="m1"><b>mobile</b>#806 · yours<span class="sp"></span>3 d</div><div class="ti">Order history in the app</div><div class="pf"><span class="cbar"><i></i><i></i><i></i></span><span class="chip sm ok">Checks pass</span><span class="ds"><span class="a">+402</span> <span class="d">−37</span></span></div></div></div>
+          </div>
+        </div>
+        <span class="mk" style="top:212px;left:272px">10</span>
+        <span class="mk" style="top:287px;left:92px">11</span>
+      </div>
+      <figcaption><b>Pull requests</b>16 of 18 are yours. The 39 reviews your team was asked for never reach the phone.</figcaption>
+    </figure>
+
+    <div class="issues">
+      <div class="issue"><span class="mk">1</span><div><b>A sixth of the screen is empty</b>The nav bar has no title and the header sits 130 pt below it, so three rows fit where seven could.</div></div>
+      <div class="issue"><span class="mk">2</span><div><b>The query name shows twice</b>Once in the picker, once as the title.</div></div>
+      <div class="issue"><span class="mk">3</span><div><b>"52 items open." and nothing else</b>No split by state, so you can't see that 3 failed QA without reading all 52 rows.</div></div>
+      <div class="issue"><span class="mk">4</span><div><b>The state is grey body text</b>Testing Failed and Code Review look the same. Browse rows have no verdict, even though Dispatch has one for each of these items.</div></div>
+      <div class="issue"><span class="mk">5</span><div><b>The id column takes a sixth of the width</b>Titles wrap and cut at two lines. The id and type fit on one line above the title.</div></div>
+      <div class="issue"><span class="mk">6</span><div><b>"You", Queue and Start on every row</b>"You" says nothing on a query of your own items, and two buttons times 52 rows make the list hard to scan.</div></div>
+      <div class="issue"><span class="mk">7</span><div><b>The badge says 26</b>Overdue counts as "needs you", and the sprint ended a week ago. When 26 items are red, the 3 that QA sent back don't stand out.</div></div>
+      <div class="issue"><span class="mk">8</span><div><b>Failed QA hides behind Overdue</b>The due-date rule runs before the Testing Failed rule, so a late failed item never says "Bounced back".</div></div>
+      <div class="issue"><span class="mk">9</span><div><b>Queries hide behind an unlabelled icon</b>The layers button is the only way to Browse, and Browse is a different screen with different rows.</div></div>
+      <div class="issue"><span class="mk">10</span><div><b>Review requests never arrive</b>The server's only search was <code>involves:@me</code>, and GitHub's <code>involves</code> means author, assignee, mentions and comments. On your work account it found 18 of the 57 open PRs that involve you. Fixed in this change, see section 07.</div></div>
+      <div class="issue"><span class="mk">11</span><div><b>One long "You" group</b>The list groups by author with yours first. With 16 of 18 yours, the tab reads as "my pull requests".</div></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================== 2 · FOCUS ============================== -->
+<section class="sec" id="focus">
+  <div class="sec-h"><span class="n">02</span><h2>Focus: what to do, across everything</h2></div>
+  <p class="sec-lead">Focus is the home tab, so it gets the widest overview. Six tiles, each named for what you do: review, fix, merge, answer, rework failed QA, and the team queue. They cover pull requests, agents and work items. Under them, the one red main branch you should know about, then one ranked list across all of them.</p>
+  <div class="row">
+
+    <!-- F1 · Focus home -->
+    <figure class="shot">
+      <div class="phone light" data-tab="focus" data-badge="5">
+        <div class="view">
+          <div class="nav"><span class="gb me">KB</span><span class="sp"></span><span class="gp"><i class="dot pulse" style="color:var(--gr);width:7px;height:7px"></i>12 s</span><span class="gb"><i class="ic" data-i="bell"></i></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Focus</div>
+          <div class="sub"><b style="color:var(--tx);font-weight:600">12 for you</b> · 39 in your team's queue</div>
+          <div class="tiles">
+            <div class="tile" style="--c:var(--ac)"><span class="n">1</span><b>Review</b><span>asked of you</span></div>
+            <div class="tile" style="--c:var(--rd)"><span class="n">3</span><b>Fix</b><span>your PRs</span></div>
+            <div class="tile" style="--c:var(--gr)"><span class="n">3</span><b>Merge</b><span>checks green</span></div>
+            <div class="tile" style="--c:var(--yl)"><span class="n">2</span><b>Answer</b><span>agents waiting</span></div>
+            <div class="tile" style="--c:var(--rd)"><span class="n">3</span><b>Failed QA</b><span>work items</span></div>
+            <div class="tile quiet"><span class="n">39</span><b>Team</b><span>Platform queue</span></div>
+          </div>
+          <div class="grp" style="margin-top:12px;--indent:16px"><div class="cell"><span class="ico r soft" style="--c:var(--rd)"><i class="ic" data-i="fail"></i></span><div class="t"><b>acme/shop main is red</b><span>e2e / checkout since 09:12</span></div><i class="ic chev" data-i="chev-r"></i></div></div>
+          <div class="grp-h">Up first</div>
+          <div class="list" style="padding-top:0">
+            <article class="card">
+              <div class="pr-h"><b>shop</b>#3712<span class="sp"></span>2 h</div>
+              <h4>Checkout: keep the basket when a payment times out</h4>
+              <div class="why ac"><i class="ic" data-i="eye"></i>Sanne asked for your review</div>
+              <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i class="r"></i><i></i><i></i></span><span class="chip bad">1 failing</span><span class="chip ac">AB#61021</span><span class="ds"><span class="a">+412</span> <span class="d">−88</span></span></div>
+            </article>
+            <article class="card">
+              <div class="pr-h"><b>shop-api</b>#2291 · yours<span class="sp"></span>1 d</div>
+              <h4>Orders: fix VAT rounding on partial refunds</h4>
+              <div class="why bad"><i class="ic" data-i="msg"></i>Tom requested changes</div>
+              <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i></span><span class="chip ok">Checks pass</span><span class="ds"><span class="a">+58</span> <span class="d">−17</span></span></div>
+            </article>
+            <article class="card">
+              <div class="pr-h"><i class="ic" data-i="bot" style="--s:14px;color:var(--ac)"></i><b>Agent</b>AB#61044<span class="sp"></span>2 d</div>
+              <h4>Offline basket for the mobile app</h4>
+              <div class="why warn"><i class="ic" data-i="help"></i>Plan ready, waiting for your go-ahead</div>
+            </article>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Focus opens on the overview</b>The tiles replace the bucket pills. Tap one to filter Up first to it; tap it again for everything.
+        <ul><li>Review counts requests to you. Requests to your team go to Team, so 39 team reviews don't bury the one that is yours.</li><li>Answer and Failed QA come from Dispatch. Focus is the one screen that covers pull requests, agents and work items together.</li><li>The red main branch comes from the CI failure groups the server already builds. Two of your PRs fail on the same test, so it leads.</li><li>Waiting and Stale move to the Pull requests tab.</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 3 · PULL REQUESTS ============================== -->
+<section class="sec" id="prs">
+  <div class="sec-h"><span class="n">03</span><h2>Pull requests: every one that involves you</h2></div>
+  <p class="sec-lead">With the server fix (section 07) the tab gets review requests and the pull requests you reviewed, not only the ones you opened. On the work account that's 57 open instead of 18. Scopes split them by your relationship to each PR, the overview card splits them by repository, and team review requests get their own queue.</p>
+  <div class="row">
+
+    <!-- P1 · All, by repository -->
+    <figure class="shot">
+      <div class="phone light" data-tab="prs" data-badge="5">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="search"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">57 open · 3 repositories · synced 12 s ago</div>
+          <div class="scopes"><span class="pill on">All <span class="c">57</span></span><span class="pill">To review <span class="c">40</span></span><span class="pill">Mine <span class="c">17</span></span><span class="pill">Failing <span class="c">2</span></span></div>
+          <div class="ov">
+            <div class="ov-h"><b>By repository</b><span class="sp"></span><span class="lg"><i style="--c:var(--rd)"></i>you<i style="--c:var(--ac)"></i>team<i style="--c:var(--tx3)"></i>waiting<i style="--c:var(--gr)"></i>ready</span></div>
+            <div class="ov-r"><div class="nm"><b>acme/shop</b><span><span style="color:var(--rd)">3 for you</span> · 22 team · 2 ready</span></div><div class="rbar"><i style="--c:var(--rd);--n:3"></i><i style="--c:var(--ac);--n:22"></i><i style="--c:var(--tx3);--n:4"></i><i style="--c:var(--gr);--n:2"></i></div><span class="ct">31</span></div>
+            <div class="ov-r"><div class="nm"><b>acme/shop-api</b><span><span style="color:var(--rd)">1 for you</span> · 12 team · 1 ready</span></div><div class="rbar"><i style="--c:var(--rd);--n:1"></i><i style="--c:var(--ac);--n:12"></i><i style="--c:var(--tx3);--n:4"></i><i style="--c:var(--gr);--n:1"></i></div><span class="ct">18</span></div>
+            <div class="ov-r"><div class="nm"><b>acme/mobile</b><span>5 team · 3 waiting</span></div><div class="rbar"><i style="--c:var(--ac);--n:5"></i><i style="--c:var(--tx3);--n:3"></i></div><span class="ct">8</span></div>
+            <div class="ov-f"><span class="chip bad">2 failing</span><span class="chip warn"><i class="ic" data-i="alert"></i>1 conflict</span><span class="chip ok">3 ready</span></div>
+          </div>
+          <div class="lane-h bad"><span class="sd" style="--c:var(--rd)"></span>For you<span class="sp"></span><span class="n">4</span></div>
+          <div class="grp">
+            <div class="pr"><span class="av lg" style="--h:330">SV</span><div class="bd"><div class="m1"><b>shop</b>#3712<span class="sp"></span>2 h</div><div class="ti">Checkout: keep the basket when a payment times out</div><div class="why ac"><i class="ic" data-i="eye"></i>Sanne asked for your review</div><div class="pf"><span class="cbar"><i></i><i></i><i></i><i class="r"></i><i></i><i></i></span><span class="chip sm bad">1 failing</span><span class="ds"><span class="a">+412</span> <span class="d">−88</span></span></div></div></div>
+            <div class="pr"><span class="av lg" style="--h:245">KB</span><div class="bd"><div class="m1"><b>shop</b>#3740 · yours<span class="sp"></span>3 h</div><div class="ti">Delivery slots: use the shop's time zone</div><div class="why bad"><i class="ic" data-i="fail"></i>e2e / checkout failed, same as main</div><div class="pf"><span class="cbar"><i></i><i></i><i class="r"></i><i></i><i></i></span><span class="chip sm bad">1 failing</span><span class="ds"><span class="a">+64</span> <span class="d">−9</span></span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>All of them, by repository</b>Each repository's bar is split the same way as the legend: for you, your team's queue, yours waiting on others, ready. The chips under it are filters.
+        <ul><li>"For you" is short: review requests to you personally, and your own PRs that are failing, have conflicts or got changes requested.</li><li>Sections follow: For you, Ready to merge, Team queue, Yours waiting, Reviewed by you.</li><li>Grouping by author or repository stays in the options menu.</li></ul></figcaption>
+    </figure>
+
+    <!-- P2 · To review: the team queue -->
+    <figure class="shot">
+      <div class="phone dark" data-tab="prs" data-badge="5">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="search"></i></span><div class="nav-t"><b>Pull requests</b><span>To review · 40</span></div><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="scopes" style="padding-top:4px"><span class="pill">All <span class="c">57</span></span><span class="pill on">To review <span class="c">40</span></span><span class="pill">Mine <span class="c">17</span></span><span class="pill">Failing <span class="c">2</span></span></div>
+          <div class="lane-h bad"><span class="sd" style="--c:var(--rd)"></span>Asked of you<span class="sp"></span><span class="n">1</span></div>
+          <div class="grp">
+            <div class="pr"><span class="av lg" style="--h:330">SV</span><div class="bd"><div class="m1"><b>shop</b>#3712<span class="sp"></span>2 h</div><div class="ti">Checkout: keep the basket when a payment times out</div><div class="pf"><span class="cbar"><i></i><i></i><i></i><i class="r"></i><i></i><i></i></span><span class="chip sm bad">1 failing</span><span class="chip sm ac">AB#61021</span><span class="ds"><span class="a">+412</span> <span class="d">−88</span></span></div></div></div>
+          </div>
+          <div class="lane-h"><span class="sd" style="--c:var(--ac)"></span>Platform team<span class="sp"></span><span class="lk">Oldest first</span><i class="ic" data-i="chev-d" style="--s:12px;color:var(--ac-tx)"></i><span class="n" style="margin-left:6px">39</span></div>
+          <div class="grp">
+            <div class="prc"><span class="av" style="--h:200">TB</span><div class="bd"><b>Cache the price list per shop</b><span>shop #3650 · <span class="a">+38</span> <span class="d">−4</span> · 6 d</span></div><span class="cbar sm"><i></i><i></i><i></i><i></i></span></div>
+            <div class="prc"><span class="av" style="--h:150">LB</span><div class="bd"><b>Search: rank exact SKU matches first</b><span>shop-api #2270 · <span class="a">+120</span> <span class="d">−41</span> · 5 d</span></div><span class="cbar sm"><i></i><i></i><i class="y"></i><i></i></span></div>
+            <div class="swipe"><div class="prc"><span class="av" style="--h:20">MJ</span><div class="bd"><b>Returns: show the label as a QR code</b><span>mobile #812 · <span class="a">+22</span> <span class="d">−3</span> · 4 d</span></div><span class="cbar sm"><i></i><i></i><i></i></span></div><div class="sa sa-l"><span style="background:var(--ac)"><i class="ic" data-i="eye"></i>Review</span></div></div>
+            <div class="prc"><span class="av" style="--h:200">TB</span><div class="bd"><b>Split the checkout service in two</b><span>shop #3661 · <span class="a">+940</span> <span class="d">−610</span> · 4 d</span></div><span class="chip sm ac">3 new since yours</span></div>
+            <div class="prc"><span class="av" style="--h:90">JW</span><div class="bd"><b>Orders: paginate the export endpoint</b><span>shop-api #2281 · <span class="a">+75</span> <span class="d">−12</span> · 3 d</span></div><span class="cbar sm"><i></i><i class="r"></i><i></i></span></div>
+            <div class="prc"><span class="av" style="--h:150">LB</span><div class="bd"><b>Bump the payment SDK to 9.2</b><span>shop #3688 · <span class="a">+14</span> <span class="d">−14</span> · 2 d</span></div><span class="cbar sm"><i></i><i></i><i></i><i></i></span></div>
+            <div class="prc"><span class="av" style="--h:90">JW</span><div class="bd"><b>Address book: keep the default address</b><span>mobile #820 · <span class="a">+51</span> <span class="d">−8</span> · 1 d</span></div><span class="cbar sm"><i></i><i></i><i class="y"></i></span></div>
+            <div class="prc"><span class="av" style="--h:20">MJ</span><div class="bd"><b>Gift cards: show the balance on receipts</b><span>shop #3702 · <span class="a">+88</span> <span class="d">−20</span> · 1 d</span></div><span class="cbar sm"><i></i><i></i><i></i></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Your team's queue, apart from yours</b>A request to you comes first, in full. Requests to your team follow as one-line rows, oldest first, with the size next to the age so a 22-line change can go before a 1,500-line one.
+        <ul><li>Swipe right starts Quick Review, as on Focus.</li><li>"3 new since yours" marks a PR you reviewed that got commits after your review.</li><li>The sort menu also offers smallest first and by repository.</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 4 · DISPATCH ============================== -->
+<section class="sec" id="dispatch">
+  <div class="sec-h"><span class="n">04</span><h2>Dispatch: the overview first, failed QA on top</h2></div>
+  <p class="sec-lead">Dispatch opens on a card with one row per state, in the order you act on them: Testing Failed, Needs Human, Code Review, Development In Progress, New. Each row says what it holds in a few words. Tap one to jump to its lane. The lanes below use the same order, and a jump bar stays under the nav bar while you scroll.</p>
+  <div class="row">
+
+    <!-- C · Dispatch top -->
+    <figure class="shot">
+      <div class="phone light" data-tab="dispatch" data-badge="5">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="search"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="sync"></i></span><span class="gb"><i class="ic" data-i="plus"></i></span></div>
+          <div class="lt">Dispatch</div>
+          <div class="sub"><b class="t-bad">3 failed QA</b> · <b class="t-bad">2 need an answer</b> · 4 running</div>
+          <div class="scopes"><span class="pill on">Mine <span class="c">52</span></span><span class="pill">Sprint 23 <span class="c">140</span></span><span class="pill">Unassigned <span class="c">12</span></span><span class="pill"><i class="ic" data-i="chev-d"></i></span></div>
+          <div class="ov">
+            <div class="ov-h"><b>52 open</b><span class="sp"></span>ADO and T3 synced 2 min ago</div>
+            <div class="sbar"><i style="--c:var(--rd);--n:3"></i><i style="--c:var(--yl);--n:2"></i><i style="--c:var(--ac);--n:9"></i><i style="--c:var(--bl);--n:4"></i><i style="--c:var(--fill2);--n:34"></i></div>
+            <div class="ov-r hot"><span class="sd" style="--c:var(--rd)"></span><div class="nm"><b>Testing Failed</b><span class="bad">2 failed for the second time</span></div><span class="ct">3</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="ov-r hot"><span class="sd" style="--c:var(--yl)"></span><div class="nm"><b>Needs Human</b><span>Vera asks on both, oldest 2 days</span></div><span class="ct">2</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="ov-r"><span class="sd" style="--c:var(--ac)"></span><div class="nm"><b>Code Review</b><span>1 CI red · 1 ready to merge · 2 merged</span></div><span class="ct">9</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="ov-r"><span class="sd" style="--c:var(--bl)"></span><div class="nm"><b>Development In Progress</b><span>2 agents on it · 1 quiet for 6 days</span></div><span class="ct">4</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="ov-r"><span class="sd" style="--c:var(--tx3)"></span><div class="nm"><b>New</b><span>Top: P1 Stock sync drops lines over 99</span></div><span class="ct">34</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="ov-f"><span class="pill warn"><i class="ic" data-i="sync"></i>Fix out of sync <span class="c" style="color:inherit;opacity:.7">3</span></span><span class="pill">Sync all</span></div>
+          </div>
+          <div class="lane-h bad"><span class="sd" style="--c:var(--rd)"></span>Testing Failed<span class="sp"></span><span class="n">3</span></div>
+          <div class="grp">
+            <div class="wr"><div class="h"><span class="ty bug"></span>AB#61021 · P2<span class="sp"></span><span class="chip bad sm">Failed QA · 2nd time</span></div><div class="ti">Basket empties after a payment timeout</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>The overview card</b>Scope pills replace the layers icon. Mine is what Dispatch shows today: your open items, every project.
+        <ul><li>The bar and the counts answer "how is my work spread" before you scroll.</li><li>Each subtitle is the lane's summary, the same text as the desktop's <code>laneSummary</code>. Red only where a lane asks for you.</li><li>The briefing drops "out of sync"; the Fix button already counts it.</li></ul></figcaption>
+    </figure>
+
+    <!-- D · Testing Failed lane -->
+    <figure class="shot">
+      <div class="phone dark" data-tab="dispatch" data-badge="5">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="search"></i></span><div class="nav-t"><b>Dispatch</b><span>Mine · 52 open</span></div><span class="gb"><i class="ic" data-i="plus"></i></span></div>
+          <div class="jump"><span class="on"><i class="sd" style="--c:var(--rd)"></i>3</span><span><i class="sd" style="--c:var(--yl)"></i>2</span><span><i class="sd" style="--c:var(--ac)"></i>9</span><span><i class="sd" style="--c:var(--bl)"></i>4</span><span><i class="sd" style="--c:var(--tx3)"></i>34</span></div>
+          <div class="lane-h bad" style="padding-top:8px"><span class="sd" style="--c:var(--rd)"></span>Testing Failed<span class="sp"></span><span class="n">3</span></div>
+          <div class="grp">
+            <div class="wr">
+              <div class="h"><span class="ty bug"></span>AB#61021 · P2<span class="sp"></span><span class="chip bad sm">Failed QA · 2nd time</span></div>
+              <div class="ti">Basket empties after a payment timeout</div>
+              <div class="qa"><div class="by"><i class="ic" data-i="flask"></i>Mira Jansen<span>· 2 days ago</span></div>Timeout banner shows now, but after a refresh the basket is still empty in iOS Safari.</div>
+              <div class="ev"><span class="chip sm mg"><i class="ic" data-i="merge"></i>#3712 merged</span><span class="chip sm"><i class="ic" data-i="bot"></i>basket-timeout</span><span class="sp"></span><span class="rbtn pri"><i class="ic" data-i="bot"></i>Fix</span></div>
+            </div>
+            <div class="wr">
+              <div class="h"><span class="ty pbi"></span>AB#61088 · P2<span class="sp"></span><span class="chip bad sm">Failed QA · today</span></div>
+              <div class="ti">Delivery slots on the order page</div>
+              <div class="qa"><div class="by"><i class="ic" data-i="flask"></i>Mira Jansen<span>· 3 h ago</span></div>Slots ignore the shop's time zone: a 09:00 slot shows as 08:00 in the app.</div>
+              <div class="ev"><span class="chip sm mg"><i class="ic" data-i="merge"></i>#3740 merged</span><span class="chip sm late"><i class="ic" data-i="cal"></i>6 d late</span><span class="sp"></span><span class="rbtn pri"><i class="ic" data-i="bot"></i>Fix</span></div>
+            </div>
+            <div class="wr">
+              <div class="h"><span class="ty bug"></span>AB#61107 · P3<span class="sp"></span><span class="chip bad sm">Failed QA · 2nd time</span></div>
+              <div class="ti">Discount code accepted twice on one order</div>
+              <div class="qa"><div class="by"><i class="ic" data-i="flask"></i>Tom Bakker<span>· 5 days ago</span></div>Still reproducible with two tabs open on checkout.</div>
+              <div class="ev"><span class="chip sm mg"><i class="ic" data-i="merge"></i>#3698 merged</span><span class="chip sm late"><i class="ic" data-i="cal"></i>9 d late</span><span class="sp"></span><span class="rbtn pri"><i class="ic" data-i="bot"></i>Fix</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>A failed row carries QA's words</b>Who sent it back, when, and the first lines of their QA notes (or their comment), so you know the fix before you open the item.
+        <ul><li>"2nd time" counts the moves into Testing Failed in the item's history.</li><li>Fix continues the agent that made the merged PR, with the QA notes in the message. Without a thread it starts one on a new worktree.</li><li>The late due date is a chip now, not the verdict.</li><li>The jump bar keeps every lane one tap away.</li></ul></figcaption>
+    </figure>
+
+    <!-- E · quiet rows fold -->
+    <figure class="shot">
+      <div class="phone light" data-tab="dispatch" data-badge="5">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="search"></i></span><div class="nav-t"><b>Dispatch</b><span>Mine · 52 open</span></div><span class="gb"><i class="ic" data-i="plus"></i></span></div>
+          <div class="jump"><span><i class="sd" style="--c:var(--rd)"></i>3</span><span><i class="sd" style="--c:var(--yl)"></i>2</span><span><i class="sd" style="--c:var(--ac)"></i>9</span><span><i class="sd" style="--c:var(--bl)"></i>4</span><span class="on"><i class="sd" style="--c:var(--tx3)"></i>34</span></div>
+          <div class="lane-h" style="padding-top:8px"><span class="sd" style="--c:var(--bl)"></span>Development In Progress<span class="sp"></span><span class="n">4</span></div>
+          <div class="grp">
+            <div class="wr"><div class="h"><span class="ty bug"></span>AB#61039 · P2<span class="sp"></span><span class="chip warn sm">Quiet · 6 days</span></div><div class="ti">Search ignores accents in product names</div><div class="lm"><b>You —</b> Waiting for the collation change in staging</div></div>
+            <div class="cr"><span class="ty bug"></span><span class="ti">Refund email sent twice</span><span class="m run"><i class="dot pulse" style="width:6px;height:6px"></i>Agent</span></div>
+            <div class="cr"><span class="ty pbi"></span><span class="ti">Gift card balance on receipts</span><span class="m">#3731 draft</span></div>
+            <div class="cr"><span class="ty pbi"></span><span class="ti">Order history in the app</span><span class="m run"><i class="dot pulse" style="width:6px;height:6px"></i>Agent</span></div>
+          </div>
+          <div class="lane-h"><span class="sd" style="--c:var(--tx3)"></span>New<span class="sp"></span><span class="lk">Priority</span><i class="ic" data-i="chev-d" style="--s:12px;color:var(--ac-tx)"></i></div>
+          <div class="grp">
+            <div class="cr"><span class="ty bug"></span><span class="ti">Stock sync drops lines over 99</span><span class="m">P1</span></div>
+            <div class="cr"><span class="ty bug"></span><span class="ti">Invoice PDF cuts long addresses</span><span class="m">P2</span></div>
+            <div class="swipe"><div class="cr"><span class="ty pbi"></span><span class="ti">Show delivery notes on app orders</span><span class="m">P2</span></div><div class="sa"><span style="background:var(--yl)"><i class="ic" data-i="queue"></i>Queue</span><span style="background:var(--ac)"><i class="ic fill" data-i="play"></i>Start</span></div></div>
+            <div class="cr"><span class="ty task"></span><span class="ti">Renew the TLS certificate</span><span class="m late">3 d late</span></div>
+            <div class="cr"><span class="ty pbi"></span><span class="ti">Export the monthly sales report</span><span class="m">P2</span></div>
+            <div class="cr"><span class="ty bug"></span><span class="ti">Address form loses focus on rotate</span><span class="m">P3</span></div>
+            <div class="more">Show 28 more</div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>One line when nothing is asked</b>A row gets the full layout only when its verdict asks something (bad or warn). Running, in review, with QA and not started fold to one line.
+        <ul><li>Swipe left: Queue and Start. Touch and hold: Start, Queue, Move to…, Open in ADO, Copy AB#.</li><li>New sorts by priority, then due date. Pick another sort from the lane header.</li><li>A long lane shows 6, then "Show N more".</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 5 · QUERIES ============================== -->
+<section class="sec" id="queries">
+  <div class="sec-h"><span class="n">05</span><h2>Queries as scopes</h2></div>
+  <p class="sec-lead">A saved ADO query opens in the same view as Mine, with the overview card, the lanes and the verdicts. Items that aren't yours have no threads or pull requests on the server, so their verdict comes from the state alone. They show who has them instead of "You". Pin the queries you use; pinned scopes show their counts and how many failed QA.</p>
+  <div class="row">
+
+    <!-- F · Sprint scope -->
+    <figure class="shot">
+      <div class="phone dark" data-tab="dispatch" data-badge="5">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="search"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="sync"></i></span><span class="gb"><i class="ic" data-i="plus"></i></span></div>
+          <div class="lt">Dispatch</div>
+          <div class="sub">Sprint 23 · whole team · ends Friday</div>
+          <div class="scopes"><span class="pill">Mine <span class="c">52</span></span><span class="pill on">Sprint 23 <span class="c">140</span></span><span class="pill">Unassigned <span class="c">12</span></span><span class="pill"><i class="ic" data-i="chev-d"></i></span></div>
+          <div class="ov">
+            <div class="ov-h"><b>140 open</b><span class="sp"></span>One square per item, yours solid</div>
+            <div class="ov-r hot"><span class="sd" style="--c:var(--rd)"></span><div class="nm"><b>Testing Failed</b><span class="bad">3 yours · 2 Tom's</span></div><div class="pips"><i class="b me"></i><i class="b me"></i><i class="b me"></i><i class="b"></i><i class="b"></i></div><span class="ct">5</span></div>
+            <div class="ov-r hot"><span class="sd" style="--c:var(--yl)"></span><div class="nm"><b>Needs Human</b><span>2 yours</span></div><div class="pips"><i class="w me"></i><i class="w me"></i><i class="w"></i><i class="w"></i></div><span class="ct">4</span></div>
+            <div class="ov-r"><span class="sd" style="--c:var(--ac)"></span><div class="nm"><b>Code Review</b><span>2 CI red · 4 ready</span></div><div class="pips"><i class="b me"></i><i class="b"></i><i class="o me"></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="me"></i><i class="me"></i><i class="me"></i><i class="me"></i><i class="me"></i><i class="me"></i><i class="me"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="ct">21</span></div>
+            <div class="ov-r"><span class="sd" style="--c:var(--gr)"></span><div class="nm"><b>Ready For QA</b><span>With QA</span></div><div class="pips"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="ct">18</span></div>
+            <div class="ov-r"><span class="sd" style="--c:var(--bl)"></span><div class="nm"><b>In Progress</b><span>6 agents · 5 quiet</span></div><div class="pips"><i class="r me"></i><i class="r me"></i><i class="r"></i><i class="r"></i><i class="r"></i><i class="r"></i><i class="w me"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="me"></i><i></i><i></i><em>+13</em></div><span class="ct">27</span></div>
+            <div class="ov-r"><span class="sd" style="--c:var(--tx3)"></span><div class="nm"><b>New</b><span>12 unassigned</span></div><div class="pips"><i class="me"></i><i class="me"></i><i class="me"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><em>+52</em></div><span class="ct">65</span></div>
+          </div>
+          <div class="lane-h bad"><span class="sd" style="--c:var(--rd)"></span>Testing Failed<span class="sp"></span><span class="n">5</span></div>
+          <div class="grp">
+            <div class="wr"><div class="h"><span class="av" style="--h:200">TB</span>Tom Bakker · AB#61070<span class="sp"></span><span class="chip bad sm">Failed QA · 1 day</span></div><div class="ti">Coupons stack with member prices</div><div class="qa one"><b style="color:var(--rd);font-weight:600">Mira ·</b> Member price applies before the coupon</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>The sprint, whole team</b>Squares instead of a bar: 140 items need more detail than five counts. Your items are solid, the rest of the team faded, so your share of each state shows without switching scope.
+        <ul><li>Rows show the assignee's avatar. Your own items keep their agents and pull requests.</li><li>An unassigned New item swipes to "Take it", which assigns it to you through the run sheet.</li><li>The three built-in Browse queries (sprint, unassigned, in Code Review) all become scopes like this one.</li></ul></figcaption>
+    </figure>
+
+    <!-- G · Scope picker -->
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="dim" style="background:rgba(0,0,0,.35)"></div>
+          <div class="sheet" style="top:62px;padding-bottom:0">
+            <div class="grab"></div>
+            <div class="sh-h"><span class="gb"><i class="ic" data-i="x"></i></span><h3>Scopes</h3><span class="gp">Edit</span></div>
+            <div style="margin:2px 16px 0;height:38px;border-radius:12px;background:var(--fill);display:flex;align-items:center;gap:8px;padding:0 11px;color:var(--tx3);font-size:16px"><i class="ic" data-i="search" style="--s:17px"></i>Find a query</div>
+            <div class="grp-h">Pinned to Dispatch</div>
+            <div class="grp" style="--indent:16px">
+              <div class="cell"><div class="t"><b>Mine</b><span>Open items assigned to you · <span style="color:var(--rd)">3 failed QA</span></span></div><span class="v">52</span><i class="ic" data-i="check" style="--s:17px;color:var(--ac)"></i></div>
+              <div class="cell"><div class="t"><b>Sprint 23, whole team</b><span><span style="color:var(--rd)">5 failed QA</span> · BorgDock</span></div><span class="v">140</span><i class="ic" data-i="grip" style="--s:17px;color:var(--tx3)"></i></div>
+              <div class="cell"><div class="t"><b>Sprint 23, unassigned</b><span>BorgDock</span></div><span class="v">12</span><i class="ic" data-i="grip" style="--s:17px;color:var(--tx3)"></i></div>
+              <div class="cell"><div class="t"><b>Testing Failed, team</b><span><span style="color:var(--rd)">5 failed QA</span> · Shared Queries / QA</span></div><span class="v">5</span><i class="ic" data-i="grip" style="--s:17px;color:var(--tx3)"></i></div>
+            </div>
+            <div class="grp-h">My Queries</div>
+            <div class="grp" style="--indent:16px">
+              <div class="cell"><div class="t"><b>Assigned for me</b><span>Same 52 items as Mine</span></div><i class="ic" data-i="star" style="--s:19px;color:var(--tx3)"></i></div>
+              <div class="cell"><div class="t"><b>Bugs I created</b></div><i class="ic" data-i="star" style="--s:19px;color:var(--tx3)"></i></div>
+              <div class="cell"><div class="t"><b>Followed items</b></div><i class="ic" data-i="star" style="--s:19px;color:var(--tx3)"></i></div>
+            </div>
+            <div class="grp-h">Shared Queries / QA</div>
+            <div class="grp" style="--indent:16px">
+              <div class="cell"><div class="t"><b>Ready for QA this sprint</b></div><i class="ic" data-i="star" style="--s:19px;color:var(--tx3)"></i></div>
+              <div class="cell"><div class="t"><b>Testing Failed, team</b></div><i class="ic fill" data-i="star" style="--s:19px;color:var(--yl)"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Picking a scope</b>The chevron at the end of the scope pills opens this sheet. Star a query to pin it; drag pinned ones to reorder the pills.
+        <ul><li>Pinned scopes refresh their counts on the ADO poll. Other queries run when you open them.</li><li>When a query returns exactly the items of Mine, the sheet says so, so you don't keep two copies of one list.</li><li>Folders keep ADO's grouping, as the picker does today.</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 6 · ITEM ============================== -->
+<section class="sec" id="item">
+  <div class="sec-h"><span class="n">06</span><h2>A failed item: what QA saw, and the fix one tap away</h2></div>
+  <p class="sec-lead">The item screen for a Testing Failed item puts QA's notes first, in full, above the description. A short history shows how it got here: when it went to QA, which pull request took it there and how often it came back.</p>
+  <div class="row">
+
+    <!-- H · Failed item detail -->
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="ext"></i></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div style="padding:2px 16px 0">
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--tx2)"><span class="ty bug"></span>Bug · AB#61021 · P2<span class="sp"></span><span class="chip bad">Testing Failed</span></div>
+            <div style="margin-top:6px;font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.22">Basket empties after a payment timeout</div>
+            <div style="margin-top:12px;display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:14px;background:var(--rd-soft);font-size:13.5px;line-height:1.4"><i class="ic" data-i="undo" style="--s:16px;color:var(--rd);margin-top:1px"></i><span><b style="font-weight:600;color:var(--rd)">Failed QA, second time.</b> Mira Jansen sent it back 2 days ago, 2 days after #3712 merged.</span></div>
+          </div>
+          <div class="grp-h">QA notes<span style="font-weight:500;color:var(--tx3)">Mira · 3 Nov</span></div>
+          <div class="grp"><div style="padding:12px 16px;font-size:14.5px;line-height:1.48">Retested on 5.2.11 in iOS Safari, with a 35 s provider delay.
+            <ol style="margin:6px 0 0;padding-left:20px"><li>Add two lines, pay.</li><li>Wait for the timeout banner.</li><li>Refresh the page.</li></ol>
+            <div style="margin-top:6px"><b style="font-weight:600">Expected</b> both lines stay. <b style="font-weight:600">Actual</b> Basket (0).</div>
+            <div style="margin-top:9px;display:flex;gap:6px"><span class="rc"><i class="ic" data-i="image"></i>basket-empty.png</span><span class="rc"><i class="ic" data-i="image"></i>console.png</span></div>
+          </div></div>
+          <div class="grp-h">History</div>
+          <div class="grp">
+            <div class="hist"><span class="sd" style="--c:var(--rd)"></span><b>Testing Failed</b> <span>· Mira · 3 Nov</span></div>
+            <div class="hist"><span class="sd" style="--c:var(--gr)"></span><b>Ready For QA</b> <span>· you · 1 Nov · #3712 merged</span></div>
+            <div class="hist"><span class="sd" style="--c:var(--rd)"></span><b>Testing Failed</b> <span>· Mira · 28 Oct · first time</span></div>
+            <div class="hist"><span class="sd" style="--c:var(--gr)"></span><b>Ready For QA</b> <span>· you · 24 Oct · #3688 merged</span></div>
+          </div>
+          <div class="grp-h">Pull requests · agent</div>
+        </div>
+        <div class="edge" style="height:120px"></div>
+        <div class="actbar"><span class="gp" style="height:52px;border-radius:26px;padding:0 18px">Move to…</span><div class="btn pri"><i class="ic" data-i="bot"></i>Fix with agent</div></div>
+      </div>
+      <figcaption><b>Testing Failed item</b>The banner names who, when and which merge it failed after. QA notes come from <code>Custom.QANotes</code>, falling back to QA's newest comment.
+        <ul><li>Fix with agent opens the Start sheet on the thread that made #3712. Its message quotes the QA notes and the repro steps.</li><li>History lists the state moves from the item's updates, newest first. Four rows, then "All changes".</li><li>Below: pull requests, agent, description and repro steps, as on the item screen today.</li></ul></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 7 · BUILD ============================== -->
+<section class="sec" id="build">
+  <div class="sec-h"><span class="n">07</span><h2>What it takes</h2></div>
+  <p class="sec-lead">The server fix for missing pull requests is done and tested in this change. Rule step 1 is next: small, and it fixes the badge and the hidden failed items on the phone and the desktop. The rest builds on those two.</p>
+  <div class="plan" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="plan-col" style="border-color:rgba(92,201,143,.4)">
+      <h4><span style="color:#5cc98f">Done · server</span>Review requests arrive</h4>
+      <ul><li>Three searches per account: <code>involves:@me</code>, <code>review-requested:@me</code> (you and your teams) and <code>reviewed-by:@me</code>.</li><li>Each is its own request, 20 per page, up to 100. All three in one query made GitHub time out (504).</li><li>A search that fails keeps its last answer, and the account says which one.</li><li>Live: 57 open on the work account instead of 18, 4 rate-limit points per poll.</li></ul>
+    </div>
+    <div class="plan-col">
+      <h4><span>2 · Focus and PRs</span>Tiles, scopes, team queue</h4>
+      <ul><li>A Team bucket for requests that reach you only through a team (<code>isWaitingOnMe</code> already tells them apart).</li><li>Focus tiles from the bucket counts plus Dispatch's briefing; Up first ranks across both.</li><li>PR scopes and the repository card are computed in the app from <code>PrSummary</code>.</li></ul>
+    </div>
+    <div class="plan-col">
+      <h4><span>1 · Dispatch rules</span>Failed QA outranks Overdue</h4>
+      <ul><li><code>verdict.ts</code> and the server's port: Testing Failed gives "Failed QA" (was "Bounced back") and runs before the due-date rule.</li><li>A late due date leaves the verdicts and becomes an evidence chip, "9 d late".</li><li>The briefing and the tab badge count failed QA, Needs Human and agent questions.</li><li>Spec table in <code>2026-10-13-dispatch-state-walk.md</code> changes with it.</li></ul>
+    </div>
+    <div class="plan-col">
+      <h4><span>3 · ADO data</span>Who, when, how often</h4>
+      <ul><li><code>Microsoft.VSTS.Common.StateChangeDate</code> in <code>ITEM_FIELDS</code>: "since when" for every row, from the batch call it already makes.</li><li>For Testing Failed items only: <code>workItems/{id}/updates</code> for who moved it and the round count, and <code>Custom.QANotes</code>. Cached on <code>System.ChangedDate</code>, like comments.</li></ul>
+    </div>
+    <div class="plan-col">
+      <h4><span>4 · Scopes</span>Browse becomes a scope</h4>
+      <ul><li>The server runs the walk over a query's items. Items that aren't yours get state-only verdicts.</li><li>Pinned scopes are stored per account. The ADO poll refreshes their counts (WIQL ids, then <code>System.State</code> in one batch).</li><li><code>OverviewView</code> takes a scope. <code>BrowseView</code> and its strips go away.</li></ul>
+    </div>
+    <div class="plan-col">
+      <h4><span>5 · Rows</span>Dense and swipeable</h4>
+      <ul><li>Three row kinds: failed (QA quote and Fix), full (a verdict that asks something) and one line for the rest.</li><li>Swipe actions and a context menu replace the Queue and Start buttons.</li><li>The jump bar and lane sorting.</li></ul>
+    </div>
+  </div>
+  <div class="open">
+    <h4>Decisions for you</h4>
+    <ul>
+      <li><b>Team review requests.</b> Today a request to your team counts as Needs you, on the desktop too. With 39 of them, Needs you is mostly team work. Give them their own Team bucket, as mocked, or keep them in Needs you?</li>
+      <li><b>Teammates' PRs that don't ask you.</b> The GitHub app's Pull requests screen lists created, assigned, mentioned and review requested, which the new searches cover. Every open PR in a repository, as the desktop shows, needs <code>github.repos</code> in the server's <code>config.json</code>. It's empty now. Which repositories?</li>
+      <li><b>Lane order.</b> The mockups put Testing Failed and Needs Human first. The desktop's <code>WALK_ORDER</code> starts with Code Review, the order of the morning routine. Change both, or only the phone?</li>
+      <li><b>Is "Assigned for me" the same as Mine?</b> Mine is every open item assigned to @Me, in every project. If your query filters more (area path, type), keep it as a scope of its own.</li>
+      <li><b>What counts as failed QA.</b> Only the Testing Failed state, or also items QA moved straight back to Development In Progress? The second needs the updates call for every item, not just a few.</li>
+      <li><b>Overdue.</b> Drop it from the verdicts for good, or keep it while the sprint is still running and drop it once the sprint has ended?</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+  const TABS = [['focus', 'target', 'Focus'], ['prs', 'pr', 'Pull requests'], ['dispatch', 'cpu', 'Dispatch'], ['notes', 'note', 'Notes']];
+  for (const phone of document.querySelectorAll('.phone')) {
+    const d = phone.dataset;
+    const time = d.time ?? '9:41';
+    const statusBar = `<div class="sb ${d.sb || ''}"><span>${time}</span><span class="sb-r"><svg viewBox="0 0 18 12"><use href="#sb-sig"/></svg><svg viewBox="0 0 16 12"><use href="#sb-wifi"/></svg><svg class="bat" viewBox="0 0 27 13"><use href="#sb-bat"/></svg></span></div>`;
+    phone.insertAdjacentHTML('afterbegin', statusBar + '<div class="di"></div>');
+    if (d.tab) {
+      const tabs = TABS.map(([id, icon, label]) => {
+        const badge = id === 'dispatch' && d.badge ? `<span class="tb-badge">${d.badge}</span>` : '';
+        return `<div class="tb-tab${id === d.tab ? ' on' : ''}"><i class="ic" data-i="${icon}"></i>${label}${badge}</div>`;
+      }).join('');
+      phone.insertAdjacentHTML('beforeend', `<div class="edge"></div><div class="tabbar"><div class="tb-tabs">${tabs}</div><div class="tb-search"><i class="ic" data-i="search"></i></div></div>`);
+    }
+    phone.insertAdjacentHTML('beforeend', '<div class="hi"></div>');
+  }
+  for (const el of document.querySelectorAll('[data-i]')) {
+    el.innerHTML = `<svg viewBox="0 0 24 24"><use href="#i-${el.dataset.i}"/></svg>`;
+  }
+</script>
+</body>
+</html>
