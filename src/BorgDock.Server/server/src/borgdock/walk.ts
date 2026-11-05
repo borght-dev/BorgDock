@@ -3,8 +3,10 @@ import type { AdoItem } from '../ado/client.ts';
 import { evidenceOf, latestMessage, NEEDS_YOU, verdictOf, type ItemComment, type ItemNote, type WalkPullRequest, type WalkThread } from './verdict.ts';
 
 // Ported from the desktop's src/services/dispatch/walk.ts: the states checked every morning, in walk order.
+// The iPhone's Work tab puts Testing Failed first, ahead of the desktop's order: QA sent it back, so it comes before
+// anything still on its way to QA.
 
-export const WALK_ORDER: readonly string[] = ['Code Review', 'Development In Progress', 'Testing Failed', 'Needs Human', 'New'];
+export const WALK_ORDER: readonly string[] = ['Testing Failed', 'Code Review', 'Development In Progress', 'Needs Human', 'New'];
 
 const CATEGORY_RANK: Record<AdoItem['stateCategory'], number> = { InProgress: 0, Proposed: 1, Resolved: 2, Completed: 3, Removed: 4 };
 export const TONE_RANK: Record<Tone, number> = { bad: 0, warn: 1, ok: 2, run: 3, mute: 4 };

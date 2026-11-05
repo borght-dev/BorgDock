@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { Overview, PrSummary } from '../../shared/src/api.ts';
 import { buildOverview } from '../src/engine/overview.ts';
 import { evidenceOf, latestMessage, newestNote, toItemComment, verdictOf, type ItemFacts, type WalkItem, type WalkPullRequest, type WalkThread } from '../src/borgdock/verdict.ts';
-import { applyWalk, laneSummary, WALK_ORDER } from '../src/borgdock/walk.ts';
+import { applyWalk, laneSummary } from '../src/borgdock/walk.ts';
 import { item, thread } from './fixtures.ts';
 
 const NOW = new Date('2026-10-20T12:00:00Z');
@@ -107,8 +107,8 @@ test('the overview gets a walk: lanes in walk order, verdicts per item, and the 
   });
   const prs = [{ number: 9, url: 'https://github.com/o/r/pull/9', title: 'AB#50001 Basket', headRef: 'fix/50001', state: 'open', isDraft: false, workItemIds: [50001], reviewDecision: 'approved', mergedAt: null, checks: { total: 2, passed: 2, failed: 0, pending: 0, skipped: 0, segments: [] } }] as unknown as PrSummary[];
   applyWalk(overview, { items, facts: new Map(), pullRequests: prs, placeOf: (t) => t.branch ?? t.worktree, now: NOW });
-  assert.deepEqual(overview.walk!.lanes.map((l) => l.state), WALK_ORDER);
-  assert.deepEqual(overview.walk!.lanes[0], { state: 'Code Review', itemIds: [50001], tone: 'ok', summary: '1 Ready to merge' });
+  assert.deepEqual(overview.walk!.lanes.map((l) => l.state), ['Testing Failed', 'Code Review', 'Development In Progress', 'Needs Human', 'New'], 'what QA sent back comes first');
+  assert.deepEqual(overview.walk!.lanes.find((l) => l.state === 'Code Review'), { state: 'Code Review', itemIds: [50001], tone: 'ok', summary: '1 Ready to merge' });
   const byId = new Map(overview.items.map((o) => [o.item.id, o.walk!]));
   assert.equal(byId.get(50002)!.verdict.label, 'Agent on it');
   assert.equal(byId.get(50002)!.evidence.find((e) => e.kind === 'agent')!.label, 'agent running · fix/50002-x');
