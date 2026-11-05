@@ -203,7 +203,7 @@ final class WalkDisplayTests: XCTestCase {
             .init(state: "New", itemIds: [1], tone: nil, summary: ""),
         ], briefing: .init(needYou: 1, outOfSync: 2, running: 3))
         let lanes = WalkDisplay.lanes(overview([entry(1, state: "New", bay: .idle), entry(2, state: "Code Review", bay: .waiting)], walk: walk))
-        XCTAssertEqual(lanes.map(\.state), ["Code Review", "New"])
+        XCTAssertEqual(lanes.map(\.title), ["Code Review", "New"])
         XCTAssertEqual(lanes[0].entries.map(\.item.id), [2])
     }
 
@@ -213,7 +213,7 @@ final class WalkDisplayTests: XCTestCase {
             entry(2, state: "Code Review", bay: .waiting),
             entry(3, state: "New", bay: .idle),
         ]))
-        XCTAssertEqual(lanes.map(\.state), ["Code Review", "New"])
+        XCTAssertEqual(lanes.map(\.title), ["Code Review", "New"])
         XCTAssertEqual(lanes[0].entries.map(\.item.id), [2, 1], "what needs you first")
         XCTAssertEqual(WalkDisplay.verdict(for: lanes[0].entries[1]), Verdict(label: "Agent on it", tone: .run))
         XCTAssertEqual(lanes[0].tone, .bad)

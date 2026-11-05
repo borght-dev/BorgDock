@@ -3,12 +3,13 @@ import Foundation
 /// What the states walk shows, from `Overview.walk` and `ItemOverview.walk` (the server ports the desktop's
 /// `verdict.ts` and `walk.ts`). Older servers send no walk; the bays stand in for it then. Pure, for tests.
 enum WalkDisplay {
+    /// A section of the Work tab: an ADO state, or a status when grouped by status.
     struct Lane: Identifiable, Equatable {
-        let state: String
+        let title: String
         let entries: [ItemOverview]
         let tone: Tone?
         let summary: String
-        var id: String { state }
+        var id: String { title }
     }
 
     struct BriefingPart: Equatable {
@@ -22,7 +23,7 @@ enum WalkDisplay {
         if let walk = overview.walk {
             return walk.lanes.compactMap { lane in
                 let entries = lane.itemIds.compactMap { byId[$0] }
-                return entries.isEmpty ? nil : Lane(state: lane.state, entries: entries, tone: lane.tone, summary: lane.summary)
+                return entries.isEmpty ? nil : Lane(title: lane.state, entries: entries, tone: lane.tone, summary: lane.summary)
             }
         }
         var order: [String] = []
@@ -33,7 +34,30 @@ enum WalkDisplay {
         }
         return order.map { state in
             let entries = groups[state, default: []].sorted { verdict(for: $0).tone.rank < verdict(for: $1).tone.rank }
-            return Lane(state: state, entries: entries, tone: entries.map { verdict(for: $0).tone }.min { $0.rank < $1.rank }, summary: "")
+            return Lane(title: state, entries: entries, tone: entries.map { verdict(for: $0).tone }.min { $0.rank < $1.rank }, summary: "")
+        }
+    }
+
+    /// The Work tab's lanes as you sorted them: states in your order (the rest in walk order after them), or one lane
+    /// per status, most urgent first, each holding its items in that same state order.
+    static func lanes(_ overview: Overview, grouping: WorkGrouping, order: [String]) -> [Lane] {
+        let byState = LaneOrder.apply(order, to: lanes(overview))
+        guard grouping == .status else { return byState }
+        let ordered = byState.flatMap(\.entries)
+        return Tone.allCases.sorted { $0.rank < $1.rank }.compactMap { tone in
+            let entries = ordered.filter { verdict(for: $0).tone == tone }
+            return entries.isEmpty ? nil : Lane(title: statusTitle(tone), entries: entries, tone: tone, summary: "")
+        }
+    }
+
+    /// A status lane's header.
+    static func statusTitle(_ tone: Tone) -> String {
+        switch tone {
+        case .bad: "Needs you"
+        case .warn: "Needs a look"
+        case .ok: "Ready"
+        case .run: "Running"
+        case .mute: "Quiet"
         }
     }
 

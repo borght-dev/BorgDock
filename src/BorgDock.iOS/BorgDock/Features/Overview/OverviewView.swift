@@ -1,9 +1,13 @@
 import SwiftUI
 
 /// The Work tab (Dispatch's States view), the morning walk: the briefing, Fix out of sync and Sync all, then one lane
-/// per ADO state with each item's verdict, how far it is through its workflow, its evidence and latest message.
+/// per ADO state (in your order) or per status, with each item's verdict, how far it is through its workflow, its
+/// evidence and latest message.
 struct OverviewView: View {
     @Environment(AppModel.self) private var app
+    @AppStorage("work.grouping") private var grouping: WorkGrouping = .state
+    @AppStorage("work.laneOrder") private var laneOrder = ""
+    @State private var editingOrder = false
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -37,6 +41,16 @@ struct OverviewView: View {
                     .accessibilityLabel("Browse work items")
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
+                Menu {
+                    Picker("Group", selection: $grouping) {
+                        ForEach(WorkGrouping.allCases) { Text($0.title).tag($0) }
+                    }
+                    Button("Lane order…", systemImage: "line.3.horizontal") { editingOrder = true }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                }
+                .accessibilityLabel("Sort")
+                .accessibilityIdentifier("work-sort")
                 Button { Task { await app.refreshFromSources() } } label: { Image(systemName: "arrow.triangle.2.circlepath") }
                     .accessibilityLabel("Refresh from ADO and T3")
                 Button { app.router.present(.launch(LaunchContext())) } label: { Image(systemName: "plus") }
@@ -44,6 +58,9 @@ struct OverviewView: View {
             }
         }
         .tint(BD.text)
+        .sheet(isPresented: $editingOrder) {
+            LaneOrderSheet(stored: $laneOrder, states: LaneOrder.states(saved: LaneOrder.decode(laneOrder), overview: app.overview))
+        }
     }
 
     @ViewBuilder
@@ -53,13 +70,13 @@ struct OverviewView: View {
             .padding(.horizontal, 20)
         actions(overview, briefing: briefing)
         SourceWarnings(sources: overview.sources)
-        let lanes = WalkDisplay.lanes(overview)
+        let lanes = WalkDisplay.lanes(overview, grouping: grouping, order: LaneOrder.decode(laneOrder))
         ForEach(lanes) { lane in
-            CellGroupHeader(title: lane.state, trailing: String(lane.entries.count))
-                .id(lane.state)
+            CellGroupHeader(title: lane.title, trailing: String(lane.entries.count))
+                .id(lane.title)
             CellGroup {
                 ForEach(lane.entries) { entry in
-                    Button { app.router.push(ItemRoute(id: entry.item.id)) } label: { WalkRow(entry: entry) }
+                    Button { app.router.push(ItemRoute(id: entry.item.id)) } label: { WalkRow(entry: entry, showsState: grouping == .status) }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("walk-item-\(entry.item.id)")
                 }
@@ -144,6 +161,8 @@ private struct BriefingLine: View {
 /// One item in a lane: AB# and verdict, title, evidence chips, the latest message.
 struct WalkRow: View {
     let entry: ItemOverview
+    /// Grouped by status, the lane no longer names the state, so the row does.
+    var showsState = false
 
     var body: some View {
         let verdict = WalkDisplay.verdict(for: entry)
@@ -152,6 +171,7 @@ struct WalkRow: View {
             HStack(spacing: 7) {
                 WorkItemGlyph(typeName: entry.item.typeName, size: 11)
                 Text("AB#\(String(entry.item.id))")
+                if showsState { Text("· \(entry.item.state)").lineLimit(1) }
                 Spacer(minLength: 8)
                 VerdictChip(verdict: verdict)
             }
