@@ -129,6 +129,31 @@ describe('useAutoUpdate', () => {
     expect(mockInvoke).toHaveBeenCalledWith('restart_to_apply_update');
   });
 
+  it('ignores a second restart click while the installer starts', async () => {
+    mockInvoke.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => useAutoUpdate(makeSettings()));
+    act(() => {
+      void result.current.restartToApply();
+      void result.current.restartToApply();
+    });
+    expect(mockInvoke.mock.calls.filter(([cmd]) => cmd === 'restart_to_apply_update')).toHaveLength(
+      1,
+    );
+    expect(useUpdateStore.getState().restarting).toBe(true);
+  });
+
+  it('lets you try again after a failed restart', async () => {
+    mockInvoke.mockRejectedValue('installer could not start');
+    const { result } = renderHook(() => useAutoUpdate(makeSettings()));
+    await act(async () => {
+      await result.current.restartToApply();
+    });
+    expect(useUpdateStore.getState()).toMatchObject({
+      restarting: false,
+      statusText: 'Restart failed',
+    });
+  });
+
   it('checks for updates after initial delay when autoCheckEnabled', async () => {
     mockInvoke.mockResolvedValue(null);
     const settings = makeSettings({ autoCheckEnabled: true });

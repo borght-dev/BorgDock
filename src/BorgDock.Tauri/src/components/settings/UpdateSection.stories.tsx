@@ -1,18 +1,20 @@
 // src/components/settings/UpdateSection.stories.tsx
 
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { UpdateSection } from './UpdateSection';
-import {
-  configuredSettings,
-  SectionFrame,
-  withSettings,
-} from './__fixtures__/settings-data';
 import { useUpdateStore } from '@/stores/update-store';
+import { configuredSettings, SectionFrame, withSettings } from './__fixtures__/settings-data';
+import { UpdateSection } from './UpdateSection';
 
 const meta: Meta<typeof UpdateSection> = {
   title: 'Settings/UpdateSection',
   component: UpdateSection,
-  decorators: [(Story) => <SectionFrame><Story /></SectionFrame>],
+  decorators: [
+    (Story) => (
+      <SectionFrame>
+        <Story />
+      </SectionFrame>
+    ),
+  ],
 };
 export default meta;
 type Story = StoryObj<typeof UpdateSection>;
@@ -75,6 +77,26 @@ export const Checking: Story = {
         available: false,
         version: null,
         statusText: 'Checking for updates…',
+        currentVersion: '2.0.5',
+      })();
+      return <Story />;
+    },
+  ],
+  args: baseArgs,
+};
+
+export const Restarting: Story = {
+  decorators: [
+    withSettings(configuredSettings),
+    (Story) => {
+      seedUpdateStore({
+        checking: false,
+        downloading: false,
+        restarting: true,
+        progress: 100,
+        available: true,
+        version: '2.1.0',
+        statusText: 'Update ready — restart to apply',
         currentVersion: '2.0.5',
       })();
       return <Story />;
