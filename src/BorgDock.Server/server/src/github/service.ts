@@ -13,8 +13,8 @@ import {
   workItemIdsOf, type CheckContext, type FocusContext, type PrRecord,
 } from './focus.ts';
 import {
-  AUTO_MERGE_MUTATION, CONVERSATION_QUERY, DETAIL_QUERY, focusQuery, HEAD_QUERY, mapContexts, mapConversation, mapPr, mapReviews, REPLY_MUTATION,
-  RESOLVE_MUTATION, TEAMS_QUERY, type RawConversation, type RawDetail, type RawPr,
+  AUTO_MERGE_MUTATION, CONVERSATION_QUERY, DETAIL_QUERY, FOCUS_MAX_PAGES, FOCUS_QUERY, FOCUS_SEARCHES, HEAD_QUERY, mapContexts, mapConversation, mapPr,
+  mapReviews, REPLY_MUTATION, RESOLVE_MUTATION, TEAMS_QUERY, type FocusPage, type RawConversation, type RawDetail, type RawPr,
 } from './queries.ts';
 import { GithubStore, type JobFailure } from './store.ts';
 
@@ -70,6 +70,8 @@ export class GithubService extends EventEmitter {
   private readonly jobsRead = new Set<number>();
   /** Open pull requests from the last poll of each account. */
   private readonly byAccount = new Map<string, PrRecord[]>();
+  /** What each account's searches last found; a search that fails keeps its previous answer. */
+  private readonly bySearch = new Map<string, Map<string, RawPr[]>>();
   private records = new Map<string, PrRecord>();
   private reviewRequests = new Map<string, string>();
   private current: Focus | null = null;
@@ -143,15 +145,14 @@ export class GithubService extends EventEmitter {
     await Promise.all(accounts.map(async (login, index) => {
       const polledAt = now();
       try {
-        const withRepos = index === 0 && repos.length > 0;
-        const data = await this.client(login).graphql<{ viewer: { login: string }; involves: { nodes: (RawPr | Record<string, never>)[] }; repos?: { nodes: (RawPr | Record<string, never>)[] } }>(
-          focusQuery(withRepos),
-          { involves: 'is:open is:pr involves:@me archived:false', ...(withRepos ? { repos: `is:open is:pr archived:false ${repos.map((r) => `repo:${r}`).join(' ')}` } : {}) },
-        );
-        const nodes = [...data.involves.nodes, ...(data.repos?.nodes ?? [])].filter((n): n is RawPr => 'id' in n && typeof n.id === 'string');
-        this.byAccount.set(login, nodes.map((n) => mapPr(n, login)));
+        const searches: string[] = [...FOCUS_SEARCHES];
+        if (index === 0 && repos.length > 0) searches.push(`is:open is:pr archived:false ${repos.map((r) => `repo:${r}`).join(' ')}`);
+        const failure = await this.runSearches(login, searches);
+        const found = [...(this.bySearch.get(login)?.values() ?? [])].flat();
+        const unique = [...new Map(found.map((n) => [n.id, n])).values()];
+        this.byAccount.set(login, unique.map((n) => mapPr(n, login)));
         await this.refreshTeams(login);
-        this.accountStatus.set(login, { login, via: 'account', machine: null, ok: true, error: null, polledAt });
+        this.accountStatus.set(login, { login, via: 'account', machine: null, ok: failure === null, error: failure, polledAt });
       } catch (error) {
         // A failed account keeps its last pull requests; its status says why they are old.
         const previous = this.accountStatus.get(login);
@@ -159,6 +160,7 @@ export class GithubService extends EventEmitter {
       }
     }));
     for (const login of [...this.byAccount.keys()]) if (!accounts.includes(login)) this.byAccount.delete(login);
+    for (const login of [...this.bySearch.keys()]) if (!accounts.includes(login)) this.bySearch.delete(login);
     for (const login of [...this.accountStatus.keys()]) if (!accounts.includes(login)) this.accountStatus.delete(login);
     this.records = this.mergeAccounts();
     this.reviewRequests = this.store.syncReviewRequests(
@@ -173,6 +175,34 @@ export class GithubService extends EventEmitter {
         this.reading = null;
       });
     return this.current;
+  }
+
+  /** Runs every search at once. A search that fails keeps its last answer and is named in the result; all failing throws. */
+  private async runSearches(login: string, searches: readonly string[]): Promise<string | null> {
+    const known = this.bySearch.get(login) ?? new Map<string, RawPr[]>();
+    this.bySearch.set(login, known);
+    for (const query of [...known.keys()]) if (!searches.includes(query)) known.delete(query);
+    const results = await Promise.allSettled(searches.map((query) => this.searchAll(login, query)));
+    const failures: string[] = [];
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled') known.set(searches[i], result.value);
+      else failures.push(`${/\S+:@me/.exec(searches[i])?.[0] ?? 'repositories'}: ${(result.reason as Error).message}`);
+    });
+    const rejected = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+    if (rejected && failures.length === searches.length) throw rejected.reason;
+    return failures.length ? `Showing older results for ${failures.join('; ')}` : null;
+  }
+
+  private async searchAll(login: string, query: string): Promise<RawPr[]> {
+    const found: RawPr[] = [];
+    let after: string | null = null;
+    for (let page = 0; page < FOCUS_MAX_PAGES; page++) {
+      const { found: result }: FocusPage = await this.client(login).graphql<FocusPage>(FOCUS_QUERY, { query, after });
+      found.push(...result.nodes.filter((n): n is RawPr => 'id' in n && typeof n.id === 'string'));
+      if (!result.pageInfo.hasNextPage || !result.pageInfo.endCursor) break;
+      after = result.pageInfo.endCursor;
+    }
+    return found;
   }
 
   /** Resolves once the CI failure reads the last poll started are done. */
