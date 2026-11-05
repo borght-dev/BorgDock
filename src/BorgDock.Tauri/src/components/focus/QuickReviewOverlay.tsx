@@ -10,9 +10,11 @@ import {
   History,
   Maximize2,
   Minimize2,
+  UserRound,
   X,
 } from 'lucide-react';
 import {
+  type CSSProperties,
   type ReactNode,
   useCallback,
   useEffect,
@@ -31,13 +33,19 @@ import { usePrConversation } from '@/hooks/usePrConversation';
 import { usePrefetchReviewSnapshot } from '@/hooks/usePrefetchReviewSnapshot';
 import { useQuickReviewDocument } from '@/hooks/useQuickReviewDocument';
 import { type QuickReviewKeymap, useQuickReviewKeyboard } from '@/hooks/useQuickReviewKeyboard';
+import { useResizableWidth } from '@/hooks/useResizableWidth';
 import { useReviewCommits } from '@/hooks/useReviewCommits';
 import { useReviewReadiness } from '@/hooks/useReviewReadiness';
 import { useReviewSince } from '@/hooks/useReviewSince';
+import { useRunFit } from '@/hooks/useRunFit';
 import { useWorkItemLinks } from '@/hooks/useWorkItemLinks';
+import { authorCandidates, type RunFit } from '@/services/author-run';
+import { nextFromAuthor, readRunReports, startAuthorRun } from '@/services/author-run-session';
+import { useE2eStore } from '@/services/e2e/load';
 import { isImagePath } from '@/services/github/images';
 import { postComment } from '@/services/github/mutations';
 import { getClientForRepo } from '@/services/github/singleton';
+import type { ApprovalMerge } from '@/services/pr-review';
 import {
   isGeneratedPath,
   markGeneratedReviewed,
@@ -51,6 +59,7 @@ import {
 import { guideEntryFor, guideGroups } from '@/services/review-guide';
 import { classifyNoise } from '@/services/review-noise';
 import { reviewVerb } from '@/services/review-since';
+import { useCiFailuresStore } from '@/stores/ci-failures-store';
 import { usePrStore } from '@/stores/pr-store';
 import { type ReviewDecision, useQuickReviewStore } from '@/stores/quick-review-store';
 import { ensureReviewGuide, guideKey, useReviewGuideStore } from '@/stores/review-guide-store';
@@ -93,6 +102,7 @@ const WRAP_LINES_KEY = 'borgdock-quick-review-wrap-lines';
 const RICH_DIFF_KEY = 'borgdock-quick-review-rich-diff';
 const SPLIT_DIFF_KEY = 'borgdock-quick-review-split-diff';
 const CONTEXT_OPEN_KEY = 'borgdock-quick-review-context-open';
+const TREE_WIDTH_KEY = 'borgdock-quick-review-tree-width';
 const ORDER_KEY = 'borgdock-quick-review-order';
 const ORDERS: readonly ReadingOrder[] = ['guide', 'folders', 'commits'];
 
@@ -294,7 +304,12 @@ export function QuickReviewOverlay() {
   const queue = useQuickReviewStore((s) => s.queue);
   const index = useQuickReviewStore((s) => s.currentIndex);
   const decisions = useQuickReviewStore((s) => s.decisions);
+  const run = useQuickReviewStore((s) => s.run);
   const needsMyReview = usePrStore((s) => s.needsMyReview());
+  const prs = usePrStore((s) => s.pullRequests);
+  const username = usePrStore((s) => s.username);
+  const e2eEntries = useE2eStore((s) => s.entries);
+  const ciGroups = useCiFailuresStore((s) => s.groups);
   const [closing, setClosing] = useState(false);
   const [fullscreen, setFullscreen] = useState(() => readReviewPreference(FULLSCREEN_KEY));
   const [walking, setWalking] = useState(false);
@@ -342,20 +357,45 @@ export function QuickReviewOverlay() {
   const nextPr = complete
     ? orderQuickReviewPrs(needsMyReview).find((pr) => !reviewedKeys.has(prKey(pr)))
     : undefined;
+  // After one PR or an author run, the same author's next PR you can merge.
+  const lastAuthor = queue.length === 1 ? queue[0]?.pullRequest.authorLogin : undefined;
+  const continueAuthor = complete ? (run?.author ?? lastAuthor) : undefined;
+  const authorNext = continueAuthor
+    ? nextFromAuthor(
+        { prs, entries: e2eEntries, groups: ciGroups },
+        continueAuthor,
+        username,
+        reviewedKeys,
+      )
+    : undefined;
+  useEffect(() => {
+    if (!continueAuthor) return;
+    const { pullRequests, username: me } = usePrStore.getState();
+    void readRunReports(authorCandidates(pullRequests, continueAuthor, me), pullRequests);
+  }, [continueAuthor]);
   const upNext = complete ? undefined : queue[index + 1];
-  const reviewNext = () => {
-    if (!nextPr) return;
+  const markHandled = () => {
     queue.forEach((pr) => {
       handledInRun.current.add(prKey(pr));
     });
+  };
+  const reviewNext = () => {
+    if (!nextPr) return;
+    markHandled();
     useQuickReviewStore.getState().startSinglePr(nextPr);
   };
+  const reviewAuthorNext = () => {
+    if (!authorNext) return;
+    markHandled();
+    void startAuthorRun(authorNext, new Set(handledInRun.current));
+  };
+  const enterNext = authorNext ? reviewAuthorNext : nextPr ? reviewNext : undefined;
   useQuickReviewKeyboard(
     complete && !closing
       ? {
           Escape: requestClose,
           z: undoHeldApproval,
-          ...(nextPr ? { Enter: reviewNext } : {}),
+          ...(enterNext ? { Enter: enterNext } : {}),
         }
       : undefined,
   );
@@ -394,6 +434,13 @@ export function QuickReviewOverlay() {
         >
           <div className="qr-titlebar">
             <h2 className="qr-heading">Quick review</h2>
+            {run && (
+              <span className="qr-run" title={`${run.author}'s open PRs, oldest first`}>
+                <UserRound size={13} strokeWidth={2.25} aria-hidden="true" />
+                {run.author} · oldest first
+                {run.filling && <span className="qr-muted"> · finding the rest…</span>}
+              </span>
+            )}
             {upNext && (
               <span className="qr-upnext" title={upNext.pullRequest.title}>
                 Up next{' '}
@@ -454,6 +501,9 @@ export function QuickReviewOverlay() {
                         decisions={decisions}
                         nextPr={nextPr}
                         onNext={reviewNext}
+                        authorNext={authorNext}
+                        held={run?.held ?? []}
+                        onAuthorNext={reviewAuthorNext}
                         onClose={requestClose}
                       />
                     </div>
@@ -470,7 +520,11 @@ export function QuickReviewOverlay() {
               <footer className="qr-footer">
                 <Shortcuts
                   keys={[
-                    ...(nextPr ? [['Enter', 'review next PR'] as const] : []),
+                    ...(authorNext
+                      ? [['Enter', `next from ${authorNext.pullRequest.authorLogin}`] as const]
+                      : nextPr
+                        ? [['Enter', 'review next PR'] as const]
+                        : []),
                     ['Esc', 'close'],
                   ]}
                 />
@@ -495,6 +549,32 @@ export function QuickReviewOverlay() {
       </div>
     </FocusTrap>
   );
+}
+
+/** The approve button that merges too, and what it does after the approval. */
+export interface MergeOffer {
+  intent: ApprovalMerge;
+  label: string;
+  /** Said in the Undo toast: "Approving #12 · auto-merge on". */
+  followUp: string;
+  /** Why merging past red checks is fine. */
+  hint?: string;
+}
+
+/**
+ * A PR red only from failures that are not its doing merges with admin
+ * rights; otherwise auto-merge, unless it is already on.
+ */
+export function mergeOfferFor(fit: RunFit, autoMergeEnabled: boolean): MergeOffer | null {
+  if (fit.kind === 'ready' && fit.bypass)
+    return {
+      intent: 'bypass',
+      label: 'Approve & merge',
+      followUp: 'then merges as admin',
+      hint: `${fit.bypass}. Merges with admin rights, past the failing checks.`,
+    };
+  if (autoMergeEnabled) return null;
+  return { intent: 'auto', label: 'Approve & auto-merge', followUp: 'auto-merge on' };
 }
 
 type Mode = 'card' | 'walk' | 'compose';
@@ -571,6 +651,16 @@ function QuickReviewWorkspace({
   const mainRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const walkRef = useRef<HTMLElement>(null);
+  const treeWidth = useResizableWidth(walkRef, {
+    storageKey: TREE_WIDTH_KEY,
+    defaultWidth: 262,
+    minWidth: 200,
+    maxWidth: 640,
+    // The diff keeps 420px and the context panel its own column.
+    reserve: contextOpen ? 760 : 470,
+    label: 'File list width',
+    measure: () => walkRef.current?.querySelector('.qr-tree')?.getBoundingClientRect().width,
+  });
   const endBodyRef = useRef<HTMLTextAreaElement>(null);
   const lastMode = useRef<Mode>('card');
   const pendingWalk = useRef(startInWalk);
@@ -580,6 +670,8 @@ function QuickReviewWorkspace({
   const walkPhase = usePresence(mode === 'walk', motionMs('--motion-push', 260));
 
   const detail = snapshot?.pr ?? pr.pullRequest;
+  const fit = useRunFit(pr);
+  const mergeOffer = mergeOfferFor(fit, !!detail.autoMergeEnabled);
   const client = getClientForRepo(detail.repoOwner, detail.repoName);
   const conversation = usePrConversation(detail, true);
   const proofs = proofsFor(detail);
@@ -867,10 +959,12 @@ function QuickReviewWorkspace({
     update((d) => markGeneratedReviewed(d, paths));
   }
   /** Approves with Undo: the deck moves on now, GitHub hears of it when the toast runs out. */
-  function approve(autoMerge = !detail.autoMergeEnabled) {
+  /** Approves with Undo, and with `merging` goes on as `mergeOffer` says. */
+  function approve(merging = !!mergeOffer) {
     if (busy || approveIssue) return;
-    const send = prepare('APPROVE', autoMerge);
-    if (send) holdApproval(pr, send, autoMerge && !detail.autoMergeEnabled);
+    const offer = merging ? mergeOffer : null;
+    const send = prepare('APPROVE', offer?.intent);
+    if (send) holdApproval(pr, send, offer?.followUp ?? null);
   }
   function later() {
     if (busy) return;
@@ -880,7 +974,7 @@ function QuickReviewWorkspace({
     if (busy || submitIssue) return;
     if (doc.event === 'APPROVE') {
       const send = prepare();
-      if (send) holdApproval(pr, send, false);
+      if (send) holdApproval(pr, send, null);
       return;
     }
     void submit();
@@ -1096,15 +1190,16 @@ function QuickReviewWorkspace({
             issue={approveIssue}
             busy={busy}
             onApprove={() => approve(false)}
-            shortcut={!!detail.autoMergeEnabled}
+            shortcut={!mergeOffer}
             reasonId={approveReasonId}
           />
-          {!detail.autoMergeEnabled && (
+          {mergeOffer && (
             <ApproveButton
               issue={approveIssue}
               busy={busy}
               onApprove={() => approve(true)}
-              label="Approve & auto-merge"
+              label={mergeOffer.label}
+              hint={mergeOffer.hint}
               reasonId={approveReasonId}
             />
           )}
@@ -1124,11 +1219,11 @@ function QuickReviewWorkspace({
    * which GitHub would not accept as anchors on the PR.
    */
   const inlineDrafts = !splitDiff && !sinceFile;
-  const autoMergeLabel = detail.autoMergeEnabled ? 'approve' : 'approve & auto-merge';
+  const autoMergeLabel = mergeOffer ? mergeOffer.label.toLowerCase() : 'approve';
   const walkShortcuts: Array<readonly [string, string]> = allReviewed
     ? [
         ['Enter', autoMergeLabel],
-        ...(detail.autoMergeEnabled ? [] : [['A', 'approve'] as const]),
+        ...(mergeOffer ? [['A', 'approve'] as const] : []),
         ['R', 'request changes'],
         ['C', 'comment'],
         ['N/P', commitsView ? 'commit' : 'file'],
@@ -1279,6 +1374,12 @@ function QuickReviewWorkspace({
             className="qr-walk"
             data-state={walkPhase}
             data-context={contextOpen ? 'open' : 'rail'}
+            data-resizing={treeWidth.resizing || undefined}
+            style={
+              treeWidth.chosen
+                ? ({ '--qr-tree-width': `${treeWidth.width}px` } as CSSProperties)
+                : undefined
+            }
             aria-label="File walk"
             inert={walkPhase === 'closing'}
             aria-hidden={walkPhase === 'closing' || undefined}
@@ -1331,6 +1432,7 @@ function QuickReviewWorkspace({
                 </div>
               )}
             </QuickReviewPrHeader>
+            <div className="qr-tree-divider" {...treeWidth.separatorProps} />
             {commitsView ? (
               <QuickReviewCommitList
                 header={orderSwitch}
@@ -1610,7 +1712,7 @@ function QuickReviewWorkspace({
               onJump={jumpTo}
               ready={ready}
               approveIssue={approveIssue}
-              autoMergeEnabled={!!detail.autoMergeEnabled}
+              merge={mergeOffer}
               unit={commitsView ? 'commit' : 'file'}
               canGoBack={commitsView ? commitIndex > 0 : fileIndex > 0}
               canGoOn={
@@ -1623,7 +1725,7 @@ function QuickReviewWorkspace({
               onPrevious={() => (commitsView ? stepCommit(-1) : step(-1))}
               onNext={() => (commitsView ? stepCommit(1) : step(1))}
               onMark={commitsView ? markCommitAndNext : markAndNext}
-              onApprove={(autoMerge) => approve(autoMerge)}
+              onApprove={(merging) => approve(merging)}
               onRequestChanges={() => decide('REQUEST_CHANGES')}
               onComment={() => decide('COMMENT')}
             />

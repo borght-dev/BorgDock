@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getClientForRepo } from '@/services/github/singleton';
-import { submitPrReview } from '@/services/pr-review';
+import { type ApprovalMerge, submitPrReview } from '@/services/pr-review';
 import {
   currentReviewDetails,
   loadCachedReviewSnapshot,
@@ -68,7 +68,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
    * is no longer on screen (an approval held for Undo); it throws when
    * GitHub refuses, and resolves to the decision to record.
    */
-  function prepare(event?: ReviewEvent, autoMerge = false) {
+  function prepare(event?: ReviewEvent, merge?: ApprovalMerge) {
     if (submitting.current || !client || !snapshot || loading || stale || loadError) return null;
     const stored = useQuickReviewStore.getState().documents[key];
     // The override is not saved: a failed approval leaves the draft's own
@@ -117,10 +117,15 @@ export function useQuickReviewDocument(pr: PullRequest) {
               body: c.body.trim(),
             })),
           },
-          autoMerge && !current.pr.autoMergeEnabled,
+          merge === 'auto' && current.pr.autoMergeEnabled ? undefined : merge,
         );
         useQuickReviewStore.getState().discardDocument(key);
-        merging?.catch((error) => toastError('Approved; auto-merge not enabled', error));
+        merging?.catch((error) =>
+          toastError(
+            merge === 'bypass' ? 'Approved; not merged' : 'Approved; auto-merge not enabled',
+            error,
+          ),
+        );
         return doc.event === 'APPROVE' ? 'approved' : 'commented';
       } finally {
         submitting.current = false;
@@ -128,8 +133,8 @@ export function useQuickReviewDocument(pr: PullRequest) {
     };
   }
   /** Posts the review now and moves to the next PR, or stays with the error. */
-  async function submit(event?: ReviewEvent, autoMerge = false) {
-    const send = prepare(event, autoMerge);
+  async function submit(event?: ReviewEvent, merge?: ApprovalMerge) {
+    const send = prepare(event, merge);
     if (!send) return;
     const store = useQuickReviewStore.getState();
     store.setSubmitting();

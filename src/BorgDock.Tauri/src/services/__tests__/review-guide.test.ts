@@ -159,5 +159,28 @@ describe('buildGuidePrompt', () => {
     expect(prompt.length).toBeLessThan(24_000);
     expect(prompt).toContain('- Add hook\n- Render section');
     expect(prompt).toContain('Body text');
+    expect(prompt).not.toContain("The reviewer's instructions");
+    expect(prompt).not.toContain('Skipped by the reviewer');
+  });
+
+  it("names skipped files without their patch and adds the reviewer's instructions", () => {
+    const prompt = buildGuidePrompt({
+      pr: makePr({ title: 'Quote details', number: 6143 }).pullRequest,
+      files: [
+        file('src/Quote.tsx', '@@ -1 +1 @@\n-old\n+new'),
+        file('plans/AB61129-quote-plan.html', '@@ -0,0 +1 @@\n+<h1>The whole plan</h1>'),
+      ],
+      commits: [],
+      instructions: '  Call out every new translation key.  ',
+      skip: ['*.html'],
+    });
+    expect(prompt).toContain(
+      '### plans/AB61129-quote-plan.html (modified, +1 -1)\nSkipped by the reviewer: do not open it.',
+    );
+    expect(prompt).not.toContain('The whole plan');
+    expect(prompt).toContain('Never open or read them');
+    expect(prompt).toContain("## The reviewer's instructions");
+    expect(prompt).toContain('Call out every new translation key.\n');
+    expect(prompt).toContain('```diff\n@@ -1 +1 @@\n-old\n+new\n```');
   });
 });

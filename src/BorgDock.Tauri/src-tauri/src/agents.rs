@@ -13,6 +13,10 @@ pub struct HeadlessPromptRequest {
     pub model: Option<String>,
     pub executable: Option<String>,
     pub timeout_seconds: Option<u64>,
+    /// Reasoning effort: Claude's `--effort`, Codex's `model_reasoning_effort`.
+    pub effort: Option<String>,
+    /// Codex's fast service tier. Claude has none and ignores it.
+    pub fast: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -73,6 +77,14 @@ pub async fn agent_provider_availability(
     AgentAvailability { claude, codex }
 }
 
+const CLAUDE_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
+const CODEX_EFFORTS: &[&str] = &["minimal", "low", "medium", "high", "xhigh"];
+
+/// The effort when `allowed` knows it; anything else leaves the CLI's default.
+fn effort_of<'a>(requested: Option<&'a str>, allowed: &[&str]) -> Option<&'a str> {
+    requested.filter(|effort| allowed.contains(effort))
+}
+
 fn parse_claude_output(bytes: &[u8]) -> Result<String, String> {
     let value: serde_json::Value =
         serde_json::from_slice(bytes).map_err(|e| format!("Claude returned invalid JSON: {e}"))?;
@@ -98,6 +110,57 @@ fn parse_codex_output(bytes: &[u8]) -> Result<String, String> {
         .last()
         .filter(|text| !text.trim().is_empty())
         .ok_or_else(|| "Codex returned no final message".to_string())
+}
+
+/// Why a `codex exec --json` run failed: its `turn.failed` event, else its
+/// last `error` event. Codex prints these on stdout; stderr holds its logs.
+fn codex_failure(stdout: &[u8]) -> Option<String> {
+    let events: Vec<serde_json::Value> = String::from_utf8_lossy(stdout)
+        .lines()
+        .filter_map(|line| serde_json::from_str(line).ok())
+        .collect();
+    let message = |event: &serde_json::Value, pointer: &str| {
+        event
+            .pointer(pointer)
+            .and_then(|v| v.as_str())
+            .filter(|text| !text.trim().is_empty())
+            .map(str::to_owned)
+    };
+    events
+        .iter()
+        .rev()
+        .find(|e| e["type"].as_str() == Some("turn.failed"))
+        .and_then(|e| message(e, "/error/message"))
+        .or_else(|| {
+            events
+                .iter()
+                .rev()
+                .filter(|e| e["type"].as_str() == Some("error"))
+                .find_map(|e| message(e, "/message"))
+        })
+}
+
+/// The result text of a Claude run that reports `is_error`.
+fn claude_failure(stdout: &[u8]) -> Option<String> {
+    let value: serde_json::Value = serde_json::from_slice(stdout).ok()?;
+    if value["is_error"].as_bool() != Some(true) {
+        return None;
+    }
+    value["result"]
+        .as_str()
+        .filter(|text| !text.trim().is_empty())
+        .map(str::to_owned)
+}
+
+/// The end of stderr, where a CLI that fails without a structured error says why.
+fn stderr_tail(stderr: &[u8]) -> String {
+    const KEEP: usize = 600;
+    let text = String::from_utf8_lossy(stderr);
+    let text = text.trim();
+    match text.char_indices().rev().nth(KEEP - 1) {
+        Some((at, _)) => format!("…{}", &text[at..]),
+        None => text.to_owned(),
+    }
 }
 
 /// Run a short, non-interactive agent task. Prompts are sent over stdin so
@@ -130,11 +193,39 @@ pub async fn run_headless_prompt(
             if let Some(model) = request.model.as_deref().filter(|v| !v.is_empty()) {
                 command.args(["--model", model]);
             }
+            if let Some(effort) = effort_of(request.effort.as_deref(), CLAUDE_EFFORTS) {
+                command.args(["--effort", effort]);
+            }
         }
         "codex" => {
-            command.args(["exec", "--json", "--ephemeral", "-s", "read-only"]);
+            // A summary reads the prompt and answers. The user's config.toml
+            // would bring its MCP servers (with their OAuth noise and ~150k
+            // tokens of tool definitions), and the built-in computer and
+            // browser use let a "read-only" run press keys in other windows.
+            command.args([
+                "exec",
+                "--json",
+                "--ephemeral",
+                "-s",
+                "read-only",
+                "--ignore-user-config",
+                "--disable",
+                "computer_use",
+                "--disable",
+                "browser_use",
+                "--disable",
+                "apps",
+            ]);
             if let Some(model) = request.model.as_deref().filter(|v| !v.is_empty()) {
                 command.args(["--model", model]);
+            }
+            if let Some(effort) = effort_of(request.effort.as_deref(), CODEX_EFFORTS) {
+                command
+                    .arg("-c")
+                    .arg(format!("model_reasoning_effort=\"{effort}\""));
+            }
+            if request.fast == Some(true) {
+                command.args(["-c", "service_tier=\"fast\""]);
             }
             command.arg("-");
         }
@@ -171,11 +262,14 @@ pub async fn run_headless_prompt(
         .map_err(|_| format!("{provider} timed out after {} seconds", timeout.as_secs()))?
         .map_err(|e| format!("Failed while waiting for {provider}: {e}"))?;
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        let reason = match provider.as_str() {
+            "codex" => codex_failure(&output.stdout),
+            _ => claude_failure(&output.stdout),
+        }
+        .unwrap_or_else(|| stderr_tail(&output.stderr));
         return Err(format!(
-            "{provider} exited with {}: {}",
+            "{provider} exited with {}: {reason}",
             output.status.code().unwrap_or(-1),
-            stderr.trim()
         ));
     }
     let text = match provider.as_str() {
@@ -209,5 +303,49 @@ mod tests {
 {"type":"item.completed","item":{"type":"agent_message","text":"summary"}}
 "#;
         assert_eq!(parse_codex_output(jsonl).unwrap(), "summary");
+    }
+
+    #[test]
+    fn reads_why_codex_failed_from_its_events() {
+        let jsonl = br#"{"type":"thread.started"}
+{"type":"item.completed","item":{"type":"error","message":"Model metadata not found"}}
+{"type":"error","message":"The 'sonnet' model is not supported"}
+{"type":"turn.failed","error":{"message":"The 'sonnet' model is not supported here"}}
+"#;
+        assert_eq!(
+            codex_failure(jsonl).as_deref(),
+            Some("The 'sonnet' model is not supported here")
+        );
+        assert_eq!(
+            codex_failure(br#"{"type":"error","message":"Quota exceeded"}"#).as_deref(),
+            Some("Quota exceeded")
+        );
+        assert_eq!(codex_failure(b"not json"), None);
+    }
+
+    #[test]
+    fn reads_why_claude_failed() {
+        assert_eq!(
+            claude_failure(br#"{"is_error":true,"result":"Credit balance is too low"}"#).as_deref(),
+            Some("Credit balance is too low")
+        );
+        assert_eq!(claude_failure(br#"{"is_error":false,"result":"fine"}"#), None);
+    }
+
+    #[test]
+    fn keeps_the_end_of_long_stderr() {
+        let long = "x".repeat(700) + "the reason";
+        let tail = stderr_tail(long.as_bytes());
+        assert!(tail.starts_with('…') && tail.ends_with("the reason"));
+        assert_eq!(tail.chars().count(), 601);
+        assert_eq!(stderr_tail(b"  short  "), "short");
+    }
+
+    #[test]
+    fn passes_only_efforts_the_cli_knows() {
+        assert_eq!(effort_of(Some("max"), CLAUDE_EFFORTS), Some("max"));
+        assert_eq!(effort_of(Some("max"), CODEX_EFFORTS), None);
+        assert_eq!(effort_of(Some("high\" --x"), CODEX_EFFORTS), None);
+        assert_eq!(effort_of(None, CLAUDE_EFFORTS), None);
     }
 }

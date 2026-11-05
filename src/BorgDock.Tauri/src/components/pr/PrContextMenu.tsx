@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { fixLabel, monitorLabel } from '@/services/agent-labels';
+import { startAuthorRun } from '@/services/author-run-session';
 import { sendOsNotification } from '@/services/notification';
 import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
 import { findRepoConfig } from '@/services/repo-lookup';
 import { requestT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
+import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
 import { copyToClipboard } from '@/utils/clipboard';
@@ -103,6 +105,8 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   }, [position.x, position.y]);
 
   const { pullRequest, failedCheckNames, overallStatus } = pr;
+  const username = usePrStore((s) => s.username);
+  const isMine = pullRequest.authorLogin.toLowerCase() === username.toLowerCase();
   const owner = pullRequest.repoOwner;
   const repo = pullRequest.repoName;
 
@@ -131,6 +135,10 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     },
     [onClose],
   );
+
+  const handleAuthorRun = handleAction(async () => {
+    await startAuthorRun(pr);
+  });
 
   const handleOpenInGitHub = handleAction(async () => {
     await openPrInBrowser(pullRequest.htmlUrl);
@@ -243,6 +251,12 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
         borderColor: 'var(--color-modal-border)',
       }}
     >
+      <MenuItem
+        label={`Review ${pullRequest.authorLogin}'s PRs, oldest first`}
+        onClick={handleAuthorRun}
+        disabled={isMine || pullRequest.isDraft}
+      />
+      <Separator />
       <MenuItem label="Open in GitHub" onClick={handleOpenInGitHub} />
       <MenuItem label={popOutLabel} onClick={handleOpenInDetailWindow} />
       <MenuItem label="Copy branch name" onClick={handleCopyBranch} />

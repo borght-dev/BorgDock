@@ -2101,6 +2101,10 @@ export type HeadlessPromptRequest_Deserialize = {
 	model?: string | null,
 	executable?: string | null,
 	timeoutSeconds?: number | null,
+	/**  Reasoning effort: Claude's `--effort`, Codex's `model_reasoning_effort`. */
+	effort?: string | null,
+	/**  Codex's fast service tier. Claude has none and ignores it. */
+	fast?: boolean | null,
 };
 
 export type HeadlessPromptRequest_Serialize = {
@@ -2110,6 +2114,10 @@ export type HeadlessPromptRequest_Serialize = {
 	model: string | null,
 	executable: string | null,
 	timeoutSeconds: number | null,
+	/**  Reasoning effort: Claude's `--effort`, Codex's `model_reasoning_effort`. */
+	effort: string | null,
+	/**  Codex's fast service tier. Claude has none and ignores it. */
+	fast: boolean | null,
 };
 
 export type HeadlessPromptResult = {
@@ -3067,6 +3075,14 @@ export type SummarySettings_Deserialize = {
 	enabled?: boolean,
 	/**  Quick Review writes a PR's review guide as soon as it opens; off, only on a click. */
 	autoReviewGuide?: boolean,
+	/**  Reasoning effort the summary agent runs with. Absent: the CLI's default. */
+	effort?: string | null,
+	/**  Codex's fast service tier. */
+	fast?: boolean,
+	/**  Added to every review guide prompt. */
+	guideInstructions?: string | null,
+	/**  `.gitignore`-style patterns of files a review guide names but never reads. */
+	guideSkip?: string[],
 };
 
 export type SummarySettings_Serialize = {
@@ -3075,6 +3091,14 @@ export type SummarySettings_Serialize = {
 	enabled: boolean,
 	/**  Quick Review writes a PR's review guide as soon as it opens; off, only on a click. */
 	autoReviewGuide: boolean,
+	/**  Reasoning effort the summary agent runs with. Absent: the CLI's default. */
+	effort?: string,
+	/**  Codex's fast service tier. */
+	fast: boolean,
+	/**  Added to every review guide prompt. */
+	guideInstructions?: string,
+	/**  `.gitignore`-style patterns of files a review guide names but never reads. */
+	guideSkip?: string[],
 };
 
 export type T3HostSettings = {

@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { Lock } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import {
   ROW_CHIP_LABEL,
   type RowChipKind,
@@ -161,6 +161,8 @@ export interface ApproveButtonProps {
   shortcut?: boolean;
   /** Id of the visible line that says why, for `aria-describedby`. */
   reasonId?: string;
+  /** What the button does beyond approving, shown on hover while it isn't blocked. */
+  hint?: string;
 }
 
 /**
@@ -178,7 +180,9 @@ export function ApproveButton({
   reasonId,
   label = 'Approve',
   shortcut = true,
+  hint,
 }: ApproveButtonProps) {
+  const hintId = useId();
   return (
     <span
       className="qr-approve-wrap"
@@ -191,7 +195,7 @@ export function ApproveButton({
         className="qr-approve"
         aria-disabled={issue ? true : undefined}
         loading={busy}
-        aria-describedby={issue ? reasonId : undefined}
+        aria-describedby={issue ? reasonId : hint ? hintId : undefined}
         aria-keyshortcuts={shortcut && !issue ? 'Enter A ArrowRight' : undefined}
         leading={issue ? <Lock size={13} strokeWidth={2.25} aria-hidden="true" /> : undefined}
         onClick={() => {
@@ -200,10 +204,16 @@ export function ApproveButton({
       >
         {label}
       </Button>
-      {issue && (
+      {issue ? (
         <span className="qr-tip" aria-hidden="true">
           {issue}
         </span>
+      ) : (
+        hint && (
+          <span id={hintId} className="qr-tip" data-hint="">
+            {hint}
+          </span>
+        )
       )}
     </span>
   );

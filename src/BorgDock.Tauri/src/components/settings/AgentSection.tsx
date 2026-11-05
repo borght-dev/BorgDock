@@ -9,6 +9,7 @@ import {
   ToggleRow,
 } from '@/components/shared/primitives';
 import { DEFAULT_LAUNCH_PROMPTS, type LaunchPrompts } from '@/services/dispatch/launch';
+import { SUMMARY_EFFORTS } from '@/services/summary-agent';
 import { DEFAULT_WORKSTREAM_PROMPTS } from '@/services/workstreams/brief';
 import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import type {
@@ -31,6 +32,18 @@ const CLI_PROVIDERS = [
   { value: 'claude', label: 'Claude Code' },
   { value: 'codex', label: 'Codex' },
 ];
+
+const TEXTAREA_CLASS =
+  'w-full resize-y rounded-[5px] border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-[10px] py-[6px] font-mono text-[11.5px] leading-[1.5] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]';
+
+const EFFORT_LABELS: Record<string, string> = {
+  minimal: 'Minimal',
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  xhigh: 'Extra high',
+  max: 'Max',
+};
 
 const INTERACTIVE_PROVIDERS = [...CLI_PROVIDERS, { value: 't3', label: 'T3 Code' }];
 
@@ -92,6 +105,14 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
   const [pairingCredential, setPairingCredential] = useState('');
   const [pairError, setPairError] = useState('');
   const [pairing, setPairing] = useState(false);
+  const efforts = SUMMARY_EFFORTS[summaries.provider];
+  const effortOptions = [
+    { value: '', label: 'CLI default' },
+    ...efforts.map((effort) => ({ value: effort, label: EFFORT_LABELS[effort] ?? effort })),
+  ];
+  // An effort saved for the other provider shows as the default, which is what runs.
+  const effortChoice =
+    summaries.effort && efforts.includes(summaries.effort) ? summaries.effort : '';
 
   useEffect(() => {
     invoke<{ claude: boolean; codex: boolean }>('agent_provider_availability', {
@@ -314,7 +335,7 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
             <textarea
               aria-label={`${field.label} prompt`}
               rows={4}
-              className="w-full resize-y rounded-[5px] border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-[10px] py-[6px] font-mono text-[11.5px] leading-[1.5] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+              className={TEXTAREA_CLASS}
               value={agents.dispatchPrompts?.[field.key] ?? ''}
               placeholder={field.placeholder}
               onChange={(e) =>
@@ -344,11 +365,23 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
             value={summaries.provider}
             options={CLI_PROVIDERS}
             onChange={(provider) =>
-              onSummariesChange({ ...summaries, provider: provider as AgentProvider })
+              // A model name belongs to one CLI: Codex refuses `sonnet`.
+              onSummariesChange({
+                ...summaries,
+                provider: provider as AgentProvider,
+                model: provider === 'claude' ? 'sonnet' : '',
+              })
             }
           />
         </Field>
-        <Field label="Model" hint="Claude aliases such as sonnet stay current automatically.">
+        <Field
+          label="Model"
+          hint={
+            summaries.provider === 'claude'
+              ? 'Claude aliases such as sonnet stay current automatically.'
+              : "Empty uses Codex's default model."
+          }
+        >
           <TextInput
             value={summaries.model}
             onChange={(model) => onSummariesChange({ ...summaries, model })}
@@ -356,6 +389,63 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
             mono
           />
         </Field>
+        <Field
+          label="Effort"
+          hint="How long the agent thinks before it writes a review guide or compares CI failures. Higher is slower and costs more."
+          anchorId="summary-effort"
+        >
+          <Select
+            ariaLabel="Summary effort"
+            value={effortChoice}
+            options={effortOptions}
+            onChange={(effort) => onSummariesChange({ ...summaries, effort: effort || undefined })}
+          />
+        </Field>
+        <Field
+          label="Guide instructions"
+          hint="Added to every review guide prompt: what your team cares about, what to call out, what to leave alone."
+          anchorId="guide-instructions"
+        >
+          <textarea
+            aria-label="Guide instructions"
+            rows={3}
+            className={TEXTAREA_CLASS}
+            value={summaries.guideInstructions ?? ''}
+            placeholder="Plans in plans/ describe the intent; name them, don't summarise them."
+            onChange={(e) =>
+              onSummariesChange({ ...summaries, guideInstructions: e.target.value || undefined })
+            }
+          />
+        </Field>
+        <Field
+          label="Files the guide skips"
+          hint="Named in the guide but never read: no patch in the prompt, and the agent may not open them. One pattern per line, like .gitignore."
+          anchorId="guide-skip"
+        >
+          <textarea
+            aria-label="Files the guide skips"
+            rows={3}
+            className={TEXTAREA_CLASS}
+            value={(summaries.guideSkip ?? []).join('\n')}
+            placeholder={'*.html\nplans/**'}
+            onChange={(e) =>
+              onSummariesChange({
+                ...summaries,
+                guideSkip: e.target.value ? e.target.value.split('\n') : undefined,
+              })
+            }
+          />
+        </Field>
+        {summaries.provider === 'codex' && (
+          <div id="field-summary-fast">
+            <ToggleRow
+              label="Fast mode"
+              hint="Codex answers faster on the fast service tier, at a higher usage cost."
+              on={!!summaries.fast}
+              onChange={(fast) => onSummariesChange({ ...summaries, fast })}
+            />
+          </div>
+        )}
         <div id="field-review-guide-auto">
           <ToggleRow
             label="Write review guides automatically"

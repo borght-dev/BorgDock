@@ -93,7 +93,8 @@ interface Props {
   ready: boolean;
   /** Why Approve is not possible, or null. */
   approveIssue: string | null;
-  autoMergeEnabled: boolean;
+  /** The approve that merges too (auto-merge, or merge as admin), or null. */
+  merge: { label: string; hint?: string } | null;
   canGoBack: boolean;
   canGoOn: boolean;
   hasFile: boolean;
@@ -110,7 +111,7 @@ interface Props {
   onPrevious: () => void;
   onNext: () => void;
   onMark: () => void;
-  onApprove: (autoMerge: boolean) => void;
+  onApprove: (merging: boolean) => void;
   onRequestChanges: () => void;
   onComment: () => void;
 }
@@ -119,8 +120,9 @@ interface Props {
  * The file walk's footer. While files are left: drafts, Previous, Next file,
  * Mark reviewed & next, and Approve held back with how many files are left.
  * Once every file is reviewed it turns into the decision bar: the overall
- * comment right beside Request changes, Comment, Approve and Approve &
- * auto-merge, so writing and deciding happen in one place. Its primary
+ * comment right beside Request changes, Comment, Approve and the approve
+ * that merges too (auto-merge, or merge as admin past failures that are not
+ * the PR's), so writing and deciding happen in one place. Its primary
  * button (`.qr-decide--go`) takes focus when the last file is marked.
  */
 export function QuickReviewDecisionBar({
@@ -128,7 +130,7 @@ export function QuickReviewDecisionBar({
   drafts,
   ready,
   approveIssue,
-  autoMergeEnabled,
+  merge,
   canGoBack,
   canGoOn,
   hasFile,
@@ -187,7 +189,7 @@ export function QuickReviewDecisionBar({
         >
           Comment <Key>C</Key>
         </Button>
-        {autoMergeEnabled ? (
+        {!merge ? (
           <Button
             variant="primary"
             size="md"
@@ -216,10 +218,11 @@ export function QuickReviewDecisionBar({
               className="qr-decide qr-decide--go"
               aria-keyshortcuts="Enter"
               aria-disabled={approveIssue ? true : undefined}
+              title={approveIssue ? undefined : merge.hint}
               leading={<GitMerge size={14} strokeWidth={2.25} aria-hidden="true" />}
               onClick={() => onApprove(true)}
             >
-              Approve &amp; auto-merge <Key>Enter</Key>
+              {merge.label} <Key>Enter</Key>
             </Button>
           </>
         )}

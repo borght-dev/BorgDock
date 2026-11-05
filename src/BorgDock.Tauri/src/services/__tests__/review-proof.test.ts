@@ -117,6 +117,34 @@ Generated with [Claude Code](https://claude.ai)
     expect(proof?.entry.body).not.toContain('bot.png');
   });
 
+  it("leaves out a bot's footer and its badge, even without a Claude footer", () => {
+    const entry = descriptionProof({
+      ...pr,
+      body: `## Proof
+Verified on staging.
+![After](https://example.com/after.png)
+
+<!-- codesmith:footer -->
+---
+<a href="https://example.com/track/enable-autofix"><picture><img alt="Autofix with [code]smith" src="https://example.com/autofix-with-codesmith-dark-3x.png" width="190" height="28"></picture></a>
+<sup><a href="https://example.com/pr/1">Open in [code]smith</a> · Need help on this PR?</sup>
+<!-- /codesmith:footer -->`,
+    });
+    const [proof] = reviewProofs([entry!]);
+    expect(proof?.images.map((image) => image.src)).toEqual(['https://example.com/after.png']);
+    expect(proof?.excerpt).toBe('Verified on staging.');
+  });
+
+  it('never takes a linked badge for a screenshot', () => {
+    expect(
+      proofImages(
+        '<a href="https://example.com"><img src="https://example.com/badge.svg" height="20"></a>' +
+          '<a href="https://example.com/full.png"><img src="https://example.com/full.png" height="400"></a>' +
+          '<img src="https://example.com/inline.png" height="24">',
+      ).map((image) => image.src),
+    ).toEqual(['https://example.com/full.png', 'https://example.com/inline.png']);
+  });
+
   it('preserves Claude mentions in prose and image alt text', () => {
     const entry = descriptionProof({
       ...pr,

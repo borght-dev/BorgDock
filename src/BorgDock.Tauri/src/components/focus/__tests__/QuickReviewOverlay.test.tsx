@@ -26,14 +26,26 @@ let mockClient = vi.hoisted(() => ({
   get: vi.fn().mockRejectedValue(new Error('Unavailable')),
 }));
 vi.mock('@/services/github/singleton', () => ({ getClientForRepo: () => mockClient }));
-const reviewCandidates = vi.hoisted(() => ({ prs: [] as PullRequestWithChecks[] }));
-vi.mock('@/stores/pr-store', () => ({
-  usePrStore: Object.assign(
-    (selector: (state: { needsMyReview: () => PullRequestWithChecks[] }) => unknown) =>
-      selector({ needsMyReview: () => reviewCandidates.prs }),
-    { getState: () => ({ refreshPr: vi.fn().mockResolvedValue(null), recordApproval: vi.fn() }) },
-  ),
+/** `prs`: review requested of me; `open`: every open PR (an author's next one comes from these). */
+const reviewCandidates = vi.hoisted(() => ({
+  prs: [] as PullRequestWithChecks[],
+  open: [] as PullRequestWithChecks[],
 }));
+vi.mock('@/stores/pr-store', () => {
+  const state = () => ({
+    needsMyReview: () => reviewCandidates.prs,
+    pullRequests: reviewCandidates.open,
+    username: 'reviewer',
+    refreshPr: vi.fn().mockResolvedValue(null),
+    recordApproval: vi.fn(),
+  });
+  return {
+    usePrStore: Object.assign(
+      (selector: (s: ReturnType<typeof state>) => unknown) => selector(state()),
+      { getState: state },
+    ),
+  };
+});
 vi.mock('@/hooks/useSyntaxHighlight', () => ({ useSyntaxHighlight: () => null }));
 vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({ writeText: vi.fn() }));
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }));
@@ -80,6 +92,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockClient = { ...mockClient };
   reviewCandidates.prs = [];
+  reviewCandidates.open = [];
   resetSeq();
   // Transitions finish at once: the walk unmounts and the overlay closes
   // without waiting for their animations.
@@ -730,6 +743,36 @@ describe('Quick review next PR', () => {
     expect(screen.getByText('Passing checks first')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Review next PR' }));
     expect(useQuickReviewStore.getState().currentPr()).toBe(passing);
+    await waitFor(() => expect(filesButton()).toBeEnabled());
+  });
+
+  it("offers the same author's oldest PR you can merge before the requested one", async () => {
+    const author = pr.pullRequest.authorLogin;
+    const conflicted = makePr({ number: 50, title: 'Has conflicts' });
+    conflicted.pullRequest.mergeable = false;
+    conflicted.pullRequest.createdAt = '2020-01-01T00:00:00Z';
+    const older = makePr({ number: 51, title: 'Oldest mergeable' });
+    older.pullRequest.createdAt = '2020-01-02T00:00:00Z';
+    const newer = makePr({ number: 52, title: 'Newer' });
+    newer.pullRequest.createdAt = '2020-01-03T00:00:00Z';
+    const someoneElse = makePr({ number: 53, title: 'Requested of me' });
+    someoneElse.pullRequest.authorLogin = 'someone-else';
+    reviewCandidates.open = [pr, newer, conflicted, older];
+    reviewCandidates.prs = [someoneElse];
+    useQuickReviewStore.getState().startSinglePr(pr);
+    useQuickReviewStore.getState().advance('skipped');
+    render(<QuickReviewOverlay />);
+
+    expect(screen.getByText('Oldest mergeable')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Review requested PR' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: `Next from ${author}` }));
+    expect(useQuickReviewStore.getState().currentPr()).toBe(older);
+    expect(useQuickReviewStore.getState().run?.author).toBe(author);
+    await waitFor(() => expect(useQuickReviewStore.getState().run?.filling).toBe(false));
+    expect(useQuickReviewStore.getState().queue.map((p) => p.pullRequest.number)).toEqual([51, 52]);
+    expect(useQuickReviewStore.getState().run?.held.map((h) => h.fit.why)).toEqual([
+      'Has merge conflicts',
+    ]);
     await waitFor(() => expect(filesButton()).toBeEnabled());
   });
 });

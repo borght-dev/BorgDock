@@ -361,6 +361,28 @@ describe('bypassMergePullRequest', () => {
     });
   });
 
+  it('refuses to merge a head other than the reviewed one', async () => {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const mockedInvoke = vi.mocked(invoke);
+    mockedInvoke.mockResolvedValueOnce(undefined);
+
+    await bypassMergePullRequest('owner', 'repo', 42, 'abc123');
+
+    expect(mockedInvoke).toHaveBeenCalledWith('run_gh_command', {
+      args: [
+        'pr',
+        'merge',
+        '42',
+        '--squash',
+        '--admin',
+        '--repo',
+        'owner/repo',
+        '--match-head-commit',
+        'abc123',
+      ],
+    });
+  });
+
   it('propagates errors from invoke', async () => {
     const { invoke } = await import('@tauri-apps/api/core');
     const mockedInvoke = vi.mocked(invoke);

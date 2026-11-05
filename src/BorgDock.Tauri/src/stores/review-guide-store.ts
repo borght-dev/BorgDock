@@ -1,11 +1,10 @@
 import { create } from 'zustand';
-import { commands } from '@/generated/commands';
 import { loadTabData, saveTabData } from '@/services/cache';
 import { getPRCommits } from '@/services/github/pulls';
 import { getClientForRepo } from '@/services/github/singleton';
-import { commandData } from '@/services/native-command';
 import type { ReviewSnapshot } from '@/services/quick-review';
 import { buildGuidePrompt, parseGuide, type ReviewGuide } from '@/services/review-guide';
+import { runSummaryAgent } from '@/services/summary-agent';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequest } from '@/types';
 import { parseError } from '@/utils/parse-error';
@@ -103,19 +102,14 @@ export async function ensureReviewGuide(
       pr,
       files: snapshot.files,
       commits: await commitLines(pr),
+      instructions: settings.summaries?.guideInstructions,
+      skip: settings.summaries?.guideSkip,
     });
-    const result = await commandData(
-      commands.runHeadlessPrompt({
-        provider,
-        prompt,
-        cwd: repoPath || null,
-        model: settings.summaries?.model || null,
-        executable:
-          (provider === 'claude' ? settings.agents?.claudePath : settings.agents?.codexPath) ??
-          null,
-        timeoutSeconds: GUIDE_TIMEOUT_SECONDS,
-      }),
-    );
+    const result = await runSummaryAgent(settings, {
+      prompt,
+      cwd: repoPath,
+      timeoutSeconds: GUIDE_TIMEOUT_SECONDS,
+    });
     const guide = parseGuide(
       result.text,
       snapshot.files.map((f) => f.filename),

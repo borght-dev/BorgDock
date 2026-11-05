@@ -14,12 +14,31 @@ export interface ReviewProof {
   freshness: 'current' | 'outdated' | 'unknown';
 }
 
-export function proofImages(body: string): ProofImage[] {
+/**
+ * A tool's footer a bot adds to every PR or comment, between its own markers
+ * (`<!-- codesmith:footer -->` … `<!-- /codesmith:footer -->`). Never proof.
+ */
+const BOT_FOOTER = /<!--\s*([\w.-]+):footer\s*-->[\s\S]*?<!--\s*\/\1:footer\s*-->/gi;
+
+export function withoutBotFooters(body: string): string {
+  return body.replace(BOT_FOOTER, '');
+}
+
+/** Badges and buttons are linked images drawn at most this high, never screenshots. */
+const BADGE_HEIGHT = 40;
+
+function isBadge(image: Element): boolean {
+  const height = Number(image.getAttribute('height'));
+  return !!image.closest('a') && height > 0 && height <= BADGE_HEIGHT;
+}
+
+export function proofImages(markdown: string): ProofImage[] {
+  const body = withoutBotFooters(markdown);
   const images: ProofImage[] = [];
   const doc = new DOMParser().parseFromString(body, 'text/html');
   for (const image of doc.querySelectorAll('img')) {
     const src = image.getAttribute('src') ?? '';
-    if (/^https?:\/\//i.test(src))
+    if (/^https?:\/\//i.test(src) && !isBadge(image))
       images.push({ src, alt: image.getAttribute('alt') || 'Screenshot' });
   }
   for (const match of body.matchAll(
@@ -38,8 +57,8 @@ export function reviewProofs(
 ): ReviewProof[] {
   return entries
     .flatMap((entry): ReviewProof[] => {
-      const body = entry.body ?? '';
-      const source = entry.sourceBody ?? body;
+      const body = withoutBotFooters(entry.body ?? '');
+      const source = withoutBotFooters(entry.sourceBody ?? body);
       const images = proofImages(body);
       const text = `${source}\n${body}`;
       if (
@@ -105,7 +124,7 @@ const PROOF_HEADING =
 export function descriptionProof(
   pr: Pick<PullRequest, 'authorLogin' | 'body' | 'createdAt'>,
 ): ConversationEntry | null {
-  const body = pr.body.split(
+  const body = withoutBotFooters(pr.body).split(
     /^[ \t]*(?:\u{1f916}[ \t]*)?generated[ \t]+with[ \t]+\[?claude\b/imu,
   )[0]!;
   const lines = body.split(/\r?\n/);

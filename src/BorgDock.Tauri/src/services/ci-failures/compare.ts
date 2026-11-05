@@ -1,6 +1,5 @@
-import { commands } from '@/generated/commands';
 import { excerptFromSignals } from '@/services/first-failure';
-import { commandData } from '@/services/native-command';
+import { runSummaryAgent } from '@/services/summary-agent';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { CiGroupDetail } from './types';
 
@@ -64,19 +63,10 @@ export function parseVerdict(text: string): { same: boolean; reason: string } | 
 
 /** Asks the summary agent (Settings → Summaries) whether two groups share a cause. */
 export async function askAgent(prompt: string): Promise<CompareVerdict> {
-  const settings = useSettingsStore.getState().settings;
-  const provider = settings.summaries?.provider ?? 'claude';
-  const executable =
-    provider === 'claude' ? settings.agents?.claudePath : settings.agents?.codexPath;
-  const result = await commandData(
-    commands.runHeadlessPrompt({
-      provider,
-      prompt,
-      model: settings.summaries?.model || null,
-      executable: executable ?? null,
-      timeoutSeconds: 90,
-    }),
-  );
+  const result = await runSummaryAgent(useSettingsStore.getState().settings, {
+    prompt,
+    timeoutSeconds: 90,
+  });
   const verdict = parseVerdict(result.text);
   if (!verdict) throw new Error('The agent did not answer with a verdict');
   return {

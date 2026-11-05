@@ -210,6 +210,30 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
   },
   {
     sectionId: 'agents',
+    anchorId: 'summary-effort',
+    label: 'Summary and review guide effort',
+    keywords: ['quick review', 'guide', 'reasoning', 'thinking', 'claude', 'codex'],
+  },
+  {
+    sectionId: 'agents',
+    anchorId: 'summary-fast',
+    label: 'Codex fast mode',
+    keywords: ['quick review', 'guide', 'summaries', 'speed', 'service tier'],
+  },
+  {
+    sectionId: 'agents',
+    anchorId: 'guide-instructions',
+    label: 'Review guide instructions',
+    keywords: ['quick review', 'guide', 'prompt', 'custom'],
+  },
+  {
+    sectionId: 'agents',
+    anchorId: 'guide-skip',
+    label: 'Files the review guide skips',
+    keywords: ['quick review', 'guide', 'ignore', 'exclude', 'html', 'plans', 'tokens'],
+  },
+  {
+    sectionId: 'agents',
     anchorId: 'review-guide-auto',
     label: 'Write review guides automatically',
     keywords: ['quick review', 'guide', 'summaries', 'claude', 'codex'],
