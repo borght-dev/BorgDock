@@ -120,6 +120,35 @@ describe('Build integrity — Vite rollup inputs', () => {
   });
 });
 
+// Packages whose module identity matters: a second copy brings its own facets,
+// tags and contexts, so an extension or hook from one copy is invisible to the
+// other. Two `@codemirror/language`s turned off SQL highlighting in 4.9.x.
+const SINGLE_COPY_PACKAGES = /^(@codemirror\/[\w-]+|@lezer\/[\w-]+|react|react-dom|scheduler)$/;
+
+/** `"@codemirror/lang-sql/@codemirror/language"` → `['@codemirror/lang-sql', '@codemirror/language']` */
+function lockKeyPath(key: string): string[] {
+  const names: string[] = [];
+  const parts = key.split('/');
+  for (let i = 0; i < parts.length; i++) {
+    names.push(parts[i]?.startsWith('@') ? `${parts[i]}/${parts[++i]}` : (parts[i] ?? ''));
+  }
+  return names;
+}
+
+describe('Build integrity — single-copy packages', () => {
+  it('bun.lock installs one copy of each', () => {
+    const lock = fs.readFileSync(path.join(ROOT, '..', '..', 'bun.lock'), 'utf-8');
+    const packagesBlock = lock.slice(lock.indexOf('"packages": {'));
+    const nestedCopies = [...packagesBlock.matchAll(/^ {4}"([^"]+)": \[/gm)]
+      .map(([, key]) => lockKeyPath(key ?? ''))
+      .filter((names) => names.length > 1 && SINGLE_COPY_PACKAGES.test(names.at(-1) ?? ''))
+      .map((names) => `${names.at(-1)} nested under ${names.slice(0, -1).join(' > ')}`);
+    expect(nestedCopies, 'Run `bun update <package>` so every dependent shares one copy').toEqual(
+      [],
+    );
+  });
+});
+
 describe('Build integrity — Rust window URLs', () => {
   it('every Rust window URL maps to a valid entry point HTML file', () => {
     const validHtmlFiles = new Set(ENTRY_POINTS.map((e) => e.html));

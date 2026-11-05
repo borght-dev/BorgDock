@@ -1,9 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useCallback, useEffect, useRef } from 'react';
+import { createLogger } from '@/services/logger';
 import { sendOsNotification } from '@/services/notification';
 import { useUpdateStore } from '@/stores/update-store';
 import type { AppSettings } from '@/types';
+
+const log = createLogger('updater');
 
 const INITIAL_CHECK_DELAY_MS = 10_000;
 const PERIODIC_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
@@ -82,10 +85,14 @@ export function useAutoUpdate(settings: AppSettings) {
   }, []);
 
   const restartToApply = useCallback(async () => {
+    const store = useUpdateStore.getState();
+    if (store.restarting) return;
+    store.setRestarting(true);
     try {
       await invoke('restart_to_apply_update');
     } catch (err) {
-      console.error('Update restart failed:', err);
+      log.error('restart to apply failed', err);
+      useUpdateStore.getState().setRestarting(false);
       useUpdateStore.getState().setStatusText('Restart failed');
     }
   }, []);

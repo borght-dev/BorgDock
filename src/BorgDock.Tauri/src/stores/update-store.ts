@@ -6,6 +6,7 @@ interface UpdateState {
   downloading: boolean;
   progress: number;
   checking: boolean;
+  restarting: boolean;
   statusText: string;
   currentVersion: string;
 }
@@ -15,6 +16,7 @@ interface UpdateActions {
   setDownloading: (downloading: boolean) => void;
   setProgress: (progress: number) => void;
   setChecking: (checking: boolean) => void;
+  setRestarting: (restarting: boolean) => void;
   setStatusText: (text: string) => void;
   setCurrentVersion: (version: string) => void;
   reset: () => void;
@@ -26,6 +28,7 @@ const initialState: UpdateState = {
   downloading: false,
   progress: 0,
   checking: false,
+  restarting: false,
   statusText: '',
   currentVersion: '',
 };
@@ -36,6 +39,7 @@ export const useUpdateStore = create<UpdateState & UpdateActions>((set) => ({
   setDownloading: (downloading) => set({ downloading }),
   setProgress: (progress) => set({ progress }),
   setChecking: (checking) => set({ checking }),
+  setRestarting: (restarting) => set({ restarting }),
   setStatusText: (text) => set({ statusText: text }),
   setCurrentVersion: (version) => set({ currentVersion: version }),
   reset: () => set(initialState),

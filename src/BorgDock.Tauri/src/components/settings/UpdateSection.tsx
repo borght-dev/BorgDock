@@ -22,8 +22,16 @@ interface Props {
 export function UpdateSection({ updates, onChange }: Props) {
   const settings = useSettingsStore((s) => s.settings);
   const { checkForUpdate, downloadUpdate, restartToApply } = useAutoUpdate(settings);
-  const { checking, downloading, progress, available, version, statusText, currentVersion } =
-    useUpdateStore();
+  const {
+    checking,
+    downloading,
+    restarting,
+    progress,
+    available,
+    version,
+    statusText,
+    currentVersion,
+  } = useUpdateStore();
 
   const update = (partial: Partial<UpdateSettings>) => onChange({ ...updates, ...partial });
 
@@ -71,8 +79,8 @@ export function UpdateSection({ updates, onChange }: Props) {
         </h3>
         <div id="field-check-now" className="flex items-center gap-2 flex-wrap">
           {progress === 100 ? (
-            <Button variant="primary" size="sm" onClick={restartToApply}>
-              Restart to apply
+            <Button variant="primary" size="sm" onClick={restartToApply} disabled={restarting}>
+              {restarting ? 'Restarting…' : 'Restart to apply'}
             </Button>
           ) : available && !downloading ? (
             <Button variant="primary" size="sm" onClick={downloadUpdate} disabled={downloading}>
