@@ -1,5 +1,24 @@
 # Changelog
 
+## 4.9.6 — 2026-11-05
+
+### New Features
+
+- **Review one author's pull requests, oldest first** — Right-click a pull request and choose "Review <author>'s PRs, oldest first", or pick "Next from <author>" when you finish a review. Quick Review lines up the pull requests of theirs you can merge, oldest first, and when you're done it tells you which ones it left out and why: a merge conflict, or a check they broke. ![The end of an author run listing the pull requests it left out and the author's next one](whats-new/4.9.6/author-run.png)
+- **Know whether a pull request broke its E2E tests** — Quick Review reads your E2E workflow's test report and tells you, test by test, whether the pull request is to blame: a spec it changed, a test tagged with its work item, or a test that fails on other pull requests too. When the failures aren't its doing, Approve & merge approves it and merges it past them with your admin rights, and never merges a branch that moved since your review. ![Quick Review saying the failing E2E test also fails on another pull request, with Approve & merge](whats-new/4.9.6/e2e-verdict.png)
+
+### Improvements
+
+- **Shape your review guides** — Choose how hard your summary agent thinks, turn on Codex's fast mode, add your own instructions to every guide, and list files the guide should skip, like HTML plans, so they cost no tokens. ![Summaries settings with effort, guide instructions, skipped files and fast mode](whats-new/4.9.6/guide-settings.png)
+- **Make room for the guide** — Drag the edge of the file tree to widen it, and Quick Review remembers the width. Chapter notes now show in full instead of stopping mid-sentence. ![A wider file tree with a long chapter note shown in full](whats-new/4.9.6/wider-tree.png)
+
+### Bug Fixes
+
+- When a review guide finishes writing, Quick Review starts you at its first chapter instead of leaving you mid-guide on the file you were reading.
+- Writing a review guide with Codex no longer loads your MCP servers or lets the agent use your computer, and a failed run now tells you why instead of showing log noise.
+- Switching the summary provider resets the model, so Codex is never asked for a Claude model.
+- The Proof panel no longer shows bot footers and badges such as "Autofix with [code]smith".
+
 ## 4.9.5 — 2026-11-02
 
 ### New Features

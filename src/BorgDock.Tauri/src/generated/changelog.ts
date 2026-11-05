@@ -4,6 +4,60 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.6",
+    "date": "2026-11-05",
+    "summary": "Review one author's pull requests, oldest first, Know whether a pull request broke its E2E tests, Shape your review guides, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Review one author's pull requests, oldest first",
+        "description": "Right-click a pull request and choose \"Review <author>'s PRs, oldest first\", or pick \"Next from <author>\" when you finish a review. Quick Review lines up the pull requests of theirs you can merge, oldest first, and when you're done it tells you which ones it left out and why: a merge conflict, or a check they broke.",
+        "hero": {
+          "src": "/whats-new/4.9.6/author-run.png",
+          "alt": "The end of an author run listing the pull requests it left out and the author's next one"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Know whether a pull request broke its E2E tests",
+        "description": "Quick Review reads your E2E workflow's test report and tells you, test by test, whether the pull request is to blame: a spec it changed, a test tagged with its work item, or a test that fails on other pull requests too. When the failures aren't its doing, Approve & merge approves it and merges it past them with your admin rights, and never merges a branch that moved since your review.",
+        "hero": {
+          "src": "/whats-new/4.9.6/e2e-verdict.png",
+          "alt": "Quick Review saying the failing E2E test also fails on another pull request, with Approve & merge"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Shape your review guides",
+        "description": "Choose how hard your summary agent thinks, turn on Codex's fast mode, add your own instructions to every guide, and list files the guide should skip, like HTML plans, so they cost no tokens.",
+        "hero": {
+          "src": "/whats-new/4.9.6/guide-settings.png",
+          "alt": "Summaries settings with effort, guide instructions, skipped files and fast mode"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Make room for the guide",
+        "description": "Drag the edge of the file tree to widen it, and Quick Review remembers the width. Chapter notes now show in full instead of stopping mid-sentence.",
+        "hero": {
+          "src": "/whats-new/4.9.6/wider-tree.png",
+          "alt": "A wider file tree with a long chapter note shown in full"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "When a review guide finishes writing, Quick Review starts you at its first chapter instead of leaving you mid-guide on the file you were reading.",
+      "Writing a review guide with Codex no longer loads your MCP servers or lets the agent use your computer, and a failed run now tells you why instead of showing log noise.",
+      "Switching the summary provider resets the model, so Codex is never asked for a Claude model.",
+      "The Proof panel no longer shows bot footers and badges such as \"Autofix with [code]smith\"."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.9.5",
     "date": "2026-11-02",
     "summary": "Follow a guide through your review, Read the changes commit by commit, and Skip the mechanical changes.",

@@ -426,7 +426,7 @@ dependencies = [
 
 [[package]]
 name = "borgdock"
-version = "4.9.5"
+version = "4.9.6"
 dependencies = [
  "base64 0.22.1",
  "blake3",

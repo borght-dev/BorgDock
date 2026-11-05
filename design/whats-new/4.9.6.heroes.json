@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "author-run",
+    "storyId": "focus-quick-review--author-run-complete",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 3000
+  },
+  {
+    "slug": "e2e-verdict",
+    "storyId": "focus-quick-review--e-2-e-failure-not-its-own",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 4000
+  },
+  {
+    "slug": "guide-settings",
+    "storyId": "settings-settingsapp--agents-codex-summaries",
+    "viewport": {
+      "width": 1200,
+      "height": 860
+    },
+    "delay": 3000
+  },
+  {
+    "slug": "wider-tree",
+    "storyId": "focus-quick-review--guide-walk-wide-tree",
+    "viewport": {
+      "width": 1600,
+      "height": 900
+    },
+    "delay": 6000
+  }
+]
