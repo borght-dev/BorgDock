@@ -23,6 +23,7 @@ import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { EASE_OUT, FLIP_MAX_ROWS, flip, motionMs, motionOK } from '@/utils/motion';
 import { minuteNow } from '@/utils/relative-time';
+import { DependencyStrip } from './DependencyUpdates';
 import { type WorkbenchFilter, workbenchFilterCounts, workbenchFilterFor } from './PrFilterControl';
 import { PrRow } from './PrRow';
 import { VIRTUALIZE_THRESHOLD, VirtualizedPrRows } from './VirtualizedPrRows';
@@ -288,6 +289,7 @@ export function PrList() {
     <div className="bd-wb-prs">
       {head}
       <CiFailureStrip />
+      {filter !== 'closed' && !relatedFailure && <DependencyStrip />}
       <div ref={listRef} className="bd-wb-list" data-density={density}>
         {prs.length === 0 && (
           <div className="bd-wb-empty">

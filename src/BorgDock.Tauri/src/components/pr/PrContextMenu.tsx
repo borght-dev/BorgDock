@@ -2,16 +2,24 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useClaudeActions } from '@/hooks/useClaudeActions';
 import { fixLabel, monitorLabel } from '@/services/agent-labels';
 import { startAuthorRun } from '@/services/author-run-session';
+import { holdDependencyApprovals, readMergePreference } from '@/services/dependency-approve';
+import {
+  APPROVE_BLOCK_TEXT,
+  approveBlockOf,
+  dependencyUpdateOf,
+} from '@/services/dependency-updates';
 import { sendOsNotification } from '@/services/notification';
 import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
 import { findRepoConfig } from '@/services/repo-lookup';
 import { requestT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
+import { useDependencyUpdatesStore } from '@/stores/dependency-updates-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestWithChecks } from '@/types';
 import { copyToClipboard } from '@/utils/clipboard';
 import { parseError } from '@/utils/parse-error';
+import { prRowKey } from './pr-card-data';
 
 interface PrContextMenuProps {
   pr: PullRequestWithChecks;
@@ -114,6 +122,10 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
   const repoConfig = findRepoConfig(settings.repos, owner, repo);
   const repoPath = repoConfig?.worktreeBasePath || '';
 
+  const isDependencyUpdate = dependencyUpdateOf(pullRequest) !== null;
+  const approveBlock = isDependencyUpdate ? approveBlockOf(pr, username) : null;
+  const approving = useDependencyUpdatesStore((s) => s.pending.has(prRowKey(pullRequest)));
+
   const hasFailingChecks = failedCheckNames.length > 0;
   const canMerge =
     !pullRequest.isDraft && overallStatus === 'green' && pullRequest.state === 'open';
@@ -135,6 +147,14 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     },
     [onClose],
   );
+
+  const handleApprove = handleAction(async () => {
+    holdDependencyApprovals([pr], readMergePreference());
+  });
+
+  const handleApproveAll = handleAction(async () => {
+    useDependencyUpdatesStore.getState().openSheet();
+  });
 
   const handleAuthorRun = handleAction(async () => {
     await startAuthorRun(pr);
@@ -251,6 +271,23 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
         borderColor: 'var(--color-modal-border)',
       }}
     >
+      {isDependencyUpdate && (
+        <>
+          <MenuItem
+            label={
+              approveBlock
+                ? `Approve (${APPROVE_BLOCK_TEXT[approveBlock].toLowerCase()})`
+                : approving
+                  ? 'Approve (waiting for Undo)'
+                  : 'Approve'
+            }
+            onClick={handleApprove}
+            disabled={approveBlock !== null || approving}
+          />
+          <MenuItem label="Approve all dependency updates…" onClick={handleApproveAll} />
+          <Separator />
+        </>
+      )}
       <MenuItem
         label={`Review ${pullRequest.authorLogin}'s PRs, oldest first`}
         onClick={handleAuthorRun}
