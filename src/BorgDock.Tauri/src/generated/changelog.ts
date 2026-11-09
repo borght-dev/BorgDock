@@ -4,6 +4,35 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.9",
+    "date": "2026-11-09",
+    "summary": "Approve your dependency updates in one go and Approve a dependency update right from the list.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Approve your dependency updates in one go",
+        "description": "When Dependabot or Renovate has pull requests waiting, a strip above your pull requests counts them and opens a sheet that lists each update with its versions and how big the jump is. Patch and minor updates with healthy checks are picked for you; a major update or one with failing checks waits for you to tick it. One click approves them all, and with Merge when checks pass on, each one merges by itself once its checks are green.",
+        "hero": {
+          "src": "/whats-new/4.9.9/dependency-sheet.png",
+          "alt": "The Approve dependency updates sheet with the safe updates picked"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Approve a dependency update right from the list",
+        "description": "A Dependabot or Renovate pull request now offers Approve on its row and at the top of its right-click menu, so you no longer walk its lockfile in Quick Review. Every approval waits a few seconds for Undo, and BorgDock approves only the commit you saw: if the bot pushed again in the meantime, it leaves the pull request alone and tells you.",
+        "hero": {
+          "src": "/whats-new/4.9.9/dependency-row.png",
+          "alt": "A dependency pull request with Approve on its row, under the dependency updates strip"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.9.8",
     "date": "2026-11-09",
     "summary": "",

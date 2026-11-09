@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.9.9 — 2026-11-09
+
+### New Features
+
+- **Approve your dependency updates in one go** — When Dependabot or Renovate has pull requests waiting, a strip above your pull requests counts them and opens a sheet that lists each update with its versions and how big the jump is. Patch and minor updates with healthy checks are picked for you; a major update or one with failing checks waits for you to tick it. One click approves them all, and with Merge when checks pass on, each one merges by itself once its checks are green. ![The Approve dependency updates sheet with the safe updates picked](whats-new/4.9.9/dependency-sheet.png)
+- **Approve a dependency update right from the list** — A Dependabot or Renovate pull request now offers Approve on its row and at the top of its right-click menu, so you no longer walk its lockfile in Quick Review. Every approval waits a few seconds for Undo, and BorgDock approves only the commit you saw: if the bot pushed again in the meantime, it leaves the pull request alone and tells you. ![A dependency pull request with Approve on its row, under the dependency updates strip](whats-new/4.9.9/dependency-row.png)
+
 ## 4.9.8 — 2026-11-09
 
 ### Bug Fixes

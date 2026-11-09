@@ -1,0 +1,20 @@
+[
+  {
+    "slug": "dependency-sheet",
+    "storyId": "pr-dependency-updates--sheet",
+    "viewport": {
+      "width": 1100,
+      "height": 760
+    },
+    "delay": 2500
+  },
+  {
+    "slug": "dependency-row",
+    "storyId": "pr-dependency-updates--strip",
+    "viewport": {
+      "width": 1100,
+      "height": 640
+    },
+    "delay": 2500
+  }
+]
