@@ -1,16 +1,19 @@
-import { GitMerge, MessageSquareText } from 'lucide-react';
+import { Check, GitMerge, MessageSquareText } from 'lucide-react';
 import { type MouseEvent, memo, type ReactNode, useCallback, useMemo } from 'react';
 import { Button, ProgressButton } from '@/components/shared/primitives';
 import { usePrCardActions } from '@/hooks/usePrCardActions';
 import { useProgressAction } from '@/hooks/useProgressAction';
 import { showGroupPrs } from '@/services/ci-failures/actions';
 import { outsideCauseText } from '@/services/ci-failures/lens';
+import { holdDependencyApprovals, readMergePreference } from '@/services/dependency-approve';
+import { approveBlockOf, dependencyUpdateOf } from '@/services/dependency-updates';
 import { staleAfterDaysOf } from '@/services/focus-bucket';
 import { showPr } from '@/services/navigation';
 import { workbenchPrimaryAction } from '@/services/pr-action-resolver';
 import { mergePrWithToast, reviewPr } from '@/services/pr-actions';
 import { openPrDetail } from '@/services/windows';
 import { blockedOf, useCiFailuresStore, usePrCiLens } from '@/stores/ci-failures-store';
+import { useDependencyUpdatesStore } from '@/stores/dependency-updates-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -27,19 +30,30 @@ const ICON = { size: 12, strokeWidth: 2.25, 'aria-hidden': true } as const;
 
 /**
  * The row's trailing action (plans/ui-overhaul-workbench.md, phase 4): only
- * for the two actions that make sense without opening the PR. `null` for
+ * for the actions that make sense without opening the PR. `null` for
  * everything else (failing, own, closed, nothing to do). The Focus board's
  * cards use the same rule (`workbenchPrimaryAction`). A PR red only from
- * failures that are not its doing (`notCaused`) still offers its review.
+ * failures that are not its doing (`notCaused`) still offers its review. A
+ * dependency bot's PR offers Approve where others offer Review; a ready one
+ * still offers Merge.
  */
 export function rowActionFor(
   prWithChecks: PullRequestWithChecks,
   username: string,
   teams: readonly string[] = [],
   notCaused = false,
-): 'review' | 'merge' | null {
-  return workbenchPrimaryAction(prWithChecks, username, teams, { failureNotCaused: notCaused });
+): RowActionKind | null {
+  const primary = workbenchPrimaryAction(prWithChecks, username, teams, {
+    failureNotCaused: notCaused,
+  });
+  if (primary === 'merge') return primary;
+  const approvable =
+    dependencyUpdateOf(prWithChecks.pullRequest) !== null &&
+    approveBlockOf(prWithChecks, username) === null;
+  return approvable ? 'approve' : primary;
 }
+
+type RowActionKind = 'review' | 'merge' | 'approve';
 
 /** Merge through the progress fill: "Merging", then "Merged"; the row updates from the store. */
 function RowMergeButton({ prWithChecks }: { prWithChecks: PullRequestWithChecks }) {
@@ -74,23 +88,25 @@ function RowAction({
   kind,
   prWithChecks,
 }: {
-  kind: 'review' | 'merge';
+  kind: RowActionKind;
   prWithChecks: PullRequestWithChecks;
 }) {
   if (kind === 'merge') return <RowMergeButton prWithChecks={prWithChecks} />;
+  const approve = kind === 'approve';
   return (
     <Button
       variant="primary"
       size="sm"
-      leading={<MessageSquareText {...ICON} />}
-      aria-label={`Review #${prWithChecks.pullRequest.number}`}
-      data-row-action="review"
+      leading={approve ? <Check {...ICON} /> : <MessageSquareText {...ICON} />}
+      aria-label={`${approve ? 'Approve' : 'Review'} #${prWithChecks.pullRequest.number}`}
+      data-row-action={kind}
       onClick={(e) => {
         e.stopPropagation();
-        reviewPr(prWithChecks);
+        if (approve) holdDependencyApprovals([prWithChecks], readMergePreference());
+        else reviewPr(prWithChecks);
       }}
     >
-      Review
+      {approve ? 'Approve' : 'Review'}
     </Button>
   );
 }
@@ -123,8 +139,9 @@ interface PrRowProps {
  *   detail on its Checks tab.
  * - Right-click opens `PrContextMenu`; its confirm dialogs mount here too.
  * - A trailing action on hover, focus and selection when the PR's primary
- *   action is Review (opens Quick Review) or Merge (progress fill, then the
- *   row updates from the store; the result is a toast).
+ *   action is Review (opens Quick Review), Approve (a dependency update,
+ *   with Undo) or Merge (progress fill, then the row updates from the
+ *   store; the result is a toast).
  */
 export const PrRow = memo(function PrRow({
   prWithChecks,
@@ -143,7 +160,10 @@ export const PrRow = memo(function PrRow({
   const staleAfterDays = useSettingsStore((s) => s.settings.ui?.staleAfterDays);
   const actions = usePrCardActions(prWithChecks);
   const lens = usePrCiLens(prWithChecks);
-  const actionKind = rowActionFor(prWithChecks, username, teams, !!lens?.outsideCause);
+  const approving = useDependencyUpdatesStore((s) => s.pending.has(key));
+  const rowAction = rowActionFor(prWithChecks, username, teams, !!lens?.outsideCause);
+  // An approval waiting for Undo or being sent: the toast is where to act on it.
+  const actionKind = approving && rowAction === 'approve' ? null : rowAction;
 
   const isMine = username !== '' && pr.authorLogin.toLowerCase() === username.toLowerCase();
   const cardData = useMemo(() => toPrCardData(prWithChecks, isMine), [prWithChecks, isMine]);

@@ -1,0 +1,191 @@
+/* Dependency updates: the strip above the PR list and the Approve sheet.
+ * Design: design/dependency-approve/mockups.html. Tokens only. */
+
+@layer components {
+  /* ── Strip above the PR list ───────────────────────────── */
+  .bd-dep-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 12px 8px;
+    padding: 7px 10px;
+    border: 1px solid var(--color-subtle-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    font-size: 12px;
+  }
+  .bd-dep-strip__icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--color-success-badge-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-success-badge-bg);
+    color: var(--color-success-badge-fg);
+  }
+  .bd-dep-strip__text {
+    display: grid;
+    flex: 1 1 auto;
+    gap: 1px;
+    min-width: 0;
+  }
+  .bd-dep-strip__text b {
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .bd-dep-strip__text span {
+    overflow: hidden;
+    font-size: 11.5px;
+    color: var(--color-text-tertiary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-dep-strip > button {
+    flex: none;
+  }
+
+  /* ── The sheet (on .bd-dp-sheet) ───────────────────────── */
+  .bd-modal.bd-dep-sheet {
+    max-width: 620px;
+  }
+  .bd-dep-sheet__pick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+  }
+  .bd-dp-sheet > .bd-dep-sheet__body {
+    gap: 4px;
+    padding: 6px 0 10px;
+  }
+  .bd-dep-sheet__repo-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 8px 18px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+  .bd-dep-sheet__repo-head::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--color-subtle-border);
+  }
+  .bd-dep-sheet__repo-head span {
+    font-variant-numeric: tabular-nums;
+  }
+  .bd-dep-row {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) auto 52px 48px;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 18px;
+    font-size: 12.5px;
+    cursor: default;
+    transition: background-color var(--motion-fast) var(--ease-std);
+  }
+  .bd-dep-row:hover:not([data-blocked]) {
+    background: var(--color-surface-hover);
+  }
+  .bd-dep-row[data-blocked] {
+    color: var(--color-text-tertiary);
+  }
+  .bd-dep-row__box {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    accent-color: var(--color-accent);
+  }
+  .bd-dep-row__box:disabled {
+    opacity: 0.4;
+  }
+  .bd-dep-row__name {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+  }
+  .bd-dep-row__name b,
+  .bd-dep-row__name span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-dep-row__name b {
+    font-family: var(--font-code);
+    font-size: 12px;
+    font-weight: 550;
+  }
+  .bd-dep-row__name span {
+    font-size: 11.5px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-dep-row__name [data-tone="bad"] {
+    color: var(--color-error-badge-fg);
+  }
+  .bd-dep-row__name [data-tone="warn"] {
+    color: var(--color-warning-badge-fg);
+  }
+  .bd-dep-row__ver {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-family: var(--font-code);
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+  .bd-dep-row__to {
+    color: var(--color-text-primary);
+  }
+  .bd-dep-row__num {
+    font-family: var(--font-code);
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    text-align: right;
+  }
+  .bd-dep-bump {
+    justify-self: start;
+    padding: 1px 7px;
+    border: 1px solid var(--color-neutral-badge-border);
+    border-radius: var(--radius-pill);
+    background: var(--color-neutral-badge-bg);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--color-neutral-badge-fg);
+  }
+  .bd-dep-bump[data-bump="patch"] {
+    border-color: var(--color-success-badge-border);
+    background: var(--color-success-badge-bg);
+    color: var(--color-success-badge-fg);
+  }
+  .bd-dep-bump[data-bump="minor"] {
+    border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+  }
+  .bd-dep-bump[data-bump="major"] {
+    border-color: var(--color-warning-badge-border);
+    background: var(--color-warning-badge-bg);
+    color: var(--color-warning-badge-fg);
+  }
+  .bd-dep-sheet__foot {
+    align-items: center;
+  }
+  .bd-dep-sheet__merge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: auto;
+    font-size: 12.5px;
+    color: var(--color-text-primary);
+  }
+}

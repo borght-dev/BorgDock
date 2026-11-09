@@ -5,6 +5,7 @@ import { LaunchGuardDialog } from '@/components/ci-failures/LaunchGuardDialog';
 import { MergeToast } from '@/components/focus';
 import { MainWindow } from '@/components/layout/MainWindow';
 import { ViewStack } from '@/components/layout/ViewStack';
+import { DependencySheetHost } from '@/components/pr/DependencyUpdates';
 import { T3PrThreadDialog } from '@/components/pr/T3PrThreadDialog';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ToastViewport } from '@/components/shared/Toast';
@@ -309,6 +310,7 @@ export default function App() {
       <WorkstreamSheets />
       <LaunchGuardDialog />
       <CiSheetHost />
+      <DependencySheetHost />
     </div>
   );
 }

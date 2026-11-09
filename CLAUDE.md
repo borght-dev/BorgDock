@@ -396,6 +396,13 @@ Approve (card, walk, composer) moves the deck on at once and posts the review on
 
 The walk's design reference is `design/quick-review-v2/mockups.html`; the stories `WalkWithProof`, `AllFilesReviewed` and `ReReviewSinceLastReview` render its three frames.
 
+## Dependency updates: Approve without Quick Review
+
+A Dependabot or Renovate PR gets Approve on its row (instead of Review; a ready one keeps Merge), two items at the top of its context menu, and the strip above the PR list opens the bulk sheet. Design and rules: `design/dependency-approve/mockups.html`.
+
+- `services/dependency-updates.ts` is pure: who counts as a bot (`dependabot`/`renovate`, with or without `[bot]`), versions from the title or body (Dependabot's "Updates \`x\` from a to b" lines, Renovate's `` `a` -> `b` `` table), the bump, what blocks an approval and what keeps an update out of Safe.
+- `services/dependency-approve.ts` sends: Undo toast (`APPROVAL_UNDO_MS`), then one PR at a time, each re-read first and approved only at the head that was on screen (`commit_id`), auto-merge with the same expected head. "Merge when checks pass" lives in `localStorage` (`borgdock-dependency-merge`). `dependency-updates-store` holds the sheet flag and the pending keys that hide a row's Approve.
+
 ## Quick Review reading order: Guide, Folders, Commits
 
 The walk's tree reads a PR in one of three orders (`ReadingOrderSwitch`, `O` cycles them, kept in `localStorage` as `borgdock-quick-review-order`, Guide by default).

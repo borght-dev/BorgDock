@@ -228,6 +228,39 @@ describe('PrRow action slot', () => {
       listPr({ number: 1, title: 'x', repo: 'a/b', checks: { total: 3, fail: 1 } }),
       null,
     ],
+    [
+      "a dependency bot's PR (approve, in place of review)",
+      listPr({
+        number: 10,
+        title: 'Bump lodash from 4.17.20 to 4.17.21',
+        repo: 'a/b',
+        author: 'dependabot',
+        requestedReviewers: [FIXTURE_ME],
+      }),
+      'approve',
+    ],
+    [
+      "a dependency bot's ready PR (merge)",
+      listPr({
+        number: 11,
+        title: 'Bump lodash from 4.17.20 to 4.17.21',
+        repo: 'a/b',
+        author: 'dependabot[bot]',
+        reviewStatus: 'approved',
+      }),
+      'merge',
+    ],
+    [
+      "a dependency bot's PR with conflicts",
+      listPr({
+        number: 12,
+        title: 'Bump lodash from 4.17.20 to 4.17.21',
+        repo: 'a/b',
+        author: 'renovate',
+        mergeable: false,
+      }),
+      null,
+    ],
     ['my PR waiting on review (checkout)', listPr({ number: 2, title: 'x', repo: 'a/b' }), null],
     [
       'a PR by someone else (open)',
