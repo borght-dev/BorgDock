@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { duplicateEditorModules } from '../../scripts/check-editor-packages';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -136,6 +137,10 @@ function lockKeyPath(key: string): string[] {
 }
 
 describe('Build integrity — single-copy packages', () => {
+  it('installed editor packages resolve the same module instances', () => {
+    expect(duplicateEditorModules(ROOT)).toEqual({});
+  });
+
   it('bun.lock installs one copy of each', () => {
     const lock = fs.readFileSync(path.join(ROOT, '..', '..', 'bun.lock'), 'utf-8');
     const packagesBlock = lock.slice(lock.indexOf('"packages": {'));

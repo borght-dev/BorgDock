@@ -16,6 +16,7 @@ const PROTOCOL_VERSION: &str = "2";
 const HTTP_TIMEOUT: Duration = Duration::from_secs(20);
 const SOCKET_OPEN_TIMEOUT: Duration = Duration::from_secs(10);
 const RPC_TIMEOUT: Duration = Duration::from_secs(30);
+const CHECKOUT_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// The id of the one request each socket carries.
 const REQUEST_ID: &str = "1";
@@ -93,12 +94,13 @@ impl Client {
     /// Call one RPC and wait for its result.
     pub async fn rpc(&self, tag: &str, payload: Value) -> Result<Value, String> {
         let started = std::time::Instant::now();
-        let result = tokio::time::timeout(RPC_TIMEOUT, self.rpc_once(tag, payload))
+        let timeout = rpc_timeout(tag);
+        let result = tokio::time::timeout(timeout, self.rpc_once(tag, payload))
             .await
             .unwrap_or_else(|_| {
                 Err(format!(
                     "T3 did not answer {tag} within {} seconds",
-                    RPC_TIMEOUT.as_secs()
+                    timeout.as_secs()
                 ))
             });
         log::info!(
@@ -160,6 +162,13 @@ impl Client {
         };
         let _ = socket.close(None).await;
         outcome
+    }
+}
+
+fn rpc_timeout(tag: &str) -> Duration {
+    match tag {
+        "git.preparePullRequestThread" => CHECKOUT_TIMEOUT,
+        _ => RPC_TIMEOUT,
     }
 }
 
@@ -225,7 +234,7 @@ fn describe_rpc_failure(cause: &Value) -> String {
             if error["_tag"] == "EnvironmentAuthorizationError" {
                 return format!(
                     "T3 denied the command ({}). {REPAIR_HINT}",
-                    plain_text(&error["requiredScope"])
+                    required_permission(error)
                 );
             }
             if let Some(message) = error["message"].as_str() {
@@ -250,7 +259,7 @@ fn describe_http_failure(path: &str, status: u16, body: &str) -> String {
         401 => format!("T3 no longer accepts BorgDock's token. {REPAIR_HINT}"),
         403 => format!(
             "T3 denied {path} ({}). {REPAIR_HINT}",
-            plain_text(&detail["requiredScope"])
+            required_permission(&detail)
         ),
         404 => format!("T3 has no such resource ({path})"),
         _ => match detail["reason"].as_str() {
@@ -260,9 +269,32 @@ fn describe_http_failure(path: &str, status: u16, body: &str) -> String {
     }
 }
 
+fn required_permission(error: &Value) -> String {
+    plain_text(
+        error
+            .get("requiredPermission")
+            .filter(|value| {
+                value
+                    .as_str()
+                    .is_some_and(|permission| !permission.is_empty())
+            })
+            .unwrap_or(&error["requiredScope"]),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn preparing_a_pull_request_allows_time_for_a_large_checkout() {
+        assert_eq!(
+            rpc_timeout("git.preparePullRequestThread"),
+            Duration::from_secs(300)
+        );
+        assert_eq!(rpc_timeout("orchestration.launchThread"), RPC_TIMEOUT);
+        assert_eq!(rpc_timeout("orchestration.dispatchCommand"), RPC_TIMEOUT);
+    }
 
     #[test]
     fn the_socket_url_follows_the_origin_scheme_and_encodes_the_ticket() {
@@ -320,6 +352,21 @@ mod tests {
         let message = describe_rpc_failure(&cause);
         assert!(message.contains("orchestration:operate"));
         assert!(message.contains("Pair BorgDock"));
+    }
+
+    #[test]
+    fn authorization_errors_show_the_required_permission_over_its_legacy_scope() {
+        let error = json!({
+            "_tag": "EnvironmentAuthorizationError",
+            "requiredScope": "orchestration:operate",
+            "requiredPermission": "source-control:write"
+        });
+        let cause = json!([{ "_tag": "Fail", "error": error }]);
+        assert!(describe_rpc_failure(&cause).contains("source-control:write"));
+        assert!(
+            describe_http_failure("/api/projects/mutate", 403, &error.to_string())
+                .contains("source-control:write")
+        );
     }
 
     #[test]

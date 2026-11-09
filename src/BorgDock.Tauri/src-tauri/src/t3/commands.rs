@@ -15,7 +15,7 @@ use uuid::Uuid;
 const TOKEN_EXCHANGE_GRANT_TYPE: &str = "urn:ietf:params:oauth:grant-type:token-exchange";
 const BOOTSTRAP_TOKEN_TYPE: &str = "urn:t3:params:oauth:token-type:environment-bootstrap";
 const ACCESS_TOKEN_TYPE: &str = "urn:ietf:params:oauth:token-type:access_token";
-const SCOPES: &str = "orchestration:read orchestration:operate";
+const SCOPES: &str = "orchestration:read orchestration:operate source-control:write";
 
 const SHELL_PATH: &str = "/api/orchestration/shell";
 const DEFAULT_RUNTIME_MODE: &str = "full-access";
@@ -163,6 +163,8 @@ pub async fn t3_pair_local(executable: Option<String>) -> Result<(), String> {
                 "orchestration:read",
                 "--scope",
                 "orchestration:operate",
+                "--scope",
+                "source-control:write",
                 "--ttl",
                 "30d",
                 "--label",
@@ -542,7 +544,12 @@ pub async fn t3_open_pr_thread(
             json!({ "type": "existing_worktree", "worktreePath": worktree_path, "branch": branch })
         }
     };
-    let (selection, runtime_mode) = shell::thread_defaults(&shell, &request.project_id);
+    let config = client.rpc("server.getConfig", json!({})).await?;
+    let (selection, runtime_mode) = shell::thread_defaults(
+        &shell,
+        &request.project_id,
+        config["settings"].get("defaultModelSelection"),
+    );
     let thread_id = Uuid::new_v4().to_string();
     client
         .rpc(
@@ -762,7 +769,7 @@ async fn launch_with_client(client: &Client, mut request: LaunchRequest) -> Resu
             base_ref: Some(base.to_string()),
         };
     }
-    let (_, runtime_mode) = shell::thread_defaults(&shell, &project_id);
+    let (_, runtime_mode) = shell::thread_defaults(&shell, &project_id, None);
     let thread_id = Uuid::new_v4().to_string();
     client
         .rpc(
@@ -1005,10 +1012,13 @@ mod tests {
     }
 
     #[test]
-    fn token_exchange_requests_an_access_token_with_both_scopes() {
+    fn token_exchange_requests_thread_and_source_control_permissions() {
         let form = token_exchange_form("PAIRING-CREDENTIAL");
         assert!(form.contains(&("requested_token_type", ACCESS_TOKEN_TYPE)));
-        assert!(form.contains(&("scope", "orchestration:read orchestration:operate")));
+        assert!(form.contains(&(
+            "scope",
+            "orchestration:read orchestration:operate source-control:write"
+        )));
     }
 
     #[test]

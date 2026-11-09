@@ -702,9 +702,13 @@ pub fn unchanged(sequence: u64) -> Snapshot {
     }
 }
 
-/// What a new thread on `project_id` starts with: the project's own default
-/// model, else the model and runtime mode of the thread touched last.
-pub fn thread_defaults(shell: &Value, project_id: &str) -> (Option<Value>, Option<String>) {
+/// Prefer the server's configured model, then legacy project/thread defaults.
+/// The runtime mode follows the thread touched last.
+pub fn thread_defaults(
+    shell: &Value,
+    project_id: &str,
+    server_default: Option<&Value>,
+) -> (Option<Value>, Option<String>) {
     let project_default = parse_projects(shell)
         .into_iter()
         .find(|project| project.id == project_id)
@@ -722,7 +726,13 @@ pub fn thread_defaults(shell: &Value, project_id: &str) -> (Option<Value>, Optio
     let runtime_mode = latest
         .and_then(|thread| thread["runtimeMode"].as_str())
         .map(str::to_string);
-    (project_default.or(latest_selection), runtime_mode)
+    let configured = server_default
+        .filter(|selection| selection.is_object())
+        .cloned();
+    (
+        configured.or(project_default).or(latest_selection),
+        runtime_mode,
+    )
 }
 
 /// The checkout `project_id` works in.
@@ -1092,11 +1102,28 @@ mod tests {
     #[test]
     fn new_threads_start_with_the_project_default_or_the_latest_thread() {
         let shell = shell();
-        let (selection, runtime_mode) = thread_defaults(&shell, "p2");
+        let (selection, runtime_mode) = thread_defaults(&shell, "p2", None);
         assert_eq!(selection.unwrap()["instanceId"], "codex");
         assert_eq!(runtime_mode.as_deref(), Some("full-access"));
-        let (fallback, _) = thread_defaults(&shell, "p1");
+        let (fallback, _) = thread_defaults(&shell, "p1", None);
         assert_eq!(fallback.unwrap()["options"][0]["value"], "high");
+    }
+
+    #[test]
+    fn the_server_default_model_wins_over_stale_project_and_thread_models() {
+        let shell = shell();
+        let default = json!({
+            "instanceId": "codex",
+            "model": "preferred-model",
+            "options": [
+                { "id": "reasoningEffort", "value": "high" },
+                { "id": "serviceTier", "value": "priority" }
+            ]
+        });
+        let (selection, _) = thread_defaults(&shell, "p2", Some(&default));
+        assert_eq!(selection, Some(default));
+        let (fallback, _) = thread_defaults(&shell, "p2", Some(&Value::Null));
+        assert_eq!(fallback.unwrap()["instanceId"], "codex");
     }
 
     #[test]
