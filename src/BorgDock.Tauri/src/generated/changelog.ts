@@ -4,6 +4,19 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.8",
+    "date": "2026-11-09",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Opening a pull request in T3 now gives large repositories up to five minutes to prepare the checkout, instead of timing out after thirty seconds.",
+      "New pull request threads use your T3 environment's default model and reasoning settings.",
+      "Pairing with T3 now includes the permissions needed to prepare a pull request checkout, and permission errors name the missing permission.",
+      "Builds now catch duplicate editor packages that could make Notes show an extension error instead of opening your note."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.9.7",
     "date": "2026-11-05",
     "summary": "",
