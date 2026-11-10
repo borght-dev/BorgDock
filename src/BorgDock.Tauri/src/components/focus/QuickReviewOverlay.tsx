@@ -627,7 +627,6 @@ function QuickReviewWorkspace({
     prepare,
     submit,
   } = useQuickReviewDocument(pr.pullRequest);
-  usePrefetchReviewSnapshot(snapshot && !loading ? peeks[0]?.pullRequest : undefined);
   const state = useQuickReviewStore((s) => s.state);
   const error = useQuickReviewStore((s) => s.error);
   const heldApproval = useHeldApproval();
@@ -642,6 +641,9 @@ function QuickReviewWorkspace({
   const [describing, setDescribing] = useState(false);
   const [scope, setScope] = useState<Scope>('since');
   const [order, setOrder] = useState<ReadingOrder>(readOrder);
+  usePrefetchReviewSnapshot(snapshot && !loading ? peeks[0]?.pullRequest : undefined, {
+    guide: order === 'guide',
+  });
   const [commitSha, setCommitSha] = useState<string | null>(null);
   const [openedFolds, setOpenedFolds] = useState<ReadonlySet<string>>(() => new Set());
   const [reattachId, setReattachId] = useState<string | null>(null);

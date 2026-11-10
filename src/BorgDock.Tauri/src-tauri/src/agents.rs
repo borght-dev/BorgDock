@@ -183,9 +183,19 @@ pub async fn run_headless_prompt(
             // `--bare` deliberately is not used: current Claude Code disables
             // OAuth/keychain auth in bare mode, while BorgDock must reuse the
             // user's CLI subscription and never ask for an API key.
+            //
+            // A summary reads the prompt and answers. `--restricted` still
+            // connects the account's MCP servers and lists its skills and
+            // some twenty tools: seconds of startup and ~25k tokens a run
+            // for things a summary never calls. It keeps the three tools
+            // that look around the checkout.
             command.args([
                 "-p",
                 "--restricted",
+                "--strict-mcp-config",
+                "--disable-slash-commands",
+                "--tools",
+                "Read,Grep,Glob",
                 "--no-session-persistence",
                 "--output-format",
                 "json",

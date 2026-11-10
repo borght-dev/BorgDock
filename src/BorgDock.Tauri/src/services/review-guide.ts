@@ -1,4 +1,6 @@
+import { dependencyBotOf } from '@/services/dependency-updates';
 import { isGeneratedPath, type ReviewFileGroup, reviewFileCategory } from '@/services/quick-review';
+import { classifyNoise } from '@/services/review-noise';
 import type { DiffFile, PullRequest } from '@/types';
 import { matchesAnyGlob } from '@/utils/glob';
 
@@ -33,6 +35,41 @@ export interface ReviewChapter {
 
 /** Chapter of the files the agent left out. */
 export const OTHER_CHAPTER = 'Other changes';
+
+/**
+ * A PR with at most this many changed lines reads faster than its guide is
+ * written. Of the first 33 guides, the four at or under 24 lines had nothing
+ * to order; the next one up had 129.
+ */
+const SIMPLE_LINES = 60;
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+/**
+ * Why this PR is read without a guide, or null when one is worth writing.
+ * Without `files` it judges by the PR's own totals, which count generated
+ * files too: null then means "read the files and ask again".
+ */
+export function guideSkipReason(pr: PullRequest, files?: readonly DiffFile[]): string | null {
+  if (dependencyBotOf(pr.authorLogin)) return 'A dependency update';
+  if (!files) {
+    const lines = pr.additions + pr.deletions;
+    return pr.changedFiles > 0 && lines <= SIMPLE_LINES
+      ? `A small change: ${plural(lines, 'line')} in ${plural(pr.changedFiles, 'file')}`
+      : null;
+  }
+  const noise = classifyNoise(files);
+  const read = files.filter(
+    (file) => !isGeneratedPath(file.filename) && !noise.get(file.filename)?.mechanical,
+  );
+  if (read.length === 0) return 'Only generated files and mechanical changes';
+  const lines = read.reduce((sum, file) => sum + file.additions + file.deletions, 0);
+  return lines <= SIMPLE_LINES
+    ? `A small change: ${plural(lines, 'line')} in ${plural(read.length, 'file')}`
+    : null;
+}
 
 /**
  * Prompt budget in characters. A patch longer than `FILE_BUDGET` is cut, and
@@ -80,7 +117,12 @@ export interface GuideInput {
   skip?: readonly string[];
 }
 
-/** The prompt for the guide: the PR, its commits and its patches, and the JSON shape to answer with. */
+/**
+ * The prompt for the guide: the PR, its commits and its patches, and the JSON
+ * shape to answer with. Each file gets a number (its place in `files`, from 1)
+ * and the answer names files by that number: writing the answer is most of
+ * the wait, and paths were a third of it.
+ */
 export function buildGuidePrompt({
   pr,
   files,
@@ -92,8 +134,8 @@ export function buildGuidePrompt({
     files.filter((file) => matchesAnyGlob(file.filename, skip)).map((f) => f.filename),
   );
   const shares = patchShares(files, skipped);
-  const parts = files.map((file) => {
-    const head = `### ${file.filename} (${file.status}, +${file.additions} -${file.deletions})`;
+  const parts = files.map((file, index) => {
+    const head = `### [${index + 1}] ${file.filename} (${file.status}, +${file.additions} -${file.deletions})`;
     if (skipped.has(file.filename)) return `${head}\nSkipped by the reviewer: do not open it.`;
     if (isGeneratedPath(file.filename)) return `${head}\nGenerated or lockfile: patch left out.`;
     if (!file.patch) return `${head}\nNo patch (binary, renamed only, or too large).`;
@@ -112,7 +154,7 @@ export function buildGuidePrompt({
     'Do not modify any files. You may read files in the working directory for context, but the diff below is the truth about this PR.',
     '',
     'Answer with JSON only, no prose and no code fence, in exactly this shape:',
-    '{"summary": string, "chapters": [{"title": string, "intent": string, "check": string, "files": [{"path": string, "why": string}]}], "focus": [string]}',
+    '{"summary": string, "chapters": [{"title": string, "intent": string, "check": string, "files": [[number, string]]}], "focus": [string]}',
     '',
     'Rules:',
     '- summary: two or three plain sentences: what the PR changes for its users and why.',
@@ -120,7 +162,7 @@ export function buildGuidePrompt({
     '- title: a few words naming what the chapter does ("Hook exposes hidden fields"). No numbering.',
     '- intent: one sentence, why this part exists.',
     '- check: one sentence on what a reviewer should verify in this chapter, or "" when nothing stands out.',
-    '- files: every changed file below appears in exactly one chapter, with its path exactly as given. Put tests in the chapter of the code they test, after that code. Generated files and lockfiles go in the chapter they belong to, last.',
+    '- files: every changed file below appears in exactly one chapter, as [number, why]. The number is the one in square brackets before its path; never write the path. Put tests in the chapter of the code they test, after that code. Generated files and lockfiles go in the chapter they belong to, last.',
     '- why: a short phrase, what changed in that file and why.',
     '- focus: up to three risks a reviewer must not miss, most important first; [] when the PR is routine.',
     '- Write plainly, no marketing words, no emoji.',
@@ -170,27 +212,41 @@ function jsonOf(answer: string): unknown {
 }
 
 /**
- * The file a path in the answer names: exact, then ignoring case, then the
- * one changed file that ends with it (agents drop leading folders).
+ * The file an answer names: by its number in the prompt, or by path for an
+ * agent that wrote one anyway: exact, then ignoring case, then the one
+ * changed file that ends with it (agents drop leading folders).
  */
 function resolver(paths: readonly string[]) {
   const exact = new Set(paths);
   const lower = new Map(paths.map((p) => [p.toLowerCase(), p]));
-  return (raw: string): string | null => {
-    const path = raw.replace(/^\.?\//, '');
+  return (named: unknown): string | null => {
+    if (typeof named === 'number') return paths[named - 1] ?? null;
+    const path = text(named).replace(/^\.?\//, '');
+    if (!path) return null;
     if (exact.has(path)) return path;
     const folded = lower.get(path.toLowerCase());
     if (folded) return folded;
+    if (/^\d+$/.test(path)) return paths[Number(path) - 1] ?? null;
     const tail = paths.filter((p) => p.toLowerCase().endsWith(`/${path.toLowerCase()}`));
     return tail.length === 1 ? tail[0]! : null;
   };
 }
 
+/** A chapter's file entry: `[number, why]`, or the older `{path, why}` and bare path. */
+function fileEntry(item: unknown): { named: unknown; why: string } {
+  if (Array.isArray(item)) return { named: item[0], why: text(item[1]) };
+  if (item && typeof item === 'object') {
+    const entry = item as Record<string, unknown>;
+    return { named: entry.path, why: text(entry.why) };
+  }
+  return { named: item, why: '' };
+}
+
 /**
- * Reads the agent's answer into a guide over `paths`: every changed file in
- * exactly one chapter (the first that names it), files it left out in a last
- * "Other changes" chapter, paths it made up dropped. Throws when nothing
- * usable is left.
+ * Reads the agent's answer into a guide over `paths`, in the order the
+ * prompt numbered them: every changed file in exactly one chapter (the first
+ * that names it), files it left out in a last "Other changes" chapter, files
+ * it made up dropped. Throws when nothing usable is left.
  */
 export function parseGuide(
   answer: string,
@@ -209,11 +265,11 @@ export function parseGuide(
     const chapter = entry as Record<string, unknown>;
     const files: ReviewChapter['files'] = [];
     for (const item of Array.isArray(chapter.files) ? chapter.files : []) {
-      const named = typeof item === 'string' ? { path: item } : (item as Record<string, unknown>);
-      const path = resolve(text(named.path));
+      const { named, why } = fileEntry(item);
+      const path = resolve(named);
       if (!path || placed.has(path)) continue;
       placed.add(path);
-      files.push({ path, why: text(named.why) });
+      files.push({ path, why });
     }
     const title = text(chapter.title);
     if (!files.length || !title) continue;

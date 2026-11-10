@@ -644,6 +644,9 @@ pub struct SummarySettings {
     /// Quick Review writes a PR's review guide as soon as it opens; off, only on a click.
     #[serde(default = "default_true")]
     pub auto_review_guide: bool,
+    /// Guides are written ahead, in the background, for every open pull request I can review.
+    #[serde(default)]
+    pub background_review_guides: bool,
     /// Reasoning effort the summary agent runs with. Absent: the CLI's default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effort: Option<String>,
@@ -672,6 +675,7 @@ impl Default for SummarySettings {
             model: default_summary_model(),
             enabled: true,
             auto_review_guide: true,
+            background_review_guides: false,
             effort: None,
             fast: false,
             guide_instructions: None,
@@ -984,5 +988,6 @@ mod redesign_field_tests {
         assert_eq!(s.summaries.model, "sonnet");
         assert!(s.summaries.enabled);
         assert!(s.summaries.auto_review_guide);
+        assert!(!s.summaries.background_review_guides);
     }
 }

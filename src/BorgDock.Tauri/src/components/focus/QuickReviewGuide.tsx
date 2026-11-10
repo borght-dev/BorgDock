@@ -58,6 +58,14 @@ export function ReadingOrderSwitch({
                 Write guide
               </Button>
             </>
+          ) : guide.status === 'skipped' ? (
+            <>
+              <BookOpenText {...ICON} />
+              <span>{guide.reason}.</span>
+              <Button variant="ghost" size="sm" onClick={onWrite}>
+                Write guide
+              </Button>
+            </>
           ) : guide.status === 'loading' ? (
             <>
               <LoaderCircle {...ICON} className="qr-spin" />
@@ -170,6 +178,13 @@ export function QuickReviewGuideSection({
           <span>
             {agentName(entry.provider)} can read the diff and order the files into chapters.
           </span>
+          <Button variant="secondary" size="sm" onClick={onWrite}>
+            Write guide
+          </Button>
+        </p>
+      ) : entry.status === 'skipped' ? (
+        <p className="qr-guide__pending">
+          <span>{entry.reason}. It reads faster than a guide is written.</span>
           <Button variant="secondary" size="sm" onClick={onWrite}>
             Write guide
           </Button>

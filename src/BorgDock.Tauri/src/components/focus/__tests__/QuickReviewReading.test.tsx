@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { commands } from '@/generated/commands';
 import { loadTabData } from '@/services/cache';
@@ -9,7 +9,7 @@ import {
   getPRReviewDetails,
 } from '@/services/github/pulls';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
-import { useReviewGuideStore } from '@/stores/review-guide-store';
+import { guideKey, useReviewGuideStore } from '@/stores/review-guide-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { QuickReviewOverlay } from '../QuickReviewOverlay';
 import { makePr, resetSeq } from './helpers';
@@ -58,7 +58,8 @@ const files = [
     filename: 'src/Workspace.tsx',
     sha: 'w',
     status: 'modified',
-    additions: 3,
+    // Enough changed lines for a guide: a small change gets none.
+    additions: 80,
     deletions: 2,
     patch:
       '@@ -1,2 +1,2 @@\n-if (x) {\n-return y;\n+if (x) {\n+    return y;\n@@ -20,1 +20,2 @@\n context();\n+renderHiddenFields();',
@@ -108,7 +109,16 @@ const GUIDE = {
   ],
 };
 
-function guideAnswer(text = JSON.stringify(GUIDE)) {
+/** The agent's answer for `GUIDE`: files by their number in the prompt. */
+const ANSWER = {
+  ...GUIDE,
+  chapters: [
+    { ...GUIDE.chapters[0]!, files: [[1, 'returns hiddenFields']] },
+    { ...GUIDE.chapters[1]!, files: [[4, 'new section']] },
+  ],
+};
+
+function guideAnswer(text = JSON.stringify(ANSWER)) {
   return {
     status: 'ok' as const,
     data: { text, provider: 'claude', model: 'sonnet', durationMs: 900 },
@@ -190,7 +200,47 @@ describe('Review guide', () => {
     );
     const prompt = vi.mocked(commands.runHeadlessPrompt).mock.calls[0]![0];
     expect(prompt.provider).toBe('claude');
-    expect(prompt.prompt).toContain('### src/Workspace.tsx');
+    expect(prompt.prompt).toContain('### [4] src/Workspace.tsx');
+  });
+
+  describe('with another PR queued', () => {
+    let next = makePr();
+    /** `headSha` is the test's own: a snapshot an earlier test loaded would be reused. */
+    function startQueue(headSha: string) {
+      next = makePr({ changedFiles: files.length, title: 'Round per shift', headSha });
+      vi.mocked(getPRReviewDetails).mockImplementation(async (_client, _owner, _repo, number) => ({
+        pr: number === next.pullRequest.number ? next.pullRequest : pr.pullRequest,
+        baseSha: 'base',
+      }));
+      useQuickReviewStore.getState().startSession([pr, next]);
+      render(<QuickReviewOverlay />);
+    }
+    function nextGuide() {
+      return useReviewGuideStore.getState().entries[guideKey(next.pullRequest)];
+    }
+
+    it('writes the next guide while you read this one', async () => {
+      startQueue('ahead');
+      await screen.findByText('Shows which saved filters the layout hides.');
+      await waitFor(() => expect(nextGuide()?.status).toBe('ready'));
+      const prompts = vi.mocked(commands.runHeadlessPrompt).mock.calls.map((c) => c[0].prompt);
+      expect(prompts).toHaveLength(2);
+      expect(prompts[1]).toContain(`# Round per shift (#${next.pullRequest.number})`);
+    });
+
+    it('leaves the next guide alone in Folders order', async () => {
+      localStorage.setItem('borgdock-quick-review-order', 'folders');
+      startQueue('folders');
+      // Its files are loaded ahead (two reads of the PR around them), its guide is not.
+      await waitFor(() =>
+        expect(
+          vi.mocked(getPRReviewDetails).mock.calls.filter((c) => c[3] === next.pullRequest.number),
+        ).toHaveLength(2),
+      );
+      await act(async () => {});
+      expect(nextGuide()).toBeUndefined();
+      expect(commands.runHeadlessPrompt).not.toHaveBeenCalled();
+    });
   });
 
   it('starts the walk at the top of the guide once it is written', async () => {
@@ -252,6 +302,22 @@ describe('Review guide', () => {
     await within(tree()).findByText('3 chapters by Claude · sonnet');
     expect(commands.runHeadlessPrompt).toHaveBeenCalledTimes(1);
     expect(groupNames()[0]).toBe('1. Hook exposes hidden fields');
+  });
+
+  it('writes no guide for a small change until Write guide', async () => {
+    const small = files.map((file) => ({ ...file, additions: Math.min(file.additions, 3) }));
+    vi.mocked(getPRFiles).mockResolvedValue(small);
+    pr = makePr({ changedFiles: small.length, headSha: 'small' });
+    vi.mocked(getPRReviewDetails).mockResolvedValue({ pr: pr.pullRequest, baseSha: 'base' });
+    const button = await start();
+    const card = await screen.findByRole('region', { name: 'Review guide' });
+    expect(card).toHaveTextContent('A small change: 6 lines in 2 files.');
+    expect(commands.runHeadlessPrompt).not.toHaveBeenCalled();
+
+    fireEvent.click(button);
+    expect(within(tree()).getByText('A small change: 6 lines in 2 files.')).toBeVisible();
+    fireEvent.click(within(tree()).getByRole('button', { name: 'Write guide' }));
+    await within(tree()).findByText('3 chapters by Claude · sonnet');
   });
 
   it('still shows a guide written earlier when guides are not written automatically', async () => {

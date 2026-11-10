@@ -5,6 +5,7 @@ import {
   buildGuidePrompt,
   guideEntryFor,
   guideGroups,
+  guideSkipReason,
   OTHER_CHAPTER,
   parseGuide,
 } from '../review-guide';
@@ -74,6 +75,37 @@ describe('parseGuide', () => {
     expect(guide.headSha).toBe('abc');
   });
 
+  it('reads files named by their number in the prompt', () => {
+    const guide = parseGuide(
+      JSON.stringify({
+        summary: 'Shows hidden filters.',
+        chapters: [
+          { title: 'Hook', files: [[1, 'returns hiddenFields']] },
+          {
+            title: 'Workspace',
+            files: [
+              [2, 'new section'],
+              ['3', 'covers it'],
+              [2, 'again'],
+              [0, 'none'],
+              [9, 'none'],
+            ],
+          },
+        ],
+      }),
+      PATHS,
+      META,
+    );
+    expect(guide.chapters.map((c) => c.files)).toEqual([
+      [{ path: 'src/hooks/useLayout.ts', why: 'returns hiddenFields' }],
+      [
+        { path: 'src/Workspace.tsx', why: 'new section' },
+        { path: 'src/Workspace.test.tsx', why: 'covers it' },
+      ],
+      [{ path: 'bun.lock', why: '' }],
+    ]);
+  });
+
   it('keeps a file in the first chapter that names it and drops made-up paths', () => {
     const guide = parseGuide(
       JSON.stringify({
@@ -140,6 +172,46 @@ describe('guideGroups and guideEntryFor', () => {
   });
 });
 
+describe('guideSkipReason', () => {
+  const sized = (filename: string, additions: number, patch?: string): DiffFile => ({
+    ...file(filename, patch),
+    additions,
+    deletions: 0,
+  });
+  const pr = (overrides: Parameters<typeof makePr>[0] = {}) => makePr(overrides).pullRequest;
+
+  it('wants a guide for a change of some size', () => {
+    expect(guideSkipReason(pr(), [sized('src/a.ts', 40), sized('src/b.ts', 21)])).toBeNull();
+  });
+
+  it('skips a small change, counting only the files that need reading', () => {
+    expect(guideSkipReason(pr(), [sized('src/a.ts', 40), sized('src/b.ts', 20)])).toBe(
+      'A small change: 60 lines in 2 files',
+    );
+    expect(guideSkipReason(pr(), [sized('src/a.ts', 1), sized('bun.lock', 900)])).toBe(
+      'A small change: 1 line in 1 file',
+    );
+  });
+
+  it('skips a PR with nothing to read, and dependency updates', () => {
+    const indented = '@@ -1,2 +1,2 @@\n-if (x) {\n-return y;\n+if (x) {\n+    return y;';
+    expect(guideSkipReason(pr(), [sized('bun.lock', 900), sized('src/a.ts', 400, indented)])).toBe(
+      'Only generated files and mechanical changes',
+    );
+    expect(guideSkipReason(pr({ authorLogin: 'dependabot[bot]' }), [sized('src/a.ts', 400)])).toBe(
+      'A dependency update',
+    );
+  });
+
+  it('judges by the PR’s totals before its files are read', () => {
+    expect(guideSkipReason(pr({ additions: 8, deletions: 3, changedFiles: 2 }))).toBe(
+      'A small change: 11 lines in 2 files',
+    );
+    expect(guideSkipReason(pr({ additions: 80, deletions: 3, changedFiles: 2 }))).toBeNull();
+    expect(guideSkipReason(pr({ additions: 0, deletions: 0, changedFiles: 0 }))).toBeNull();
+  });
+});
+
 describe('buildGuidePrompt', () => {
   it('sends patches but leaves generated files and oversized patches out', () => {
     const prompt = buildGuidePrompt({
@@ -153,8 +225,10 @@ describe('buildGuidePrompt', () => {
     });
     expect(prompt).toContain('# Show hidden filters (#4812)');
     expect(prompt).toContain('```diff\n@@ -1 +1 @@\n-old\n+new\n```');
-    expect(prompt).toContain('### bun.lock (modified, +1 -1)\nGenerated or lockfile');
-    expect(prompt).toContain('### src/Huge.ts (modified, +1 -1)\n```diff\n@@ -1 +1 @@\n+x\n');
+    expect(prompt).toContain('### [1] src/Workspace.tsx (modified, +1 -1)\n```diff');
+    expect(prompt).toContain('### [2] bun.lock (modified, +1 -1)\nGenerated or lockfile');
+    expect(prompt).toContain('### [3] src/Huge.ts (modified, +1 -1)\n```diff\n@@ -1 +1 @@\n+x\n');
+    expect(prompt).toContain('"files": [[number, string]]');
     expect(prompt).toMatch(/\(cut here: \d+ more lines\)/);
     expect(prompt.length).toBeLessThan(24_000);
     expect(prompt).toContain('- Add hook\n- Render section');
@@ -175,7 +249,7 @@ describe('buildGuidePrompt', () => {
       skip: ['*.html'],
     });
     expect(prompt).toContain(
-      '### plans/AB61129-quote-plan.html (modified, +1 -1)\nSkipped by the reviewer: do not open it.',
+      '### [2] plans/AB61129-quote-plan.html (modified, +1 -1)\nSkipped by the reviewer: do not open it.',
     );
     expect(prompt).not.toContain('The whole plan');
     expect(prompt).toContain('Never open or read them');
