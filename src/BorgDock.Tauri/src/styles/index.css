@@ -4571,6 +4571,22 @@ body.sql-resizing-v .sql-resize-handle {
     padding: 10px 16px;
     border-bottom: 1px solid var(--color-subtle-border);
   }
+  .bd-review-progress {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    color: var(--color-text-tertiary);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .bd-review-progress__approved {
+    color: var(--color-status-green);
+    font-weight: 600;
+  }
   .bd-wb-head__title {
     margin: 0 6px 0 0;
     font-size: 14px;

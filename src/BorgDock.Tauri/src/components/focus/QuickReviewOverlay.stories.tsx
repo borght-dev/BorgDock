@@ -162,6 +162,7 @@ const meta: Meta<typeof QuickReviewOverlay> = {
     },
   ],
   beforeEach: () => {
+    useQuickReviewStore.setState({ activity: {} });
     resetReviewDisplayPreferences();
     const control = getControl();
     control.githubResponses.getPRReviewDetails = { pr: pr.pullRequest, baseSha: 'review-base' };
@@ -1260,5 +1261,40 @@ export const GuideWalkWideTree: Story = {
     );
     const canvas = await continueReviewing(canvasElement);
     await canvas.findByRole('separator', { name: 'File list width' });
+  },
+};
+
+export const AuthorRunFallback: Story = {
+  beforeEach: () => {
+    seedAuthorRun();
+    const blocked = structuredClone(runLater);
+    blocked.pullRequest.reviewStatus = 'changesRequested';
+    blocked.pullRequest.title = 'Waiting for author changes';
+    usePrStore.setState({
+      pullRequests: [runFirst, blocked, runConflicted, runFailing, ...requestedOfMe],
+    });
+    useQuickReviewStore.setState({
+      state: 'complete',
+      queue: [runFirst],
+      currentIndex: 0,
+      run: null,
+      decisions: new Map([['acme/shop#3601', 'approved']]),
+    });
+  },
+};
+
+export const SeparateReviewsComplete: Story = {
+  beforeEach: () => {
+    seedAuthorRun();
+    useQuickReviewStore.setState({ activity: {} });
+    const store = useQuickReviewStore.getState();
+    store.startSinglePr(runFirst);
+    store.advance('approved');
+    store.endSession();
+    store.startSinglePr(runSecond);
+    store.advance('approved');
+    store.endSession();
+    store.startSinglePr(runThird);
+    store.advance('approved');
   },
 };

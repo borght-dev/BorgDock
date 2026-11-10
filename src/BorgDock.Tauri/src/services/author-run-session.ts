@@ -13,6 +13,7 @@ import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import type { PullRequestWithChecks } from '@/types';
 import { authorCandidates, type HeldPr, planAuthorRun, type RunFit, runFit } from './author-run';
+import { orderQuickReviewPrs } from './quick-review';
 
 /** What a PR's fit is read from. Components pass the slices they subscribed to. */
 export interface FitWorld {
@@ -77,14 +78,17 @@ export async function startAuthorRun(
   useQuickReviewStore.getState().fillRun(author, plan.queue, [...plan.held, ...unread]);
 }
 
-/** The author's oldest PR you can merge now that `handled` doesn't name, if any. */
+/** Passing checks first, then the oldest unblocked PR, including CI fallbacks. */
 export function nextFromAuthor(
   world: FitWorld,
   author: string,
   me: string,
   handled: ReadonlySet<string>,
 ): PullRequestWithChecks | undefined {
-  return authorCandidates(world.prs, author, me).find(
-    (pr) => !handled.has(prRowKey(pr.pullRequest)) && fitIn(world, pr).kind === 'ready',
+  return orderQuickReviewPrs(authorCandidates(world.prs, author, me)).find(
+    (pr) =>
+      !handled.has(prRowKey(pr.pullRequest)) &&
+      pr.pullRequest.mergeable !== false &&
+      pr.pullRequest.reviewStatus !== 'changesRequested',
   );
 }

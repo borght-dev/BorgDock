@@ -40,14 +40,47 @@ function makePr(number: number): PullRequestWithChecks {
 }
 
 describe('quick-review-store', () => {
+  it('keeps review activity across Done and opening another PR', () => {
+    const store = useQuickReviewStore.getState();
+    store.startSinglePr(makePr(1));
+    store.advance('approved');
+    store.endSession();
+    store.startSinglePr(makePr(2));
+    store.advance('approved');
+    expect(
+      Object.values(useQuickReviewStore.getState().activity).map((entry) => entry.decision),
+    ).toEqual(['approved', 'approved']);
+  });
+
   beforeEach(() => {
     useQuickReviewStore.setState({
       state: 'idle',
+      activity: {},
       queue: [],
       currentIndex: 0,
       decisions: new Map(),
       error: null,
     });
+  });
+
+  it('counts a PR once and removes undone or rejected decisions without clearing other activity', () => {
+    const store = useQuickReviewStore.getState();
+    store.startSinglePr(makePr(1));
+    store.advance('approved');
+    store.endSession();
+    store.startSinglePr(makePr(2));
+    store.advance('approved');
+    store.reopen(makePr(2));
+    expect(Object.keys(useQuickReviewStore.getState().activity)).toEqual(['owner/repo#1']);
+    store.advance('commented');
+    store.endSession();
+    store.startSinglePr(makePr(2));
+    store.advance('approved');
+    expect(Object.keys(useQuickReviewStore.getState().activity)).toHaveLength(2);
+    store.endSession();
+    store.forgetActivity(makePr(2));
+    expect(useQuickReviewStore.getState().state).toBe('idle');
+    expect(Object.keys(useQuickReviewStore.getState().activity)).toEqual(['owner/repo#1']);
   });
 
   describe('initial state', () => {

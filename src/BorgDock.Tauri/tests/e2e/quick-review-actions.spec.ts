@@ -217,10 +217,8 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   await page.keyboard.press('Enter');
   await expect(dialog.getByRole('article', { name: 'Pull request #4' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Review later' }).click();
-  await expect(dialog.getByRole('button', { name: 'Review next PR' })).toHaveCount(0);
-  await dialog.focus();
-  await page.keyboard.press('Enter');
-  await expect(dialog.getByText('Review complete', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('region', { name: 'Next review' })).toContainText('Quick review change 2');
+  await expect(dialog.getByRole('button', { name: 'Review next PR' })).toBeVisible();
   await expect
     .poll(() => reviews, UNDO_WINDOW)
     .toEqual([{ number: 3, body: { event: 'APPROVE', body: '', commit_id: 'sha3', comments: [] } }]);
@@ -478,7 +476,7 @@ test('approving the top card of a queue flings it right and the next card rises'
   // Review later flings the last card left and ends on the summary.
   await page.keyboard.press('ArrowLeft');
   await expect(dialog.getByText('Review complete', { exact: true })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Review next PR' })).toHaveCount(0);
+  await expect(dialog.getByRole('region', { name: 'Next review' })).toContainText('Quick review change 2');
 });
 
 test('overview shows description screenshots, required-check gaps and a read-only ADO popup', async ({ page }) => {

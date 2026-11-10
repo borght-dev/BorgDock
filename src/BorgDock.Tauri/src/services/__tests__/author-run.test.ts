@@ -141,6 +141,18 @@ describe('runFit', () => {
 });
 
 describe('planAuthorRun', () => {
+  it('holds changes requested even when checks pass or failures are unrelated', () => {
+    const blocked = pr(1, { reviewStatus: 'changesRequested' });
+    expect(runFit(blocked, { e2e: null, outsideCause: 'base-branch' })).toEqual({
+      kind: 'held',
+      reason: 'changesRequested',
+      why: 'Changes requested',
+    });
+    expect(
+      planAuthorRun([blocked], (p) => runFit(p, { e2e: null, outsideCause: null })).queue,
+    ).toEqual([]);
+  });
+
   it('keeps the order and splits ready, held and still checking', () => {
     const plan = planAuthorRun([pr(1), pr(2, { mergeable: false }), pr(3)], (p) =>
       p.pullRequest.number === 3

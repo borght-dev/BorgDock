@@ -304,6 +304,7 @@ export function QuickReviewOverlay() {
   const queue = useQuickReviewStore((s) => s.queue);
   const index = useQuickReviewStore((s) => s.currentIndex);
   const decisions = useQuickReviewStore((s) => s.decisions);
+  const activity = useQuickReviewStore((s) => s.activity);
   const run = useQuickReviewStore((s) => s.run);
   const needsMyReview = usePrStore((s) => s.needsMyReview());
   const prs = usePrStore((s) => s.pullRequests);
@@ -353,13 +354,25 @@ export function QuickReviewOverlay() {
 
   const current = queue[index];
   const complete = state === 'complete';
-  const reviewedKeys = new Set([...handledInRun.current, ...queue.map(prKey)]);
-  const nextPr = complete
-    ? orderQuickReviewPrs(needsMyReview).find((pr) => !reviewedKeys.has(prKey(pr)))
-    : undefined;
-  // After one PR or an author run, the same author's next PR you can merge.
+  const reviewedKeys = new Set([
+    ...Object.keys(activity),
+    ...handledInRun.current,
+    ...queue.map(prKey),
+  ]);
   const lastAuthor = queue.length === 1 ? queue[0]?.pullRequest.authorLogin : undefined;
   const continueAuthor = complete ? (run?.author ?? lastAuthor) : undefined;
+  const nextPr = complete
+    ? orderQuickReviewPrs(
+        [...new Map([...needsMyReview, ...prs].map((pr) => [prKey(pr), pr])).values()].filter(
+          (pr) =>
+            (!continueAuthor ||
+              pr.pullRequest.authorLogin.toLowerCase() !== continueAuthor.toLowerCase()) &&
+            authorCandidates([pr], pr.pullRequest.authorLogin, username).length > 0 &&
+            pr.pullRequest.mergeable !== false &&
+            pr.pullRequest.reviewStatus !== 'changesRequested',
+        ),
+      ).find((pr) => !reviewedKeys.has(prKey(pr)))
+    : undefined;
   const authorNext = continueAuthor
     ? nextFromAuthor(
         { prs, entries: e2eEntries, groups: ciGroups },
@@ -389,7 +402,9 @@ export function QuickReviewOverlay() {
     markHandled();
     void startAuthorRun(authorNext, new Set(handledInRun.current));
   };
-  const enterNext = authorNext ? reviewAuthorNext : nextPr ? reviewNext : undefined;
+  const preferAuthor =
+    authorNext && (authorNext.overallStatus === 'green' || nextPr?.overallStatus !== 'green');
+  const enterNext = preferAuthor ? reviewAuthorNext : nextPr ? reviewNext : undefined;
   useQuickReviewKeyboard(
     complete && !closing
       ? {
@@ -499,6 +514,7 @@ export function QuickReviewOverlay() {
                       <QuickReviewSummary
                         queue={queue}
                         decisions={decisions}
+                        activity={Object.values(activity)}
                         nextPr={nextPr}
                         onNext={reviewNext}
                         authorNext={authorNext}
@@ -520,7 +536,7 @@ export function QuickReviewOverlay() {
               <footer className="qr-footer">
                 <Shortcuts
                   keys={[
-                    ...(authorNext
+                    ...(preferAuthor
                       ? [['Enter', `next from ${authorNext.pullRequest.authorLogin}`] as const]
                       : nextPr
                         ? [['Enter', 'review next PR'] as const]
