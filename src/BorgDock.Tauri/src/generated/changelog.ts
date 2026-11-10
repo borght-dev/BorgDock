@@ -4,6 +4,45 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.10",
+    "date": "2026-11-10",
+    "summary": "Review guides that are ready before you are, Small changes skip the guide, and Review guides in about half the time.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Review guides that are ready before you are",
+        "description": "Turn on Write review guides ahead (Settings → Agents → Summaries) and BorgDock writes the guide for every open pull request you can review while you do something else, your review requests first. Open Quick Review and the chapters are already there. With the setting off, Quick Review still writes the next pull request's guide while you read the current one.",
+        "hero": {
+          "src": "/whats-new/4.9.10/guides-ahead.png",
+          "alt": "The Summaries settings with Write review guides ahead turned on"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Small changes skip the guide",
+        "description": "A change of a few lines, a dependency update or a pull request with only generated files reads faster than a guide is written. BorgDock now tells you so and leaves the guide out, and Write guide is one click away when you want one anyway.",
+        "hero": {
+          "src": "/whats-new/4.9.10/guide-skipped.png",
+          "alt": "Quick Review on a small change, saying why there is no guide"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Review guides in about half the time",
+        "description": "A guide for a 32-file pull request that took 45 seconds now takes about 25, and a 114-file one went from over a minute to 36 seconds, with the same chapters and notes. Starting a guide also no longer costs extra seconds in a large repository. Want more? Sonnet writes the same chapters as Opus about 20% faster (Settings → Agents → Summaries → Model).",
+        "hero": {
+          "src": "/whats-new/4.9.10/faster-guides.png",
+          "alt": "A review guide on the Quick Review card: summary, risks and chapters"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.9.9",
     "date": "2026-11-09",
     "summary": "Approve your dependency updates in one go and Approve a dependency update right from the list.",

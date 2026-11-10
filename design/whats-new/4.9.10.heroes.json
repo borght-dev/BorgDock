@@ -1,0 +1,29 @@
+[
+  {
+    "slug": "guides-ahead",
+    "storyId": "settings-settingsapp--agents-codex-summaries",
+    "viewport": {
+      "width": 1280,
+      "height": 1100
+    },
+    "delay": 3000
+  },
+  {
+    "slug": "guide-skipped",
+    "storyId": "focus-quick-review--guide-skipped",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 4000
+  },
+  {
+    "slug": "faster-guides",
+    "storyId": "focus-quick-review--guide-on-card",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 4000
+  }
+]
