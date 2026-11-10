@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.11",
+    "date": "2026-11-10",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Codex installed through npm on Windows now starts correctly when writing review guides and summaries."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.9.10",
     "date": "2026-11-10",
     "summary": "Review guides that are ready before you are, Small changes skip the guide, and Review guides in about half the time.",

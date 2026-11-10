@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.9.11 — 2026-11-10
+
+### Bug Fixes
+
+- Codex installed through npm on Windows now starts correctly when writing review guides and summaries.
+
 ## 4.9.10 — 2026-11-10
 
 ### New Features
