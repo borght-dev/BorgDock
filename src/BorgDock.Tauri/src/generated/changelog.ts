@@ -4,6 +4,35 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.9.12",
+    "date": "2026-11-10",
+    "summary": "See your review progress and Move on to a PR that's ready for review.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "See your review progress",
+        "description": "Your Pull Requests overview and review summary now show how many pull requests you approved and reviewed this app session, even when you click Done and open another PR. Skips stay out of the reviewed total, and undo or failed approvals remove their counts. Restarting the app starts a fresh session.",
+        "hero": {
+          "src": "/whats-new/4.9.12/review-progress.png",
+          "alt": "Approval and review totals beneath the Pull Requests toolbar"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "fixed",
+        "title": "Move on to a PR that's ready for review",
+        "description": "Next-PR suggestions now skip changes requested and merge conflicts, and put passing checks first. When checks fail or are still running, the suggestion says so. You can also switch to another author's PR without waiting for a review request.",
+        "hero": {
+          "src": "/whats-new/4.9.12/next-review.png",
+          "alt": "An explicit failing-check fallback beside a passing PR from another author"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.9.11",
     "date": "2026-11-10",
     "summary": "",
