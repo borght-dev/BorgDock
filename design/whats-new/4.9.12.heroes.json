@@ -1,0 +1,22 @@
+[
+  {
+    "slug": "review-progress",
+    "storyId": "pr-prlist--review-progress",
+    "theme": "light",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "delay": 1000
+  },
+  {
+    "slug": "next-review",
+    "storyId": "focus-quick-review--author-run-fallback",
+    "theme": "dark",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "delay": 1000
+  }
+]

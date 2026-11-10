@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.9.12 — 2026-11-10
+
+### Improvements
+
+- **See your review progress** — Your Pull Requests overview and review summary now show how many pull requests you approved and reviewed this app session, even when you click Done and open another PR. Skips stay out of the reviewed total, and undo or failed approvals remove their counts. Restarting the app starts a fresh session. ![Approval and review totals beneath the Pull Requests toolbar](whats-new/4.9.12/review-progress.png)
+
+### Bug Fixes
+
+- **Move on to a PR that's ready for review** — Next-PR suggestions now skip changes requested and merge conflicts, and put passing checks first. When checks fail or are still running, the suggestion says so. You can also switch to another author's PR without waiting for a review request. ![An explicit failing-check fallback beside a passing PR from another author](whats-new/4.9.12/next-review.png)
+
 ## 4.9.11 — 2026-11-10
 
 ### Bug Fixes
