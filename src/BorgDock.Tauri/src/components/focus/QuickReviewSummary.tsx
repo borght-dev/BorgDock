@@ -1,16 +1,17 @@
 import { avatarInitials, prRowKey } from '@/components/pr/pr-card-data';
 import { Avatar, Button, Pill, type PillTone } from '@/components/shared/primitives';
 import type { HeldPr } from '@/services/author-run';
-import type { ReviewDecision } from '@/stores/quick-review-store';
+import type { ReviewActivity, ReviewDecision } from '@/stores/quick-review-store';
 import type { PullRequestWithChecks } from '@/types';
 
 interface QuickReviewSummaryProps {
   queue: PullRequestWithChecks[];
   /** Keyed `owner/repo#number` (`prRowKey`). */
   decisions: Map<string, ReviewDecision>;
+  activity?: readonly ReviewActivity[];
   nextPr?: PullRequestWithChecks;
   onNext: () => void;
-  /** The same author's oldest PR you can merge, after one PR or an author run. */
+  /** The same author's next unblocked PR, preferring passing checks. */
   authorNext?: PullRequestWithChecks;
   onAuthorNext?: () => void;
   /** The run's author's PRs it left out, and why. */
@@ -24,9 +25,17 @@ const DECISION_LABELS: Record<ReviewDecision, { label: string; tone: PillTone }>
   skipped: { label: 'Skipped', tone: 'ghost' },
 };
 
+function checksLabel(pr: PullRequestWithChecks): string {
+  if (pr.overallStatus === 'green') return 'passing checks';
+  if (pr.overallStatus === 'red') return 'failing checks';
+  if (pr.overallStatus === 'yellow') return 'checks pending';
+  return 'checks unavailable';
+}
+
 export function QuickReviewSummary({
   queue,
   decisions,
+  activity,
   nextPr,
   onNext,
   authorNext,
@@ -34,9 +43,15 @@ export function QuickReviewSummary({
   held = [],
   onClose,
 }: QuickReviewSummaryProps) {
-  const approved = [...decisions.values()].filter((d) => d === 'approved').length;
-  const commented = [...decisions.values()].filter((d) => d === 'commented').length;
-  const skipped = [...decisions.values()].filter((d) => d === 'skipped').length;
+  const reviewed = activity?.length
+    ? activity
+    : queue.map((pr) => ({ pr, decision: decisions.get(prRowKey(pr.pullRequest)) }));
+  const preferAuthor =
+    authorNext && (authorNext.overallStatus === 'green' || nextPr?.overallStatus !== 'green');
+  const approved = reviewed.filter((entry) => entry.decision === 'approved').length;
+  const commented = reviewed.filter((entry) => entry.decision === 'commented').length;
+  const skipped = reviewed.filter((entry) => entry.decision === 'skipped').length;
+  const reviewedCount = reviewed.length - skipped;
 
   return (
     <div data-quick-review-summary="" className="space-y-4">
@@ -45,7 +60,8 @@ export function QuickReviewSummary({
           Review complete
         </div>
         <div className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-          {queue.length} PR{queue.length !== 1 ? 's' : ''} reviewed
+          {reviewedCount} PR{reviewedCount !== 1 ? 's' : ''} reviewed
+          {activity?.length ? ' this app session' : ''}
         </div>
       </div>
 
@@ -73,8 +89,7 @@ export function QuickReviewSummary({
 
       {/* PR list */}
       <div className="bd-pr-panel max-h-[300px] overflow-y-auto">
-        {queue.map((pr) => {
-          const decision = decisions.get(prRowKey(pr.pullRequest));
+        {reviewed.map(({ pr, decision }) => {
           const info = decision ? DECISION_LABELS[decision] : null;
           return (
             <div key={prRowKey(pr.pullRequest)} className="bd-pr-mini-row">
@@ -108,7 +123,7 @@ export function QuickReviewSummary({
       {authorNext && (
         <section className="qr-summary__next" aria-label="Next from the same author">
           <span className="qr-summary__next-label">
-            Next from {authorNext.pullRequest.authorLogin} · oldest you can merge
+            Next from {authorNext.pullRequest.authorLogin} · {checksLabel(authorNext)}
           </span>
           <span className="qr-summary__next-title">{authorNext.pullRequest.title}</span>
           <span className="qr-summary__next-meta">
@@ -117,9 +132,11 @@ export function QuickReviewSummary({
           </span>
         </section>
       )}
-      {nextPr && !authorNext && (
+      {nextPr && (
         <section className="qr-summary__next" aria-label="Next review">
-          <span className="qr-summary__next-label">Up next · review requested</span>
+          <span className="qr-summary__next-label">
+            Next from {nextPr.pullRequest.authorLogin} · {checksLabel(nextPr)}
+          </span>
           <span className="qr-summary__next-title">{nextPr.pullRequest.title}</span>
           <span className="qr-summary__next-meta">
             {nextPr.pullRequest.repoOwner}/{nextPr.pullRequest.repoName} #
@@ -129,18 +146,23 @@ export function QuickReviewSummary({
       )}
       <div className="qr-summary__actions">
         {authorNext && (
-          <Button variant="primary" size="md" aria-keyshortcuts="Enter" onClick={onAuthorNext}>
+          <Button
+            variant={preferAuthor ? 'primary' : 'secondary'}
+            size="md"
+            aria-keyshortcuts={preferAuthor ? 'Enter' : undefined}
+            onClick={onAuthorNext}
+          >
             Next from {authorNext.pullRequest.authorLogin}
           </Button>
         )}
         {nextPr && (
           <Button
-            variant={authorNext ? 'secondary' : 'primary'}
+            variant={preferAuthor ? 'secondary' : 'primary'}
             size="md"
-            aria-keyshortcuts={authorNext ? undefined : 'Enter'}
+            aria-keyshortcuts={preferAuthor ? undefined : 'Enter'}
             onClick={onNext}
           >
-            {authorNext ? 'Review requested PR' : 'Review next PR'}
+            {authorNext ? `Review next from ${nextPr.pullRequest.authorLogin}` : 'Review next PR'}
           </Button>
         )}
         <Button

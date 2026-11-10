@@ -63,6 +63,7 @@ export function holdApproval(
         .catch((error) => {
           toastError(`Approval of #${number} not submitted`, error);
           const store = useQuickReviewStore.getState();
+          store.forgetActivity(pr);
           if (store.state !== 'idle')
             store.reopen(pr, `Review not submitted: ${parseError(error).message}`);
         });

@@ -13,6 +13,11 @@ import { reviewDraftStorage } from '@/utils/review-draft-storage';
 export type ReviewDecision = 'approved' | 'commented' | 'skipped';
 export type QuickReviewState = 'idle' | 'reviewing' | 'submitting' | 'error' | 'complete';
 
+export interface ReviewActivity {
+  pr: PullRequestWithChecks;
+  decision: ReviewDecision;
+}
+
 /** A session over one author's PRs, oldest first (`services/author-run.ts`). */
 export interface AuthorRun {
   author: string;
@@ -29,6 +34,8 @@ interface QuickReviewStoreState {
   run: AuthorRun | null;
   /** Decision per PR, keyed `owner/repo#number` (`prRowKey`): numbers repeat across repos. */
   decisions: Map<string, ReviewDecision>;
+  activity: Record<string, ReviewActivity>;
+  forgetActivity: (pr: PullRequestWithChecks) => void;
   error: string | null;
   documents: Record<string, ReviewDocument>;
   updateDocument: (key: string, update: (doc: ReviewDocument) => ReviewDocument) => void;
@@ -64,6 +71,13 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
       currentIndex: 0,
       run: null,
       decisions: new Map(),
+      activity: {},
+      forgetActivity: (pr) =>
+        set((s) => {
+          const activity = { ...s.activity };
+          delete activity[prRowKey(pr.pullRequest)];
+          return { activity };
+        }),
       error: null,
       documents: {},
       updateDocument: (key, update) =>
@@ -142,14 +156,16 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
         if (pr) {
           const next = new Map(decisions);
           next.set(prRowKey(pr.pullRequest), decision);
+          const activity = { ...get().activity, [prRowKey(pr.pullRequest)]: { pr, decision } };
 
           if (currentIndex >= queue.length - 1) {
-            set({ state: 'complete', decisions: next, error: null });
+            set({ state: 'complete', decisions: next, activity, error: null });
           } else {
             set({
               state: 'reviewing',
               currentIndex: currentIndex + 1,
               decisions: next,
+              activity,
               error: null,
             });
           }
@@ -164,6 +180,7 @@ export const useQuickReviewStore = create<QuickReviewStoreState>()(
       },
 
       reopen: (pr, error) => {
+        get().forgetActivity(pr);
         const { queue, decisions } = get();
         const key = prRowKey(pr.pullRequest);
         const index = queue.findIndex((queued) => prRowKey(queued.pullRequest) === key);

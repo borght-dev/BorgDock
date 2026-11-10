@@ -33,6 +33,7 @@ export { VIRTUALIZE_THRESHOLD } from './VirtualizedPrRows';
 import { WorkbenchPrHead } from './PrToolbar';
 import { prRowKey } from './pr-card-data';
 import { groupFlipKey, WorkbenchGroup, WorkbenchPrGroup } from './RepoGroup';
+import { ReviewSessionProgress } from './ReviewSessionProgress';
 import { ReviewSlaIndicator } from './ReviewSlaIndicator';
 import { ReviewerRow, useTeamReviewers } from './TeamReviewLoad';
 
@@ -262,14 +263,17 @@ export function PrList() {
   );
 
   const head = (
-    <WorkbenchPrHead
-      filter={requestedFilter ?? filter}
-      counts={filterCounts}
-      onFilterChange={handleFilterChange}
-      onGroupByChange={handleGroupByChange}
-      onSortChange={handleSortChange}
-      onHideFailingChange={handleHideFailingChange}
-    />
+    <>
+      <WorkbenchPrHead
+        filter={requestedFilter ?? filter}
+        counts={filterCounts}
+        onFilterChange={handleFilterChange}
+        onGroupByChange={handleGroupByChange}
+        onSortChange={handleSortChange}
+        onHideFailingChange={handleHideFailingChange}
+      />
+      <ReviewSessionProgress />
+    </>
   );
 
   if (!lastPollTime && isPolling && !hasData) {

@@ -12,7 +12,7 @@ import type { PullRequestWithChecks } from '@/types';
  * failure that is shared. Pure.
  */
 
-export type HoldReason = 'conflicts' | 'failing' | 'e2e';
+export type HoldReason = 'conflicts' | 'changesRequested' | 'failing' | 'e2e';
 
 export type RunFit =
   /** Green or still running: approve and auto-merge. */
@@ -37,6 +37,8 @@ function listed(names: readonly string[]): string {
 export function runFit(pr: PullRequestWithChecks, evidence: FitEvidence): RunFit {
   if (pr.pullRequest.mergeable === false)
     return { kind: 'held', reason: 'conflicts', why: 'Has merge conflicts' };
+  if (pr.pullRequest.reviewStatus === 'changesRequested')
+    return { kind: 'held', reason: 'changesRequested', why: 'Changes requested' };
   const failed = pr.failedCheckNames;
   if (failed.length === 0) return { kind: 'ready', bypass: null };
   if (evidence.outsideCause)

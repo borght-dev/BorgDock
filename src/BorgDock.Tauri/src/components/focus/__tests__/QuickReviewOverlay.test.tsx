@@ -98,7 +98,7 @@ beforeEach(() => {
   // without waiting for their animations.
   document.documentElement.classList.add('reduce-motion');
   useQuickReviewStore.getState().endSession();
-  useQuickReviewStore.setState({ documents: {} });
+  useQuickReviewStore.setState({ documents: {}, activity: {} });
   useToastStore.getState().clear();
   pr = makePr({
     changedFiles: files.length,
@@ -689,6 +689,21 @@ describe('Quick review composer', () => {
     expect(submit).not.toBeDisabled();
   });
 
+  it('removes a failed approval from activity after Done without reopening the overlay', async () => {
+    await start();
+    reviewEverything();
+    vi.mocked(submitReview).mockRejectedValueOnce(new Error('Offline'));
+    press('ArrowRight');
+    expect(Object.values(useQuickReviewStore.getState().activity)).toHaveLength(1);
+    act(() => useQuickReviewStore.getState().endSession());
+    sendHeldApproval();
+    await waitFor(() => expect(submitReview).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(Object.values(useQuickReviewStore.getState().activity)).toHaveLength(0),
+    );
+    expect(useQuickReviewStore.getState().state).toBe('idle');
+  });
+
   it('does not save the card approval as the draft decision when it fails', async () => {
     await start();
     reviewEverything();
@@ -728,13 +743,103 @@ describe('Quick review composer', () => {
 });
 
 describe('Quick review next PR', () => {
+  it('shows cumulative approvals after Done and separately opening another PR', () => {
+    const store = useQuickReviewStore.getState();
+    reviewCandidates.open = [pr];
+    store.startSinglePr(pr);
+    store.advance('approved');
+    render(<QuickReviewOverlay />);
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(useQuickReviewStore.getState().state).toBe('idle');
+    act(() => {
+      store.startSinglePr(makePr({ number: 98, title: 'Second separate review' }));
+      store.advance('approved');
+    });
+    expect(screen.getByText('2 PRs reviewed this app session')).toBeInTheDocument();
+    expect(document.querySelector('[data-quick-review-summary]')).toHaveTextContent(
+      'Second separate review',
+    );
+    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Next from the same author' })).toBeNull();
+  });
+
+  it('excludes changes requested and conflicts before recommending a passing PR', () => {
+    const blocked = makePr({
+      number: 71,
+      title: 'Changes still requested',
+      reviewStatus: 'changesRequested',
+    });
+    const conflicted = makePr({ number: 72, title: 'Conflicted', mergeable: false });
+    const passing = makePr({ number: 74, title: 'Ready to review' });
+    const pending = { ...makePr({ number: 77 }), overallStatus: 'yellow' as const };
+    const failing = {
+      ...makePr({ number: 78 }),
+      overallStatus: 'red' as const,
+      failedCheckNames: ['Build'],
+    };
+    reviewCandidates.open = [pr, blocked, conflicted, pending, failing, passing];
+    useQuickReviewStore.getState().startSinglePr(pr);
+    useQuickReviewStore.getState().advance('skipped');
+    render(<QuickReviewOverlay />);
+    expect(screen.getByRole('region', { name: 'Next from the same author' })).toHaveTextContent(
+      'Ready to review',
+    );
+    expect(screen.queryByText('Changes still requested')).toBeNull();
+  });
+
+  it('does not offer blocked, own, draft, closed or already approved PRs from another author', () => {
+    const other = { authorLogin: 'robin' };
+    reviewCandidates.open = [
+      makePr({ ...other, number: 81, reviewStatus: 'changesRequested' }),
+      makePr({ ...other, number: 82, mergeable: false }),
+      makePr({ number: 83, authorLogin: 'reviewer' }),
+      makePr({ ...other, number: 84, isDraft: true }),
+      makePr({ ...other, number: 85, state: 'closed' }),
+      makePr({
+        ...other,
+        number: 86,
+        latestReviews: [{ authorLogin: 'reviewer', state: 'approved', commitSha: 'abc86def' }],
+        headSha: 'abc86def',
+      }),
+    ];
+    reviewCandidates.prs = reviewCandidates.open;
+    useQuickReviewStore.getState().startSinglePr(pr);
+    useQuickReviewStore.getState().advance('skipped');
+    render(<QuickReviewOverlay />);
+    expect(screen.queryByRole('region', { name: 'Next review' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Next from the same author' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument();
+  });
+
+  it('offers failing checks explicitly and another author without a review request', () => {
+    const failing = {
+      ...makePr({ number: 75, title: 'Needs a CI fix' }),
+      overallStatus: 'red' as const,
+      failedCheckNames: ['Build'],
+    };
+    const other = makePr({ number: 76, title: 'Another author ready', authorLogin: 'robin' });
+    reviewCandidates.open = [pr, failing, other];
+    useQuickReviewStore.getState().startSinglePr(pr);
+    useQuickReviewStore.getState().advance('skipped');
+    render(<QuickReviewOverlay />);
+    expect(screen.getByRole('region', { name: 'Next from the same author' })).toHaveTextContent(
+      'failing checks',
+    );
+    expect(screen.getByRole('button', { name: 'Review next from robin' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'Enter',
+    );
+    press('Enter');
+    expect(useQuickReviewStore.getState().currentPr()).toBe(other);
+  });
+
   it.each([
     'red',
     'yellow',
     'gray',
   ] as const)('prefers a passing PR over an earlier %s PR and excludes reviewed PRs', async (overallStatus) => {
-    const notPassing = { ...makePr({ number: 41 }), overallStatus };
-    const passing = makePr({ number: 42, title: 'Passing checks first' });
+    const notPassing = { ...makePr({ number: 41, authorLogin: 'robin' }), overallStatus };
+    const passing = makePr({ number: 42, title: 'Passing checks first', authorLogin: 'robin' });
     reviewCandidates.prs = [pr, notPassing, passing, makePr({ number: 43 })];
     useQuickReviewStore.getState().startSinglePr(pr);
     useQuickReviewStore.getState().advance('skipped');
@@ -764,7 +869,9 @@ describe('Quick review next PR', () => {
     render(<QuickReviewOverlay />);
 
     expect(screen.getByText('Oldest mergeable')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Review requested PR' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Review next from someone-else' }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: `Next from ${author}` }));
     expect(useQuickReviewStore.getState().currentPr()).toBe(older);
     expect(useQuickReviewStore.getState().run?.author).toBe(author);

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
 import type { PrGroupBy } from '@/services/pr-grouping';
 import { type PrFilter, type SortBy, usePrStore } from '@/stores/pr-store';
+import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PrDensity } from '@/types';
@@ -23,8 +24,10 @@ import {
   workbenchPrs,
 } from './__fixtures__/pr-list-data';
 import { PrList } from './PrList';
+import { prRowKey } from './pr-card-data';
 
 interface HarnessProps {
+  reviewProgress?: boolean;
   density?: PrDensity;
   groupBy?: PrGroupBy;
   sortBy?: SortBy;
@@ -38,6 +41,7 @@ interface HarnessProps {
 }
 
 function Harness({
+  reviewProgress = false,
   density = 'comfortable',
   groupBy = 'repo',
   sortBy = 'updated',
@@ -48,6 +52,21 @@ function Harness({
 }: HarnessProps) {
   useState(() => {
     const now = Date.now();
+    useQuickReviewStore.setState({
+      activity: reviewProgress
+        ? Object.fromEntries(
+            workbenchPrs(now)
+              .slice(0, 5)
+              .map((pr, i) => [
+                prRowKey(pr.pullRequest),
+                {
+                  pr,
+                  decision: i < 3 ? 'approved' : i === 3 ? 'commented' : 'skipped',
+                },
+              ]),
+          )
+        : {},
+    });
     usePrStore.setState({
       pullRequests: openCount > 18 ? manyOpenPrs(openCount, now) : workbenchPrs(now),
       closedPullRequests:
@@ -147,3 +166,8 @@ export const VirtualizedRecentlyClosed: Story = { args: { closedCount: 60 } };
 
 /** 200 open and 200 recently closed PRs: no FLIP above the cap, Recently closed virtualized. */
 export const TwoHundred: Story = { args: { openCount: 200, closedCount: 200 } };
+
+export const ReviewProgress: Story = {
+  args: { reviewProgress: true },
+  globals: { theme: 'light' },
+};
