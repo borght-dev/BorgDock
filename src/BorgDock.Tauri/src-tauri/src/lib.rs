@@ -1,6 +1,7 @@
 pub mod activity;
 pub mod ado;
 pub mod agents;
+mod agent_program;
 mod app_data;
 pub mod auth;
 pub mod cache;

@@ -38,7 +38,7 @@ pub struct HeadlessPromptResult {
 }
 
 fn hidden_tokio_command(program: &str) -> tokio::process::Command {
-    let mut command = tokio::process::Command::new(program);
+    let mut command = tokio::process::Command::new(crate::agent_program::resolve(program));
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
@@ -334,6 +334,34 @@ pub async fn run_headless_prompt(
 mod tests {
     use super::*;
 
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn starts_windows_shims_with_spaces_and_piped_input() {
+        let root = tempfile::tempdir().unwrap();
+        let directory = root.path().join("agent with spaces");
+        std::fs::create_dir_all(&directory).unwrap();
+        let shim = directory.join("codex.cmd");
+        std::fs::write(&shim, "@echo off\r\nset /p prompt=\r\necho %prompt%\r\n").unwrap();
+        let mut child = hidden_tokio_command(shim.to_str().unwrap())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"summary prompt\n")
+            .await
+            .unwrap();
+        let output = child.wait_with_output().await.unwrap();
+        assert!(output.status.success());
+        assert_eq!(
+            String::from_utf8_lossy(&output.stdout).trim(),
+            "summary prompt"
+        );
+    }
+
     #[test]
     fn parses_claude_json() {
         assert_eq!(
@@ -374,7 +402,10 @@ mod tests {
             claude_failure(br#"{"is_error":true,"result":"Credit balance is too low"}"#).as_deref(),
             Some("Credit balance is too low")
         );
-        assert_eq!(claude_failure(br#"{"is_error":false,"result":"fine"}"#), None);
+        assert_eq!(
+            claude_failure(br#"{"is_error":false,"result":"fine"}"#),
+            None
+        );
     }
 
     #[test]
@@ -400,7 +431,9 @@ mod tests {
         assert!(args.contains(&"--strict-mcp-config".to_owned()));
 
         let bare = claude_args(None, Some("minimal"), None);
-        assert!(!bare.iter().any(|arg| arg == "--add-dir" || arg == "--model" || arg == "--effort"));
+        assert!(!bare
+            .iter()
+            .any(|arg| arg == "--add-dir" || arg == "--model" || arg == "--effort"));
     }
 
     #[test]
