@@ -13,9 +13,10 @@ Invoking `/release <version>` authorizes the generated release notes, release co
 1. **Validate** the version argument is provided and looks like a semver (x.y.z). Abort if not.
 
 2. **Generate changelog** from commits since the previous release tag:
+   - Work on a branch `release/<VERSION>` cut from `origin/main` (`git fetch origin && git switch -c release/<VERSION> origin/main`). `main` takes changes only through a pull request.
    - Find the previous version tag (filter to `v*` so legacy `wpf-v*` tags are ignored):
-     `git describe --tags --abbrev=0 --match 'v*'`
-     If no tag exists yet, fall back to `git tag --sort=-v:refname --list 'v*' | head -1`.
+     `git tag --sort=-v:refname --list 'v*' | head -1`
+     Not `git describe`: v4.9.10 was tagged before its commit reached `main`, so it is not an ancestor of `main` and `describe` skips it. For the same reason `git log v4.9.10..HEAD` also lists `chore: release 4.9.10`; leave that one out.
    - List commits since that tag: `git log <PREV_TAG>..HEAD --oneline --no-decorate`
    - Write **marketing-style release notes** — don't just copy commit messages. Instead:
      - Summarize related commits into user-facing features and improvements
@@ -37,7 +38,7 @@ Invoking `/release <version>` authorizes the generated release notes, release co
 4. **Attach hero images** for any `### New Features`, `### Improvements`, or bulletted `### Bug Fixes` entries that start with `**Bold Title**`:
    - Heroes are **real screenshots captured from Storybook** (large, ~16:10 — not hand-mocked banners). To produce them:
      1. Author `design/whats-new/<VERSION>.heroes.json` — an array of `{ slug, storyId, viewport?, theme?, delay?, selector?, seedIdle?, emit? }`. Get story ids from `http://localhost:6006/index.json` while Storybook runs. Every window/section has a story catalog; the main window (Focus/PRs/Work Items) is `src/components/layout/MainWindow.stories.tsx`.
-     2. Start Storybook: `cd src/BorgDock.Tauri && node_modules/.bin/storybook dev -p 6006 --no-open`.
+     2. Start Storybook: `cd src/BorgDock.Tauri && node_modules/.bin/storybook dev -p 6006 --no-open`. It refuses to start while `CHANGELOG.md` references a hero that does not exist yet (`references missing image`): copy any PNG to `docs/whats-new/<VERSION>/<slug>.png` for each slug first; the capture writes over them.
      3. Capture: `cd src/BorgDock.Tauri && node scripts/screenshot-stories.mjs <VERSION>` → writes `docs/whats-new/<VERSION>/<slug>.png` at 2× in dark theme (the script forces dark so windows that self-bootstrap their theme stay consistent).
    - Reference each from the bullet: `- **Bold Title** — Description. ![alt](whats-new/<VERSION>/<slug>.png)`.
    - To demote a bullet that has no image ready, strip the `**Bold Title** — ` prefix so the bullet joins the compact "Also fixed" list and requires no image.
@@ -62,11 +63,17 @@ Invoking `/release <version>` authorizes the generated release notes, release co
    ```
    The hero PNGs under `docs/whats-new/<VERSION>/` are the committed **source** and **must** be in this commit — the CI build's changelog plugin (`syncImages`) errors out (`references missing image`) and the whole build fails if `CHANGELOG.md` references an image that isn't committed. The plugin regenerates `src/generated/changelog.ts` and copies the heroes into `public/whats-new/` (which is **gitignored**), so don't stage `public/whats-new/`; committing `changelog.ts` just keeps local diffs clean.
 
-7. **Tag and push**:
+7. **Merge, then tag**. `main` is protected (ruleset "Protect default branch": pull request, squash only, eight required checks, no bypass), and a `v*` tag can never be moved or deleted (ruleset "Protect release tags"). So the release commit goes through a pull request, and the tag goes on the commit that landed:
    ```
-   git tag v<VERSION>
-   git push && git push origin v<VERSION>
+   git push -u origin release/<VERSION>
+   gh pr create --base main --title "chore: release <VERSION>" --body "Release <VERSION>."
+   # wait for the required checks, then:
+   gh pr merge --squash
+   git fetch origin
+   git tag v<VERSION> origin/main
+   git push origin v<VERSION>
    ```
+   Never push the tag before the merge, and never chain the two pushes with `;`: in 4.9.10 the push to `main` was refused, the tag went out anyway, and it now sits on a commit outside `main` for good.
 
 8. **Print status**: Tell the user the tag has been pushed and the GitHub Actions workflow (`release-tauri.yml`) will automatically build, package (NSIS), upload assets, and generate `latest.json`. Provide the URL: `https://github.com/<repo>/actions` so they can monitor progress. The GitHub **release body is auto-generated** by the workflow from this version's `CHANGELOG.md` section (hero image markdown stripped, a changelog link + install line added) — no manual editing needed.
 
