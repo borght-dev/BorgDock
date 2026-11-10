@@ -3075,6 +3075,8 @@ export type SummarySettings_Deserialize = {
 	enabled?: boolean,
 	/**  Quick Review writes a PR's review guide as soon as it opens; off, only on a click. */
 	autoReviewGuide?: boolean,
+	/**  Guides are written ahead, in the background, for every open pull request I can review. */
+	backgroundReviewGuides?: boolean,
 	/**  Reasoning effort the summary agent runs with. Absent: the CLI's default. */
 	effort?: string | null,
 	/**  Codex's fast service tier. */
@@ -3091,6 +3093,8 @@ export type SummarySettings_Serialize = {
 	enabled: boolean,
 	/**  Quick Review writes a PR's review guide as soon as it opens; off, only on a click. */
 	autoReviewGuide: boolean,
+	/**  Guides are written ahead, in the background, for every open pull request I can review. */
+	backgroundReviewGuides: boolean,
 	/**  Reasoning effort the summary agent runs with. Absent: the CLI's default. */
 	effort?: string,
 	/**  Codex's fast service tier. */

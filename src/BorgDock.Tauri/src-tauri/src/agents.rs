@@ -85,6 +85,60 @@ fn effort_of<'a>(requested: Option<&'a str>, allowed: &[&str]) -> Option<&'a str
     requested.filter(|effort| allowed.contains(effort))
 }
 
+/// The arguments of a headless Claude run. The prompt goes in over stdin.
+///
+/// `--bare` deliberately is not used: current Claude Code disables
+/// OAuth/keychain auth in bare mode, while BorgDock must reuse the user's
+/// CLI subscription and never ask for an API key.
+///
+/// A summary reads the prompt and answers. `--restricted` still connects the
+/// account's MCP servers and lists its skills and some twenty tools: seconds
+/// of startup and ~25k tokens a run for things a summary never calls. It
+/// keeps the three tools that look around the checkout. A session without a
+/// name costs a second request that writes it a title.
+///
+/// The checkout is a directory the agent may read, never where it starts:
+/// started inside a repository the CLI spends seconds on it at boot and
+/// again before the request leaves (15 s against 7 s for a one-word prompt
+/// on a busy machine).
+fn claude_args(model: Option<&str>, effort: Option<&str>, checkout: Option<&str>) -> Vec<String> {
+    let mut args: Vec<String> = [
+        "-p",
+        "--restricted",
+        "--strict-mcp-config",
+        "--disable-slash-commands",
+        "--tools",
+        "Read,Grep,Glob",
+        "--no-session-persistence",
+        "--name",
+        "BorgDock summary",
+        "--output-format",
+        "json",
+    ]
+    .map(str::to_owned)
+    .into();
+    let mut option = |flag: &str, value: &str| args.extend([flag.to_owned(), value.to_owned()]);
+    if let Some(model) = model.filter(|v| !v.is_empty()) {
+        option("--model", model);
+    }
+    if let Some(effort) = effort_of(effort, CLAUDE_EFFORTS) {
+        option("--effort", effort);
+    }
+    if let Some(checkout) = checkout {
+        option("--add-dir", checkout);
+    }
+    args
+}
+
+/// An empty folder to start Claude in.
+async fn neutral_directory() -> Result<std::path::PathBuf, String> {
+    let directory = std::env::temp_dir().join("borgdock-summary-agent");
+    tokio::fs::create_dir_all(&directory)
+        .await
+        .map_err(|e| format!("Failed to create {}: {e}", directory.display()))?;
+    Ok(directory)
+}
+
 fn parse_claude_output(bytes: &[u8]) -> Result<String, String> {
     let value: serde_json::Value =
         serde_json::from_slice(bytes).map_err(|e| format!("Claude returned invalid JSON: {e}"))?;
@@ -177,25 +231,16 @@ pub async fn run_headless_prompt(
         .executable
         .filter(|v| !v.trim().is_empty())
         .unwrap_or_else(|| provider.clone());
+    let checkout = request.cwd.as_deref().filter(|v| !v.is_empty());
     let mut command = hidden_tokio_command(&executable);
     match provider.as_str() {
         "claude" => {
-            // `--bare` deliberately is not used: current Claude Code disables
-            // OAuth/keychain auth in bare mode, while BorgDock must reuse the
-            // user's CLI subscription and never ask for an API key.
-            command.args([
-                "-p",
-                "--restricted",
-                "--no-session-persistence",
-                "--output-format",
-                "json",
-            ]);
-            if let Some(model) = request.model.as_deref().filter(|v| !v.is_empty()) {
-                command.args(["--model", model]);
-            }
-            if let Some(effort) = effort_of(request.effort.as_deref(), CLAUDE_EFFORTS) {
-                command.args(["--effort", effort]);
-            }
+            command.args(claude_args(
+                request.model.as_deref(),
+                request.effort.as_deref(),
+                checkout,
+            ));
+            command.current_dir(neutral_directory().await?);
         }
         "codex" => {
             // A summary reads the prompt and answers. The user's config.toml
@@ -228,6 +273,9 @@ pub async fn run_headless_prompt(
                 command.args(["-c", "service_tier=\"fast\""]);
             }
             command.arg("-");
+            if let Some(checkout) = checkout {
+                command.current_dir(checkout);
+            }
         }
         _ => {
             return Err(format!(
@@ -235,9 +283,6 @@ pub async fn run_headless_prompt(
                 request.provider
             ))
         }
-    }
-    if let Some(cwd) = request.cwd.as_deref().filter(|v| !v.is_empty()) {
-        command.current_dir(cwd);
     }
     command
         .stdin(Stdio::piped())
@@ -339,6 +384,23 @@ mod tests {
         assert!(tail.starts_with('…') && tail.ends_with("the reason"));
         assert_eq!(tail.chars().count(), 601);
         assert_eq!(stderr_tail(b"  short  "), "short");
+    }
+
+    #[test]
+    fn claude_reads_the_checkout_without_starting_in_it() {
+        let args = claude_args(Some("opus"), Some("low"), Some("D:/repos/acme"));
+        let value_of = |flag: &str| {
+            let at = args.iter().position(|arg| arg == flag)?;
+            args.get(at + 1).map(String::as_str)
+        };
+        assert_eq!(value_of("--add-dir"), Some("D:/repos/acme"));
+        assert_eq!(value_of("--model"), Some("opus"));
+        assert_eq!(value_of("--effort"), Some("low"));
+        assert_eq!(value_of("--tools"), Some("Read,Grep,Glob"));
+        assert!(args.contains(&"--strict-mcp-config".to_owned()));
+
+        let bare = claude_args(None, Some("minimal"), None);
+        assert!(!bare.iter().any(|arg| arg == "--add-dir" || arg == "--model" || arg == "--effort"));
     }
 
     #[test]

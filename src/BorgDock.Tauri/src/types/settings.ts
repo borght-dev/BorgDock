@@ -209,6 +209,8 @@ export interface SummarySettings {
   model: string;
   /** Quick Review writes a PR's review guide as soon as it opens; off, only on a click. */
   autoReviewGuide?: boolean;
+  /** Guides are written ahead, in the background, for every open PR I can review. */
+  backgroundReviewGuides?: boolean;
   /** Reasoning effort; absent or empty uses the CLI's default. Values per provider: `SUMMARY_EFFORTS`. */
   effort?: string;
   /** Codex's fast service tier. Claude has none. */

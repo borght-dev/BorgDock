@@ -104,6 +104,7 @@ export const AgentsCodexSummaries: Story = {
           effort: 'high',
           fast: true,
           autoReviewGuide: true,
+          backgroundReviewGuides: true,
           guideInstructions: 'Call out every new translation key and every migration.',
           guideSkip: ['plans/**/*.html'],
         },

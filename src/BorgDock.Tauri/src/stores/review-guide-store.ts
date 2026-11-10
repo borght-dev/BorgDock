@@ -3,7 +3,12 @@ import { loadTabData, saveTabData } from '@/services/cache';
 import { getPRCommits } from '@/services/github/pulls';
 import { getClientForRepo } from '@/services/github/singleton';
 import type { ReviewSnapshot } from '@/services/quick-review';
-import { buildGuidePrompt, parseGuide, type ReviewGuide } from '@/services/review-guide';
+import {
+  buildGuidePrompt,
+  guideSkipReason,
+  parseGuide,
+  type ReviewGuide,
+} from '@/services/review-guide';
 import { runSummaryAgent } from '@/services/summary-agent';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequest } from '@/types';
@@ -15,6 +20,8 @@ const GUIDE_TIMEOUT_SECONDS = 300;
 export type ReviewGuideEntry =
   /** None cached, and automatic guides are off (Settings → Summaries): waits for a click. */
   | { status: 'idle'; provider: string }
+  /** A simple PR: no guide unless asked for. `reason` says what makes it simple. */
+  | { status: 'skipped'; reason: string }
   | { status: 'loading'; provider: string }
   | { status: 'ready'; guide: ReviewGuide }
   | { status: 'error'; error: string };
@@ -54,15 +61,44 @@ async function commitLines(pr: PullRequest): Promise<string[]> {
 }
 
 /**
+ * The guide the PR cache holds for this head commit, put in the store.
+ * False when there is none, or when the store already has an entry.
+ */
+export async function recallReviewGuide(pr: PullRequest): Promise<boolean> {
+  const headSha = pr.headSha ?? '';
+  const key = guideKey(pr);
+  if (!headSha || checking.has(key) || useReviewGuideStore.getState().entries[key]) return false;
+  checking.add(key);
+  const cached = await loadTabData<ReviewGuide>(
+    pr.repoOwner,
+    pr.repoName,
+    pr.number,
+    'reviewGuide',
+  ).catch(() => null);
+  checking.delete(key);
+  if (cached?.prUpdatedAt !== headSha || !isGuide(cached.data, headSha)) return false;
+  setEntry(key, { status: 'ready', guide: cached.data });
+  return true;
+}
+
+/** Marks a PR as read without a guide, unless the store already says something about it. */
+export function skipReviewGuide(pr: PullRequest, reason: string) {
+  const key = guideKey(pr);
+  if (!useReviewGuideStore.getState().entries[key]) setEntry(key, { status: 'skipped', reason });
+}
+
+/**
  * The review guide for the snapshot's head commit: from memory, then from
- * the PR cache, then written by the summary agent (Settings → Summaries)
- * when automatic guides are on. `force` writes it now: a click on Write,
+ * the PR cache, then written by the summary agent (Settings → Summaries).
+ * Nobody asked for that last step, so it happens only when automatic guides
+ * are on (`background`: the writer has its own setting) and the PR is not a
+ * simple one (`guideSkipReason`). `force` writes it now: a click on Write,
  * Retry or Write again. One run per head commit at a time; a failed run
  * stays failed until `force`, so a broken CLI is not started on every render.
  */
 export async function ensureReviewGuide(
   snapshot: ReviewSnapshot,
-  { force = false }: { force?: boolean } = {},
+  { force = false, background = false }: { force?: boolean; background?: boolean } = {},
 ): Promise<void> {
   const pr = snapshot.pr;
   const headSha = pr.headSha ?? '';
@@ -74,20 +110,14 @@ export async function ensureReviewGuide(
   const settings = useSettingsStore.getState().settings;
   const provider = settings.summaries?.provider ?? 'claude';
   if (!current) {
-    checking.add(key);
-    const cached = await loadTabData<ReviewGuide>(
-      pr.repoOwner,
-      pr.repoName,
-      pr.number,
-      'reviewGuide',
-    ).catch(() => null);
-    checking.delete(key);
-    if (cached?.prUpdatedAt === headSha && isGuide(cached.data, headSha)) {
-      setEntry(key, { status: 'ready', guide: cached.data });
+    if (await recallReviewGuide(pr)) return;
+    if (!force && !background && settings.summaries?.autoReviewGuide === false) {
+      setEntry(key, { status: 'idle', provider });
       return;
     }
-    if (!force && settings.summaries?.autoReviewGuide === false) {
-      setEntry(key, { status: 'idle', provider });
+    const simple = force ? null : guideSkipReason(pr, snapshot.files);
+    if (simple) {
+      setEntry(key, { status: 'skipped', reason: simple });
       return;
     }
   }
@@ -104,6 +134,7 @@ export async function ensureReviewGuide(
       commits: await commitLines(pr),
       instructions: settings.summaries?.guideInstructions,
       skip: settings.summaries?.guideSkip,
+      checkout: repoPath || undefined,
     });
     const result = await runSummaryAgent(settings, {
       prompt,

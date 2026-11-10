@@ -238,6 +238,12 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
     label: 'Write review guides automatically',
     keywords: ['quick review', 'guide', 'summaries', 'claude', 'codex'],
   },
+  {
+    sectionId: 'agents',
+    anchorId: 'review-guide-background',
+    label: 'Write review guides ahead',
+    keywords: ['quick review', 'guide', 'background', 'ahead', 'prepare', 'summaries'],
+  },
 
   // Updates
   { sectionId: 'updates', anchorId: 'auto-check', label: 'Auto-check for updates' },

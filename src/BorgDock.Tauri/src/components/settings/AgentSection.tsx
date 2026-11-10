@@ -449,9 +449,19 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
         <div id="field-review-guide-auto">
           <ToggleRow
             label="Write review guides automatically"
-            hint="Quick Review asks for a PR's guide as soon as it opens. Off, it waits for Write guide."
+            hint="Quick Review asks for a PR's guide as soon as it opens. Off, it waits for Write guide. A small change or a dependency update gets no guide unless you ask."
             on={summaries.autoReviewGuide !== false}
             onChange={(autoReviewGuide) => onSummariesChange({ ...summaries, autoReviewGuide })}
+          />
+        </div>
+        <div id="field-review-guide-background">
+          <ToggleRow
+            label="Write review guides ahead"
+            hint="While BorgDock is open, every open pull request you can review gets its guide in the background, one at a time, your review requests first. Quick Review then opens on it. Every new push is a new guide, which uses your agent's allowance."
+            on={!!summaries.backgroundReviewGuides}
+            onChange={(backgroundReviewGuides) =>
+              onSummariesChange({ ...summaries, backgroundReviewGuides })
+            }
             last
           />
         </div>

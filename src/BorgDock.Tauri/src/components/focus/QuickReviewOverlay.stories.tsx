@@ -878,6 +878,47 @@ export const GuideOnClick: Story = {
   },
 };
 
+/** A change of a few lines: one file of the planboard PR, on its own. */
+const translations = {
+  ...planboard,
+  pullRequest: {
+    ...planboard.pullRequest,
+    number: 4840,
+    title: 'Planboard: translate "Hidden fields in use"',
+    headSha: '7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d',
+    headRef: 'fix/ab60712-hidden-fields-translations',
+    body: 'Adds the two translation rows the hidden-filters notice was missing.',
+    changedFiles: 1,
+    additions: 20,
+    deletions: 0,
+    commitCount: 1,
+  },
+};
+
+/** A small change gets no guide: the card says why, and still offers to write one. */
+export const GuideSkipped: Story = {
+  decorators: [
+    guideDecorator,
+    (Story) => {
+      const control = getControl();
+      control.githubResponses.getPRReviewDetails = {
+        pr: translations.pullRequest,
+        baseSha: 'develop',
+      };
+      control.githubResponses.getPRFiles = PLANBOARD_FILES.slice(0, 1);
+      control.githubResponses.getReviews = [];
+      control.githubResponses.getAllComments = [];
+      return <Story />;
+    },
+  ],
+  beforeEach: () => startInOrder('guide', translations),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(/A small change: 20 lines in 1 file/);
+    await canvas.findByRole('button', { name: 'Write guide' });
+  },
+};
+
 /** The walk in Guide order: chapters in the tree, the file's chapter above the diff. */
 export const GuideWalk: Story = {
   decorators: [planboardDecorator, guideDecorator],
