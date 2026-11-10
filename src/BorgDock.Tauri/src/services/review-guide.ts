@@ -115,6 +115,8 @@ export interface GuideInput {
    * patch in the prompt, and the agent is told not to open them.
    */
   skip?: readonly string[];
+  /** Where the repository is checked out on this machine; the agent may read it, and starts elsewhere. */
+  checkout?: string;
 }
 
 /**
@@ -129,6 +131,7 @@ export function buildGuidePrompt({
   commits,
   instructions = '',
   skip = [],
+  checkout,
 }: GuideInput): string {
   const skipped = new Set(
     files.filter((file) => matchesAnyGlob(file.filename, skip)).map((f) => f.filename),
@@ -151,7 +154,9 @@ export function buildGuidePrompt({
     : 'No description.';
   return [
     'You write a review guide for a pull request. A reviewer reads the files in the order you choose, so the change makes sense from its foundation to the code that uses it.',
-    'Do not modify any files. You may read files in the working directory for context, but the diff below is the truth about this PR.',
+    checkout
+      ? `Do not modify any files. The repository is checked out at ${checkout}: you may read files there for context, but it can be on another branch, and the diff below is the truth about this PR.`
+      : 'Do not modify any files. There is no checkout to read: the diff below is all there is.',
     '',
     'Answer with JSON only, no prose and no code fence, in exactly this shape:',
     '{"summary": string, "chapters": [{"title": string, "intent": string, "check": string, "files": [[number, string]]}], "focus": [string]}',

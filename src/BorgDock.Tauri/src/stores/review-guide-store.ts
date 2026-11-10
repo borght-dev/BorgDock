@@ -134,6 +134,7 @@ export async function ensureReviewGuide(
       commits: await commitLines(pr),
       instructions: settings.summaries?.guideInstructions,
       skip: settings.summaries?.guideSkip,
+      checkout: repoPath || undefined,
     });
     const result = await runSummaryAgent(settings, {
       prompt,

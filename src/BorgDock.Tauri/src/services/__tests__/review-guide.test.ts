@@ -235,6 +235,18 @@ describe('buildGuidePrompt', () => {
     expect(prompt).toContain('Body text');
     expect(prompt).not.toContain("The reviewer's instructions");
     expect(prompt).not.toContain('Skipped by the reviewer');
+    expect(prompt).toContain('There is no checkout to read');
+  });
+
+  it('says where the checkout is when there is one', () => {
+    const prompt = buildGuidePrompt({
+      pr: makePr().pullRequest,
+      files: [file('src/Workspace.tsx')],
+      commits: [],
+      checkout: 'D:/repos/acme',
+    });
+    expect(prompt).toContain('The repository is checked out at D:/repos/acme: you may read files');
+    expect(prompt).not.toContain('There is no checkout to read');
   });
 
   it("names skipped files without their patch and adds the reviewer's instructions", () => {
