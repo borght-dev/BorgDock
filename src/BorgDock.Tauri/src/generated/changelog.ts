@@ -4,6 +4,37 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.10.0",
+    "date": "2026-11-11",
+    "summary": "See what could break before you merge and Follow a risk to the code.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "See what could break before you merge",
+        "description": "Quick Review now gives each pull request a regression risk assessment, including small changes and dependency updates that skip a guide. See Low, Medium, High or Unknown, what could break, what keeps the risk down and how much of the change the agent read. New commits mark an older assessment as outdated. Automatic assessments use your summary agent and can be switched off in Settings → Agents → Summaries.",
+        "hero": {
+          "src": "/whats-new/4.10.0/regression-risk.png",
+          "alt": "Regression risk with reasons and code evidence above the review guide"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Follow a risk to the code",
+        "description": "Expand a reason to read its cited lines, then open the file walk at that change. Reason tags in the file tree and beside the diff keep the concern in view while you review. Citations outside the diff are checked against the pull request's commit and can open on GitHub.",
+        "hero": {
+          "src": "/whats-new/4.10.0/regression-risk-walk.png",
+          "alt": "Risk reasons and cited lines in the Quick Review file walk"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Notifications now appear even before you open the tray flyout for the first time."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.9.12",
     "date": "2026-11-10",
     "summary": "See your review progress and Move on to a PR that's ready for review.",
