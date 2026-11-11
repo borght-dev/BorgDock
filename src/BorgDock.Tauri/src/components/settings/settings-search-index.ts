@@ -244,6 +244,12 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
     label: 'Write review guides ahead',
     keywords: ['quick review', 'guide', 'background', 'ahead', 'prepare', 'summaries'],
   },
+  {
+    sectionId: 'agents',
+    anchorId: 'risk-assessment-auto',
+    label: 'Assess regression risk automatically',
+    keywords: ['quick review', 'risk', 'regression', 'break', 'summaries', 'claude', 'codex'],
+  },
 
   // Updates
   { sectionId: 'updates', anchorId: 'auto-check', label: 'Auto-check for updates' },

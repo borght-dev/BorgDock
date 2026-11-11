@@ -1,0 +1,555 @@
+{
+  "version": 1,
+  "headSha": "9c41e7a2b6d0f3c8e5a14b7d9f02c6e8a3b5d7f1",
+  "baseSha": "smoke-base",
+  "provider": "claude",
+  "model": "sonnet",
+  "durationMs": 17404,
+  "createdAt": "2026-11-11T12:16:37.649Z",
+  "level": "medium",
+  "decidedBy": "R1",
+  "unknownBy": null,
+  "unknownWhy": "",
+  "headline": "Refund limits now include a shipping share that is split over all shipped lines, which can over- or under-refund shipping, and the API status code for rejected amounts changed from 400 to 422.",
+  "reasons": [
+    {
+      "effect": "raises",
+      "severity": "medium",
+      "title": "Shipping share rounding and uneven split",
+      "because": "allocateShipping divides shippingTotal by the number of shipped lines with Math.round and multiplies by the number of picked lines. When the cents do not divide evenly, the shares can add up to more or less than the shipping paid. Picking every shipped line of three, for example, returns 3 x round(cents/3), which can differ from the total.",
+      "why": "Refund limits for partly shipped orders can be off by a cent or more, and the split ignores line value.",
+      "test": {
+        "status": "partial",
+        "note": "Tests cover a two-line split and a single line, but not an uneven division such as three lines.",
+        "citation": {
+          "where": "diff",
+          "path": "src/refunds/__tests__/calculate.test.ts",
+          "side": "new",
+          "from": 104,
+          "to": 107,
+          "snippet": [
+            {
+              "kind": "add",
+              "new": 102,
+              "text": "      expect(refundableTotal(order, pick(order, 0))).toEqual(eur(39.98));",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 103,
+              "text": "    });",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 104,
+              "text": "    it('splits shipping over two shipped lines', () => {",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 105,
+              "text": "      const order = orderWith([shipped(1, 10), shipped(1, 10)], { shipping: 4.99 });",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 106,
+              "text": "      expect(refundableTotal(order, pick(order, 0, { shipping: true }))).toEqual(eur(12.5));",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 107,
+              "text": "    });",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 108,
+              "text": "  });",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 109,
+              "text": "",
+              "cited": false
+            }
+          ]
+        }
+      },
+      "citations": [
+        {
+          "where": "diff",
+          "path": "src/refunds/allocate-shipping.ts",
+          "side": "new",
+          "from": 7,
+          "to": 9,
+          "snippet": [
+            {
+              "kind": "add",
+              "new": 5,
+              "text": "export function allocateShipping(order: Order, shipped: OrderLine[], request: RefundRequest): Money {",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 6,
+              "text": "  if (!request.includeShipping || shipped.length === 0) return Money.zero(order.currency);",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 7,
+              "text": "  const perLine = Math.round(order.shippingTotal.cents / shipped.length);",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 8,
+              "text": "  const picked = shipped.filter((l) => request.lineIds.includes(l.id));",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 9,
+              "text": "  return Money.fromCents(perLine * picked.length, order.currency);",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 10,
+              "text": "}",
+              "cited": false
+            }
+          ]
+        }
+      ],
+      "unmatched": 0,
+      "id": "R1"
+    },
+    {
+      "effect": "raises",
+      "severity": "medium",
+      "title": "Error status and body changed for API clients",
+      "because": "createRefund now replies 422 with a refundable field instead of 400 when the amount exceeds the limit. Any client, retry logic or monitoring that matches on 400 for amount_exceeds_refundable will no longer match.",
+      "why": "It affects existing API consumers of the refund endpoint, with limited reach.",
+      "test": {
+        "status": "none",
+        "note": "No test of the controller appears in the changed files.",
+        "citation": null
+      },
+      "citations": [
+        {
+          "where": "diff",
+          "path": "src/api/refunds.controller.ts",
+          "side": "new",
+          "from": 57,
+          "to": 59,
+          "snippet": [
+            {
+              "kind": "context",
+              "old": 56,
+              "new": 56,
+              "text": "  if (requested.gt(refundable)) {",
+              "cited": false
+            },
+            {
+              "kind": "delete",
+              "old": 57,
+              "text": "    return reply.code(400).send({ error: 'amount_exceeds_refundable' });",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 57,
+              "text": "    return reply",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 58,
+              "text": "      .code(422)",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 59,
+              "text": "      .send({ error: 'amount_exceeds_refundable', refundable: refundable.toJSON() });",
+              "cited": true
+            },
+            {
+              "kind": "context",
+              "old": 58,
+              "new": 60,
+              "text": "  }",
+              "cited": false
+            },
+            {
+              "kind": "context",
+              "old": 59,
+              "new": 61,
+              "text": "  return refunds.create(order, requested, body);",
+              "cited": false
+            }
+          ]
+        }
+      ],
+      "unmatched": 0,
+      "id": "R2"
+    },
+    {
+      "effect": "raises",
+      "severity": "medium",
+      "title": "Cap on all orders changes the refund limit",
+      "because": "refundableTotal no longer uses refundableLines(order) and now computes the limit as the lesser of the requested amount plus shipping and the remaining line value plus order.shippingTotal. The cap uses full shippingTotal and does not subtract shipping already refunded. A second refund could therefore return shipping again, up to the cap.",
+      "why": "This is the limit that guards money paid out on every refund request.",
+      "test": {
+        "status": "partial",
+        "note": "The cap test covers a first refund with prior line refunds, not repeated shipping refunds.",
+        "citation": {
+          "where": "diff",
+          "path": "src/refunds/__tests__/calculate.test.ts",
+          "side": "new",
+          "from": 123,
+          "to": 126,
+          "snippet": [
+            {
+              "kind": "add",
+              "new": 121,
+              "text": "      expect(refundableTotal(order, pick(order, 0, { shipping: true }))).toEqual(eur(14.99));",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 122,
+              "text": "    });",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 123,
+              "text": "    it('never returns more than was paid', () => {",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 124,
+              "text": "      const order = orderWith([shipped(1, 10)], { shipping: 4.99, refunded: 10 });",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 125,
+              "text": "      expect(refundableTotal(order, pick(order, 0, { shipping: true }))).toEqual(eur(4.99));",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 126,
+              "text": "    });",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 127,
+              "text": "    it('keeps the currency of the order', () => {",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 128,
+              "text": "      const order = orderWith([shipped(1, 10)], { currency: 'GBP' });",
+              "cited": false
+            }
+          ]
+        }
+      },
+      "citations": [
+        {
+          "where": "diff",
+          "path": "src/refunds/calculate.ts",
+          "side": "new",
+          "from": 139,
+          "to": 144,
+          "snippet": [
+            {
+              "kind": "delete",
+              "old": 138,
+              "text": "  const lines = refundableLines(order).filter((l) => request.lineIds.includes(l.id));",
+              "cited": false
+            },
+            {
+              "kind": "delete",
+              "old": 139,
+              "text": "  return sum(lines.map(lineRemaining));",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 139,
+              "text": "  const remaining = sum(order.lines.map(lineRemaining));",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 140,
+              "text": "  const shipped = order.lines.filter((l) => l.shippedQty > 0);",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 141,
+              "text": "  const lines = order.lines.filter((l) => request.lineIds.includes(l.id));",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 142,
+              "text": "  const requested = sum(lines.map(lineRemaining));",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 143,
+              "text": "  const shipping = allocateShipping(order, shipped, request);",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 144,
+              "text": "  return Money.min(requested.plus(shipping), remaining.plus(order.shippingTotal));",
+              "cited": true
+            },
+            {
+              "kind": "context",
+              "old": 140,
+              "new": 145,
+              "text": "}",
+              "cited": false
+            }
+          ]
+        }
+      ],
+      "unmatched": 0,
+      "id": "R3"
+    },
+    {
+      "effect": "raises",
+      "severity": "low",
+      "title": "Dropped filter from refundableLines",
+      "because": "The old code used refundableLines(order) to select lines, and the new code filters order.lines directly. If refundableLines excluded lines for a reason other than remaining quantity, such as cancelled lines, that exclusion is gone.",
+      "why": "Only matters if that function filtered on more than the remaining amount.",
+      "test": {
+        "status": "unknown",
+        "note": "refundable-lines.ts is not shown.",
+        "citation": null
+      },
+      "citations": [
+        {
+          "where": "diff",
+          "path": "src/refunds/calculate.ts",
+          "side": "old",
+          "from": 138,
+          "to": 138,
+          "snippet": [
+            {
+              "kind": "context",
+              "old": 136,
+              "new": 137,
+              "text": "/** What a refund request may return, in the order's currency. */",
+              "cited": false
+            },
+            {
+              "kind": "context",
+              "old": 137,
+              "new": 138,
+              "text": "export function refundableTotal(order: Order, request: RefundRequest): Money {",
+              "cited": false
+            },
+            {
+              "kind": "delete",
+              "old": 138,
+              "text": "  const lines = refundableLines(order).filter((l) => request.lineIds.includes(l.id));",
+              "cited": true
+            },
+            {
+              "kind": "delete",
+              "old": 139,
+              "text": "  return sum(lines.map(lineRemaining));",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 139,
+              "text": "  const remaining = sum(order.lines.map(lineRemaining));",
+              "cited": false
+            }
+          ]
+        }
+      ],
+      "unmatched": 0,
+      "id": "R4"
+    },
+    {
+      "effect": "lowers",
+      "severity": null,
+      "title": "New tests cover the main refund cases",
+      "because": "The test file adds cases for picked lines, shipping on or off, no shipped lines, the paid cap, currency and a fully refunded line. The migration only adds a nullable column.",
+      "why": "The new logic has direct tests and the schema change is additive.",
+      "test": {
+        "status": "covered",
+        "note": "Cases cover most new branches.",
+        "citation": {
+          "where": "diff",
+          "path": "src/refunds/__tests__/calculate.test.ts",
+          "side": "new",
+          "from": 110,
+          "to": 113,
+          "snippet": [
+            {
+              "kind": "add",
+              "new": 108,
+              "text": "  });",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 109,
+              "text": "",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 110,
+              "text": "  describe('shipping', () => {",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 111,
+              "text": "    it('returns none when the request leaves it out', () => {",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 112,
+              "text": "      const order = orderWith([shipped(1, 10)], { shipping: 4.99 });",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 113,
+              "text": "      expect(refundableTotal(order, pick(order, 0))).toEqual(eur(10));",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 114,
+              "text": "    });",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 115,
+              "text": "    it('returns none when nothing shipped', () => {",
+              "cited": false
+            }
+          ]
+        }
+      },
+      "citations": [
+        {
+          "where": "diff",
+          "path": "db/migrations/20261108_refund_shipping.sql",
+          "side": "new",
+          "from": 2,
+          "to": 3,
+          "snippet": [
+            {
+              "kind": "add",
+              "new": 1,
+              "text": "-- Refunds can now return part of the shipping.",
+              "cited": false
+            },
+            {
+              "kind": "add",
+              "new": 2,
+              "text": "ALTER TABLE refunds",
+              "cited": true
+            },
+            {
+              "kind": "add",
+              "new": 3,
+              "text": "  ADD COLUMN shipping_cents integer NULL;",
+              "cited": true
+            }
+          ]
+        }
+      ],
+      "unmatched": 0,
+      "id": "L1"
+    }
+  ],
+  "files": [
+    {
+      "path": "src/refunds/calculate.ts",
+      "additions": 8,
+      "deletions": 3,
+      "read": "full",
+      "generated": false,
+      "shown": 17,
+      "lines": 17
+    },
+    {
+      "path": "src/refunds/allocate-shipping.ts",
+      "additions": 10,
+      "deletions": 0,
+      "read": "full",
+      "generated": false,
+      "shown": 10,
+      "lines": 10
+    },
+    {
+      "path": "src/api/refunds.controller.ts",
+      "additions": 3,
+      "deletions": 1,
+      "read": "full",
+      "generated": false,
+      "shown": 9,
+      "lines": 9
+    },
+    {
+      "path": "src/refunds/__tests__/calculate.test.ts",
+      "additions": 37,
+      "deletions": 0,
+      "read": "full",
+      "generated": false,
+      "shown": 40,
+      "lines": 40
+    },
+    {
+      "path": "db/migrations/20261108_refund_shipping.sql",
+      "additions": 3,
+      "deletions": 0,
+      "read": "full",
+      "generated": false,
+      "shown": 3,
+      "lines": 3
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "additions": 320,
+      "deletions": 0,
+      "read": "name",
+      "generated": true,
+      "shown": 0,
+      "lines": 321,
+      "nameOnly": "generated"
+    }
+  ],
+  "outside": [],
+  "description": "full",
+  "checkout": false
+}

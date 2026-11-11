@@ -211,6 +211,8 @@ export interface SummarySettings {
   autoReviewGuide?: boolean;
   /** Guides are written ahead, in the background, for every open PR I can review. */
   backgroundReviewGuides?: boolean;
+  /** Quick Review assesses a PR's regression risk as soon as it opens; off, only on a click. */
+  autoRiskAssessment?: boolean;
   /** Reasoning effort; absent or empty uses the CLI's default. Values per provider: `SUMMARY_EFFORTS`. */
   effort?: string;
   /** Codex's fast service tier. Claude has none. */

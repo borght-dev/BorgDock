@@ -7,6 +7,8 @@ import { getPRFiles, getPRReviewDetails } from '@/services/github/pulls';
 import { getAllComments, getReviews } from '@/services/github/reviews';
 import { loadCachedReviewSnapshot } from '@/services/quick-review';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
+import { resetRiskAssessments } from '@/stores/risk-assessment-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useToastStore } from '@/stores/toast-store';
 import type { PullRequestWithChecks } from '@/types';
 import { QuickReviewOverlay } from '../QuickReviewOverlay';
@@ -88,8 +90,17 @@ const files = [
 const WALK = ['src/Service.cs', 'bun.lock', 'App.Tests/ServiceTests.cs', 'src/service.test.ts'];
 
 let pr = makePr();
+const DEFAULT_SETTINGS = useSettingsStore.getState().settings;
 beforeEach(() => {
   vi.clearAllMocks();
+  // No agent runs here: the risk assessment has its own suite.
+  resetRiskAssessments();
+  useSettingsStore.setState({
+    settings: {
+      ...DEFAULT_SETTINGS,
+      summaries: { ...DEFAULT_SETTINGS.summaries!, autoRiskAssessment: false },
+    },
+  });
   mockClient = { ...mockClient };
   reviewCandidates.prs = [];
   reviewCandidates.open = [];
@@ -110,6 +121,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  useSettingsStore.setState({ settings: DEFAULT_SETTINGS });
   document.documentElement.classList.remove('reduce-motion');
 });
 

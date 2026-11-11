@@ -418,6 +418,18 @@ The walk's tree reads a PR in one of three orders (`ReadingOrderSwitch`, `O` cyc
 - **Tests**: mock `getClientForRepo` with one stable object (`vi.hoisted`). A new client per call re-runs `useReviewSince`'s effect forever, and the vitest worker dies of OOM without a failing test to show for it.
 - **Stories**: `resetReviewDisplayPreferences` pins the design-frame stories to Folders. `GuideOnCard`, `GuideWriting`, `GuideOnClick`, `GuideWalk`, `NoiseFolded` and `CommitsWalk` show the new parts; the story mock's `getCommitFiles` gets `{ commitSha }`.
 
+## Quick Review regression risk
+
+The card's first section and a header chip: what could break if the PR merges (design: `design/risk-assessment/opus-mockup.html`; stories `Focus/Quick review/Regression risk` and `Focus/Quick review` `Risk…`).
+
+- `services/risk-assessment.ts` is pure: `planRiskPrompt` decides what the prompt shows (source first; generated files only whole and small) and is the only source of the coverage the card shows; `buildRiskPrompt` numbers every diff line (`+139`, `-138`, ` 137`) and description line; `readRiskAnswer` + `finishRiskAssessment` validate. BorgDock sets the level (the most serious reason that raises it; Unknown when the agent says so or more than half the reviewable change went unread), never the agent.
+- **Every cite needs a quote that matches its lines.** Without it a wrong file number pinned a reason on `pnpm-lock.yaml`. A cite outside the diff is read again at the PR's head commit through GitHub (`services/github/contents.ts`), never trusted from the checkout, which can be on another branch; without a checkout none is accepted. A reason whose cites all fail stays and still counts toward the level.
+- An answer that is not an assessment (a guide's JSON, prose) is an error, never Low. Sentences claiming odds, confidence scores or tests/builds that passed are dropped (`withoutUnprovenClaims`).
+- `stores/risk-assessment-store.ts` keys entries by head (`riskKey`), keeps the newest assessment per PR in `latest` for the stale view, caches in prcache as tab data `riskAssessment`, runs at most two at once and pauses automatic runs ten minutes after a failure. A late answer for an older head never replaces the head the PR list shows (`rememberLatest`, `persist`).
+- It ignores `guideSkipReason`: dependency updates and small PRs are assessed too. `summaries.autoRiskAssessment` (default on) is the only switch; `summaries.guideSkip` patterns are named-only files here as well.
+- Tests that count `runHeadlessPrompt` calls must turn `autoRiskAssessment` off and call `resetRiskAssessments()`: the module-level pause otherwise leaks between tests and hides the extra runs. The overlay stories turn it off in `meta.beforeEach`; the `Risk…` stories turn it on and answer risk prompts (`RISK_PROMPT_TITLE`) apart from guide prompts.
+- Fixtures cite files by path (`__fixtures__/quick-review-risk.ts`): the snapshot reorders files, so numbers from a hand-written answer would point at other files.
+
 ## Self-Improvement
 
 Whenever you learn something new that is important to remember, run into the same issue twice, or encounter an issue that might happen again — update this CLAUDE.md so the next session avoids the same pitfalls.

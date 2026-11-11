@@ -1,6 +1,20 @@
 import { commands } from '@/generated/commands';
 import { commandData } from '@/services/native-command';
-import type { AgentProvider, AppSettings } from '@/types';
+import type { AgentProvider, AppSettings, PullRequest } from '@/types';
+
+/** Where the PR's repository is checked out on this machine, for the agent to read. */
+export function summaryCheckout(
+  settings: AppSettings,
+  pr: Pick<PullRequest, 'repoOwner' | 'repoName'>,
+): string | undefined {
+  return (
+    settings.repos.find(
+      (repo) =>
+        repo.owner.toLowerCase() === pr.repoOwner.toLowerCase() &&
+        repo.name.toLowerCase() === pr.repoName.toLowerCase(),
+    )?.worktreeBasePath || undefined
+  );
+}
 
 /** The efforts each CLI accepts, lowest first. Rust passes on only these. */
 export const SUMMARY_EFFORTS: Record<AgentProvider, readonly string[]> = {
