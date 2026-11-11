@@ -291,6 +291,15 @@ export function FlyoutApp() {
     [],
   );
 
+  const previousMode = useRef(mode.kind);
+  useEffect(() => {
+    const dismissedLastToast = previousMode.current === 'toast' && mode.kind === 'idle';
+    previousMode.current = mode.kind;
+    if (dismissedLastToast) {
+      void invoke('hide_flyout').catch((err) => log.warn('Failed to hide dismissed toast', err));
+    }
+  }, [mode.kind]);
+
   // Resize the flyout window to match current mode + content.
   // Toast height grows with queue size so cards don't clip at the window edge.
   const toastQueueLen = mode.kind === 'toast' ? mode.queue.length : 0;
@@ -316,7 +325,6 @@ export function FlyoutApp() {
           // wrapper padding on each side) clips the panel left edge.
           if (!cancelled) await invoke('resize_flyout', { width: 460, height: 512 });
         }
-        // idle: window is hidden, no-op
       } catch {
         // ignore — resize is cosmetic, not critical
       }
