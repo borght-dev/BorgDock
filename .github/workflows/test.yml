@@ -72,6 +72,9 @@ jobs:
         with:
           bun-version: '1.3.10'
       - run: bun install --frozen-lockfile
+      - name: Use Ubuntu archives for browser dependencies
+        run: |
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' 'https://security.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt
       - run: bunx playwright install chromium --with-deps
       - run: bun run test:e2e
       - name: Upload Playwright report
