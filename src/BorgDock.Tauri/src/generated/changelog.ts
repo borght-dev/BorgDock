@@ -4,6 +4,16 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.10.1",
+    "date": "2026-11-11",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "Dismissed notifications no longer leave an invisible area blocking clicks in other applications."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.10.0",
     "date": "2026-11-11",
     "summary": "See what could break before you merge and Follow a risk to the code.",
