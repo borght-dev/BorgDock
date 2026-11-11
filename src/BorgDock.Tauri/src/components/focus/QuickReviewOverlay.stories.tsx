@@ -1453,7 +1453,7 @@ export const RiskWalk: Story = {
     const chip = await canvas.findByRole('button', { name: 'calculate.ts:139–141' });
     await waitFor(() => expect(chip.closest('fieldset')).toBeEnabled());
     await userEvent.click(chip);
-    await canvas.findByText('Chapter 2 of 3');
+    await canvas.findByText('Chapter 2 of 4');
     await waitFor(() => expect(canvasElement.querySelector('.qr-risk-linemark')).not.toBeNull());
   },
 };
