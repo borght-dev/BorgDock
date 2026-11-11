@@ -1,0 +1,32 @@
+[
+  {
+    "slug": "pr-table",
+    "storyId": "pr-prlist--overview",
+    "viewport": { "width": 1440, "height": 900 },
+    "delay": 2500
+  },
+  {
+    "slug": "display-menu",
+    "storyId": "pr-prlist--display-menu",
+    "viewport": { "width": 1440, "height": 900 },
+    "delay": 3000
+  },
+  {
+    "slug": "filters-views",
+    "storyId": "pr-prlist--filter-menu",
+    "viewport": { "width": 1440, "height": 900 },
+    "delay": 3000
+  },
+  {
+    "slug": "pr-board",
+    "storyId": "pr-prlist--board",
+    "viewport": { "width": 1440, "height": 900 },
+    "delay": 2500
+  },
+  {
+    "slug": "rail-folded",
+    "storyId": "main-window-mainwindow--rail-collapsed",
+    "viewport": { "width": 1440, "height": 900 },
+    "delay": 2500
+  }
+]
