@@ -16,7 +16,7 @@ pub mod notes;
 pub mod phone_link;
 mod runtime;
 mod sqlite_store;
-use tauri::{generate_handler, Emitter, Manager};
+use tauri::{generate_handler, Emitter, Listener, Manager};
 pub mod platform;
 pub mod settings;
 pub mod sql;
@@ -386,6 +386,7 @@ pub fn run() {
         .plugin(platform::responsiveness::plugin())
         .plugin(tauri_plugin_os::init())
         .manage(ProcessState::default())
+        .manage(flyout::readiness::FlyoutReadiness::default())
         .manage(platform::responsiveness::Responsiveness::default())
         .manage(updater::PendingUpdate::<updater::DownloadedUpdate>::default())
         .manage(PrCache::default())
@@ -400,6 +401,12 @@ pub fn run() {
 
     builder
         .setup(move |app| {
+            let flyout_app = app.handle().clone();
+            app.listen("flyout-toast-ready", move |_| {
+                flyout_app
+                    .state::<flyout::readiness::FlyoutReadiness>()
+                    .mark_ready();
+            });
             let dispatcher = app.handle().clone();
             app.manage(platform::deferred_actions::DeferredActions::new(
                 move |action| {

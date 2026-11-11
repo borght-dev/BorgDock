@@ -42,6 +42,22 @@ pub struct ToastPayload {
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
 pub async fn show_flyout_toast(app: tauri::AppHandle, payload: ToastPayload) -> Result<(), String> {
+    let (built, result) = tokio::sync::oneshot::channel();
+    let app_for_build = app.clone();
+    app.run_on_main_thread(move || {
+        let result = if app_for_build.get_webview_window("flyout").is_some() {
+            Ok(())
+        } else {
+            crate::platform::window::build_flyout_window(&app_for_build).map(|_| ())
+        };
+        let _ = built.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+    crate::platform::window::main_thread_result(result).await?;
+    app.state::<super::readiness::FlyoutReadiness>()
+        .wait()
+        .await?;
+
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
     let app_for_run = app.clone();
 

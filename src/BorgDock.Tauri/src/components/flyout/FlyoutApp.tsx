@@ -1,3 +1,6 @@
+import { invoke } from '@tauri-apps/api/core';
+import { emit, listen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { createLogger } from '@/services/logger';
 import type { ThemeMode } from '@/types/settings';
@@ -22,7 +25,6 @@ function applyPayloadTheme(data: Partial<Pick<FlyoutData, 'theme' | 'reduceMotio
 
 async function isFlyoutVisible(): Promise<boolean> {
   try {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window');
     return await getCurrentWindow().isVisible();
   } catch {
     return false;
@@ -53,98 +55,64 @@ export function FlyoutApp() {
     initialFlyoutMode,
   );
 
-  // Data fetch + flyout-update event listener — same as the pre-refactor shell.
+  // Register events before reading the cache. Native toast delivery waits for
+  // this boot to finish, so its first payload cannot race the initial glance.
   useEffect(() => {
     let cancelled = false;
-    let unlisten: (() => void) | undefined;
-    (async () => {
+    const stops: (() => void)[] = [];
+    const register = async <T,>(name: string, handler: (event: { payload: T }) => void) => {
+      const stop = await listen<T>(name, (event) => {
+        if (!cancelled) handler(event);
+      });
+      if (cancelled) stop();
+      else stops.push(stop);
+    };
+    void (async () => {
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const cached = await invoke<string | null>('get_flyout_data');
+        await register('init-complete', () => {
+          void isFlyoutVisible().then((visible) => {
+            if (!cancelled) dispatch({ type: 'init-complete', visible });
+          });
+        });
+        await register<ToastPayload>('flyout-toast', (event) => {
+          dispatch({ type: 'toast', payload: event.payload });
+        });
+        await register('flyout-request-data', () => dispatch({ type: 'user-open' }));
+        await register<FlyoutData>('flyout-update', (event) => {
+          hasReceivedData.current = true;
+          setData(event.payload);
+          if (event.payload.theme) applyPayloadTheme(event.payload);
+        });
         if (cancelled) return;
-        if (cached) {
+        const cached = await invoke<string | null>('get_flyout_data').catch((err) => {
+          log.warn('Failed to read cached flyout data', err);
+          return null;
+        });
+        if (cancelled) return;
+        if (cached && !hasReceivedData.current) {
           try {
             const parsed = JSON.parse(cached) as FlyoutData;
             hasReceivedData.current = true;
             setData(parsed);
             if (parsed.theme) applyPayloadTheme(parsed);
-            // The window is built lazily on first open, long after the main
-            // window emitted `init-complete` — and Rust's open nudge fires
-            // before this webview has listeners. Cached data means main has
-            // already synced, so skip the splash and open straight to glance.
-            dispatch({ type: 'init-complete' });
-            if ((await isFlyoutVisible()) && !cancelled) dispatch({ type: 'user-open' });
           } catch {
-            // ignore parse errors
+            // A malformed cache must not prevent toast delivery.
           }
         }
-        const { listen } = await import('@tauri-apps/api/event');
-        if (cancelled) return;
-        unlisten = await listen<FlyoutData>('flyout-update', (event) => {
-          if (cancelled) return;
-          hasReceivedData.current = true;
-          setData(event.payload);
-          if (event.payload.theme) applyPayloadTheme(event.payload);
-        });
-        if (cancelled) {
-          unlisten?.();
-          unlisten = undefined;
+        if (hasReceivedData.current) {
+          const visible = await isFlyoutVisible();
+          if (!cancelled) dispatch({ type: 'init-complete', visible });
         }
+        if (!cancelled) await emit('flyout-toast-ready');
       } catch (err) {
-        if (cancelled) return;
-        console.error('[Flyout] Failed to initialize:', err);
+        if (!cancelled) log.error('Failed to initialize', err);
       }
     })();
     return () => {
       cancelled = true;
-      unlisten?.();
+      for (const stop of stops) stop();
     };
   }, []);
-
-  // Listen for new reducer-driving events from Rust. The `cancelled` flag
-  // is required: under React.StrictMode the effect mounts → unmounts → mounts
-  // again before the async listen() calls resolve. Without the guard we end
-  // up with two listeners attached and every event dispatches twice (visible
-  // as duplicate toasts).
-  useEffect(() => {
-    let cancelled = false;
-    let unlistenInit: (() => void) | undefined;
-    let unlistenToast: (() => void) | undefined;
-    let unlistenRequest: (() => void) | undefined;
-    (async () => {
-      const { listen } = await import('@tauri-apps/api/event');
-      const init = await listen('init-complete', () => {
-        dispatch({ type: 'init-complete' });
-        // User opened the flyout while main was still initializing — show
-        // the glance instead of dropping to a hidden idle view.
-        void isFlyoutVisible().then((visible) => {
-          if (visible && !cancelled) dispatch({ type: 'user-open' });
-        });
-      });
-      const toast = await listen<ToastPayload>('flyout-toast', (event) => {
-        dispatch({ type: 'toast', payload: event.payload });
-      });
-      const req = await listen('flyout-request-data', () => {
-        dispatch({ type: 'user-open' });
-      });
-      if (cancelled) {
-        init();
-        toast();
-        req();
-        return;
-      }
-      unlistenInit = init;
-      unlistenToast = toast;
-      unlistenRequest = req;
-    })();
-    return () => {
-      cancelled = true;
-      unlistenInit?.();
-      unlistenToast?.();
-      unlistenRequest?.();
-    };
-  }, []);
-
   // Dev-only test seed — Playwright e2e drives FlyoutData + reducer state
   // here without going through Tauri events (the test runs in pure Vite,
   // not under Tauri, so the real listen() handlers never fire).
@@ -191,11 +159,9 @@ export function FlyoutApp() {
     let unlisten: (() => void) | undefined;
     (async () => {
       try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
         const fn = await getCurrentWindow().onFocusChanged(async ({ payload: focused }) => {
           if (cancelled || focused) return;
           try {
-            const { invoke } = await import('@tauri-apps/api/core');
             if (cancelled) return;
             await invoke('hide_flyout');
           } catch {
@@ -223,7 +189,6 @@ export function FlyoutApp() {
   // the reducer back to idle.
   const handleClose = useCallback(async () => {
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       await invoke('hide_flyout');
     } catch {
       // ignore
@@ -298,7 +263,6 @@ export function FlyoutApp() {
             break;
           case 'focus-pane':
             if (toast.sessionId) {
-              const { invoke } = await import('@tauri-apps/api/core');
               const ok = await invoke<boolean>('focus_session_pane', {
                 sessionId: toast.sessionId,
               });
@@ -317,7 +281,6 @@ export function FlyoutApp() {
         log.error('toast action failed', err);
       } finally {
         try {
-          const { invoke } = await import('@tauri-apps/api/core');
           await invoke('hide_flyout');
         } catch {
           // ignore
@@ -335,7 +298,6 @@ export function FlyoutApp() {
     let cancelled = false;
     void (async () => {
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
         if (mode.kind === 'toast') {
           // Per-card budget covers: severity stripe (3-4px) + icon disc (36-44px)
           // + title (line-clamp-2) + body (line-clamp-2) + optional action pill row
