@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "regression-risk",
+    "storyId": "focus-quick-review--risk-on-card",
+    "viewport": { "width": 1440, "height": 940 },
+    "delay": 2500
+  },
+  {
+    "slug": "regression-risk-walk",
+    "storyId": "focus-quick-review--risk-walk",
+    "viewport": { "width": 1440, "height": 940 },
+    "delay": 3500
+  }
+]

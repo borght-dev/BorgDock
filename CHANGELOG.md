@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.10.0 — 2026-11-11
+
+### New Features
+
+- **See what could break before you merge** — Quick Review now gives each pull request a regression risk assessment, including small changes and dependency updates that skip a guide. See Low, Medium, High or Unknown, what could break, what keeps the risk down and how much of the change the agent read. New commits mark an older assessment as outdated. Automatic assessments use your summary agent and can be switched off in Settings → Agents → Summaries. ![Regression risk with reasons and code evidence above the review guide](whats-new/4.10.0/regression-risk.png)
+- **Follow a risk to the code** — Expand a reason to read its cited lines, then open the file walk at that change. Reason tags in the file tree and beside the diff keep the concern in view while you review. Citations outside the diff are checked against the pull request's commit and can open on GitHub. ![Risk reasons and cited lines in the Quick Review file walk](whats-new/4.10.0/regression-risk-walk.png)
+
+### Bug Fixes
+
+- Notifications now appear even before you open the tray flyout for the first time.
+
 ## 4.9.12 — 2026-11-10
 
 ### Improvements
