@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pull requests: filters and saved views</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+sc-for,sc-if{display:contents}
+.app{font-family:Inter,system-ui,sans-serif;color:#17181c;background:#ffffff;font-size:13px;min-height:100%;position:relative;display:flex;flex-direction:column}
+.ic{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top{display:flex;align-items:center;gap:12px;padding:14px 20px 8px;flex-wrap:wrap}
+.top h1{font-size:16px;font-weight:650;margin:0}
+.q{margin-left:auto;display:flex;align-items:center;gap:6px;height:32px;width:520px;max-width:100%;box-sizing:border-box;border:1px solid #4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.12);border-radius:8px;padding:0 10px;color:#6d707a;background:#ffffff;overflow:hidden}
+.tok{font-family:"JetBrains Mono",monospace;font-size:11.5px;border-radius:4px;padding:2px 6px;white-space:nowrap}
+.tok .k{color:#6d707a}
+.tok-a{background:rgba(79,70,229,.09);color:#3f37c9}
+.tok-b{background:rgba(214,69,96,.09);color:#bf3552}
+.tok-c{background:rgba(31,157,107,.1);color:#1a7f57}
+.free{color:#17181c;font-size:12.5px;white-space:nowrap}
+.caret{width:1px;height:16px;background:#17181c}
+.tabs{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid #e5e6ea;overflow-x:auto}
+.tab{font:inherit;font-size:12.5px;border:0;background:transparent;color:#5d606a;padding:9px 10px 10px;border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px;display:inline-flex;align-items:center;gap:6px}
+.tab i{font-style:normal;color:#6d707a;font-size:11.5px}
+.tab.on{color:#17181c;border-bottom-color:#4f46e5;font-weight:600}
+.tab.on i{color:#4f46e5}
+.tab .edited{width:6px;height:6px;border-radius:50%;background:#c98a12}
+.tab .pin{color:#6d707a}
+.fbar{display:flex;align-items:center;gap:8px;padding:10px 20px;flex-wrap:wrap}
+.fc{display:inline-flex;align-items:stretch;height:28px;border:1px solid #d9dbe0;border-radius:7px;overflow:hidden;font-size:12px;background:#ffffff}
+.fc span,.fc button{display:inline-flex;align-items:center;padding:0 8px;border:0;background:transparent;font:inherit;font-size:12px;color:#17181c}
+.fc .prop{color:#5d606a;background:#f6f6f8;border-right:1px solid #e5e6ea}
+.fc .op{color:#6d707a;border-right:1px solid #e5e6ea}
+.fc .val{font-weight:600}
+.fc .x{border-left:1px solid #e5e6ea;color:#6d707a;padding:0 6px}
+.addf{font:inherit;font-size:12px;height:28px;border:1px dashed #b9bbc3;border-radius:7px;background:#ffffff;color:#5d606a;padding:0 10px;display:inline-flex;align-items:center;gap:6px}
+.addf.on{border-style:solid;border-color:#4f46e5;color:#4f46e5}
+.spacer{flex:1}
+.linkbtn{font:inherit;font-size:12px;border:0;background:transparent;color:#5d606a;padding:4px}
+.outline{font:inherit;font-size:12px;height:28px;border:1px solid #4f46e5;border-radius:7px;background:#ffffff;color:#4f46e5;padding:0 10px;display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.body{display:flex;gap:20px;padding:0 20px 24px;flex-wrap:wrap;align-items:flex-start}
+.results{flex:999 1 560px;min-width:0}
+.rh{font-size:12px;color:#5d606a;padding:6px 0 8px;border-bottom:1px solid #e5e6ea}
+.rh b{color:#17181c}
+.r{display:grid;grid-template-columns:22px minmax(0,1fr) 130px 160px;column-gap:14px;align-items:center;min-height:44px;border-bottom:1px solid #f1f1f4}
+.glyph{width:10px;height:10px;border-radius:50%;display:block;margin:0 auto;background:#d64560}
+.t{min-width:0;display:flex;flex-direction:column;gap:2px}
+.t span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.t span b{color:#6d707a;font-weight:500}
+.t small{color:#6d707a;font-size:11.5px}
+.bad{color:#bf3552;font-size:12px}
+.shared{font-size:10.5px;color:#8f620b;background:rgba(201,138,18,.12);border-radius:4px;padding:1px 5px;font-weight:500;margin-left:6px}
+.next{display:inline-flex;font-size:11.5px;border-radius:999px;padding:2px 9px;border:1px solid rgba(214,69,96,.3);color:#bf3552;white-space:nowrap}
+.cheat{flex:1 1 280px;max-width:340px;border:1px solid #e5e6ea;border-radius:10px;padding:14px;font-size:12px;color:#5d606a;box-sizing:border-box}
+.cheat h2{font-size:12.5px;color:#17181c;margin:0 0 4px;font-weight:600}
+.cheat p{margin:0 0 10px;line-height:1.5}
+.qs{display:grid;grid-template-columns:auto 1fr;column-gap:12px;row-gap:6px;align-items:baseline}
+.qs code{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:#3f37c9;white-space:nowrap}
+.pop{position:absolute;z-index:10;background:#ffffff;border-radius:12px;box-shadow:0 16px 40px rgba(20,22,30,.16),0 2px 6px rgba(20,22,30,.08),0 0 0 1px rgba(20,22,30,.08);font-size:12.5px;padding:6px}
+.p1{top:170px;left:552px;width:260px}
+.p2{top:198px;left:820px;width:280px}
+.pin-in{display:flex;align-items:center;gap:6px;border-bottom:1px solid #efeff2;padding:4px 6px 8px;margin-bottom:4px;color:#6d707a}
+.pin-in input{border:0;outline:0;font:inherit;font-size:12.5px;flex:1;min-width:0;color:#17181c;background:transparent}
+.mi{font:inherit;font-size:12.5px;display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:transparent;padding:6px 8px;border-radius:6px;color:#17181c}
+.mi.on{background:#f3f3f6}
+.mi small{margin-left:auto;color:#6d707a;font-size:11px;font-variant-numeric:tabular-nums}
+.mi .ico{width:14px;color:#6d707a;display:grid;place-items:center}
+.cbx{width:14px;height:14px;border-radius:4px;border:1.5px solid #b9bbc3;display:grid;place-items:center;box-sizing:border-box;flex:none}
+.cbx.on{background:#4f46e5;border-color:#4f46e5;color:#ffffff}
+.seg2{display:flex;gap:2px;padding:2px;margin:2px 6px 6px;border-radius:7px;background:#f3f3f6}
+.seg2 button{flex:1;font:inherit;font-size:11.5px;border:0;background:transparent;border-radius:5px;padding:4px 0;color:#5d606a}
+.seg2 button.on{background:#ffffff;color:#17181c;font-weight:600;box-shadow:0 0 0 1px #d9dbe0}
+.sep{height:1px;background:#efeff2;margin:4px 6px}
+@media (max-width:1100px){.pop{position:static;margin:0 20px 12px;width:auto}}
+</style>
+</helmet>
+<div class="app">
+  <div class="top">
+    <h1>Pull requests</h1>
+    <div class="q" role="search" aria-label="Search and filter">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+      <span class="tok tok-a"><span class="k">author:</span>vera</span>
+      <span class="tok tok-b"><span class="k">is:</span>failing</span>
+      <span class="tok tok-c"><span class="k">repo:</span>shop-web,infra</span>
+      <span class="free">planboard</span><span class="caret"></span>
+    </div>
+  </div>
+  <div class="tabs">
+    <button type="button" class="tab">All <i>23</i></button>
+    <button type="button" class="tab">Your turn <i>11</i></button>
+    <button type="button" class="tab">Mine <i>9</i></button>
+    <button type="button" class="tab">Failing <i>8</i></button>
+    <button type="button" class="tab">Ready to merge <i>3</i></button>
+    <button type="button" class="tab">Stale <i>2</i></button>
+    <button type="button" class="tab on">Vera’s red PRs <i>5</i><span class="edited" title="Unsaved changes to this view"></span></button>
+    <button type="button" class="tab">Team shop-api <i>6</i></button>
+    <button type="button" class="tab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>View</button>
+  </div>
+  <div class="fbar">
+    <span class="fc"><span class="prop">Author</span><span class="op">is</span><span class="val">vera</span><button type="button" class="x" aria-label="Remove author filter"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></span>
+    <span class="fc"><span class="prop">Checks</span><span class="op">is</span><span class="val">failing</span><button type="button" class="x" aria-label="Remove checks filter"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></span>
+    <span class="fc"><span class="prop">Repository</span><span class="op">is any of</span><span class="val">shop-web, infra</span><button type="button" class="x" aria-label="Remove repository filter"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></span>
+    <button type="button" class="addf on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Filter</button>
+    <span class="spacer"></span>
+    <button type="button" class="linkbtn">Clear</button>
+    <button type="button" class="outline"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>Update view</button>
+  </div>
+
+  <div class="pop p1" role="menu" aria-label="Add a filter">
+    <label class="pin-in"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Filter by…" aria-label="Find a property"></label>
+    <sc-for list="{{props}}" as="p" hint-placeholder-count="8">
+      <button type="button" class="mi {{p.cls}}" role="menuitem">{{p.label}}<small>{{p.hint}}</small></button>
+    </sc-for>
+  </div>
+
+  <div class="pop p2" role="menu" aria-label="Requested reviewer">
+    <div class="seg2"><button type="button" class="on">is any of</button><button type="button">is none of</button></div>
+    <sc-for list="{{values}}" as="v" hint-placeholder-count="5">
+      <button type="button" class="mi" role="menuitemcheckbox" aria-checked="{{v.on}}"><span class="cbx {{v.cls}}">{{v.mark}}</span>{{v.label}}<small>{{v.count}}</small></button>
+    </sc-for>
+    <div class="sep"></div>
+    <button type="button" class="mi" role="menuitemcheckbox" aria-checked="false"><span class="cbx"></span>Nobody requested<small>4</small></button>
+  </div>
+
+  <div class="body">
+    <div class="results">
+      <div class="rh"><b>5 pull requests</b> match · grouped by Status · sorted by Priority ↓</div>
+      <sc-for list="{{rows}}" as="row" hint-placeholder-count="5">
+        <div class="r">
+          <span class="glyph"></span>
+          <div class="t"><span><b>{{row.scope}}</b> {{row.t}}</span><small>{{row.meta}}</small></div>
+          <span class="bad">{{row.checks}}<span class="shared">{{row.shared}}</span></span>
+          <span><span class="next">{{row.next}}</span></span>
+        </div>
+      </sc-for>
+    </div>
+    <aside class="cheat">
+      <h2>Type filters straight into search</h2>
+      <p>Chips and the query stay in sync: picking a value adds its token, deleting a chip removes it. A leading minus excludes.</p>
+      <div class="qs">
+        <code>is:failing</code><span>also draft, ready, stale, conflicts</span>
+        <code>author:vera</code><span>or author:me</span>
+        <code>review:me</code><span>requested from you or your team</span>
+        <code>waiting:author</code><span>who must act next</span>
+        <code>repo:shop-web</code><span>commas for any of</span>
+        <code>label:deps</code><span></span>
+        <code>ab:61576</code><span>linked work item</span>
+        <code>age:&gt;7d</code><span>opened more than a week ago</span>
+        <code>updated:&lt;1h</code><span></span>
+        <code>size:&lt;100</code><span>lines changed</span>
+        <code>-author:dependabot</code><span>exclude</span>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      props: [
+        { label: 'Repository', hint: '4', icon: '▤', cls: '' },
+        { label: 'Author', hint: '5', icon: '◉', cls: '' },
+        { label: 'Requested reviewer', hint: '4', icon: '◎', cls: 'on' },
+        { label: 'Review state', hint: '', icon: '✓', cls: '' },
+        { label: 'Checks', hint: '', icon: '●', cls: '' },
+        { label: 'Waiting on', hint: 'you, author, CI', icon: '→', cls: '' },
+        { label: 'Label', hint: '3', icon: '#', cls: '' },
+        { label: 'Work item state', hint: 'ADO', icon: '◇', cls: '' },
+        { label: 'Workstream', hint: '', icon: '◈', cls: '' },
+        { label: 'Base branch', hint: '', icon: '⑂', cls: '' },
+        { label: 'Draft / conflicts', hint: '', icon: '◌', cls: '' },
+        { label: 'Age', hint: 'opened, updated', icon: '◷', cls: '' },
+        { label: 'Size', hint: 'lines', icon: '±', cls: '' }
+      ],
+      values: [
+        { label: 'you', count: 10, on: true, cls: 'on', mark: '✓' },
+        { label: 'maria', count: 4, on: false, cls: '', mark: '' },
+        { label: 'jonas', count: 3, on: false, cls: '', mark: '' },
+        { label: 'team: shop-reviewers', count: 6, on: false, cls: '', mark: '' }
+      ],
+      rows: [
+        { scope: 'fix(search):', t: 'resolve configured custom-field filter aliases', meta: 'shop-web #6368 · AB#61472 · opened 2d ago', checks: '1 failing', shared: 'shared ×4', next: 'Blocked by shared CI' },
+        { scope: 'fix(planboard):', t: 'unplan at once with a working Ctrl+Z, and say so in the guide', meta: 'shop-web #6402 · AB#61610 · opened 2d ago', checks: '1 failing', shared: 'shared ×4', next: 'Blocked by shared CI' },
+        { scope: 'docs(customer):', t: 'Quotes bundle: corrected list guide, help, tour and screenshots', meta: 'shop-web #6396 · AB#61948 · opened 1d ago', checks: '2 failing', shared: 'shared ×4', next: 'Blocked by shared CI' },
+        { scope: 'fix(grid):', t: 'keep group headers under column filters', meta: 'shop-web #6255 · AB#61627 · opened 12d ago · stale', checks: '1 failing', shared: 'shared ×4', next: 'Address changes · vera' },
+        { scope: 'fix(planboard):', t: 'keep the drag preview inside the visible planboard rows', meta: 'shop-web #6406 · AB#61702 · opened 4h ago', checks: '3 failing', shared: 'own failure', next: 'Fix checks · vera' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

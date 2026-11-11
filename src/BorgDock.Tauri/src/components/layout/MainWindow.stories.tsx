@@ -29,10 +29,12 @@ import {
   userStoryWithRichBody,
 } from '@/components/work-items/__fixtures__/work-item-data';
 import type { BriefFilter } from '@/services/dispatch/walk';
+import { DEFAULT_DISPLAY } from '@/services/pr-list/display';
 import { reviewRequestKey } from '@/services/priority-scoring';
 import { type DispatchViewMode, type RunIntent, useDispatchStore } from '@/stores/dispatch-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
+import { usePrViewStore } from '@/stores/pr-view-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { type ActiveSection, type MainView, useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
@@ -381,6 +383,7 @@ function Harness({
   dispatchRunSheet = null,
   dispatchFilter = null,
   agentsWaiting = false,
+  railCollapsed = false,
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
@@ -405,6 +408,8 @@ function Harness({
   dispatchFilter?: BriefFilter | null;
   /** Seed Dispatch in another section too, so Focus shows the agents that wait. */
   agentsWaiting?: boolean;
+  /** The rail folded to icons. */
+  railCollapsed?: boolean;
 }) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
@@ -421,9 +426,17 @@ function Harness({
         dispatchFilter,
       );
     }
+    usePrViewStore.setState({
+      display: { ...DEFAULT_DISPLAY, groupBy },
+      baseDisplay: { ...DEFAULT_DISPLAY, groupBy },
+      savedViews: [],
+      activeViewId: null,
+      showCiSummary: true,
+      expandedGroups: new Set(),
+    });
     useUiStore.setState({
+      railCollapsed,
       activeSection: section,
-      prGroupBy: groupBy,
       viewStack: view ? [{ kind: 'list' }, view] : [{ kind: 'list' }],
     });
     useSettingsStore.setState((s) => ({
@@ -455,6 +468,14 @@ export const RailPrs: Story = { args: { section: 'prs' } };
 
 /** Pull requests grouped by author, with the current user first. */
 export const PrsByAuthor: Story = { args: { section: 'prs', groupBy: 'author' } };
+
+/** The rail folded to icons (`[`): counts as badges, the name on hover. */
+export const RailCollapsed: Story = { args: { section: 'prs', railCollapsed: true } };
+
+export const RailCollapsedLight: Story = {
+  args: { section: 'prs', railCollapsed: true },
+  globals: { theme: 'light' },
+};
 
 /** Compact density: one 32 px line per pull request. */
 export const PrsCompact: Story = { args: { section: 'prs', density: 'compact' } };

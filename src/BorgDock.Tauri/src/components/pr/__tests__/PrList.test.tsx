@@ -1,5 +1,5 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { flipMock } = vi.hoisted(() => ({
   // Runs the mutation like flip() does, without measuring anything.
@@ -19,6 +19,10 @@ const { flipMock } = vi.hoisted(() => ({
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({ writeText: vi.fn() }));
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }));
+vi.mock('@/utils/tauri-persist', () => ({
+  persistToTauriStore: vi.fn().mockResolvedValue(undefined),
+  readFromTauriStore: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('@/services/github/singleton', () => ({
   getClient: vi.fn(() => null),
   getClientForRepo: vi.fn(() => null),
@@ -35,8 +39,16 @@ vi.mock('@/utils/motion', async (importOriginal) => ({
   flip: flipMock,
 }));
 
-import { NEEDS_YOU_GROUP_KEY } from '@/services/pr-grouping';
+import { readPrListModel } from '@/hooks/usePrListModel';
+import { __seedBranchStory } from '@/services/ci-failures/culprit';
+import type { CiGroupSummary } from '@/services/ci-failures/types';
+import { DEFAULT_DISPLAY, type PrDisplay } from '@/services/pr-list/display';
+import type { SavedPrView } from '@/services/pr-list/facets';
+import { YOUR_TURN_GROUP_KEY } from '@/services/pr-list/groups';
+import { BUILT_IN_VIEWS, type PrViewKey } from '@/services/pr-list/model';
+import { useCiFailuresStore } from '@/stores/ci-failures-store';
 import { usePrStore } from '@/stores/pr-store';
+import { usePrViewStore } from '@/stores/pr-view-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -48,29 +60,66 @@ import {
   recentlyClosedPrs,
   workbenchPrs,
 } from '../__fixtures__/pr-list-data';
-import { FLIP_ROW_SELECTOR, PrList, VIRTUALIZE_THRESHOLD } from '../PrList';
+import { overviewCiGroups, overviewPrs } from '../__fixtures__/pr-overview-data';
+import { FLIP_ROW_SELECTOR, PrList } from '../PrList';
 import { prRowKey } from '../pr-card-data';
+import { VIRTUALIZE_THRESHOLD } from '../VirtualizedRows';
 
 const NOW = Date.now();
 const SETTINGS = useSettingsStore.getState().settings;
+const YOUR_TURN_STATUS_GROUP = 'status:yourTurn';
 
-function seed({ prs = workbenchPrs(NOW), closed = [] as PullRequestWithChecks[] } = {}) {
+interface SeedOptions {
+  prs?: PullRequestWithChecks[];
+  closed?: PullRequestWithChecks[];
+  filter?: PrViewKey;
+  query?: string;
+  display?: Partial<PrDisplay>;
+  savedViews?: SavedPrView[];
+  activeViewId?: string | null;
+  ciGroups?: CiGroupSummary[];
+}
+
+/** Every store the list reads, as the stories seed them (`PrList.stories.tsx`). */
+function seed({
+  prs = workbenchPrs(NOW),
+  closed = [],
+  filter = 'all',
+  query = '',
+  display = {},
+  savedViews = [],
+  activeViewId = null,
+  ciGroups = [],
+}: SeedOptions = {}) {
+  for (const group of ciGroups) __seedBranchStory(group, null);
   useSettingsStore.setState({ settings: SETTINGS });
+  useCiFailuresStore.setState({ groups: ciGroups, loaded: true, revision: 1 });
   usePrStore.setState({
     pullRequests: prs,
     closedPullRequests: closed,
-    filter: 'all',
-    searchQuery: '',
-    sortBy: 'updated',
+    filter,
+    searchQuery: query,
+    hideFailing: false,
+    relatedFailure: null,
     username: FIXTURE_ME,
     teams: [],
+    reviewRequestTimestamps: {},
     isPolling: false,
     lastPollTime: new Date(NOW),
   });
+  const full: PrDisplay = { ...DEFAULT_DISPLAY, columns: [...DEFAULT_DISPLAY.columns], ...display };
+  usePrViewStore.setState({
+    display: full,
+    baseDisplay: full,
+    savedViews,
+    activeViewId,
+    showCiSummary: true,
+    expandedGroups: new Set(),
+  });
   useUiStore.setState({
-    prGroupBy: 'repo',
     collapsedGroups: new Set(),
     selectedPrNumber: null,
+    selectedPrKey: null,
   });
 }
 
@@ -78,64 +127,72 @@ function list() {
   return document.querySelector<HTMLElement>('.bd-wb-list')!;
 }
 
+function tabs() {
+  return screen.getByRole('tablist', { name: 'Pull request views' });
+}
+
+function tab(name: RegExp) {
+  return within(tabs()).getByRole('tab', { name });
+}
+
 function groupHeadings() {
-  return [...document.querySelectorAll('.bd-wb-group__head')].map(
+  return [...list().querySelectorAll('.bd-wb-group__head')].map(
     (h) => h.querySelector('.bd-wb-group__label')!.textContent,
   );
+}
+
+/** Open rows (not Recently closed), in screen order. */
+function openRowNumbers() {
+  return [...list().querySelectorAll('.bd-wb-row[data-pr-number]')]
+    .filter((row) => !row.closest('[data-group-key="recently-closed"]'))
+    .map((row) => Number(row.getAttribute('data-pr-number')));
+}
+
+function leavingOf(call: number) {
+  return (flipMock.mock.calls[call]![3] as { leaving: string[] }).leaving;
+}
+
+async function click(element: HTMLElement) {
+  await act(async () => {
+    fireEvent.click(element);
+  });
 }
 
 describe('PrList', () => {
   beforeEach(() => {
     flipMock.mockClear();
-  });
-
-  afterEach(() => {
-    cleanup();
-    useSettingsStore.setState({ settings: SETTINGS });
-  });
-
-  it('renders the head row, the segmented filter and one row per PR', () => {
     seed();
+  });
+
+  it('renders the head, the view tabs, the view bar and one row per PR', () => {
     render(<PrList />);
     expect(screen.getByRole('heading', { name: 'Pull requests' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Filter pull requests' })).toBeInTheDocument();
-    expect(document.querySelector('[data-filter-chip]')).toBeNull();
-    expect(document.querySelector('.bd-pr-toolbar__authors')).toBeNull();
-    expect(document.querySelectorAll('.bd-wb-row')).toHaveLength(18);
-  });
-
-  it('shows the filter counts from the store', () => {
-    seed();
-    render(<PrList />);
-    const group = screen.getByRole('group', { name: 'Filter pull requests' });
+    expect(screen.getByRole('textbox', { name: 'Filter pull requests' })).toBeInTheDocument();
     expect(
-      within(group)
-        .getAllByRole('button')
-        .map((b) => b.textContent),
-    ).toEqual(['All18', 'Needs you6', 'Mine6', 'Failing2']);
+      within(tabs())
+        .getAllByRole('tab')
+        .map((t) => t.getAttribute('data-view-key')),
+    ).toEqual(BUILT_IN_VIEWS.map((v) => v.key));
+    expect(within(tabs()).getByRole('button', { name: 'View' })).toBeInTheDocument();
+    expect(tab(/^All/)).toHaveAttribute('aria-selected', 'true');
+    expect(document.querySelector('[data-view-bar]')).not.toBeNull();
+    expect(document.querySelector('[data-filter-chip]')).toBeNull();
+    expect(document.querySelector('[data-table-head]')).not.toBeNull();
+    expect(openRowNumbers()).toHaveLength(18);
   });
 
-  it('puts "Needs you" first, then the repositories, in sentence case with counts', () => {
-    seed();
+  it('shows each tab’s count from the model', () => {
     render(<PrList />);
-    expect(groupHeadings()).toEqual([
-      'Needs you',
-      'borght-dev/BorgDock',
-      'borght-dev/site',
-      'Gomocha-FSP/fsp-horizon',
-      'Review load',
-    ]);
-    const needsYou = document.querySelector(`[data-group-key="${NEEDS_YOU_GROUP_KEY}"]`)!;
-    expect(needsYou.querySelector('.bd-wb-group__count')).toHaveTextContent('6');
-    expect(needsYou.querySelectorAll('.bd-wb-row')).toHaveLength(6);
-    // The oldest review request's wait sits after the hairline.
-    expect(needsYou.querySelector('[data-review-sla]')).not.toBeNull();
-    // No uppercase labels anywhere in the Workbench list.
-    expect(document.querySelector('.bd-wb-prs .uppercase')).toBeNull();
+    const { counts } = readPrListModel();
+    expect(
+      within(tabs())
+        .getAllByRole('tab')
+        .map((t) => t.textContent),
+    ).toEqual(BUILT_IN_VIEWS.map((v) => `${v.label}${counts[v.key]}`));
+    expect(counts).toMatchObject({ all: 18, mine: 6, failing: 2 });
   });
 
   it('shows each PR once', () => {
-    seed();
     render(<PrList />);
     // Each row sits in a wrapper with its action slot; the wrapper carries the key.
     const keys = [...list().querySelectorAll('.bd-wb-rowwrap[data-key]')].map((r) =>
@@ -145,80 +202,294 @@ describe('PrList', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('FLIPs the rows on a filter change, fading the rows that leave', async () => {
-    seed();
+  it('groups by status by default, "Your turn" first, without uppercase labels', () => {
     render(<PrList />);
-    const group = screen.getByRole('group', { name: 'Filter pull requests' });
-    await act(async () => {
-      fireEvent.click(within(group).getByRole('button', { name: /Failing/ }));
-    });
+    const headings = groupHeadings();
+    expect(headings[0]).toBe('Your turn');
+    expect(headings).toContain('Review load');
+    const yourTurn = document.querySelector(`[data-group-key="${YOUR_TURN_STATUS_GROUP}"]`)!;
+    const count = readPrListModel().counts.needsYou;
+    expect(yourTurn.querySelector('.bd-wb-group__count')).toHaveTextContent(String(count));
+    expect(yourTurn.querySelectorAll('.bd-wb-row')).toHaveLength(count);
+    // The oldest review request's wait sits after the hairline.
+    expect(yourTurn.querySelector('[data-review-sla]')).not.toBeNull();
+    expect(document.querySelector('.bd-wb-prs .uppercase')).toBeNull();
+  });
+
+  it('switches tabs, FLIPping the rows and fading the rows that leave', async () => {
+    render(<PrList />);
+    await click(tab(/^Failing/));
 
     expect(flipMock).toHaveBeenCalledTimes(1);
-    const [container, , selector, options] = flipMock.mock.calls[0]!;
+    const [container, , selector] = flipMock.mock.calls[0]!;
     expect(container).toBe(list());
     expect(selector).toBe(FLIP_ROW_SELECTOR);
     const failing = usePrStore.getState().pullRequests.filter((p) => p.overallStatus === 'red');
-    const leaving = (options as { leaving: string[] }).leaving;
+    const leaving = leavingOf(0);
     const leavingRows = leaving.filter((k) => !k.startsWith('group:'));
     expect(leavingRows).toHaveLength(18 - failing.length);
     for (const pr of failing) expect(leavingRows).not.toContain(prRowKey(pr.pullRequest));
-    // Headings of groups with no failing rows fade too; "Needs you" is unpinned.
-    expect(leaving).toContain(`group:${NEEDS_YOU_GROUP_KEY}`);
-    expect(leaving).toContain('group:repo:borght-dev/site');
-    expect(leaving).not.toContain('group:repo:borght-dev/BorgDock');
+    // Headings of groups that keep no row fade too.
+    expect(leaving).toContain('group:status:waiting');
 
     expect(usePrStore.getState().filter).toBe('failing');
-    expect(document.querySelectorAll('.bd-wb-row')).toHaveLength(2);
-    // "Needs you" is only pinned under All.
-    expect(groupHeadings()).not.toContain('Needs you');
-    expect(within(group).getByRole('button', { name: /Failing/ })).toHaveAttribute(
+    expect(tab(/^Failing/)).toHaveAttribute('aria-selected', 'true');
+    expect(tab(/^All/)).toHaveAttribute('aria-selected', 'false');
+    expect(openRowNumbers().sort()).toEqual(failing.map((p) => p.pullRequest.number).sort());
+
+    await click(tab(/^Mine/));
+    expect(flipMock).toHaveBeenCalledTimes(2);
+    expect(usePrStore.getState().filter).toBe('mine');
+    expect(openRowNumbers()).toHaveLength(readPrListModel().counts.mine);
+  });
+
+  it('pins "Your turn" above the repositories when grouped by repository from the Group menu', async () => {
+    render(<PrList />);
+    fireEvent.click(document.querySelector<HTMLElement>('[data-group-button]')!);
+    const menu = screen.getByRole('menu', { name: 'Group by' });
+    expect(within(menu).getByRole('menuitemradio', { name: /^Status/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await click(within(menu).getByRole('menuitemradio', { name: /^Repository/ }));
+
+    expect(usePrViewStore.getState().display.groupBy).toBe('repo');
+    expect(screen.queryByRole('menu', { name: 'Group by' })).toBeNull();
+    expect(flipMock).toHaveBeenCalledTimes(1);
+    // Every row stays; only the status headings leave.
+    expect(leavingOf(0).every((k) => k.startsWith('group:status:'))).toBe(true);
+    expect(groupHeadings()).toEqual([
+      'Your turn',
+      'borght-dev/BorgDock',
+      'borght-dev/site',
+      'Gomocha-FSP/fsp-horizon',
+      'Review load',
+    ]);
+    expect(document.querySelector(`[data-group-key="${YOUR_TURN_GROUP_KEY}"]`)).not.toBeNull();
+    expect(openRowNumbers()).toHaveLength(18);
+  });
+
+  it('sorts from a column heading, and a second click reverses the order', async () => {
+    seed({ display: { groupBy: 'none' } });
+    render(<PrList />);
+    const head = document.querySelector<HTMLElement>('[data-table-head]')!;
+    const updated = within(head).getByRole('button', { name: /Updated/ });
+    expect(updated).not.toHaveAttribute('aria-sort');
+
+    await click(updated);
+    expect(usePrViewStore.getState().display).toMatchObject({ sortBy: 'updated', sortDir: 'desc' });
+    expect(within(head).getByRole('button', { name: /Updated/ })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+    const newestFirst = openRowNumbers();
+    expect(newestFirst).toEqual(readPrListModel().rows.map((f) => f.pr.pullRequest.number));
+    const updatedAt = (n: number) =>
+      readPrListModel().rows.find((f) => f.pr.pullRequest.number === n)!.updatedAt;
+    expect(updatedAt(newestFirst[0]!)).toBeGreaterThanOrEqual(updatedAt(newestFirst.at(-1)!));
+
+    await click(within(head).getByRole('button', { name: /Updated/ }));
+    expect(usePrViewStore.getState().display.sortDir).toBe('asc');
+    expect(within(head).getByRole('button', { name: /Updated/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
+    const oldestFirst = openRowNumbers();
+    expect(oldestFirst).toEqual(readPrListModel().rows.map((f) => f.pr.pullRequest.number));
+    expect(updatedAt(oldestFirst[0]!)).toBeLessThanOrEqual(updatedAt(oldestFirst.at(-1)!));
+    expect(flipMock).toHaveBeenCalledTimes(2);
+    // A sort moves rows; none leave.
+    expect(leavingOf(1)).toEqual([]);
+  });
+
+  it('switches to the board from the Display dialog', async () => {
+    render(<PrList />);
+    fireEvent.click(screen.getByRole('button', { name: 'Display' }));
+    const dialog = screen.getByRole('dialog', { name: 'Display options' });
+    await click(within(dialog).getByRole('radio', { name: /Board/ }));
+
+    expect(usePrViewStore.getState().display.layout).toBe('board');
+    expect(flipMock).toHaveBeenCalledTimes(1);
+    const board = list().querySelector('[data-board]')!;
+    expect(board).not.toBeNull();
+    expect(board.querySelectorAll('.bd-prl-card')).toHaveLength(18);
+    expect(list().querySelector('[data-table-head]')).toBeNull();
+    expect(list().querySelector('.bd-wb-row')).toBeNull();
+    // The board leaves out Review load and Recently closed.
+    expect(list().querySelector('[data-group-key="review-load"]')).toBeNull();
+  });
+
+  it('adds and removes a table column from the Display dialog', async () => {
+    render(<PrList />);
+    fireEvent.click(screen.getByRole('button', { name: 'Display' }));
+    const dialog = screen.getByRole('dialog', { name: 'Display options' });
+    const created = within(dialog).getByRole('button', { name: 'Created' });
+    expect(created).toHaveAttribute('aria-pressed', 'false');
+    expect(list().querySelector('[data-col="created"]')).toBeNull();
+
+    await click(created);
+    expect(usePrViewStore.getState().display.columns).toContain('created');
+    expect(within(dialog).getByRole('button', { name: 'Created' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
+    const head = list().querySelector('[data-table-head]')!;
+    expect(head.querySelector('[data-col="created"]')).not.toBeNull();
+    expect(list().querySelectorAll('.bd-wb-row [data-col="created"]')).toHaveLength(18);
+
+    await click(within(dialog).getByRole('button', { name: 'Size' }));
+    expect(usePrViewStore.getState().display.columns).not.toContain('size');
+    expect(list().querySelector('[data-col="size"]')).toBeNull();
   });
 
-  it('FLIPs on group-by and sort changes from the "Group and sort" menu', async () => {
-    seed();
-    render(<PrList />);
+  describe('filters', () => {
+    it('shows a chip per qualifier, and × removes one', async () => {
+      seed({ query: 'author:mira checks:failing' });
+      render(<PrList />);
+      const chips = [...document.querySelectorAll('[data-filter-chip]')];
+      expect(chips.map((c) => c.getAttribute('data-filter-chip'))).toEqual(['author', 'checks']);
+      expect(chips[0]).toHaveTextContent(/Author\s*is\s*mira/);
+      const narrowed = readPrListModel().rows.length;
+      expect(openRowNumbers()).toHaveLength(narrowed);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Group and sort' }));
-    await act(async () => {
-      fireEvent.click(screen.getByRole('menuitemradio', { name: 'Author' }));
+      await click(screen.getByRole('button', { name: 'Remove Author filter' }));
+      expect(usePrStore.getState().searchQuery).toBe('checks:failing');
+      expect(
+        [...document.querySelectorAll('[data-filter-chip]')].map((c) =>
+          c.getAttribute('data-filter-chip'),
+        ),
+      ).toEqual(['checks']);
+      expect(openRowNumbers()).toHaveLength(readPrListModel().rows.length);
+      expect(readPrListModel().rows.length).toBeGreaterThanOrEqual(narrowed);
     });
-    expect(useUiStore.getState().prGroupBy).toBe('author');
-    expect(flipMock).toHaveBeenCalledTimes(1);
-    expect(flipMock.mock.calls[0]![3]).toEqual({ leaving: [] });
-    expect(screen.queryByRole('menu')).toBeNull();
-    expect(groupHeadings()).not.toContain('Needs you');
-    expect(groupHeadings()[0]).toContain('koen (you)');
-    expect(list().querySelectorAll('.bd-wb-row')).toHaveLength(18);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Group and sort' }));
-    await act(async () => {
-      fireEvent.click(screen.getByRole('menuitemradio', { name: 'Created' }));
+    it('Clear drops every qualifier and keeps the free text', async () => {
+      seed({ query: 'author:mira SQL' });
+      render(<PrList />);
+      await click(screen.getByRole('button', { name: 'Clear' }));
+      expect(usePrStore.getState().searchQuery).toBe('SQL');
+      expect(document.querySelector('[data-filter-chip]')).toBeNull();
     });
-    expect(usePrStore.getState().sortBy).toBe('created');
-    expect(groupHeadings()).not.toContain('Needs you');
-    expect(groupHeadings()[0]).toContain('koen (you)');
-    const mine = document.querySelector('[data-group-key="author:koen"]')!;
-    expect(mine.querySelectorAll('.bd-wb-row')).toHaveLength(6);
-    expect(flipMock).toHaveBeenCalledTimes(2);
+
+    it('adds repo: from a value checkbox in the Filter menu', async () => {
+      render(<PrList />);
+      fireEvent.click(screen.getByRole('button', { name: 'Filter' }));
+      const menu = screen.getByRole('menu', { name: 'Add a filter' });
+      fireEvent.click(within(menu).getByRole('menuitem', { name: /Repository/ }));
+      const site = within(menu).getByRole('menuitemcheckbox', { name: /^site/ });
+      expect(site).toHaveAttribute('aria-checked', 'false');
+
+      await click(site);
+      expect(usePrStore.getState().searchQuery).toBe('repo:site');
+      expect(within(menu).getByRole('menuitemcheckbox', { name: /^site/ })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      );
+      expect(document.querySelector('[data-filter-chip="repo"]')).toHaveTextContent(/site/);
+      const sitePrs = usePrStore
+        .getState()
+        .pullRequests.filter((p) => p.pullRequest.repoName === 'site')
+        .map((p) => p.pullRequest.number);
+      expect(openRowNumbers().sort()).toEqual(sitePrs.sort());
+    });
   });
 
-  it('marks the current grouping and sort in the menu', () => {
-    seed();
-    render(<PrList />);
-    fireEvent.click(screen.getByRole('button', { name: 'Group and sort' }));
-    expect(screen.getByRole('menuitemradio', { name: 'Repo' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
-    expect(screen.getByRole('menuitemradio', { name: 'Updated' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
-    expect(screen.queryByRole('menu')).toBeNull();
+  describe('saved views', () => {
+    it('saves the list as a view under a name and shows its tab', async () => {
+      seed({ filter: 'failing' });
+      render(<PrList />);
+      fireEvent.click(within(tabs()).getByRole('button', { name: 'View' }));
+      const dialog = screen.getByRole('dialog', { name: 'Save view' });
+      const save = within(dialog).getByRole('button', { name: 'Save view' });
+      expect(save).toBeDisabled();
+      fireEvent.change(within(dialog).getByLabelText('View name'), {
+        target: { value: 'Red ones' },
+      });
+      await click(save);
+
+      expect(screen.queryByRole('dialog', { name: 'Save view' })).toBeNull();
+      const [view] = usePrViewStore.getState().savedViews;
+      expect(view).toMatchObject({ name: 'Red ones', filter: 'failing', query: '' });
+      expect(usePrViewStore.getState().activeViewId).toBe(view!.id);
+      const saved = tab(/^Red ones/);
+      expect(saved).toHaveAttribute('aria-selected', 'true');
+      expect(saved).toHaveTextContent('Red ones2');
+      expect(tab(/^Failing/)).toHaveAttribute('aria-selected', 'false');
+      expect(screen.queryByRole('button', { name: 'Update view' })).toBeNull();
+    });
+
+    it('marks the view edited when the query changes, and Update view saves it', async () => {
+      const view: SavedPrView = {
+        id: 'view-red',
+        name: 'Red ones',
+        filter: 'failing',
+        query: '',
+        display: { ...DEFAULT_DISPLAY, columns: [...DEFAULT_DISPLAY.columns] },
+      };
+      seed({ filter: 'failing', savedViews: [view], activeViewId: view.id, display: view.display });
+      render(<PrList />);
+      expect(screen.queryByRole('button', { name: 'Update view' })).toBeNull();
+      expect(within(tab(/^Red ones/)).queryByRole('img', { name: 'Unsaved changes' })).toBeNull();
+
+      const input = screen.getByRole('textbox', { name: 'Filter pull requests' });
+      fireEvent.change(input, { target: { value: 'author:me' } });
+      await act(async () => {
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
+      expect(usePrStore.getState().searchQuery).toBe('author:me');
+      expect(within(tab(/^Red ones/)).getByRole('img', { name: 'Unsaved changes' })).toBeVisible();
+
+      await click(screen.getByRole('button', { name: 'Update view' }));
+      expect(usePrViewStore.getState().savedViews[0]).toMatchObject({
+        filter: 'failing',
+        query: 'author:me',
+      });
+      expect(screen.queryByRole('button', { name: 'Update view' })).toBeNull();
+      expect(within(tab(/^Red ones/)).queryByRole('img', { name: 'Unsaved changes' })).toBeNull();
+    });
+
+    it('leaving a saved view for a built-in tab drops its query', async () => {
+      const view: SavedPrView = {
+        id: 'view-site',
+        name: 'Site',
+        filter: 'all',
+        query: 'repo:site',
+        display: { ...DEFAULT_DISPLAY, columns: [...DEFAULT_DISPLAY.columns] },
+      };
+      seed({ query: view.query, savedViews: [view], activeViewId: view.id });
+      render(<PrList />);
+      await click(tab(/^Mine/));
+      expect(usePrViewStore.getState().activeViewId).toBeNull();
+      expect(usePrStore.getState()).toMatchObject({ filter: 'mine', searchQuery: '' });
+      expect(tab(/^Site/)).toHaveAttribute('aria-selected', 'false');
+    });
+  });
+
+  describe('shared CI failures summary', () => {
+    beforeEach(() => {
+      seed({ prs: overviewPrs(NOW), ciGroups: overviewCiGroups(NOW) });
+    });
+
+    it('is one line until opened, then a row per failure', async () => {
+      render(<PrList />);
+      const strip = screen.getByRole('region', { name: 'Shared CI failures' });
+      const toggle = within(strip).getByRole('button', { expanded: false });
+      expect(toggle).toHaveTextContent('3 shared CI failures block 6 PRs');
+      expect(toggle).toHaveTextContent(/Worst:/);
+      expect(strip.querySelectorAll('.bd-ci-strip__row')).toHaveLength(0);
+
+      await click(toggle);
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      expect(strip.querySelectorAll('.bd-ci-strip__row')).toHaveLength(3);
+      expect(toggle).not.toHaveTextContent(/Worst:/);
+    });
+
+    it('× hides it and turns the summary off', async () => {
+      render(<PrList />);
+      await click(screen.getByRole('button', { name: 'Hide the shared CI failures summary' }));
+      expect(usePrViewStore.getState().showCiSummary).toBe(false);
+      expect(document.querySelector('[data-ci-strip]')).toBeNull();
+    });
   });
 
   it('keeps a short Recently closed list in the FLIP set', () => {
@@ -248,10 +519,7 @@ describe('PrList', () => {
       expect(virtual.querySelectorAll('.bd-wb-row').length).toBeGreaterThan(0);
       expect(virtual.querySelectorAll(FLIP_ROW_SELECTOR)).toHaveLength(0);
 
-      const group = screen.getByRole('group', { name: 'Filter pull requests' });
-      await act(async () => {
-        fireEvent.click(within(group).getByRole('button', { name: /Mine/ }));
-      });
+      await click(tab(/^Mine/));
       expect(flipMock).toHaveBeenCalledTimes(1);
       const crossfades = animate.mock.contexts.filter((el) => el === virtual);
       expect(crossfades).toHaveLength(1);
@@ -267,38 +535,35 @@ describe('PrList', () => {
   });
 
   it('collapses and expands a group from its heading', () => {
-    seed();
     render(<PrList />);
     const heading = document.querySelector<HTMLElement>(
-      `[data-group-key="${NEEDS_YOU_GROUP_KEY}"] .bd-wb-group__head`,
+      `[data-group-key="${YOUR_TURN_STATUS_GROUP}"] .bd-wb-group__head`,
     )!;
-    const body = heading.parentElement!.querySelector('.bd-wb-group__body')!;
+    const body = heading.closest('.bd-wb-group')!.querySelector('.bd-wb-group__body')!;
     expect(heading).toHaveAttribute('aria-expanded', 'true');
 
     fireEvent.click(heading);
     expect(heading).toHaveAttribute('aria-expanded', 'false');
     expect(body).toHaveAttribute('data-collapsed', 'true');
     expect(body.querySelector('.bd-wb-group__rows')).toHaveAttribute('inert');
-    expect(useUiStore.getState().collapsedGroups.has(NEEDS_YOU_GROUP_KEY)).toBe(true);
+    expect(useUiStore.getState().collapsedGroups.has(YOUR_TURN_STATUS_GROUP)).toBe(true);
 
     fireEvent.click(heading);
     expect(heading).toHaveAttribute('aria-expanded', 'true');
     expect(body.querySelector('.bd-wb-group__rows')).not.toHaveAttribute('inert');
   });
 
-  it('shows an empty state under a filter with no matches', () => {
+  it('shows an empty state for a tab with no matches', async () => {
     seed({ prs: workbenchPrs(NOW).filter((p) => p.overallStatus !== 'red') });
     render(<PrList />);
-    const group = screen.getByRole('group', { name: 'Filter pull requests' });
-    act(() => {
-      fireEvent.click(within(group).getByRole('button', { name: /Failing/ }));
-    });
-    expect(screen.getByText('No pull requests match this filter')).toBeInTheDocument();
+    expect(tab(/^Failing/)).toHaveTextContent('Failing0');
+    await click(tab(/^Failing/));
+    expect(screen.getByText('No pull requests match this view')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Pull requests' })).toBeInTheDocument();
+    expect(document.querySelector('[data-table-head]')).toBeNull();
   });
 
   it('Esc in the search box clears it', () => {
-    seed();
     render(<PrList />);
     const input = screen.getByRole('textbox', { name: 'Filter pull requests' });
     fireEvent.change(input, { target: { value: 'SQL' } });
@@ -307,37 +572,33 @@ describe('PrList', () => {
     expect(usePrStore.getState().searchQuery).toBe('');
   });
 
-  it.each([
-    ['needsReview', 'needsYou'],
-    ['ready', 'all'],
-    ['reviewing', 'all'],
-    ['closed', 'all'],
-  ] as const)('maps a filter the control does not offer (%s) onto %s', (from, to) => {
-    seed();
-    usePrStore.setState({ filter: from });
+  it('Enter in the search box applies the query at once', () => {
     render(<PrList />);
-    expect(usePrStore.getState().filter).toBe(to);
-    const group = screen.getByRole('group', { name: 'Filter pull requests' });
-    const pressed = within(group)
-      .getAllByRole('button')
-      .filter((b) => b.getAttribute('aria-pressed') === 'true');
-    expect(pressed).toHaveLength(1);
-    expect(pressed[0]).toHaveAttribute('data-filter-key', to);
+    const input = screen.getByRole('textbox', { name: 'Filter pull requests' });
+    fireEvent.change(input, { target: { value: 'is:failing' } });
+    expect(usePrStore.getState().searchQuery).toBe('');
+    act(() => {
+      fireEvent.keyDown(input, { key: 'Enter' });
+    });
+    expect(usePrStore.getState().searchQuery).toBe('is:failing');
+    expect(document.querySelector('[data-filter-chip="is"]')).not.toBeNull();
+    expect(openRowNumbers()).toHaveLength(2);
   });
 
-  it('routes a Review load row through the filter control and FLIP', async () => {
-    seed();
+  it('turns a Review load row into a reviewer: query, through FLIP', async () => {
+    seed({ filter: 'mine' });
     render(<PrList />);
     const reviewer = document.querySelector<HTMLElement>(
       '[data-group-key="review-load"] .bd-wb-review-load button',
     )!;
     const login = reviewer.getAttribute('title')!.split(':')[0];
-    await act(async () => {
-      fireEvent.click(reviewer);
-    });
+    await click(reviewer);
     expect(flipMock).toHaveBeenCalledTimes(1);
-    expect(usePrStore.getState().filter).toBe('needsYou');
-    expect(usePrStore.getState().searchQuery).toBe(login);
+    expect(usePrStore.getState()).toMatchObject({
+      filter: 'all',
+      searchQuery: `reviewer:${login}`,
+    });
+    expect(document.querySelector('[data-filter-chip="reviewer"]')).toHaveTextContent(login!);
   });
 
   it('dates the oldest review request, team requests included, without pulsing', () => {
@@ -356,10 +617,20 @@ describe('PrList', () => {
       },
     });
     render(<PrList />);
-    const aside = document.querySelector('[data-group-key="needs-you"] [data-review-sla]')!;
+    const aside = document.querySelector(
+      `[data-group-key="${YOUR_TURN_STATUS_GROUP}"] [data-review-sla]`,
+    )!;
     expect(aside).toHaveAttribute('data-review-sla', 'stale');
     expect(aside).toHaveTextContent('3d');
     expect(aside.querySelector('.animate-pulse')).toBeNull();
+  });
+
+  it('puts the oldest review request on the pinned "Your turn" group too', () => {
+    seed({ display: { groupBy: 'repo' } });
+    render(<PrList />);
+    expect(
+      document.querySelector(`[data-group-key="${YOUR_TURN_GROUP_KEY}"] [data-review-sla]`),
+    ).not.toBeNull();
   });
 
   describe('with 200 pull requests', () => {
@@ -374,30 +645,32 @@ describe('PrList', () => {
       expect(virtual!.querySelectorAll('.bd-wb-row').length).toBeLessThan(200);
     });
 
-    it('virtualizes large open groups and changes the filter without FLIP', async () => {
-      seed({ prs: manyOpenPrs(200, NOW) });
-      render(<PrList />);
-      expect(list().querySelectorAll('.bd-wb-row[data-pr-key]').length).toBeLessThan(200);
-      expect(list().querySelector('[data-virtual-prs]')).not.toBeNull();
-      expect(list().querySelectorAll(FLIP_ROW_SELECTOR).length).toBeLessThan(FLIP_MAX_ROWS);
+    it('virtualizes large open groups and changes the tab without FLIP', async () => {
+      const animate = vi.fn();
+      const original = HTMLElement.prototype.animate;
+      HTMLElement.prototype.animate = animate as unknown as typeof HTMLElement.prototype.animate;
+      try {
+        seed({ prs: manyOpenPrs(200, NOW) });
+        render(<PrList />);
+        expect(list().querySelectorAll('.bd-wb-row[data-pr-key]').length).toBeLessThan(200);
+        expect(list().querySelector('[data-virtual-prs]')).not.toBeNull();
+        expect(list().querySelectorAll(FLIP_ROW_SELECTOR).length).toBeLessThan(FLIP_MAX_ROWS);
 
-      const group = screen.getByRole('group', { name: 'Filter pull requests' });
-      await act(async () => {
-        fireEvent.click(within(group).getByRole('button', { name: /Failing/ }));
-      });
-      expect(flipMock).not.toHaveBeenCalled();
-      expect(usePrStore.getState().filter).toBe('failing');
-      expect(list().querySelectorAll('.bd-wb-row[data-pr-key]')).toHaveLength(40);
+        await click(tab(/^Failing/));
+        expect(flipMock).not.toHaveBeenCalled();
+        // The whole list crossfades as one block.
+        expect(animate.mock.contexts).toContain(list());
+        expect(usePrStore.getState().filter).toBe('failing');
+        expect(list().querySelectorAll('.bd-wb-row[data-pr-key]')).toHaveLength(40);
+      } finally {
+        HTMLElement.prototype.animate = original;
+      }
     });
 
     it('FLIPs again once the list is short enough', async () => {
-      seed({ prs: manyOpenPrs(200, NOW) });
-      usePrStore.setState({ filter: 'failing' });
+      seed({ prs: manyOpenPrs(200, NOW), filter: 'failing' });
       render(<PrList />);
-      const group = screen.getByRole('group', { name: 'Filter pull requests' });
-      await act(async () => {
-        fireEvent.click(within(group).getByRole('button', { name: /Mine/ }));
-      });
+      await click(tab(/^Mine/));
       expect(flipMock).toHaveBeenCalledTimes(1);
     });
   });

@@ -106,6 +106,31 @@ test('number keys switch sections', async ({ page }) => {
   await expect(railButton(page, /^Focus/)).toHaveAttribute('aria-current', 'page');
 });
 
+test('the rail folds to icons from its button and [, and stays folded after a restart', async ({
+  page,
+}) => {
+  await bootRail(page);
+  const rail = page.getByRole('complementary', { name: 'Navigation' });
+  const width = async () => (await rail.boundingBox())?.width ?? 0;
+  expect(await width()).toBeGreaterThan(150);
+
+  await page.getByRole('button', { name: 'Collapse navigation' }).click();
+  await expect(rail).toHaveAttribute('data-collapsed', 'true');
+  await expect.poll(width).toBeLessThan(70);
+  // The sections still work, by their names.
+  await railButton(page, /^Pull requests/).click();
+  await expect(railButton(page, /^Pull requests/)).toHaveAttribute('aria-current', 'page');
+
+  await page.reload();
+  await expect(page.getByRole('navigation', { name: 'Sections' })).toBeVisible();
+  await expect(rail).toHaveAttribute('data-collapsed', 'true');
+
+  await page.locator('body').click();
+  await page.keyboard.press('[');
+  await expect(rail).not.toHaveAttribute('data-collapsed');
+  await expect.poll(width).toBeGreaterThan(150);
+});
+
 test('Esc at depth 1 does nothing', async ({ page }) => {
   await bootRail(page);
   await railButton(page, /^Pull requests/).click();

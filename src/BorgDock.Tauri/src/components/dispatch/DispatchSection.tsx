@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { WorkbenchGroup } from '@/components/pr/RepoGroup';
+import { WorkbenchGroup } from '@/components/pr/PrGroups';
 import { Button, Dot, Kbd, Seg2 } from '@/components/shared/primitives';
 import { AdoNotConfigured } from '@/components/work-items/AdoNotConfigured';
 import { dispatchActions } from '@/services/dispatch/actions';

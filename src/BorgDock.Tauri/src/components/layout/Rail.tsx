@@ -1,4 +1,17 @@
 import clsx from 'clsx';
+import {
+  Activity,
+  Crosshair,
+  FolderGit2,
+  GitPullRequest,
+  Layers,
+  ListChecks,
+  type LucideIcon,
+  NotebookPen,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Send,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BorgDockLogo } from '@/components/shared/icons';
 import { SlidingHighlight } from '@/components/shared/primitives';
@@ -25,6 +38,23 @@ export const SECTION_LABELS: Record<ActiveSection, string> = {
   activity: 'Activity',
   notes: 'Notes',
 };
+
+/** The icons the folded rail shows for each section. */
+const SECTION_ICONS: Record<ActiveSection, LucideIcon> = {
+  focus: Crosshair,
+  dispatch: Send,
+  workstreams: Layers,
+  prs: GitPullRequest,
+  workitems: ListChecks,
+  worktrees: FolderGit2,
+  activity: Activity,
+  notes: NotebookPen,
+};
+
+/** A count on a folded rail's icon: "99+" above 99. */
+function badgeText(value: number): string {
+  return value > 99 ? '99+' : String(value);
+}
 
 /** How often the "Synced … ago" line re-renders. */
 const SYNC_TICK_MS = 10_000;
@@ -72,7 +102,7 @@ function useRailCounts(): Partial<Record<ActiveSection, RailCount>> {
   return counts;
 }
 
-function SyncBlock() {
+function SyncBlock({ collapsed }: { collapsed: boolean }) {
   const lastPollTime = usePrStore((s) => s.lastPollTime);
   const isPolling = usePrStore((s) => s.isPolling);
   const rate = usePrStore((s) => s.rateLimit);
@@ -87,12 +117,45 @@ function SyncBlock() {
 
   const fraction =
     rate && rate.limit > 0 ? Math.min(1, Math.max(0, rate.remaining / rate.limit)) : 0;
+  const synced = isPolling ? 'Syncing…' : formatSyncedAgo(lastPollTime, now);
+
+  // Folded: the meter alone, with the words on hover.
+  if (collapsed)
+    return (
+      <div
+        className="bd-rail__sync bd-rail__sync--compact"
+        title={
+          rate
+            ? `${synced} · ${numberFormat.format(rate.remaining)} of ${numberFormat.format(rate.limit)} requests left`
+            : synced
+        }
+      >
+        <span className="sr-only" aria-live="polite">
+          {isPolling ? 'Syncing' : lastPollTime ? 'Synced' : ''}
+        </span>
+        <div
+          className={clsx(
+            'bd-rail__meter',
+            fraction < 0.1 && 'bd-rail__meter--low',
+            isPolling && 'bd-rail__meter--syncing',
+          )}
+          role="meter"
+          aria-label="GitHub requests left"
+          aria-valuemin={0}
+          aria-valuemax={rate?.limit ?? 0}
+          aria-valuenow={rate?.remaining ?? 0}
+        >
+          <span
+            className="bd-rail__meter-fill"
+            style={{ width: `${(fraction * 100).toFixed(2)}%` }}
+          />
+        </div>
+      </div>
+    );
 
   return (
     <div className="bd-rail__sync">
-      <span className="bd-rail__sync-line">
-        {isPolling ? 'Syncing…' : formatSyncedAgo(lastPollTime, now)}
-      </span>
+      <span className="bd-rail__sync-line">{synced}</span>
       {/* Announce the sync state changing, not the ticking relative time. */}
       <span className="sr-only" aria-live="polite">
         {isPolling ? 'Syncing' : lastPollTime ? 'Synced' : ''}
@@ -131,24 +194,37 @@ function SyncBlock() {
  * (wired in useKeyboardNav). Dispatch counts the items waiting on you,
  * Workstreams the workstreams that need you, Activity the unread entries
  * that need you.
+ *
+ * Folded (the button at the bottom, or `[`): icons with their counts as
+ * badges, the name on hover, and the rate meter alone. The choice is
+ * remembered (`ui-store.railCollapsed`).
  */
 export function Rail() {
   const activeSection = useUiStore((s) => s.activeSection);
+  const collapsed = useUiStore((s) => s.railCollapsed);
+  const toggleRail = useUiStore((s) => s.toggleRail);
   const counts = useRailCounts();
 
   return (
-    <aside className="bd-rail" aria-label="Navigation">
+    <aside
+      className={clsx('bd-rail', collapsed && 'bd-rail--collapsed')}
+      aria-label="Navigation"
+      data-collapsed={collapsed ? 'true' : undefined}
+    >
       <div className="bd-rail__ws" data-tauri-drag-region>
         <BorgDockLogo size={18} id="bd-rail-logo" />
-        <span className="bd-rail__ws-name" data-tauri-drag-region>
-          BorgDock
-        </span>
+        {!collapsed && (
+          <span className="bd-rail__ws-name" data-tauri-drag-region>
+            BorgDock
+          </span>
+        )}
       </div>
       <nav aria-label="Sections">
         <SlidingHighlight activeKey={activeSection} className="bd-rail__nav">
           {SECTION_ORDER.map((section, index) => {
             const active = section === activeSection;
             const count = counts[section];
+            const Icon = SECTION_ICONS[section];
             return (
               <button
                 key={section}
@@ -158,13 +234,28 @@ export function Rail() {
                 data-section={section}
                 aria-current={active ? 'page' : undefined}
                 aria-keyshortcuts={String(index + 1)}
-                title={`${SECTION_LABELS[section]} (${index + 1})`}
+                title={
+                  collapsed && count
+                    ? `${SECTION_LABELS[section]} · ${count.value} (${index + 1})`
+                    : `${SECTION_LABELS[section]} (${index + 1})`
+                }
                 onClick={() => void showSection(section)}
               >
-                <span className="bd-rail__label">{SECTION_LABELS[section]}</span>
+                {collapsed && (
+                  <Icon size={16} strokeWidth={2} aria-hidden="true" className="bd-rail__icon" />
+                )}
+                <span className={clsx('bd-rail__label', collapsed && 'sr-only')}>
+                  {SECTION_LABELS[section]}
+                </span>
                 {count && (
-                  <span className={clsx('bd-rail__count', count.hot && 'bd-rail__count--hot')}>
-                    {count.value}
+                  <span
+                    className={clsx(
+                      'bd-rail__count',
+                      count.hot && 'bd-rail__count--hot',
+                      collapsed && 'bd-rail__count--badge',
+                    )}
+                  >
+                    {collapsed ? badgeText(count.value) : count.value}
                   </span>
                 )}
               </button>
@@ -172,7 +263,26 @@ export function Rail() {
           })}
         </SlidingHighlight>
       </nav>
-      <SyncBlock />
+      <SyncBlock collapsed={collapsed} />
+      <button
+        type="button"
+        className="bd-rail__toggle"
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+        aria-keyshortcuts="["
+        title={collapsed ? 'Expand navigation ([)' : 'Collapse navigation ([)'}
+        onClick={toggleRail}
+        data-rail-toggle=""
+      >
+        {collapsed ? (
+          <PanelLeftOpen size={15} strokeWidth={2} aria-hidden="true" />
+        ) : (
+          <>
+            <PanelLeftClose size={15} strokeWidth={2} aria-hidden="true" />
+            <span>Collapse</span>
+          </>
+        )}
+      </button>
     </aside>
   );
 }

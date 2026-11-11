@@ -1,17 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FIXTURE_ME, workbenchPrs } from '@/components/pr/__fixtures__/pr-list-data';
-import { matchesPrFilter, usePrStore } from '../pr-store';
+import { DEFAULT_DISPLAY } from '@/services/pr-list/display';
+import { buildFacts, buildPrListModel } from '@/services/pr-list/model';
+import { usePrStore } from '../pr-store';
 
 const NOW = Date.parse('2026-09-25T12:00:00Z');
 
-describe('pr-store: the Workbench "Needs you" filter', () => {
+describe('pr-store: the Workbench "Needs you" count', () => {
   beforeEach(() => {
     usePrStore.setState({
       pullRequests: workbenchPrs(NOW),
       closedPullRequests: [],
       filter: 'all',
       searchQuery: '',
-      sortBy: 'updated',
+      hideFailing: false,
       username: FIXTURE_ME,
       teams: [],
     });
@@ -26,36 +28,34 @@ describe('pr-store: the Workbench "Needs you" filter', () => {
     // "Needs review" is only the review requests.
     expect(counts.needsReview).toBe(4);
   });
+});
 
-  it('filters the list to the PRs that need me', () => {
-    usePrStore.getState().setFilter('needsYou');
-    const numbers = usePrStore
-      .getState()
-      .filteredPrs()
-      .map((p) => p.pullRequest.number)
-      .sort((a, b) => a - b);
+describe('the "Your turn" tab on the Workbench fixture', () => {
+  const facts = buildFacts({
+    prs: workbenchPrs(NOW),
+    username: FIXTURE_ME,
+    teams: [],
+    now: NOW,
+    staleAfterDays: 7,
+    ciOf: () => null,
+  });
+  const model = buildPrListModel({
+    facts,
+    username: FIXTURE_ME,
+    now: NOW,
+    view: 'needsYou',
+    query: '',
+    hideFailing: false,
+    relatedKeys: null,
+    display: DEFAULT_DISPLAY,
+  });
+
+  it('lists the PRs that need me', () => {
+    const numbers = model.rows.map((f) => f.pr.pullRequest.number).sort((a, b) => a - b);
     expect(numbers).toEqual([86, 88, 458, 471, 479, 3668]);
   });
 
-  it('matchesPrFilter agrees with the filtered list for every Workbench filter', () => {
-    const state = usePrStore.getState();
-    for (const filter of ['all', 'needsYou', 'mine', 'failing'] as const) {
-      usePrStore.getState().setFilter(filter);
-      const expected = usePrStore
-        .getState()
-        .filteredPrs()
-        .map((p) => p.pullRequest.number)
-        .sort((a, b) => a - b);
-      const actual = state.pullRequests
-        .filter((pr) => matchesPrFilter(pr, filter, FIXTURE_ME, []))
-        .map((p) => p.pullRequest.number)
-        .sort((a, b) => a - b);
-      expect(actual).toEqual(expected);
-    }
-  });
-
-  it('never matches an open PR against the closed filter', () => {
-    const pr = usePrStore.getState().pullRequests[0]!;
-    expect(matchesPrFilter(pr, 'closed', FIXTURE_ME)).toBe(false);
+  it('counts what it lists', () => {
+    expect(model.counts.needsYou).toBe(model.rows.length);
   });
 });

@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { WorktreeBranchMapping } from '@/hooks/useWorktreeMap';
 import type { FocusFilter } from '@/services/focus-bucket';
-import type { PrGroupBy } from '@/services/pr-grouping';
 import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
@@ -34,6 +33,9 @@ export const SECTION_ORDER: readonly ActiveSection[] = [
 export type WorkstreamTab = 'overview' | 'members' | 'map' | 'activity' | 'notes';
 
 const ACTIVITY_VISITED_STORE_KEY = 'activityVisitedAt';
+
+/** Tauri-store key of the rail's collapsed state. */
+export const RAIL_COLLAPSED_STORE_KEY = 'railCollapsed';
 
 function isActiveSection(value: unknown): value is ActiveSection {
   return typeof value === 'string' && (SECTION_ORDER as readonly string[]).includes(value);
@@ -83,10 +85,11 @@ interface UiState {
   workItemsSelectedId: number | null;
   /** Keys of the list groups that are collapsed (`WorkbenchGroup`); every other group is open. */
   collapsedGroups: Set<string>;
+  /** The rail shows icons only. Remembered across launches. */
+  railCollapsed: boolean;
   isDragging: boolean;
   /** Maps branch name (lowercase) → worktree slot info */
   worktreeBranchMap: Map<string, WorktreeBranchMapping>;
-  prGroupBy: PrGroupBy;
   _hasUserNavigated: boolean;
   /**
    * Navigation stack of the main window. Always starts with the list view and
@@ -111,9 +114,10 @@ interface UiState {
   toggleRepoGroup: (repoKey: string) => void;
   /** Collapse every group in `groupKeys` (the groups on screen); the others keep their state. */
   collapseAllRepoGroups: (groupKeys: Iterable<string>) => void;
+  setRailCollapsed: (collapsed: boolean) => void;
+  toggleRail: () => void;
   setDragging: (dragging: boolean) => void;
   setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
-  setPrGroupBy: (groupBy: PrGroupBy) => void;
   restorePersistedSection: () => void;
   /** Push a view on top of the stack. */
   pushView: (view: MainView) => void;
@@ -150,9 +154,9 @@ export const useUiStore = create<UiState>()((set, get) => ({
   selectedPrKey: null,
   workItemsSelectedId: null,
   collapsedGroups: new Set<string>(),
+  railCollapsed: false,
   isDragging: false,
   worktreeBranchMap: new Map(),
-  prGroupBy: 'author',
   _hasUserNavigated: false,
   viewStack: [LIST_VIEW],
   focusFilter: 'all',
@@ -186,32 +190,29 @@ export const useUiStore = create<UiState>()((set, get) => ({
   collapseAllRepoGroups: (groupKeys) =>
     set((state) => ({ collapsedGroups: new Set([...state.collapsedGroups, ...groupKeys]) })),
 
+  setRailCollapsed: (railCollapsed) => {
+    set({ railCollapsed });
+    persistToTauriStore('ui-state.json', RAIL_COLLAPSED_STORE_KEY, railCollapsed).catch(() => {});
+  },
+
+  toggleRail: () => get().setRailCollapsed(!get().railCollapsed),
+
   setDragging: (dragging) => set({ isDragging: dragging }),
 
   setWorktreeBranchMap: (map) => set({ worktreeBranchMap: map }),
 
-  setPrGroupBy: (prGroupBy) => {
-    set({ prGroupBy });
-    persistToTauriStore('ui-state.json', 'prGroupBy', prGroupBy).catch(() => {});
-  },
-
   restorePersistedSection: () => {
     get().restoreFocusSnoozes();
+    readFromTauriStore<boolean>('ui-state.json', RAIL_COLLAPSED_STORE_KEY)
+      .then((collapsed) => {
+        if (typeof collapsed === 'boolean') set({ railCollapsed: collapsed });
+      })
+      .catch(() => {});
     if (get()._hasUserNavigated) return;
-    Promise.all([
-      readFromTauriStore<ActiveSection>('ui-state.json', 'activeSection'),
-      readFromTauriStore<PrGroupBy>('ui-state.json', 'prGroupBy'),
-    ])
-      .then(([section, groupBy]) => {
+    readFromTauriStore<ActiveSection>('ui-state.json', 'activeSection')
+      .then((section) => {
         if (get()._hasUserNavigated) return;
-        const preferences: Partial<UiState> = {};
-        if (isActiveSection(section)) {
-          preferences.activeSection = section;
-        }
-        if (groupBy && (groupBy === 'repo' || groupBy === 'author' || groupBy === 'status')) {
-          preferences.prGroupBy = groupBy;
-        }
-        set(preferences);
+        if (isActiveSection(section)) set({ activeSection: section });
       })
       .catch((err) => console.warn('Failed to restore persisted UI preferences:', err));
   },

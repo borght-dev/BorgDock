@@ -5,7 +5,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
+import { DEFAULT_DISPLAY } from '@/services/pr-list/display';
 import { usePrStore } from '@/stores/pr-store';
+import { usePrViewStore } from '@/stores/pr-view-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -99,14 +101,20 @@ function Harness({ sheet = false }: { sheet?: boolean }) {
       teams: [],
       filter: 'all',
       searchQuery: '',
-      sortBy: 'updated',
       isPolling: false,
       lastPollTime: new Date(now),
       relatedFailure: null,
     });
+    usePrViewStore.setState({
+      display: { ...DEFAULT_DISPLAY, groupBy: 'repo' },
+      baseDisplay: { ...DEFAULT_DISPLAY, groupBy: 'repo' },
+      savedViews: [],
+      activeViewId: null,
+      showCiSummary: true,
+      expandedGroups: new Set(),
+    });
     useUiStore.setState({
       activeSection: 'prs',
-      prGroupBy: 'repo',
       selectedPrKey: sheet ? null : 'acme/web#415',
       selectedPrNumber: sheet ? null : 415,
       collapsedGroups: new Set(),

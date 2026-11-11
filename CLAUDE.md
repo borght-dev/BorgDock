@@ -372,6 +372,20 @@ Capturing from Storybook in a fresh worktree: `src/BorgDock.Tauri/public/whats-n
 - **Checks card.** `PrRow` passes `checksCard` to `PrRowCore`; the check bar then takes its own click (opens the PR on its Checks tab). The reason per failed job comes from the CI failure store (`usePrCiFailures`, signals of the job's occurrence); `checks-card-data.ts` is pure. With related CI failures off no log is read, and the card says so.
 - **e2e.** ADO reads go through the mocked `ado_fetch` command, not the network: route them there. Mock handlers are serialized into the page, so a handler function can't use variables from the spec. The first spec against a cold dev server can take 20 s+ to open a detail view (lazy chunks compile); run against a warm server before reading a timeout as a bug.
 
+## Pull requests list: views, query, display, board
+
+Tabs (All, Your turn, Mine, Failing, Ready to merge, Stale, saved views), filter chips, Group / Sort / Display, and the PRs as a table, list or board. Rules: `docs/superpowers/specs/2026-11-11-pr-overview.md`; design: `design/pr-overview/mockups.html`.
+
+- **One pure model.** `services/pr-list/model.ts` `buildPrListModel` turns per-PR facts (`facts.ts`: bucket, next step, review state, size, age) into filtered, sorted, grouped rows and the tab counts. `hooks/usePrListModel.ts` feeds it from the stores; `readPrListModel()` is the same outside React (keyboard navigation). `pr-store` no longer filters or sorts (`filteredPrs` and `sortBy` are gone).
+- **The search query is the only filter state.** Chips render its qualifiers (`query.ts`); the Filter menu and chip × rewrite the string (`setTerm`, `removeTerm`). A saved view stores the string, the tab and the display.
+- **Display lives in `stores/pr-view-store.ts`**, persisted in `ui-state.json` (`prListDisplay`, `prSavedViews`, `prActiveView`, `prCiSummary`). While a saved view is on screen, display changes are the view's until Update view; `ui-store.prGroupBy` is gone.
+- **"Your turn" is `PrFacts.yourTurn`, not `isNeedsYou`**: drafts never, conflicts count, a red PR whose every failure is shared and not its doing does not. `pr-store.counts().needsYou` still uses the old rule; only `.failing` is read.
+- **A change waits for its leaving rows to fade (FLIP).** Anything that reads the stores meanwhile (a second change, saving a view) calls `settleChange()` (`services/pr-list/pending-change.ts`) first; without it, Group then Sort dropped the grouping.
+- **Rows stay 42 / 32 px.** `PrListRow` puts AB# chips, labels and the shared-failure chip on existing lines; table columns come from `--bd-prl-cols` (`tableTemplate`). Below 760 px of list width the CSS drops the headings and puts the title on its own line (`display: contents` on the text cell).
+- The row behaviour (clicks, context menu, trailing action) is `usePrRowBehaviour` in `PrRow.tsx`, shared by the classic row (Focus), table rows and board cards. On a table row the middle is the check bar, which opens the Checks tab: e2e clicks the title (`.bd-wb-row__title`), and Ctrl+click needs `ControlOrMeta` on macOS.
+- Stories: `PR/PrList` (`Overview*` use the mockup's data, `__fixtures__/pr-overview-data.ts`).
+- **The rail folds to icons** (`ui-store.railCollapsed`, persisted as `railCollapsed`; `[` from any view, or its Collapse button). `MainWindow` sets `data-rail-collapsed` and the grid column goes from 200 to 56 px. The narrow PR layout (≤760 px of list) still needs a narrower window than the 1200 px `minWidth`.
+
 ## Author runs and the E2E report
 
 Right-click a PR → "Review <author>'s PRs, oldest first", or the end card's "Next from <author>": Quick Review over one author's open PRs, oldest first, leaving out conflicts and PRs failing their own checks (`services/author-run.ts` is pure; `author-run-session.ts` reads the stores; `quick-review-store` `startRun`/`fillRun`). The first PR opens at once; the rest fill in once the E2E reports are read.

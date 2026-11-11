@@ -11,9 +11,11 @@ import { makeClaim, makeGroup } from '@/services/ci-failures/__fixtures__/store'
 import { __seedBranchStory, type BranchStory } from '@/services/ci-failures/culprit';
 import { DEFAULT_CI_FAILURE_SETTINGS } from '@/services/ci-failures/settings';
 import type { CiGroupSummary } from '@/services/ci-failures/types';
+import { DEFAULT_DISPLAY } from '@/services/pr-list/display';
 import { useCiFailuresStore } from '@/stores/ci-failures-store';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { type RelatedFailureFilter, usePrStore } from '@/stores/pr-store';
+import { usePrViewStore } from '@/stores/pr-view-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -143,15 +145,21 @@ function Harness({
       teams: [],
       filter: 'all',
       searchQuery: '',
-      sortBy: 'updated',
       relatedFailure,
       hideFailing,
       isPolling: false,
       lastPollTime: new Date(now),
     });
+    usePrViewStore.setState({
+      display: { ...DEFAULT_DISPLAY, groupBy: 'repo' },
+      baseDisplay: { ...DEFAULT_DISPLAY, groupBy: 'repo' },
+      savedViews: [],
+      activeViewId: null,
+      showCiSummary: true,
+      expandedGroups: new Set(),
+    });
     useUiStore.setState({
       activeSection: 'prs',
-      prGroupBy: 'repo',
       selectedPrKey: null,
       selectedPrNumber: null,
       collapsedGroups: new Set(),

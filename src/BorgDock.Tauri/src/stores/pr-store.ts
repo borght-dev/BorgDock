@@ -11,7 +11,7 @@ import {
   isReviewing,
   isWaitingOnMe,
 } from '@/services/pr-grouping';
-import { matchesSearch } from '@/services/pr-search';
+import type { PrViewKey } from '@/services/pr-list/model';
 import {
   computePriorityScores,
   type PriorityScore,
@@ -44,22 +44,23 @@ export interface PrRefreshedDetail {
 }
 
 /**
- * List filters. The Pull requests list offers `all`, `needsYou`, `mine` and
- * `failing` as a segmented control; the other values remain for the counts
- * and callers that filter the store directly (a leftover one maps onto the
- * control, see `PrList`). The filter is session state (never persisted), so
- * adding values needs no migration.
+ * The Pull requests list's built-in view (its tabs: All, Your turn, Mine,
+ * Failing, Ready to merge, Stale). Session state, never persisted; the list
+ * itself is derived in `services/pr-list/model.ts`.
  */
-export type PrFilter =
-  | 'all'
-  | 'mine'
-  | 'failing'
-  | 'ready'
-  | 'reviewing'
-  | 'needsReview'
-  | 'needsYou'
-  | 'closed';
-export type SortBy = 'updated' | 'created' | 'title';
+export type PrFilter = PrViewKey;
+
+/** Counts for the rail and the window badge. */
+export interface PrCounts {
+  all: number;
+  mine: number;
+  failing: number;
+  ready: number;
+  reviewing: number;
+  needsReview: number;
+  needsYou: number;
+  closed: number;
+}
 
 /**
  * A related CI failure group the list is narrowed to, next to the filter and
@@ -71,8 +72,6 @@ export interface RelatedFailureFilter {
   prKeys: readonly string[];
 }
 
-/** Tauri-store key under which the PR sort order is remembered across launches. */
-export const PR_SORT_STORE_KEY = 'prSortBy';
 /** Tauri-store key under which "Hide failing" is remembered across launches. */
 export const PR_HIDE_FAILING_STORE_KEY = 'prHideFailing';
 
@@ -98,32 +97,21 @@ interface DataDeps {
   teams: string[];
 }
 
-interface ViewDeps extends DataDeps {
-  closed: PullRequestWithChecks[];
-  filter: PrFilter;
-  searchQuery: string;
-  sortBy: SortBy;
-  relatedFailure: RelatedFailureFilter | null;
-  hideFailing: boolean;
-}
-
 interface DerivedCache {
   _dataDeps: DataDeps | null;
   _cachedPriorityScores: Map<string, PriorityScore> | null;
   _cachedTeamReviewLoad: ReviewerLoad[] | null;
-  _cachedCounts: Record<PrFilter, number> | null;
+  _cachedCounts: PrCounts | null;
   _cachedNeedsMyReview: PullRequestWithChecks[] | null;
   _cachedFocusPrs: PullRequestWithChecks[] | null;
-  _viewDeps: ViewDeps | null;
-  _cachedFilteredPrs: PullRequestWithChecks[] | null;
 }
 
 interface PrState extends DerivedCache {
   pullRequests: PullRequestWithChecks[];
   closedPullRequests: PullRequestWithChecks[];
   filter: PrFilter;
+  /** The search box: free text and `field:value` qualifiers (`services/pr-list/query.ts`). */
   searchQuery: string;
-  sortBy: SortBy;
   relatedFailure: RelatedFailureFilter | null;
   /**
    * Leave PRs with a failing check out of the list and its counts, next to
@@ -147,9 +135,8 @@ interface PrState extends DerivedCache {
   /** Maps "owner/repo#number:reviewerLogin" (or ":team:slug") → ISO timestamp of first detection */
   reviewRequestTimestamps: Record<string, string>;
 
-  filteredPrs: () => PullRequestWithChecks[];
-  /** Filtered + sorted PRs bucketed for the PR tab. */
-  counts: () => Record<PrFilter, number>;
+  /** How many open PRs each predicate matches (the rail, the window badge). */
+  counts: () => PrCounts;
   /** PRs waiting on the current user's review (directly or via a team), longest-waiting first */
   needsMyReview: () => PullRequestWithChecks[];
   /** Get the review request timestamp for a specific PR + reviewer */
@@ -168,7 +155,6 @@ interface PrState extends DerivedCache {
   setFilter: (filter: PrFilter) => void;
   setSearchQuery: (query: string) => void;
   setRelatedFailure: (filter: RelatedFailureFilter | null) => void;
-  setSortBy: (sort: SortBy) => void;
   setHideFailing: (hide: boolean) => void;
   /** Reads the remembered "Hide failing" choice. */
   restoreHideFailing: () => Promise<void>;
@@ -202,53 +188,6 @@ interface PrState extends DerivedCache {
 }
 
 /**
- * Whether an open PR passes `filter`. `closed` never matches an open PR: that
- * filter swaps the list for the closed PRs instead (see `applyFilter`).
- */
-export function matchesPrFilter(
-  pr: PullRequestWithChecks,
-  filter: PrFilter,
-  username: string,
-  teams: readonly string[] = [],
-): boolean {
-  switch (filter) {
-    case 'all':
-      return true;
-    case 'mine':
-      return isMyPr(pr, username);
-    case 'failing':
-      return isFailing(pr);
-    case 'ready':
-      return isReady(pr);
-    case 'reviewing':
-      return isReviewing(pr);
-    case 'needsReview':
-      return isWaitingOnMe(pr, username, teams);
-    case 'needsYou':
-      return isNeedsYou(pr, username, teams);
-    case 'closed':
-      return false;
-  }
-}
-
-/** "Hide failing" applies to every filter except the two that list failing or closed PRs. */
-export function hidesFailing(hideFailing: boolean, filter: PrFilter): boolean {
-  return hideFailing && filter !== 'failing' && filter !== 'closed';
-}
-
-function applyFilter(
-  prs: PullRequestWithChecks[],
-  closedPrs: PullRequestWithChecks[],
-  filter: PrFilter,
-  username: string,
-  teams: string[],
-): PullRequestWithChecks[] {
-  if (filter === 'closed') return closedPrs;
-  if (filter === 'all') return prs;
-  return prs.filter((pr) => matchesPrFilter(pr, filter, username, teams));
-}
-
-/**
  * When my review was first requested on `pr`: the direct request, else the
  * earliest request to one of the PR's requested teams, else the PR's last
  * update. The "Needs you" heading and `needsMyReview`'s longest-waiting
@@ -269,39 +208,6 @@ export function myReviewRequestedAt(
   return viaTeam ?? p.updatedAt;
 }
 
-function sortPrs(
-  prs: PullRequestWithChecks[],
-  sortBy: SortBy,
-  username: string,
-): PullRequestWithChecks[] {
-  return [...prs].sort((a, b) => {
-    // My PRs first
-    const aIsMine = isMyPr(a, username) ? 0 : 1;
-    const bIsMine = isMyPr(b, username) ? 0 : 1;
-    if (aIsMine !== bIsMine) return aIsMine - bIsMine;
-
-    // Drafts last
-    const aDraft = a.pullRequest.isDraft ? 1 : 0;
-    const bDraft = b.pullRequest.isDraft ? 1 : 0;
-    if (aDraft !== bDraft) return aDraft - bDraft;
-
-    switch (sortBy) {
-      case 'updated':
-        return (
-          new Date(b.pullRequest.updatedAt).getTime() - new Date(a.pullRequest.updatedAt).getTime()
-        );
-      case 'created':
-        return (
-          new Date(b.pullRequest.createdAt).getTime() - new Date(a.pullRequest.createdAt).getTime()
-        );
-      case 'title':
-        return a.pullRequest.title.localeCompare(b.pullRequest.title);
-      default:
-        return 0;
-    }
-  });
-}
-
 function sameDataDeps(a: DataDeps | null, b: DataDeps): a is DataDeps {
   return (
     a !== null &&
@@ -309,18 +215,6 @@ function sameDataDeps(a: DataDeps | null, b: DataDeps): a is DataDeps {
     a.username === b.username &&
     a.timestamps === b.timestamps &&
     a.teams === b.teams
-  );
-}
-
-function sameViewDeps(a: ViewDeps | null, b: ViewDeps): boolean {
-  return (
-    sameDataDeps(a, b) &&
-    a.closed === b.closed &&
-    a.filter === b.filter &&
-    a.searchQuery === b.searchQuery &&
-    a.sortBy === b.sortBy &&
-    a.relatedFailure === b.relatedFailure &&
-    a.hideFailing === b.hideFailing
   );
 }
 
@@ -394,52 +288,14 @@ export const usePrStore = create<PrState>()((set, get) => ({
   _cachedCounts: null,
   _cachedNeedsMyReview: null,
   _cachedFocusPrs: null,
-  _viewDeps: null,
-  _cachedFilteredPrs: null,
 
   // ── View slice ──
   filter: 'all',
   searchQuery: '',
-  sortBy: 'updated',
   relatedFailure: null,
   hideFailing: false,
 
   // ── Computed selectors ──
-  filteredPrs: () => {
-    const state = get();
-    const deps: ViewDeps = {
-      ...ensureDataCache(state),
-      closed: state.closedPullRequests,
-      filter: state.filter,
-      searchQuery: state.searchQuery,
-      sortBy: state.sortBy,
-      relatedFailure: state.relatedFailure,
-      hideFailing: state.hideFailing,
-    };
-    if (state._cachedFilteredPrs && sameViewDeps(state._viewDeps, deps)) {
-      return state._cachedFilteredPrs;
-    }
-    const filtered = applyFilter(
-      hidesFailing(deps.hideFailing, deps.filter)
-        ? deps.prs.filter((pr) => !isFailing(pr))
-        : deps.prs,
-      deps.closed,
-      deps.filter,
-      deps.username,
-      deps.teams,
-    );
-    const related = deps.relatedFailure ? new Set(deps.relatedFailure.prKeys) : null;
-    const searched = filtered.filter(
-      (pr) =>
-        matchesSearch(pr, deps.searchQuery) &&
-        (!related || related.has(prScoreKey(pr.pullRequest))),
-    );
-    const result = sortPrs(searched, deps.sortBy, deps.username);
-    state._cachedFilteredPrs = result;
-    state._viewDeps = deps;
-    return result;
-  },
-
   counts: () => {
     const state = get();
     const deps = ensureDataCache(state);
@@ -558,12 +414,6 @@ export const usePrStore = create<PrState>()((set, get) => ({
     if (typeof stored === 'boolean' && stored !== get().hideFailing) {
       set({ hideFailing: stored, _cachedCounts: null });
     }
-  },
-  setSortBy: (sort) => {
-    set({ sortBy: sort });
-    persistToTauriStore('ui-state.json', PR_SORT_STORE_KEY, sort).catch((err) =>
-      log.debug('failed to persist sortBy', { error: String(err) }),
-    );
   },
   setUsername: (username) => {
     set({ username });

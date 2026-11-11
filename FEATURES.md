@@ -16,6 +16,7 @@ Current as of **3.0.0** (2026-09-25). `/CHANGELOG.md` records what changed per r
   - Counts: Pull requests always (red when any PR is failing); Focus, Dispatch (the items waiting on you), Work items and Worktrees when above zero
   - Sync block: "Syncing…" / "Synced 12 s ago" (updates every 10 s), a GitHub rate meter (marked low under 10%) and "N of M requests left (GraphQL|REST)" for the tightest pool across accounts
   - Last section remembered (default Focus)
+  - Folds to icons (`[`, or **Collapse** at its foot): counts become badges (99+ above 99), names show on hover, the rate meter stands alone (its numbers on hover); remembered across launches
 - Title bar: the section name, or "Pull request" / "Work item" when a detail view is open; status dot (red when any PR is failing), **Open window** launcher, Refresh, Settings, min/max/close
 - Status bar per view:
 
@@ -70,25 +71,33 @@ Current as of **3.0.0** (2026-09-25). `/CHANGELOG.md` records what changed per r
 
 ## 2. Pull Request List
 
-### Filtering, Search & Layout
-- Segmented filter with counts: **All**, **Needs you**, **Mine**, **Failing**
-  - Needs you: a review requested from you or your team, or your own PR that is failing, has changes requested, or has comments to answer
-- Debounced search ("Search pull requests") across title, author, head branch, owner/repo, labels and PR number; `/`, `Ctrl+K` or `Ctrl+F` focus it, `Esc` clears then blurs; search also filters Needs you and Recently closed
-- **Group and sort** menu:
-  - Group by Author (default; heading with avatar and "(you)"), Repo, or Status (Failing, Waiting on me, Ready, In review, Draft, Other)
-  - Sort by Updated, Created or Title; your PRs first and drafts last before the chosen sort
-- Click a group heading to collapse it; `E` collapses every group on screen
-- Density (Settings → Appearance → Pull request density): **Comfortable** 42 px rows with a meta line, or **Compact** 32 px title-only rows
-- Pinned **Needs you** group in the All view (each PR shown once), headed with the oldest request's wait badge (`<1h`, `5h`, `2d`)
-- **Review load** group: one row per reviewer with pending and stale counts and a load bar (green up to 2, yellow up to 4, red above)
-- **Recently closed** group with count (virtualized above 50 rows)
+### Views, Filters & Layout
+Design: `design/pr-overview/mockups.html`; rules: `docs/superpowers/specs/2026-11-11-pr-overview.md`.
+- View tabs with counts: **All**, **Your turn**, **Mine**, **Failing**, **Ready to merge**, **Stale**, then your saved views and **+ View**
+  - Your turn: a review requested from you or your team, or your own PR that fails (not when every failure is a shared one that is not its doing), has conflicts, changes requested or comments to answer; never a draft
+- Search ("Search, or author:me is:failing repo:…") takes free text (title, author, head branch, owner/repo, labels, number) and qualifiers: `is:` (yourturn, mine, failing, running, passing, ready, draft, conflicts, stale, shared, automerge), `status:`, `author:` (`me`), `review:` (me, changes, commented, others, approved, none), `reviewer:`, `checks:`, `waiting:` (you, author, reviewers, ci), `repo:`, `label:`, `base:`, `ab:`, `age:` / `updated:` (`>7d`, `<12h`), `size:` (`<100` or xs–xl); commas for any of, `-` to exclude, quotes for spaces; Enter applies at once, `Esc` clears
+- Qualifiers show as chips ("Author is vera"); × removes one, a click changes its values, **Clear** removes them all
+- **+ Filter**: pick a field (Repository, Author, Requested reviewer, Review state, Checks, Waiting on, Status, Label, Base branch, Work item, Age, Size, State), then values with counts; "is any of" / "is none of"
+- **Saved views**: **+ View** names the current tab, query and display; its tab shows its count, a dot while the list differs from it, and a menu (save changes, discard, rename, delete); **Update view** / **Discard** in the view bar
+- **Group** button: Status (Your turn, Failing, Waiting for review, Ready to merge, Draft), Author, Repository, Review state, Waiting on, Work item (AB#), Label, Base branch, Age, Size, or no grouping
+- **Sort** button: Priority (your turn first, then ready, failing, waiting, draft), Last updated, Created, Title, Size; picking the current order again reverses it
+- **Display** menu: layout (**List**, **Table**, **Board**), grouping and a second level (**Then by**), ordering and direction, switches (pin Your turn above other groups, collapse groups with nothing for you, show empty groups, hide PRs with failing checks, compact rows, shared CI failures summary), table columns (Checks, Reviews, Next step, Size, Updated, Created, Repository, Author, Number), **Reset to default**; remembered across launches
+- Group headings: the mix of the group as a bar, counts in words ("3 your turn · 2 failing"), what puts a PR in it, its lines added and removed; click to fold, `E` folds every group on screen; with a pinned Your turn group, the oldest request's wait badge (`<1h`, `5h`, `2d`)
+- **Shared CI failures** as one line ("3 shared CI failures block 6 PRs", the worst one named): open it for each failure's cause, owner and actions; × hides it (Display menu brings it back); a failure picked from a row shows in full regardless
+- **Dependency updates** as one line beside it with **Approve N…**
+- **Review load** group (a reviewer row filters to `reviewer:<login>`) and **Recently closed** group (virtualized above 50 rows) in list and table
+- Narrow window (the docked sidebar): no column headings; title on its own line, checks and next step beside the meta line
 
-### PR Row
-- Avatar, title, one meta line ("koen in BorgDock, updated 2 h ago, stale"; merged or closed PRs say when), check bar (tooltip holds the summary), one chip, `#number`
-- The chip, first match wins: Merged, Closed, Conflicts, Draft, Approved, Changes requested, Review requested, Commented, No review yet
-- One trailing action on hover, keyboard focus and selection: **Review** (opens Quick Review; wins when your review is requested) or **Merge** (Merging → Merged); none for failing, closed or your-only PRs
-- Click, `Enter` or `Space` opens the PR full screen; Ctrl/Cmd+click, middle-click or `Ctrl+Enter` opens the pop-out window
-- Labels, linked work items and T3 sessions live in the detail view, not the row
+### PR Row (table and list)
+- Status mark (Your turn, Failing, Waiting, Ready, Draft, Closed), title with its conventional-commit scope muted, `AB#` items as chips with the work item hover card, up to two labels; meta line "shop-web #6398 · vera · opened 2 d ago · stale" without what the grouping already says
+- Columns: **Checks** (bar and count; hover card; a shared failure as a "shared ×4" / "not this PR" chip that opens the PRs it fails), **Reviews** (reviewer avatars ringed by verdict, "Awaiting you", "Changes requested", "Approved"), **Next step** (who acts and what: Your review, Fix checks, Resolve conflicts, Reply to comments, Address changes · author, Blocked by shared CI, Checks running, Merge, Review · maria, Needs a reviewer), **Size** (XS–XL, +/−), **Updated** (amber when stale); sortable headings for title, size, created and updated
+- Density (Settings → Appearance or Display → Compact rows): **Comfortable** 42 px rows with a meta line, **Compact** 32 px title-only rows
+- One trailing action on hover, keyboard focus and selection: **Review** (opens Quick Review), **Approve** (dependency update) or **Merge** (Merging → Merged)
+- Click, `Enter` or `Space` opens the PR full screen; Ctrl/Cmd+click, middle-click or `Ctrl+Enter` opens the pop-out window; the check bar opens the Checks tab
+
+### Board
+- One column per group of the chosen grouping (Status by default), cards in the list's order: status mark, two-line title, author, repository, number, age, check bar, next step and the row's action on hover
+- `J`/`K` walk the cards column by column; the same clicks and context menu as rows
 
 ### Context Menu
 Also on Focus rows and board cards.

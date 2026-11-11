@@ -1,38 +1,42 @@
-import { GitPullRequest } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { EyeOff, GitPullRequest, X } from 'lucide-react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { useShallow } from 'zustand/react/shallow';
 import { CiFailureStrip } from '@/components/ci-failures/CiFailureStrip';
+import { readPrListModel, usePrListModel } from '@/hooks/usePrListModel';
+import { staleAfterDaysOf } from '@/services/focus-bucket';
 import {
-  groupWorkbenchPrs,
-  isFailing,
-  NEEDS_YOU_GROUP_KEY,
-  type PrGroupBy,
-} from '@/services/pr-grouping';
+  type PrDisplay,
+  type PrSortBy,
+  tableTemplate,
+  visibleColumns,
+} from '@/services/pr-list/display';
+import { hasTerms } from '@/services/pr-list/facets';
+import { YOUR_TURN_GROUP_KEY } from '@/services/pr-list/groups';
+import { buildFacts, inView } from '@/services/pr-list/model';
+import { holdChange, releaseChange, settleChange } from '@/services/pr-list/pending-change';
+import { clearTerms } from '@/services/pr-list/query';
 import { matchesSearch } from '@/services/pr-search';
 import { formatReviewWaitTime, getReviewSlaTier } from '@/services/review-sla';
-import {
-  matchesPrFilter,
-  myReviewRequestedAt,
-  type PrFilter,
-  type SortBy,
-  usePrStore,
-} from '@/stores/pr-store';
+import { myReviewRequestedAt, usePrStore } from '@/stores/pr-store';
+import { useActiveSavedView, usePrViewStore } from '@/stores/pr-view-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import { useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
 import { EASE_OUT, FLIP_MAX_ROWS, flip, motionMs, motionOK } from '@/utils/motion';
 import { minuteNow } from '@/utils/relative-time';
 import { DependencyStrip } from './DependencyUpdates';
-import { type WorkbenchFilter, workbenchFilterCounts, workbenchFilterFor } from './PrFilterControl';
-import { PrRow } from './PrRow';
-import { VIRTUALIZE_THRESHOLD, VirtualizedPrRows } from './VirtualizedPrRows';
-
-export { VIRTUALIZE_THRESHOLD } from './VirtualizedPrRows';
-
-import { WorkbenchPrHead } from './PrToolbar';
-import { prRowKey } from './pr-card-data';
-import { groupFlipKey, WorkbenchGroup, WorkbenchPrGroup } from './RepoGroup';
+import { PrBoard } from './PrBoard';
+import { DisplayButton, GroupButton, SortButton, sortPatch } from './PrDisplayMenu';
+import { AddFilterButton, FilterChips } from './PrFilterMenu';
+import {
+  groupFlipKey,
+  PrGroupSection,
+  PrRows,
+  PrTableHead,
+  type RowSetup,
+  WorkbenchGroup,
+} from './PrGroups';
+import { PrListHead } from './PrToolbar';
+import { type PrViewChoice, PrViewTabs } from './PrViewTabs';
 import { ReviewSessionProgress } from './ReviewSessionProgress';
 import { ReviewSlaIndicator } from './ReviewSlaIndicator';
 import { ReviewerRow, useTeamReviewers } from './TeamReviewLoad';
@@ -59,9 +63,8 @@ function SkeletonRows() {
 }
 
 /**
- * The oldest review request waiting on me, for the "Needs you" heading. Uses
- * the same lookup as `needsMyReview` (direct request, else team request), and
- * does not pulse: nothing in the Workbench list animates on its own.
+ * The oldest review request waiting on me, for the "Your turn" heading. Uses
+ * the same lookup as `needsMyReview` (direct request, else team request).
  */
 function OldestRequest({ pr, username }: { pr: PullRequestWithChecks; username: string }) {
   const timestamps = usePrStore((s) => s.reviewRequestTimestamps);
@@ -74,54 +77,57 @@ function OldestRequest({ pr, username }: { pr: PullRequestWithChecks; username: 
   );
 }
 
+/** Keys of the rows and group headings a list of groups puts on screen. */
+function flipKeys(model: ReturnType<typeof readPrListModel>): Set<string> {
+  const keys = new Set<string>();
+  for (const group of model.groups) {
+    keys.add(groupFlipKey(group.key));
+    for (const sub of group.subgroups) keys.add(groupFlipKey(sub.key));
+  }
+  for (const f of model.rows) keys.add(f.key);
+  return keys;
+}
+
 /**
- * PrList — the Pull requests section (plans/ui-overhaul-workbench.md,
- * phase 2).
+ * PrList — the Pull requests section.
  *
- * - Head row: title, All / Needs you / Mine / Failing, search, and the
- *   "Group and sort" menu.
- * - Groups: "Needs you" first when the filter is All, then the rest by
- *   `prGroupBy`; each PR appears once. Review load and Recently closed
- *   follow with the same heading style.
+ * - Head: title and search (free text and `field:value` qualifiers).
+ * - View tabs: All, Your turn, Mine, Failing, Ready to merge, Stale, then
+ *   the saved views and "+ View".
+ * - View bar: the query's qualifiers as chips, "+ Filter", and Group, Sort
+ *   and Display.
+ * - One line each for the shared CI failures and the dependency updates.
+ * - The PRs as a table (sortable column headings), a list, or a board, in
+ *   the display's groups (`services/pr-list/model.ts` builds them); Review
+ *   load and Recently closed follow in list and table.
  * - Filter, group and sort changes FLIP the rows (`flip()` from
  *   utils/motion): rows that leave fade out first, survivors glide to their
- *   new slot, new rows fade in. A virtualized Recently closed list only
- *   crossfades.
+ *   new slot, new rows fade in. A long or virtualized list only crossfades.
  */
 export function PrList() {
   const hasData = usePrStore((s) => s.pullRequests.length > 0);
   const isPolling = usePrStore((s) => s.isPolling);
   const lastPollTime = usePrStore((s) => s.lastPollTime);
-  const {
-    closedPullRequests: allClosed,
-    filter,
-    searchQuery,
-    username,
-    teams,
-  } = usePrStore(
-    useShallow((s) => ({
-      pullRequests: s.pullRequests,
-      closedPullRequests: s.closedPullRequests,
-      filter: s.filter,
-      searchQuery: s.searchQuery,
-      sortBy: s.sortBy,
-      username: s.username,
-      teams: s.teams,
-      reviewRequestTimestamps: s.reviewRequestTimestamps,
-    })),
-  );
-  const prs = usePrStore((s) => s.filteredPrs());
+  const allClosed = usePrStore((s) => s.closedPullRequests);
+  const filter = usePrStore((s) => s.filter);
+  const searchQuery = usePrStore((s) => s.searchQuery);
+  const username = usePrStore((s) => s.username);
+  const teams = usePrStore((s) => s.teams);
+  const hideFailing = usePrStore((s) => s.hideFailing);
   const relatedFailure = usePrStore((s) => s.relatedFailure);
-  const counts = usePrStore((s) => s.counts());
   const needsMyReview = usePrStore((s) => s.needsMyReview());
-  const groupBy = useUiStore((s) => s.prGroupBy);
+  const display = usePrViewStore((s) => s.display);
+  const activeViewId = usePrViewStore((s) => s.activeViewId);
   const density = useSettingsStore((s) => s.settings.ui.prDensity ?? 'comfortable');
+  const staleSetting = useSettingsStore((s) => s.settings.ui?.staleAfterDays);
+  const { edited } = useActiveSavedView();
   const reviewers = useTeamReviewers();
+  const now = minuteNow();
+  const model = usePrListModel(now);
 
   const listRef = useRef<HTMLDivElement>(null);
-  // The segment the user just picked: the control shows it at once while the
-  // leaving rows fade, before the store changes.
-  const [requestedFilter, setRequestedFilter] = useState<PrFilter | null>(null);
+  // The tab just picked: the tabs show it at once while the leaving rows fade.
+  const [pending, setPending] = useState<PrViewChoice | null>(null);
   const changeToken = useRef(0);
   useEffect(
     () => () => {
@@ -130,25 +136,31 @@ export function PrList() {
     [],
   );
 
-  const groups = useMemo(
-    () => groupWorkbenchPrs(prs, groupBy, username, teams, filter === 'all'),
-    [prs, groupBy, username, teams, filter],
+  const parsed = model.parsed;
+  const closedFacts = useMemo(
+    () =>
+      buildFacts({
+        prs: allClosed.filter((pr) => matchesSearch(pr, parsed.text)),
+        username,
+        teams,
+        now,
+        staleAfterDays: staleAfterDaysOf(staleSetting),
+        ciOf: () => null,
+      }),
+    [allClosed, parsed.text, username, teams, now, staleSetting],
   );
-  const closed = useMemo(
-    () => allClosed.filter((pr) => matchesSearch(pr, searchQuery)),
-    [allClosed, searchQuery],
-  );
-  const oldestRequest = needsMyReview.find((pr) => matchesSearch(pr, searchQuery));
-  const filterCounts = workbenchFilterCounts(counts);
-  const now = minuteNow();
+  const oldestRequest = needsMyReview.find((pr) => model.rows.some((f) => f.pr === pr));
 
   /**
-   * Runs a list change through FLIP; a newer change makes an older pending
-   * one a no-op. A list of more than `FLIP_MAX_ROWS` rows skips FLIP (no
+   * Runs a list change through FLIP. The change waits for the leaving rows
+   * to fade (`holdChange`); a newer change, or saving a view, applies it
+   * first (`settleChange`), so quick changes add up. A list of more than
+   * `FLIP_MAX_ROWS` rows, a virtualized group or the board skips FLIP (no
    * measuring, no leave fade, no `flushSync`): it changes at once and
-   * crossfades as one block, like the virtualized Recently closed list.
+   * crossfades as one block.
    */
   const animateChange = useCallback((mutate: () => void, leaving: string[] = []) => {
+    settleChange();
     const token = ++changeToken.current;
     const container = listRef.current;
     if (
@@ -156,6 +168,7 @@ export function PrList() {
       (container.querySelector(
         '.bd-wb-group:not([data-group-key="recently-closed"]) [data-virtual-prs]',
       ) ||
+        container.querySelector('[data-board]') ||
         container.querySelectorAll(FLIP_ROW_SELECTOR).length > FLIP_MAX_ROWS)
     ) {
       mutate();
@@ -167,10 +180,16 @@ export function PrList() {
       }
       return;
     }
+    const apply = () => {
+      changeToken.current++;
+      flushSync(mutate);
+    };
+    holdChange(apply);
     void flip(
       container,
       () => {
         if (token !== changeToken.current) return;
+        releaseChange(apply);
         flushSync(mutate);
       },
       FLIP_ROW_SELECTOR,
@@ -187,91 +206,169 @@ export function PrList() {
     });
   }, []);
 
-  /**
-   * A filter change through FLIP. `search`, when given, replaces the search
-   * in the same change (the Review load rows filter by a reviewer).
-   */
-  const handleFilterChange = useCallback(
-    (next: WorkbenchFilter, search?: string) => {
-      const state = usePrStore.getState();
-      const { username, teams } = state;
-      const nextSearch = search ?? state.searchQuery;
-      const current = state.filteredPrs();
-      const leavingRows = current
-        .filter(
-          (pr) => !matchesPrFilter(pr, next, username, teams) || !matchesSearch(pr, nextSearch),
-        )
-        .map((pr) => prRowKey(pr.pullRequest));
-      // Group headings that have no rows under the new filter fade with them.
-      const groupBy = useUiStore.getState().prGroupBy;
-      const nextPrs = state.pullRequests.filter(
-        (pr) => matchesSearch(pr, nextSearch) && matchesPrFilter(pr, next, username, teams),
-      );
-      const nextGroups = new Set(
-        groupWorkbenchPrs(nextPrs, groupBy, username, teams, next === 'all').map((g) => g.key),
-      );
-      const leavingGroups = groupWorkbenchPrs(
-        current,
-        groupBy,
-        username,
-        teams,
-        state.filter === 'all',
-      )
-        .filter((g) => !nextGroups.has(g.key))
-        .map((g) => groupFlipKey(g.key));
-      setRequestedFilter(next);
+  /** The keys on screen now that the change takes away. */
+  const leavingFor = useCallback((overrides: Parameters<typeof readPrListModel>[0]) => {
+    const before = flipKeys(readPrListModel());
+    const after = flipKeys(readPrListModel(overrides));
+    return [...before].filter((key) => !after.has(key));
+  }, []);
+
+  const handlePick = useCallback(
+    (choice: PrViewChoice) => {
+      settleChange();
+      const views = usePrViewStore.getState();
+      let overrides: Parameters<typeof readPrListModel>[0];
+      if (choice.kind === 'saved') {
+        const view = views.savedViews.find((v) => v.id === choice.id);
+        if (!view) return;
+        overrides = { view: view.filter, query: view.query, display: view.display };
+      } else {
+        overrides = views.activeViewId
+          ? { view: choice.key, query: '', display: views.baseDisplay }
+          : { view: choice.key };
+      }
+      setPending(choice);
       animateChange(() => {
-        const store = usePrStore.getState();
-        store.setFilter(next);
-        if (search !== undefined) store.setSearchQuery(search);
-        setRequestedFilter(null);
-      }, [...leavingRows, ...leavingGroups]);
+        if (choice.kind === 'saved') usePrViewStore.getState().showSavedView(choice.id);
+        else usePrViewStore.getState().showBuiltInView(choice.key);
+        setPending(null);
+      }, leavingFor(overrides));
     },
-    [animateChange],
+    [animateChange, leavingFor],
   );
 
-  // The control offers four filters. One left over from an older version (or
-  // set elsewhere) maps onto them, in the store, so the highlight, the rows
-  // and FLIP all agree: "Needs review" becomes "Needs you", the rest "All".
-  useLayoutEffect(() => {
-    if (workbenchFilterFor(filter) !== null) return;
-    usePrStore.getState().setFilter(filter === 'needsReview' ? 'needsYou' : 'all');
-  }, [filter]);
-
-  const handleGroupByChange = useCallback(
-    (next: PrGroupBy) => animateChange(() => useUiStore.getState().setPrGroupBy(next)),
-    [animateChange],
+  const handleDisplay = useCallback(
+    (patch: Partial<PrDisplay>) => {
+      settleChange();
+      const next = { ...usePrViewStore.getState().display, ...patch };
+      animateChange(
+        () => usePrViewStore.getState().setDisplay(patch),
+        leavingFor({ display: next }),
+      );
+    },
+    [animateChange, leavingFor],
   );
 
-  const handleSortChange = useCallback(
-    (next: SortBy) => animateChange(() => usePrStore.getState().setSortBy(next)),
-    [animateChange],
+  const handleSort = useCallback(
+    (sortBy: PrSortBy) => {
+      settleChange();
+      handleDisplay(sortPatch(usePrViewStore.getState().display, sortBy));
+    },
+    [handleDisplay],
   );
 
-  const handleHideFailingChange = useCallback(
+  const handleHideFailing = useCallback(
     (hide: boolean) => {
-      const leaving = hide
-        ? usePrStore
-            .getState()
-            .filteredPrs()
-            .filter(isFailing)
-            .map((pr) => prRowKey(pr.pullRequest))
-        : [];
-      animateChange(() => usePrStore.getState().setHideFailing(hide), leaving);
+      settleChange();
+      animateChange(
+        () => usePrStore.getState().setHideFailing(hide),
+        leavingFor({ hideFailing: hide }),
+      );
     },
-    [animateChange],
+    [animateChange, leavingFor],
   );
 
+  /** A reviewer's row in Review load: the PRs waiting on them. */
+  const showReviewer = useCallback(
+    (login: string) => {
+      settleChange();
+      const query = `reviewer:${login}`;
+      animateChange(
+        () => {
+          usePrViewStore.getState().showBuiltInView('all');
+          usePrStore.getState().setSearchQuery(query);
+        },
+        leavingFor({ view: 'all', query }),
+      );
+    },
+    [animateChange, leavingFor],
+  );
+
+  const columns = visibleColumns(display);
+  const layout = display.layout;
+  const setup: RowSetup = {
+    columns: layout === 'list' ? ['checks', 'next'] : columns,
+    groupBy: display.groupBy,
+    density,
+    now,
+    me: username.toLowerCase(),
+  };
+  const listStyle = { '--bd-prl-cols': tableTemplate(setup.columns) } as CSSProperties;
+  const ctx = useMemo(() => ({ username, now }), [username, now]);
+  // The filter menu counts values over the tab's PRs, before any qualifier.
+  const tabFacts = useMemo(
+    () => model.facts.filter((f) => inView(f, filter)),
+    [model.facts, filter],
+  );
+
+  const terms = parsed.terms;
+  const canSave = !activeViewId && (hasTerms(searchQuery) || filter !== 'all');
   const head = (
     <>
-      <WorkbenchPrHead
-        filter={requestedFilter ?? filter}
-        counts={filterCounts}
-        onFilterChange={handleFilterChange}
-        onGroupByChange={handleGroupByChange}
-        onSortChange={handleSortChange}
-        onHideFailingChange={handleHideFailingChange}
+      <PrListHead />
+      <PrViewTabs
+        pending={pending}
+        counts={model.counts}
+        savedCounts={model.savedCounts}
+        onPick={handlePick}
       />
+      <div className="bd-prl-bar" data-view-bar="">
+        <FilterChips terms={terms} facts={tabFacts} ctx={ctx} />
+        <AddFilterButton facts={tabFacts} ctx={ctx} />
+        {hideFailing && filter !== 'failing' && (
+          <span className="bd-prl-fchip bd-prl-fchip--state" data-hide-failing-chip="">
+            <span className="bd-prl-fchip__body bd-prl-fchip__body--static">
+              <EyeOff size={11} strokeWidth={2.25} aria-hidden="true" />
+              Failing hidden
+            </span>
+            <button
+              type="button"
+              className="bd-prl-fchip__x"
+              aria-label="Show PRs with failing checks again"
+              onClick={() => handleHideFailing(false)}
+            >
+              <X size={11} strokeWidth={2.25} aria-hidden="true" />
+            </button>
+          </span>
+        )}
+        {terms.length > 0 && (
+          <button
+            type="button"
+            className="bd-prl-btn bd-prl-btn--quiet"
+            onClick={() => usePrStore.getState().setSearchQuery(clearTerms(searchQuery))}
+          >
+            Clear
+          </button>
+        )}
+        <span className="bd-prl-bar__spacer" />
+        {activeViewId && edited && (
+          <>
+            <button
+              type="button"
+              className="bd-prl-btn bd-prl-btn--quiet"
+              onClick={() => usePrViewStore.getState().revertActiveView()}
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              className="bd-prl-btn bd-prl-btn--outline"
+              onClick={() => usePrViewStore.getState().updateActiveView()}
+              data-update-view=""
+            >
+              Update view
+            </button>
+          </>
+        )}
+        {canSave && <span className="bd-prl-bar__hint">“+ View” saves these filters</span>}
+        <GroupButton display={display} onChange={handleDisplay} />
+        <SortButton display={display} onChange={handleDisplay} />
+        <DisplayButton
+          display={display}
+          onChange={handleDisplay}
+          onHideFailing={handleHideFailing}
+        />
+      </div>
       <ReviewSessionProgress />
     </>
   );
@@ -286,39 +383,58 @@ export function PrList() {
   }
 
   // A related-failure filter asks about a handful of PRs; the team-wide groups would bury them.
-  const showClosed = filter !== 'closed' && !relatedFailure && closed.length > 0;
-  const showReviewLoad = filter !== 'closed' && !relatedFailure && reviewers.length > 0;
+  const showClosed = layout !== 'board' && !relatedFailure && closedFacts.length > 0;
+  const showReviewLoad = layout !== 'board' && !relatedFailure && reviewers.length > 0;
+  const empty = model.rows.length === 0;
 
   return (
     <div className="bd-wb-prs">
       {head}
-      <CiFailureStrip />
-      {filter !== 'closed' && !relatedFailure && <DependencyStrip />}
-      <div ref={listRef} className="bd-wb-list" data-density={density}>
-        {prs.length === 0 && (
+      <div className="bd-prl-attn">
+        <CiFailureStrip />
+        {!relatedFailure && <DependencyStrip />}
+      </div>
+      <div
+        ref={listRef}
+        className="bd-wb-list bd-prl-list"
+        data-density={density}
+        data-layout={layout}
+        style={listStyle}
+      >
+        {empty && (
           <div className="bd-wb-empty">
             <GitPullRequest size={28} strokeWidth={1.5} aria-hidden="true" />
             <p>
               {filter === 'all' && !searchQuery
                 ? 'No open pull requests'
-                : 'No pull requests match this filter'}
+                : 'No pull requests match this view'}
             </p>
           </div>
         )}
 
-        {groups.map((group) => (
-          <WorkbenchPrGroup
-            key={group.key}
-            group={group}
-            density={density}
-            now={now}
-            aside={
-              group.key === NEEDS_YOU_GROUP_KEY && oldestRequest ? (
-                <OldestRequest pr={oldestRequest} username={username} />
-              ) : undefined
-            }
-          />
-        ))}
+        {layout === 'board' ? (
+          !empty && <PrBoard groups={model.groups} now={now} />
+        ) : (
+          <>
+            {layout === 'table' && !empty && (
+              <PrTableHead columns={setup.columns} display={display} onSort={handleSort} />
+            )}
+            {model.groups.map((group) => (
+              <PrGroupSection
+                key={group.key}
+                group={group}
+                setup={setup}
+                aside={
+                  (group.key === YOUR_TURN_GROUP_KEY ||
+                    (group.kind === 'status' && group.bucket === 'yourTurn')) &&
+                  oldestRequest ? (
+                    <OldestRequest pr={oldestRequest} username={username} />
+                  ) : undefined
+                }
+              />
+            ))}
+          </>
+        )}
 
         {showReviewLoad && (
           <WorkbenchGroup groupKey="review-load" label="Review load" count={reviewers.length}>
@@ -327,7 +443,7 @@ export function PrList() {
                 <ReviewerRow
                   key={r.login}
                   reviewer={r}
-                  onSelect={(reviewer) => handleFilterChange('needsYou', reviewer.login)}
+                  onSelect={(reviewer) => showReviewer(reviewer.login)}
                 />
               ))}
             </div>
@@ -335,20 +451,13 @@ export function PrList() {
         )}
 
         {showClosed && (
-          <WorkbenchGroup groupKey="recently-closed" label="Recently closed" count={closed.length}>
+          <WorkbenchGroup
+            groupKey="recently-closed"
+            label="Recently closed"
+            count={closedFacts.length}
+          >
             <div className="bd-wb-closed">
-              {closed.length > VIRTUALIZE_THRESHOLD ? (
-                <VirtualizedPrRows prs={closed} density={density} now={now} />
-              ) : (
-                closed.map((pr) => (
-                  <PrRow
-                    key={prRowKey(pr.pullRequest)}
-                    prWithChecks={pr}
-                    density={density}
-                    now={now}
-                  />
-                ))
-              )}
+              <PrRows facts={closedFacts} setup={{ ...setup, groupBy: 'none' }} />
             </div>
           </WorkbenchGroup>
         )}

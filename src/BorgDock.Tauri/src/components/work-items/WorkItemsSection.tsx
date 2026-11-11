@@ -1,7 +1,7 @@
 import { ListFilter, Search } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { groupFlipKey, WorkbenchGroup } from '@/components/pr/RepoGroup';
+import { groupFlipKey, WorkbenchGroup } from '@/components/pr/PrGroups';
 import { HoverPopover, Kbd } from '@/components/shared/primitives';
 import { useWorkItemHandlers } from '@/hooks/useWorkItemHandlers';
 import { useSettingsStore } from '@/stores/settings-store';

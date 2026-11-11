@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pull requests: board by status</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+sc-for,sc-if{display:contents}
+.app{font-family:Inter,system-ui,sans-serif;color:#17181c;background:#ffffff;font-size:13px;min-height:100%;display:flex;flex-direction:column}
+.ic{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top{display:flex;align-items:center;gap:12px;padding:14px 20px 8px;flex-wrap:wrap}
+.top h1{font-size:16px;font-weight:650;margin:0}
+.tabs{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid #e5e6ea;overflow-x:auto}
+.tab{font:inherit;font-size:12.5px;border:0;background:transparent;color:#5d606a;padding:9px 10px 10px;border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
+.tab i{font-style:normal;color:#6d707a;margin-left:6px;font-size:11.5px}
+.tab.on{color:#17181c;border-bottom-color:#4f46e5;font-weight:600}
+.vbar{display:flex;align-items:center;gap:8px;padding:10px 20px;flex-wrap:wrap}
+.chipbtn{font:inherit;font-size:12px;height:28px;border:1px solid #d9dbe0;background:#ffffff;color:#17181c;border-radius:7px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chipbtn span{color:#6d707a}
+.chipbtn.ghost{border-style:dashed;color:#5d606a}
+.spacer{flex:1}
+.lay{display:inline-flex;gap:2px;padding:2px;border-radius:7px;background:#f3f3f6}
+.lay button{font:inherit;font-size:12px;border:0;background:transparent;border-radius:5px;padding:4px 10px;color:#5d606a;display:inline-flex;align-items:center;gap:5px}
+.lay button.on{background:#ffffff;color:#17181c;font-weight:600;box-shadow:0 0 0 1px #d9dbe0}
+.board{display:grid;grid-template-columns:repeat(5,minmax(240px,1fr));gap:12px;padding:0 20px 24px;overflow-x:auto;align-items:start}
+.col{background:#f7f7f9;border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ch{display:flex;align-items:center;gap:8px;padding:4px 4px 2px;font-weight:600;font-size:12.5px}
+.ch small{color:#6d707a;font-weight:500}
+.ch .why{display:block;font-weight:400;color:#6d707a;font-size:11.5px;padding:0 4px 4px}
+.glyph{width:10px;height:10px;border-radius:50%;display:block;box-sizing:border-box;flex:none}
+.g-turn{background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.18)}
+.g-failing{background:#d64560}
+.g-waiting{border:2px solid #c98a12}
+.g-ready{background:#1f9d6b}
+.g-draft{border:2px dashed #8f929c}
+.card{background:#ffffff;border:1px solid #e5e6ea;border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:7px}
+.card .t{font-weight:500;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .t b{color:#6d707a;font-weight:500}
+.card .m{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#6d707a;min-width:0}
+.card .m .grow{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.av{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font-size:8px;font-weight:700;color:#ffffff;flex:none}
+.bar{display:flex;width:36px;height:4px;border-radius:2px;overflow:hidden;background:#ececf0;flex:none}
+.bar span{display:block;height:100%}
+.s-ok{background:#1f9d6b}.s-fail{background:#d64560}.s-run{background:#e2a93b}
+.next{display:inline-flex;font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid #e5e6ea;color:#5d606a;white-space:nowrap;align-self:flex-start}
+.n-you{background:#4f46e5;border-color:#4f46e5;color:#ffffff;font-weight:600}
+.n-go{background:rgba(31,157,107,.1);border-color:rgba(31,157,107,.3);color:#1a7f57;font-weight:600}
+.n-block{border-color:rgba(214,69,96,.3);color:#bf3552}
+.n-wait{border-color:rgba(201,138,18,.3);color:#8f620b}
+.n-them{border-color:#e5e6ea;color:#5d606a}
+.ab{font-size:10.5px;color:#4f46e5;background:rgba(79,70,229,.07);border-radius:4px;padding:0 5px;font-weight:500;flex:none}
+.more{font:inherit;font-size:12px;border:0;background:transparent;color:#5d606a;padding:4px;text-align:left}
+</style>
+</helmet>
+<div class="app">
+  <div class="top"><h1>Pull requests</h1></div>
+  <div class="tabs">
+    <span class="tab on">All <i>23</i></span><span class="tab">Your turn <i>11</i></span><span class="tab">Mine <i>9</i></span><span class="tab">Failing <i>8</i></span><span class="tab">Ready to merge <i>3</i></span><span class="tab">Stale <i>2</i></span>
+  </div>
+  <div class="vbar">
+    <span class="chipbtn ghost"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>Filter</span>
+    <span class="spacer"></span>
+    <span class="chipbtn"><span>Columns</span> Status</span>
+    <span class="chipbtn"><span>Sort</span> Priority ↓</span>
+    <span class="lay">
+      <button type="button">List</button>
+      <button type="button">Table</button>
+      <button type="button" class="on">Board</button>
+    </span>
+  </div>
+  <div class="board">
+    <sc-for list="{{cols}}" as="c" hint-placeholder-count="5">
+      <section class="col" aria-label="{{c.label}}">
+        <div>
+          <div class="ch"><span class="glyph g-{{c.key}}"></span>{{c.label}} <small>{{c.count}}</small></div>
+          <span class="ch"><span class="why">{{c.why}}</span></span>
+        </div>
+        <sc-for list="{{c.cards}}" as="k" hint-placeholder-count="3">
+          <article class="card">
+            <div class="t"><b>{{k.scope}}</b> {{k.t}}</div>
+            <div class="m">
+              <span class="av" style="background: {{k.col}}">{{k.ini}}</span>
+              <span class="grow">{{k.meta}}</span>
+              <span class="bar"><span class="s-ok" style="width: {{k.ok}}%"></span><span class="s-fail" style="width: {{k.fail}}%"></span><span class="s-run" style="width: {{k.run}}%"></span></span>
+            </div>
+            <span class="next n-{{k.tone}}">{{k.next}}</span>
+          </article>
+        </sc-for>
+        <sc-if value="{{c.hasMore}}" hint-placeholder-val="{{ false }}"><button type="button" class="more">{{c.moreText}}</button></sc-if>
+      </section>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":820}}'>
+var A = {
+  you: ['KV', '#15803d'], vera: ['VE', '#5b4bc4'], maria: ['MA', '#b45309'], jonas: ['JO', '#0e7490'], dependabot: ['DB', '#475569']
+};
+function card(a, scope, t, meta, ok, fail, run, next, tone) {
+  return { ini: A[a][0], col: A[a][1], scope: scope, t: t, meta: meta, ok: ok, fail: fail, run: run, next: next, tone: tone };
+}
+class Component extends DCLogic {
+  renderVals() {
+    var cols = [
+      { key: 'turn', label: 'Your turn', count: 11, why: 'Your review, or your PR needs a fix or reply', more: 7, cards: [
+        card('vera', 'fix(users):', 'exempt system accounts from licence limits', 'shop-api #6403 · 1m', 75, 0, 25, 'Your review', 'you'),
+        card('vera', 'fix(planboard):', 'load the order list when customer number and a custom field are combined', 'shop-web #6395 · 3m', 73, 0, 27, 'Your review', 'you'),
+        card('you', 'fix(profitability):', 'show item names, not translation keys, in the profitability sections', 'shop-web #6377 · 9m', 91, 9, 0, 'Fix checks', 'you'),
+        card('you', 'test(e2e):', 'pick usable planboard engineers, not the top rows', 'shop-web #6298 · 22h', 95, 5, 0, 'Resolve conflicts', 'you')
+      ] },
+      { key: 'failing', label: 'Failing', count: 3, why: 'Red checks on someone else’s PR', more: 0, cards: [
+        card('vera', 'fix(search):', 'resolve configured custom-field filter aliases', 'shop-web #6368 · shared ×4', 98, 2, 0, 'Blocked by shared CI', 'block'),
+        card('vera', 'docs(customer):', 'Quotes bundle: corrected list guide, help, tour and screenshots', 'shop-web #6396 · shared ×4', 96, 4, 0, 'Blocked by shared CI', 'block'),
+        card('vera', 'fix(grid):', 'keep group headers under column filters', 'shop-web #6255 · stale 9d', 98, 2, 0, 'Address changes · vera', 'them')
+      ] },
+      { key: 'waiting', label: 'Waiting for review', count: 4, why: 'Green or running, no approval yet', more: 1, cards: [
+        card('you', 'feat(teams):', 'check environment, fixes and existing items before filing a Teams request', 'shop-api #6382 · 6m', 97, 0, 3, 'Checks running', 'wait'),
+        card('you', 'fix(orders):', 'void a margin acceptance when the cost of an order that sells nothing changes', 'shop-api #6397 · 10m', 98, 0, 2, 'Checks running', 'wait'),
+        card('you', '', 'Quote pricing keeps its ten-minute wait on Android', 'mobile #1268 · 2h', 100, 0, 0, 'Review · maria', 'them')
+      ] },
+      { key: 'ready', label: 'Ready to merge', count: 3, why: 'Approved, green, no conflicts', more: 0, cards: [
+        card('maria', 'feat(reports):', 'export the margin report as CSV', 'shop-web #6371 · 3h', 100, 0, 0, 'Merge · maria', 'go'),
+        card('vera', 'fix(planboard):', '2 Days view shows the configured working hours', 'shop-web #6400 · 40m', 100, 0, 0, 'Merge · vera', 'go'),
+        card('you', 'docs(plans):', 'record the decisions for the Teams integration plan', 'shop-api #6365 · 5h', 100, 0, 0, 'Merge', 'go')
+      ] },
+      { key: 'draft', label: 'Draft', count: 2, why: 'Not ready for review', more: 0, cards: [
+        card('jonas', 'refactor(pricing):', 'split the order pricing service', 'shop-api #6390 · 1d · XL', 100, 0, 0, 'Finish draft · jonas', 'them'),
+        card('maria', 'feat(k8s):', 'add a staging-6 namespace', 'infra #415 · stale 11d', 100, 0, 0, 'Finish draft · maria', 'them')
+      ] }
+    ];
+    return {
+      cols: cols.map(function (c) {
+        return Object.assign({}, c, { hasMore: c.more > 0, moreText: c.more + ' more' });
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
