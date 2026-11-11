@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.10.1 — 2026-11-11
+
+### Bug Fixes
+
+- Dismissed notifications no longer leave an invisible area blocking clicks in other applications.
+
 ## 4.10.0 — 2026-11-11
 
 ### New Features
