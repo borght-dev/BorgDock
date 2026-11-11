@@ -383,6 +383,7 @@ function Harness({
   dispatchRunSheet = null,
   dispatchFilter = null,
   agentsWaiting = false,
+  railCollapsed = false,
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
@@ -407,6 +408,8 @@ function Harness({
   dispatchFilter?: BriefFilter | null;
   /** Seed Dispatch in another section too, so Focus shows the agents that wait. */
   agentsWaiting?: boolean;
+  /** The rail folded to icons. */
+  railCollapsed?: boolean;
 }) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
@@ -432,6 +435,7 @@ function Harness({
       expandedGroups: new Set(),
     });
     useUiStore.setState({
+      railCollapsed,
       activeSection: section,
       viewStack: view ? [{ kind: 'list' }, view] : [{ kind: 'list' }],
     });
@@ -464,6 +468,14 @@ export const RailPrs: Story = { args: { section: 'prs' } };
 
 /** Pull requests grouped by author, with the current user first. */
 export const PrsByAuthor: Story = { args: { section: 'prs', groupBy: 'author' } };
+
+/** The rail folded to icons (`[`): counts as badges, the name on hover. */
+export const RailCollapsed: Story = { args: { section: 'prs', railCollapsed: true } };
+
+export const RailCollapsedLight: Story = {
+  args: { section: 'prs', railCollapsed: true },
+  globals: { theme: 'light' },
+};
 
 /** Compact density: one 32 px line per pull request. */
 export const PrsCompact: Story = { args: { section: 'prs', density: 'compact' } };

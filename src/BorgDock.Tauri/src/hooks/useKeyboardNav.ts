@@ -34,6 +34,7 @@ type QueueMergeFn = (owner: string, repo: string, prNumber: number) => void;
  *   on my review, E collapses every group, Esc clears the selection.
  * - In Dispatch, A takes the selected item's first action, S starts an agent
  *   on it, M moves its state and O opens its thread in T3.
+ * - [ folds the rail to icons and back.
  */
 export function useKeyboardNav(): void {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -58,6 +59,13 @@ export function useKeyboardNav(): void {
     if (isRefreshShortcut(e)) {
       e.preventDefault();
       dispatchRefresh();
+      return;
+    }
+
+    // [ folds the rail to icons and back, in a detail view too.
+    if (isPlainKey(e) && !e.repeat && e.key === '[' && !isOverlayOpen()) {
+      e.preventDefault();
+      useUiStore.getState().toggleRail();
       return;
     }
 

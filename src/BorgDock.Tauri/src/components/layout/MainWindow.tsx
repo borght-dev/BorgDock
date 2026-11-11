@@ -79,8 +79,13 @@ export function MainWindow({ children }: MainWindowProps) {
   // Active-section persistence is handled inside useUiStore.setActiveSection
   // via persistToTauriStore (read back on mount by restorePersistedSection).
 
+  const railCollapsed = useUiStore((s) => s.railCollapsed);
+
   return (
-    <div className="bd-mainwindow bd-mainwindow--rail">
+    <div
+      className="bd-mainwindow bd-mainwindow--rail"
+      data-rail-collapsed={railCollapsed ? 'true' : undefined}
+    >
       <Rail />
       <div className="bd-mainwindow__main">
         <TitleBar

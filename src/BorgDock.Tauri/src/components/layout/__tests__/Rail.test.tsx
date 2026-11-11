@@ -59,7 +59,11 @@ describe('Rail', () => {
     usePrStore.setState({ username: '', rateLimit: null, lastPollTime: null, isPolling: false });
     usePrStore.getState().setPullRequests([pr(1), pr(2)]);
     useWorkItemsStore.setState({ workItems: [] });
-    useUiStore.setState({ activeSection: 'focus', viewStack: [{ kind: 'list' }] });
+    useUiStore.setState({
+      activeSection: 'focus',
+      viewStack: [{ kind: 'list' }],
+      railCollapsed: false,
+    });
   });
 
   afterEach(() => {
@@ -116,6 +120,64 @@ describe('Rail', () => {
     useWorkItemsStore.setState({ workItems: [{ id: 1 }, { id: 2 }] as unknown as WorkItem[] });
     render(<Rail />);
     expect(navButton(/Work items/).querySelector('.bd-rail__count')).toHaveTextContent('2');
+  });
+
+  describe('folded', () => {
+    it('folds to icons from its button and keeps the names for screen readers and hover', () => {
+      render(<Rail />);
+      fireEvent.click(screen.getByRole('button', { name: 'Collapse navigation' }));
+
+      expect(useUiStore.getState().railCollapsed).toBe(true);
+      expect(screen.getByRole('complementary', { name: 'Navigation' })).toHaveAttribute(
+        'data-collapsed',
+        'true',
+      );
+      expect(screen.queryByText('BorgDock')).toBeNull();
+      const prs = navButton(/Pull requests/);
+      expect(prs.querySelector('.bd-rail__icon')).toBeInTheDocument();
+      expect(prs.querySelector('.bd-rail__label')).toHaveClass('sr-only');
+      expect(prs).toHaveAttribute('title', 'Pull requests · 2 (4)');
+      expect(prs.querySelector('.bd-rail__count')).toHaveClass('bd-rail__count--badge');
+    });
+
+    it('caps a badge at 99+ and keeps a failing count red', () => {
+      usePrStore
+        .getState()
+        .setPullRequests(
+          Array.from({ length: 120 }, (_, i) => pr(i + 1, i === 0 ? 'red' : 'green')),
+        );
+      useUiStore.setState({ railCollapsed: true });
+      render(<Rail />);
+      const badge = navButton(/Pull requests/).querySelector('.bd-rail__count');
+      expect(badge).toHaveTextContent('99+');
+      expect(badge).toHaveClass('bd-rail__count--hot');
+    });
+
+    it('expands again from its button, and remembers the choice', async () => {
+      const { persistToTauriStore } = await import('@/utils/tauri-persist');
+      useUiStore.setState({ railCollapsed: true });
+      render(<Rail />);
+      const toggle = screen.getByRole('button', { name: 'Expand navigation' });
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      fireEvent.click(toggle);
+      expect(useUiStore.getState().railCollapsed).toBe(false);
+      expect(screen.getByText('BorgDock')).toBeInTheDocument();
+      expect(persistToTauriStore).toHaveBeenCalledWith('ui-state.json', 'railCollapsed', false);
+    });
+
+    it('shows the sync state on hover of the meter', () => {
+      usePrStore.setState({
+        rateLimit: { remaining: 4357, limit: 5000, resetAt: new Date(), pool: 'rest' },
+        lastPollTime: null,
+      });
+      useUiStore.setState({ railCollapsed: true });
+      render(<Rail />);
+      expect(document.querySelector('.bd-rail__sync--compact')).toHaveAttribute(
+        'title',
+        'Not synced yet · 4,357 of 5,000 requests left',
+      );
+      expect(screen.queryByText(/requests left/)).toBeNull();
+    });
   });
 
   it('switches the section on click', () => {

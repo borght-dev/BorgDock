@@ -16,6 +16,7 @@ Current as of **3.0.0** (2026-09-25). `/CHANGELOG.md` records what changed per r
   - Counts: Pull requests always (red when any PR is failing); Focus, Dispatch (the items waiting on you), Work items and Worktrees when above zero
   - Sync block: "Syncing…" / "Synced 12 s ago" (updates every 10 s), a GitHub rate meter (marked low under 10%) and "N of M requests left (GraphQL|REST)" for the tightest pool across accounts
   - Last section remembered (default Focus)
+  - Folds to icons (`[`, or **Collapse** at its foot): counts become badges (99+ above 99), names show on hover, the rate meter stands alone (its numbers on hover); remembered across launches
 - Title bar: the section name, or "Pull request" / "Work item" when a detail view is open; status dot (red when any PR is failing), **Open window** launcher, Refresh, Settings, min/max/close
 - Status bar per view:
 

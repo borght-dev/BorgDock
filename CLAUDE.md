@@ -384,6 +384,7 @@ Tabs (All, Your turn, Mine, Failing, Ready to merge, Stale, saved views), filter
 - **Rows stay 42 / 32 px.** `PrListRow` puts AB# chips, labels and the shared-failure chip on existing lines; table columns come from `--bd-prl-cols` (`tableTemplate`). Below 760 px of list width the CSS drops the headings and puts the title on its own line (`display: contents` on the text cell).
 - The row behaviour (clicks, context menu, trailing action) is `usePrRowBehaviour` in `PrRow.tsx`, shared by the classic row (Focus), table rows and board cards. On a table row the middle is the check bar, which opens the Checks tab: e2e clicks the title (`.bd-wb-row__title`), and Ctrl+click needs `ControlOrMeta` on macOS.
 - Stories: `PR/PrList` (`Overview*` use the mockup's data, `__fixtures__/pr-overview-data.ts`).
+- **The rail folds to icons** (`ui-store.railCollapsed`, persisted as `railCollapsed`; `[` from any view, or its Collapse button). `MainWindow` sets `data-rail-collapsed` and the grid column goes from 200 to 56 px. The narrow PR layout (≤760 px of list) still needs a narrower window than the 1200 px `minWidth`.
 
 ## Author runs and the E2E report
 

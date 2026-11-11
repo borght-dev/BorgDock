@@ -15,7 +15,8 @@ from their artboard files with `design/pr-overview/support.js`; the app images c
 | E · Docked sidebar | [e-docked.png](e-docked.png) | `pr-prlist--docked` |
 
 More states: [dark table](table-dark.png), [saved view with unsaved changes](saved-view-edited.png),
-[shared CI failures opened](ci-summary-open.png), [author then status sub-groups](sub-groups.png).
+[shared CI failures opened](ci-summary-open.png), [author then status sub-groups](sub-groups.png),
+[the rail folded to icons](rail-collapsed.png) (`main-window-mainwindow--rail-collapsed-light`).
 
 ## Where the app differs from the mockups
 
