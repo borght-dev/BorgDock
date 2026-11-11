@@ -4,6 +4,65 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.11.0",
+    "date": "2026-11-11",
+    "summary": "Pull requests that tell you what's next, Group, sort and lay out the list your way, Type a filter, save it as a view, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Pull requests that tell you what's next",
+        "description": "The Pull requests list is now a table that answers one question per row: what has to happen next, and whose move it is. A Next step pill says Your review, Fix checks, Resolve conflicts, Blocked by shared CI or Merge · maria, next to the checks, the reviewers and their verdicts, the size and the age. By default the list is grouped by status, with Your turn on top.",
+        "hero": {
+          "src": "/whats-new/4.11.0/pr-table.png",
+          "alt": "The Pull requests table grouped by status, with a Next step for every pull request"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Group, sort and lay out the list your way",
+        "description": "Use the Group, Sort and Display buttons to group by status, author, repository, review state, who acts next, work item, label, base branch, age or size, with a second level inside each group. You can sort by priority, last updated, created, title or size in either direction, and pick which columns the table shows. Click a column heading to sort by it. Your choices stay put between launches.",
+        "hero": {
+          "src": "/whats-new/4.11.0/display-menu.png",
+          "alt": "The Display menu with layout, grouping, ordering, switches and columns"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Type a filter, save it as a view",
+        "description": "Type `author:vera is:failing repo:shop-web age:>7d` straight into the search, or pick values from + Filter with their counts. Each filter shows as a chip you can change or remove. Like the result? + View saves the tab, the filters and the layout as a tab of your own.",
+        "hero": {
+          "src": "/whats-new/4.11.0/filters-views.png",
+          "alt": "Filter chips, the Repository values with their counts, and saved views as tabs"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "See your pull requests as a board",
+        "description": "Switch the layout to Board for one column per status: Your turn, Failing, Waiting for review, Ready to merge and Draft. Every card shows its next step, and J and K walk the board column by column.",
+        "hero": {
+          "src": "/whats-new/4.11.0/pr-board.png",
+          "alt": "Pull requests as a board with a column per status"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Fold the sidebar away",
+        "description": "Click Collapse at the bottom of the sidebar, or press [, and it folds to a strip of icons, leaving more room for your work. Counts stay visible as badges, and names show when you hover. BorgDock remembers your choice.",
+        "hero": {
+          "src": "/whats-new/4.11.0/rail-folded.png",
+          "alt": "The main window with the sidebar folded to icons"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.10.1",
     "date": "2026-11-11",
     "summary": "",
