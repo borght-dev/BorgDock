@@ -71,8 +71,10 @@ export interface QuickReviewCardProps {
   reviewed: readonly string[];
   /** Load, stale or submission problems, drawn above the body. */
   alert?: ReactNode;
-  /** The review guide, first in the overview's reading column. */
+  /** The review guide, in the overview's reading column under the risk. */
   guide?: ReactNode;
+  /** The regression risk: the header's chip and the reading column's first section. */
+  risk?: { pill: ReactNode; section: ReactNode };
   /** Replaces the summary body (the review composer). */
   body?: ReactNode;
   /** The action row. */
@@ -96,6 +98,7 @@ export function QuickReviewCard({
   reviewed,
   alert,
   guide,
+  risk,
   body,
   actions,
   actionsNote,
@@ -124,6 +127,7 @@ export function QuickReviewCard({
         commentCount={commentCount}
         reReview={reReview}
         statusChips={body ? undefined : <StatusChips pr={pr} detail={p} readiness={readiness} />}
+        risk={risk?.pill}
         onOpenComments={onOpenComments}
         onOpenGitHub={onOpenGitHub}
         now={now}
@@ -142,6 +146,7 @@ export function QuickReviewCard({
           linkedWorkItems={workItems}
           onFileSelect={onFileSelect}
           guide={guide}
+          risk={risk?.section}
         />
       )}
       <div className="qr-card__actions">

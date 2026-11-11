@@ -1,0 +1,1375 @@
+<style>
+/* Regression risk mockup for Quick Review. Everything is scoped to .rkm; the outer canvas stays transparent. */
+.rkm {
+  color-scheme: light dark;
+  --rk-surface: light-dark(#ffffff, #1b1c1f);
+  --rk-raised: light-dark(rgba(23, 24, 28, 0.03), #212226);
+  --rk-hover: light-dark(rgba(23, 24, 28, 0.04), rgba(255, 255, 255, 0.028));
+  --rk-sep: light-dark(#e5e6ea, rgba(255, 255, 255, 0.065));
+  --rk-strong: light-dark(#d4d6dc, rgba(255, 255, 255, 0.12));
+  --rk-t1: light-dark(#17181c, #ededef);
+  --rk-t2: light-dark(#5d606a, #9c9da4);
+  --rk-t3: light-dark(#6d707a, #82838a);
+  --rk-faint: light-dark(#c2c4cb, #3f4046);
+  --rk-accent: light-dark(#4f46e5, #7f7eff);
+  --rk-accent-subtle: light-dark(rgba(79, 70, 229, 0.1), rgba(127, 126, 255, 0.15));
+  --rk-purple: light-dark(#4f46e5, #9d9cff);
+  --rk-selected: light-dark(rgba(79, 70, 229, 0.07), rgba(127, 126, 255, 0.1));
+  --rk-green: light-dark(#1f9d6b, #5cc98f);
+  --rk-red: light-dark(#d64560, #f0616d);
+  --rk-yellow: light-dark(#c98a12, #e5b454);
+  --rk-gray: light-dark(#8f929c, #67686f);
+  --rk-ok-bg: light-dark(rgba(31, 157, 107, 0.08), rgba(92, 201, 143, 0.1));
+  --rk-ok-fg: light-dark(#1a7f57, #5cc98f);
+  --rk-ok-border: light-dark(rgba(31, 157, 107, 0.22), rgba(92, 201, 143, 0.25));
+  --rk-warn-bg: light-dark(rgba(201, 138, 18, 0.1), rgba(229, 180, 84, 0.1));
+  --rk-warn-fg: light-dark(#8f620b, #e5b454);
+  --rk-warn-border: light-dark(rgba(201, 138, 18, 0.24), rgba(229, 180, 84, 0.22));
+  --rk-err-bg: light-dark(rgba(214, 69, 96, 0.07), rgba(240, 97, 109, 0.1));
+  --rk-err-fg: light-dark(#bf3552, #f0616d);
+  --rk-err-border: light-dark(rgba(214, 69, 96, 0.2), rgba(240, 97, 109, 0.24));
+  --rk-gray-bg: light-dark(rgba(23, 24, 28, 0.045), rgba(255, 255, 255, 0.05));
+  --rk-gray-fg: light-dark(#5d606a, #9c9da4);
+  --rk-gray-border: light-dark(#d4d6dc, rgba(255, 255, 255, 0.12));
+  --rk-head-bg: light-dark(#f8f8ff, #1d1d26);
+  --rk-code-bg: light-dark(#f7f7f9, #18191c);
+  --rk-add: light-dark(rgba(31, 157, 107, 0.08), rgba(92, 201, 143, 0.1));
+  --rk-del: light-dark(rgba(214, 69, 96, 0.07), rgba(240, 97, 109, 0.1));
+  --rk-hunk: light-dark(rgba(23, 24, 28, 0.04), rgba(255, 255, 255, 0.04));
+  --rk-ln: light-dark(#9a9da6, #5f6067);
+  --rk-s-kw: light-dark(#6b3fd4, #b4a8ff);
+  --rk-s-str: light-dark(#136c49, #7fd6a8);
+  --rk-s-com: light-dark(#5d5f68, #9698a0);
+  --rk-s-num: light-dark(#8b5200, #f0bd6b);
+  --rk-s-type: light-dark(#0a6879, #6cc6d8);
+  --rk-s-fn: light-dark(#2d56c8, #8fb4ff);
+  --rk-s-tag: light-dark(#af2c48, #f07d8c);
+  --rk-s-prop: light-dark(#1d5c96, #a9c7f0);
+  --rk-shadow: light-dark(0 1px 2px rgba(16, 18, 27, 0.04), 0 1px 2px rgba(0, 0, 0, 0.2));
+  --rk-font-ui: "Inter Variable", Inter, "Segoe UI", system-ui, sans-serif;
+  --rk-font-reading: "Instrument Sans Variable", "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --rk-font-code: "JetBrains Mono Variable", "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --rk-fast: 150ms;
+  --rk-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--rk-font-ui);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--rk-t1);
+  -webkit-font-smoothing: antialiased;
+}
+.rkm[data-theme="light"] { color-scheme: light; }
+.rkm[data-theme="dark"] { color-scheme: dark; }
+.rkm *, .rkm *::before, .rkm *::after { box-sizing: border-box; }
+.rkm button { font: inherit; color: inherit; }
+.rkm code { font-family: var(--rk-font-code); font-size: 0.92em; }
+.rkm [hidden] { display: none !important; }
+.rkm .rk-i { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
+.rkm .rk-i--sm { width: 12px; height: 12px; }
+.rkm .rk-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .rkm .rk-spin { animation: rk-spin 0.9s linear infinite; }
+  .rkm .rk-skel i { animation: rk-pulse 1.4s ease-in-out infinite; }
+}
+@keyframes rk-spin { to { transform: rotate(360deg); } }
+@keyframes rk-pulse { 50% { opacity: 0.45; } }
+
+/* ── Mockup chrome (not product): illustrative tag and the Tweak guard ─── */
+.rkm-guard { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 10px; font: 12px/1.4 var(--font-sans, var(--rk-font-ui)); color: var(--muted-foreground, var(--rk-t2)); }
+.rkm-guard__tag { padding: 1px 8px; border: 1px dashed currentColor; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.rkm-guard__txt { flex: 1 1 220px; min-width: 0; }
+.rkm-tweak { flex: 1 1 100%; }
+.rkm-tweak summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; padding: 3px 9px; border: 1px solid var(--border, var(--rk-strong)); border-radius: 6px; font-weight: 600; color: var(--foreground, var(--rk-t1)); }
+.rkm-tweak summary::-webkit-details-marker { display: none; }
+.rkm-tweak summary .rk-i { transition: transform var(--rk-fast) var(--rk-ease); }
+.rkm-tweak[open] summary .rk-i { transform: rotate(90deg); }
+.rkm-tweak__rows { display: grid; gap: 6px; margin-top: 8px; }
+.rkm-tweak__row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.rkm-tweak__row > span { width: 44px; flex: none; }
+.rkm-tweak__row button { padding: 2px 9px; border: 1px solid var(--border, var(--rk-strong)); border-radius: 999px; background: transparent; color: var(--foreground, var(--rk-t1)); font-size: 11.5px; cursor: pointer; }
+.rkm-tweak__row button[aria-pressed="true"] { background: var(--foreground, var(--rk-t1)); border-color: var(--foreground, var(--rk-t1)); color: var(--background, var(--rk-surface)); }
+.rkm-tweak__row button:focus-visible, .rkm-tweak summary:focus-visible { outline: 2px solid var(--ring, var(--rk-accent)); outline-offset: 1px; }
+
+/* ── Product: a slice of the Quick Review dialog ───────────────────────── */
+.rkm .rk-app { container: rk / inline-size; overflow: hidden; border: 1px solid var(--rk-sep); border-radius: 12px; background: var(--rk-surface); color: var(--rk-t1); }
+.rkm .rk-deck { display: flex; align-items: flex-end; gap: 12px; padding: 0 14px; border-bottom: 1px solid var(--rk-sep); }
+.rkm .rk-deck__title { flex: none; padding: 10px 0 11px; font-weight: 600; font-size: 13px; }
+.rkm .rk-tabs { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.rkm .rk-tabs::-webkit-scrollbar { display: none; }
+.rkm .rk-tab { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 9px 9px 9px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--rk-t2); font-size: 12px; white-space: nowrap; cursor: pointer; transition: color var(--rk-fast) ease, border-color var(--rk-fast) ease; }
+.rkm .rk-tab:hover { color: var(--rk-t1); }
+.rkm .rk-tab[aria-selected="true"] { color: var(--rk-t1); border-bottom-color: var(--rk-accent); }
+.rkm .rk-tab:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: -2px; border-radius: 5px; }
+.rkm .rk-tab__num { font-variant-numeric: tabular-nums; }
+.rkm .rk-tab__title { max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
+
+/* Level pip: a letter as well as a colour, so it reads without colour. */
+.rkm .rk-pip { display: inline-grid; place-items: center; width: 16px; height: 16px; flex: none; border-radius: 4px; border: 1px solid var(--tone-border); background: var(--tone-bg); color: var(--tone-fg); font-size: 9.5px; font-weight: 700; line-height: 1; }
+.rkm .rk-pip[data-stale] { border-style: dashed; }
+.rkm .rk-pip .rk-i { width: 10px; height: 10px; }
+.rkm [data-lvl="high"] { --tone: var(--rk-red); --tone-fg: var(--rk-err-fg); --tone-bg: var(--rk-err-bg); --tone-border: var(--rk-err-border); }
+.rkm [data-lvl="medium"] { --tone: var(--rk-yellow); --tone-fg: var(--rk-warn-fg); --tone-bg: var(--rk-warn-bg); --tone-border: var(--rk-warn-border); }
+.rkm [data-lvl="low"], .rkm [data-lvl="lower"] { --tone: var(--rk-green); --tone-fg: var(--rk-ok-fg); --tone-bg: var(--rk-ok-bg); --tone-border: var(--rk-ok-border); }
+.rkm [data-lvl="unknown"], .rkm [data-lvl="none"] { --tone: var(--rk-gray); --tone-fg: var(--rk-gray-fg); --tone-bg: var(--rk-gray-bg); --tone-border: var(--rk-gray-border); }
+
+/* PR header, as the card draws it. */
+.rkm .rk-prhead { padding: 16px 20px 14px; border-bottom: 1px solid var(--rk-sep); background: linear-gradient(var(--rk-head-bg), var(--rk-surface)); }
+.rkm .rk-prhead__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; color: var(--rk-t2); }
+.rkm .rk-prhead__meta b { color: var(--rk-t1); font-weight: 600; }
+.rkm .rk-av { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--rk-accent-subtle); color: var(--rk-purple); font-size: 9.5px; font-weight: 600; }
+.rkm .rk-av[data-bot] { background: var(--rk-gray-bg); color: var(--rk-t2); }
+.rkm .rk-prhead h2 { margin: 6px 0 10px; font: 600 18px/1.3 var(--rk-font-reading); letter-spacing: -0.005em; text-wrap: balance; }
+.rkm .rk-prhead h2 span { color: var(--rk-t3); font-weight: 500; font-variant-numeric: tabular-nums; }
+.rkm .rk-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rkm .rk-size { font-size: 12px; color: var(--rk-t2); font-variant-numeric: tabular-nums; }
+.rkm .rk-plus { color: var(--rk-green); }
+.rkm .rk-minus { color: var(--rk-red); }
+.rkm .rk-pill { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border: 1px solid var(--tone-border); border-radius: 999px; background: var(--tone-bg); color: var(--tone-fg); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.rkm .rk-pill[data-tone="ok"] { --tone-border: var(--rk-ok-border); --tone-bg: var(--rk-ok-bg); --tone-fg: var(--rk-ok-fg); }
+.rkm .rk-pill[data-tone="warn"] { --tone-border: var(--rk-warn-border); --tone-bg: var(--rk-warn-bg); --tone-fg: var(--rk-warn-fg); }
+.rkm .rk-pill[data-tone="ghost"] { --tone-border: var(--rk-strong); --tone-bg: transparent; --tone-fg: var(--rk-t2); }
+.rkm .rk-pill[data-stale] { border-style: dashed; }
+.rkm .rk-pill .rk-i { width: 11px; height: 11px; }
+
+/* Buttons, after the shared primitives. */
+.rkm .rk-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 24px; padding: 0 9px; border: 1px solid var(--rk-strong); border-radius: 5px; background: var(--rk-surface); color: var(--rk-t1); font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background var(--rk-fast) ease, transform 80ms ease; }
+.rkm .rk-btn:hover { background: var(--rk-hover); }
+.rkm .rk-btn:active { transform: scale(0.97); }
+.rkm .rk-btn--ghost { border-color: transparent; background: transparent; color: var(--rk-t2); }
+.rkm .rk-btn--ghost:hover { color: var(--rk-t1); }
+.rkm .rk-btn--icon { width: 26px; padding: 0; }
+.rkm .rk-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+.rkm .rk-btn:focus-visible, .rkm .rk-link:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 1px; }
+.rkm .rk-link { padding: 0; border: 0; background: none; color: var(--rk-accent); font-weight: 500; cursor: pointer; }
+.rkm .rk-link:hover { text-decoration: underline; }
+
+/* Card body: the risk section sits first in the reading column. */
+.rkm .rk-body { display: flex; flex-direction: column; gap: 22px; padding: 18px 20px 22px; }
+.rkm .rk-h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 11px; font-weight: 600; line-height: 1.3; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rk-t2); }
+.rkm .rk-h3 small { letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 11.5px; color: var(--rk-t3); }
+.rkm .rk-h3 .rk-btn { margin-left: auto; text-transform: none; letter-spacing: 0; }
+
+/* The verdict: level on a three-step scale, one sentence, where it came from. */
+.rkm .rk-verdict { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 12px 18px; padding: 14px 16px 12px; border: 1px solid var(--rk-sep); border-radius: 10px; background: var(--rk-raised); box-shadow: inset 3px 0 0 var(--tone); }
+.rkm .rk-verdict[data-stale] { box-shadow: none; border-style: dashed; border-color: var(--rk-strong); }
+.rkm .rk-level__word { display: flex; align-items: center; gap: 7px; margin: 0; font: 600 20px/1.15 var(--rk-font-reading); color: var(--tone-fg); }
+.rkm .rk-level__word .rk-i { width: 18px; height: 18px; }
+.rkm .rk-level__sub { display: block; margin-top: 3px; font-size: 11px; color: var(--rk-t3); }
+.rkm .rk-scale { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-top: 10px; }
+.rkm .rk-scale span { position: relative; padding-top: 8px; font-size: 10px; line-height: 1.2; color: var(--rk-t3); }
+.rkm .rk-scale span::before { content: ""; position: absolute; inset: 0 0 auto; height: 4px; border-radius: 2px; background: var(--rk-sep); }
+.rkm .rk-scale span[data-on] { color: var(--rk-t1); font-weight: 600; }
+.rkm .rk-scale span[data-on]::before { background: var(--tone); }
+.rkm .rk-verdict[data-stale] .rk-scale span[data-on]::before { background: repeating-linear-gradient(90deg, var(--tone) 0 5px, transparent 5px 8px); }
+.rkm .rk-verdict[data-lvl="unknown"] .rk-scale span::before { background: repeating-linear-gradient(135deg, var(--rk-strong) 0 2px, transparent 2px 5px); }
+.rkm .rk-headline { margin: 0; font: 500 15px/1.45 var(--rk-font-reading); color: var(--rk-t1); text-wrap: pretty; }
+.rkm .rk-headline--quiet { color: var(--rk-t2); font-weight: 400; }
+.rkm .rk-decided { margin: 6px 0 0; font-size: 12px; color: var(--rk-t2); }
+.rkm .rk-decided .rk-link { font-family: var(--rk-font-code); font-size: 11.5px; }
+.rkm .rk-verdict .rk-cta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.rkm .rk-prov { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding-top: 10px; border-top: 1px solid var(--rk-sep); font-size: 11.5px; color: var(--rk-t2); }
+.rkm .rk-prov > span { display: inline-flex; align-items: center; gap: 5px; }
+.rkm .rk-prov code { color: var(--rk-t1); font-size: 11px; }
+.rkm .rk-prov .rk-i { color: var(--rk-t3); width: 12px; height: 12px; }
+.rkm .rk-fresh { padding: 0 6px; border: 1px solid; border-radius: 999px; font-size: 10.5px; font-weight: 600; line-height: 16px; }
+.rkm .rk-fresh[data-f="current"] { border-color: var(--rk-ok-border); background: var(--rk-ok-bg); color: var(--rk-ok-fg); }
+.rkm .rk-fresh[data-f="behind"] { border-color: var(--rk-warn-border); background: var(--rk-warn-bg); color: var(--rk-warn-fg); }
+.rkm .rk-fresh[data-f="busy"] { border-color: var(--rk-strong); color: var(--rk-t2); }
+
+/* Banners for stale, failed and unknown. */
+.rkm .rk-alert { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--rk-warn-border); border-radius: 8px; background: var(--rk-warn-bg); font-size: 12.5px; line-height: 1.5; color: var(--rk-t1); }
+.rkm .rk-alert > .rk-i { margin-top: 2px; color: var(--rk-warn-fg); }
+.rkm .rk-alert > span { flex: 1; min-width: 0; }
+.rkm .rk-alert[data-tone="error"] { border-color: var(--rk-err-border); background: var(--rk-err-bg); }
+.rkm .rk-alert[data-tone="error"] > .rk-i { color: var(--rk-err-fg); }
+.rkm .rk-alert[data-tone="neutral"] { border-color: var(--rk-sep); background: var(--rk-gray-bg); }
+.rkm .rk-alert[data-tone="neutral"] > .rk-i { color: var(--rk-t2); }
+.rkm .rk-note { margin: 8px 2px 0; font-size: 12px; color: var(--rk-t2); }
+
+/* Reasons. */
+.rkm .rk-groups { display: grid; gap: 16px; margin-top: 18px; }
+.rkm .rk-group__h { display: flex; align-items: baseline; gap: 8px; margin: 0 0 7px; font-size: 12.5px; font-weight: 600; color: var(--rk-t1); }
+.rkm .rk-group__h span { font-weight: 400; color: var(--rk-t3); font-variant-numeric: tabular-nums; }
+.rkm .rk-group__h small { margin-left: auto; font-weight: 400; font-size: 11.5px; color: var(--rk-t3); }
+.rkm .rk-reasons { margin: 0; padding: 0; list-style: none; border: 1px solid var(--rk-sep); border-radius: 10px; overflow: hidden; }
+.rkm .rk-reason + .rk-reason { border-top: 1px solid var(--rk-sep); }
+.rkm .rk-reason__row { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 12px; padding: 11px 14px 12px 12px; cursor: pointer; transition: background var(--rk-fast) ease; }
+.rkm .rk-reason__row:hover { background: var(--rk-hover); }
+.rkm .rk-reason[data-open] > .rk-reason__row { background: var(--rk-raised); }
+.rkm .rk-reason__tag { display: grid; align-content: start; gap: 3px; padding-top: 1px; }
+.rkm .rk-rid { font: 600 11px/1.2 var(--rk-font-code); color: var(--rk-t3); }
+.rkm .rk-rlvl { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 600; color: var(--tone-fg); }
+.rkm .rk-rlvl .rk-i { width: 12px; height: 12px; }
+.rkm .rk-reason__title { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 0; border: 0; background: none; text-align: left; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--rk-t1); cursor: pointer; }
+.rkm .rk-reason__title > span { flex: 1; min-width: 0; }
+.rkm .rk-reason__title .rk-i { margin-top: 2px; color: var(--rk-t3); transition: transform var(--rk-fast) var(--rk-ease); }
+.rkm .rk-reason[data-open] .rk-reason__title .rk-i { transform: rotate(90deg); }
+.rkm .rk-reason__title:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 2px; border-radius: 4px; }
+.rkm .rk-because { margin: 3px 0 8px; font-size: 12.5px; line-height: 1.5; color: var(--rk-t2); text-wrap: pretty; }
+.rkm .rk-because code { color: var(--rk-t1); }
+.rkm .rk-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rkm .rk-anchor { display: inline-flex; align-items: center; gap: 6px; height: 22px; max-width: 100%; padding: 0 7px; border: 1px solid var(--rk-strong); border-radius: 5px; background: var(--rk-surface); font: 11px var(--rk-font-code); color: var(--rk-t1); cursor: pointer; transition: background var(--rk-fast) ease, border-color var(--rk-fast) ease; }
+.rkm .rk-anchor > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rkm .rk-anchor small { flex: none; font: 10.5px var(--rk-font-ui); color: var(--rk-t3); }
+.rkm .rk-anchor[data-where="outside"], .rkm .rk-anchor[data-where="body"] { border-style: dashed; }
+.rkm .rk-anchor:hover { background: var(--rk-hover); border-color: var(--rk-t3); }
+.rkm .rk-anchor:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 1px; }
+.rkm .rk-test { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 5px; margin-left: 2px; font-size: 11.5px; color: var(--rk-t2); }
+.rkm .rk-test .rk-i { width: 12px; height: 12px; }
+.rkm .rk-test[data-s="none"] .rk-i, .rkm .rk-test[data-s="part"] .rk-i { color: var(--rk-yellow); }
+.rkm .rk-test[data-s="yes"] .rk-i { color: var(--rk-green); }
+.rkm .rk-test[data-s="unknown"] .rk-i { color: var(--rk-t3); }
+.rkm .rk-test .rk-anchor { height: 20px; }
+.rkm .rk-changed { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 1px 7px; border: 1px dashed var(--rk-warn-border); border-radius: 999px; background: var(--rk-warn-bg); color: var(--rk-warn-fg); font-size: 11px; font-weight: 600; }
+.rkm .rk-reason[data-changed] .rk-because { opacity: 0.75; }
+
+/* Evidence, opened from a reason. */
+.rkm .rk-evidence { display: grid; gap: 10px; padding: 2px 14px 14px 86px; background: var(--rk-raised); }
+.rkm .rk-why { margin: 0; font-size: 12.5px; color: var(--rk-t1); }
+.rkm .rk-why b { font-weight: 600; color: var(--tone-fg); margin-right: 4px; }
+.rkm .rk-snip { margin: 0; border: 1px solid var(--rk-sep); border-radius: 8px; overflow: hidden; background: var(--rk-surface); }
+.rkm .rk-snip figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 6px 6px 10px; border-bottom: 1px solid var(--rk-sep); font-size: 11.5px; color: var(--rk-t2); }
+.rkm .rk-snip figcaption code { color: var(--rk-t1); font-size: 11px; overflow-wrap: anywhere; }
+.rkm .rk-snip figcaption .rk-btn { margin-left: auto; }
+.rkm .rk-where { padding: 0 6px; border: 1px solid var(--rk-strong); border-radius: 999px; font-size: 10.5px; line-height: 16px; }
+.rkm .rk-where[data-where="outside"], .rkm .rk-where[data-where="body"] { border-style: dashed; }
+
+/* Code rows, shared by evidence and the walk. */
+.rkm .rk-code { overflow-x: auto; background: var(--rk-code-bg); font: 11.5px/1.65 var(--rk-font-code); }
+.rkm .rk-code__in { display: grid; width: max-content; min-width: 100%; }
+.rkm .rk-l { display: grid; grid-template-columns: 30px 36px 36px 16px auto; align-items: stretch; }
+.rkm .rk-code[data-single] .rk-l { grid-template-columns: 30px 40px 6px auto; }
+.rkm .rk-code[data-single] .rk-l__o { display: none; }
+.rkm .rk-l > span { padding: 0 4px; white-space: pre; }
+.rkm .rk-l__m { position: relative; padding: 0 !important; }
+.rkm .rk-l[data-lvl] .rk-l__m::after { content: ""; position: absolute; top: 0; bottom: 0; right: 4px; width: 3px; background: var(--tone); }
+.rkm .rk-l__m b { position: absolute; top: 2px; left: 3px; z-index: 1; padding: 0 3px; border-radius: 3px; background: var(--tone); color: var(--rk-surface); font: 700 9px/14px var(--rk-font-ui); }
+.rkm .rk-l__o, .rkm .rk-l__n { text-align: right; color: var(--rk-ln); font-variant-numeric: tabular-nums; user-select: none; }
+.rkm .rk-l__s { color: var(--rk-t3); user-select: none; }
+.rkm .rk-l[data-t="+"] { background: var(--rk-add); }
+.rkm .rk-l[data-t="+"] .rk-l__s { color: var(--rk-green); }
+.rkm .rk-l[data-t="-"] { background: var(--rk-del); }
+.rkm .rk-l[data-t="-"] .rk-l__s { color: var(--rk-red); }
+.rkm .rk-l[data-t="hunk"], .rkm .rk-l[data-t="gap"] { display: block; padding: 2px 10px 2px 30px; background: var(--rk-hunk); color: var(--rk-t3); }
+.rkm .rk-l[data-t="gap"] { font-family: var(--rk-font-ui); font-size: 11px; }
+.rkm .rk-l[data-lvl] .rk-l__c { box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--tone) 6%, transparent); }
+.rkm .rk-l[data-current] .rk-l__c { box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--tone) 13%, transparent); }
+.rkm .rk-l__c { color: var(--rk-t1); padding-right: 14px !important; }
+.rkm .rk-s-kw { color: var(--rk-s-kw); }
+.rkm .rk-s-str { color: var(--rk-s-str); }
+.rkm .rk-s-com { color: var(--rk-s-com); font-style: italic; }
+.rkm .rk-s-num { color: var(--rk-s-num); }
+.rkm .rk-s-type { color: var(--rk-s-type); }
+.rkm .rk-s-fn { color: var(--rk-s-fn); }
+.rkm .rk-s-tag { color: var(--rk-s-tag); }
+.rkm .rk-s-prop { color: var(--rk-s-prop); }
+
+/* Coverage: what the assessment read, file by file. */
+.rkm .rk-cov { margin-top: 18px; }
+.rkm .rk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.rkm .rk-tile { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1px 8px; align-items: center; padding: 7px 9px; border: 1px solid var(--rk-sep); border-radius: 7px; background: var(--rk-surface); text-align: left; cursor: pointer; transition: background var(--rk-fast) ease, border-color var(--rk-fast) ease; }
+.rkm .rk-tile:hover { background: var(--rk-hover); border-color: var(--rk-strong); }
+.rkm .rk-tile:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 1px; }
+.rkm .rk-tile[data-read="outside"], .rkm .rk-tile[data-read="body"] { border-style: dashed; }
+.rkm .rk-tile__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 11.5px var(--rk-font-code); color: var(--rk-t1); }
+.rkm .rk-tile__meta { grid-column: 2; display: flex; align-items: center; gap: 6px; overflow: hidden; font-size: 11px; color: var(--rk-t3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rkm .rk-cites { display: inline-flex; gap: 3px; margin-left: auto; }
+.rkm .rk-cites i { padding: 0 4px; border-radius: 3px; background: var(--tone-bg); color: var(--tone-fg); font: 600 9.5px/15px var(--rk-font-code); font-style: normal; }
+.rkm .rk-tiles__sep { grid-column: 1 / -1; margin: 6px 0 0; font-size: 11px; color: var(--rk-t3); }
+.rkm .rk-rd { display: inline-block; width: 10px; height: 10px; flex: none; border-radius: 2px; }
+.rkm .rk-rd[data-read="full"] { background: var(--rk-t2); }
+.rkm .rk-rd[data-read="cut"] { background: linear-gradient(to top, var(--rk-t2) 50%, transparent 50%); box-shadow: inset 0 0 0 1px var(--rk-t2); }
+.rkm .rk-rd[data-read="name"] { box-shadow: inset 0 0 0 1px var(--rk-t3); background: repeating-linear-gradient(135deg, transparent 0 2px, var(--rk-faint) 2px 3px); }
+.rkm .rk-rd[data-read="outside"], .rkm .rk-rd[data-read="body"] { border: 1px dashed var(--rk-t2); }
+.rkm .rk-cells { display: flex; flex-wrap: wrap; gap: 3px; }
+.rkm .rk-cell { width: 11px; height: 11px; padding: 0; border: 0; border-radius: 2px; cursor: pointer; }
+.rkm .rk-cell.rk-rd { width: 11px; height: 11px; }
+.rkm .rk-cell[data-cited] { outline: 2px solid var(--tone); outline-offset: 1px; }
+.rkm .rk-cell:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: 1px; }
+.rkm .rk-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 11px; color: var(--rk-t2); }
+.rkm .rk-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.rkm .rk-cov__sum { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--rk-t2); }
+.rkm .rk-cov__sum code { color: var(--rk-t1); }
+.rkm .rk-limits { display: flex; align-items: flex-start; gap: 7px; margin: 8px 0 0; padding: 8px 10px; border-radius: 7px; background: var(--rk-gray-bg); font-size: 12px; line-height: 1.5; color: var(--rk-t2); }
+.rkm .rk-limits .rk-i { margin-top: 2px; width: 12px; height: 12px; color: var(--rk-t3); }
+.rkm .rk-none { margin: 0; padding: 10px 12px; border: 1px dashed var(--rk-strong); border-radius: 10px; font-size: 12.5px; color: var(--rk-t2); }
+.rkm .rk-none b { color: var(--rk-t1); font-weight: 600; }
+
+/* Assessing: no level until there is one. */
+.rkm .rk-skel { display: grid; gap: 0; margin-top: 18px; border: 1px solid var(--rk-sep); border-radius: 10px; overflow: hidden; }
+.rkm .rk-skel > div { display: grid; grid-template-columns: 62px 1fr; gap: 12px; padding: 12px 14px 14px 12px; }
+.rkm .rk-skel > div + div { border-top: 1px solid var(--rk-sep); }
+.rkm .rk-skel i { display: block; height: 9px; margin: 4px 0; border-radius: 4px; background: var(--rk-sep); }
+
+/* The existing guide below, for placement only. */
+.rkm .rk-existing { opacity: 0.72; }
+.rkm .rk-existing p { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--rk-t2); }
+.rkm .rk-existing__tag { padding: 0 6px; border: 1px dashed var(--rk-strong); border-radius: 999px; font-size: 10px; letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--rk-t3); }
+
+/* Walk drilldown: the file tree and the diff with the cited lines marked. */
+.rkm .rk-walkbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px; border-bottom: 1px solid var(--rk-sep); }
+.rkm .rk-walkbar__path { min-width: 0; flex: 1 1 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 12px var(--rk-font-code); }
+.rkm .rk-walkbar__count { font-size: 11.5px; color: var(--rk-t2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rkm .rk-walk { display: grid; grid-template-columns: 200px minmax(0, 1fr); min-height: 380px; }
+.rkm .rk-tree { min-width: 0; max-height: 560px; overflow: auto; padding: 8px 6px 12px; border-right: 1px solid var(--rk-sep); }
+.rkm .rk-tree__h { margin: 8px 8px 4px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--rk-t3); }
+.rkm .rk-tree__h:first-child { margin-top: 2px; }
+.rkm .rk-tree button { display: flex; align-items: center; gap: 7px; width: 100%; padding: 5px 8px; border: 0; border-radius: 6px; background: none; text-align: left; font-size: 12px; color: var(--rk-t2); cursor: pointer; }
+.rkm .rk-tree button:hover { background: var(--rk-hover); color: var(--rk-t1); }
+.rkm .rk-tree button[aria-current="true"] { background: var(--rk-selected); color: var(--rk-t1); box-shadow: inset 2px 0 0 var(--rk-accent); }
+.rkm .rk-tree button:focus-visible { outline: 2px solid var(--rk-accent); outline-offset: -2px; }
+.rkm .rk-tree__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rkm .rk-tree .rk-cites { margin-left: 0; }
+.rkm .rk-file { min-width: 0; display: flex; flex-direction: column; }
+.rkm .rk-strip { display: flex; align-items: flex-start; gap: 8px; padding: 7px 14px; border-bottom: 1px solid var(--rk-sep); background: var(--rk-head-bg); font-size: 12.5px; line-height: 1.45; color: var(--rk-t2); }
+.rkm .rk-strip > .rk-i { margin-top: 2px; color: var(--tone-fg); }
+.rkm .rk-strip p { margin: 0; flex: 1; min-width: 0; }
+.rkm .rk-strip b { color: var(--rk-t1); font-weight: 600; }
+.rkm .rk-strip em { margin: 0 4px 0 6px; font-style: normal; font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--rk-t3); }
+.rkm .rk-strip[data-tone="warn"] { background: var(--rk-warn-bg); }
+.rkm .rk-strip[data-tone="warn"] > .rk-i { color: var(--rk-warn-fg); }
+.rkm .rk-fhead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 8px 14px; border-bottom: 1px solid var(--rk-sep); font-size: 11.5px; color: var(--rk-t2); }
+.rkm .rk-fhead code { color: var(--rk-t1); font-size: 11.5px; overflow-wrap: anywhere; }
+.rkm .rk-fhead > span { display: inline-flex; align-items: center; gap: 5px; }
+.rkm .rk-file .rk-code { flex: 1; }
+.rkm .rk-empty { margin: 0; padding: 28px 18px; font-size: 12.5px; color: var(--rk-t2); text-align: center; }
+
+/* Narrow: the dialog at phone or split-screen width. */
+@container rk (max-width: 600px) {
+  .rkm .rk-deck__title { display: none; }
+  .rkm .rk-tab__title { display: none; }
+  .rkm .rk-prhead { padding: 14px 14px 12px; }
+  .rkm .rk-prhead h2 { font-size: 16px; }
+  .rkm .rk-body { padding: 14px 14px 18px; }
+  .rkm .rk-verdict { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 12px 12px 10px 14px; }
+  .rkm .rk-level { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
+  .rkm .rk-scale { width: 156px; flex: none; margin-top: 0; }
+  .rkm .rk-reason__row { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 10px 12px 12px; }
+  .rkm .rk-reason__tag { display: flex; align-items: center; gap: 8px; }
+  .rkm .rk-evidence { padding: 2px 10px 12px; }
+  .rkm .rk-walk { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .rkm .rk-tree { display: flex; gap: 4px; max-height: none; padding: 6px 8px; border-right: 0; border-bottom: 1px solid var(--rk-sep); scrollbar-width: thin; }
+  .rkm .rk-tree__h { display: none; }
+  .rkm .rk-tree button { width: auto; flex: none; max-width: 210px; }
+  .rkm .rk-walkbar__path { flex-basis: 100%; order: 3; }
+}
+@container rk (max-width: 380px) {
+  .rkm .rk-level { flex-direction: column; align-items: stretch; }
+  .rkm .rk-scale { width: 100%; }
+  .rkm .rk-tiles { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+}
+</style>
+
+<div class="rkm" id="rkm">
+  <svg class="rk-sprite" aria-hidden="true" focusable="false">
+    <symbol id="rkm-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="rkm-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+    <symbol id="rkm-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
+    <symbol id="rkm-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="rkm-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="rkm-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+    <symbol id="rkm-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h6"/><path d="M15 12h6"/></symbol>
+    <symbol id="rkm-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="rkm-book" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+    <symbol id="rkm-flask" viewBox="0 0 24 24"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></symbol>
+    <symbol id="rkm-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol>
+    <symbol id="rkm-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="rkm-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+    <symbol id="rkm-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="rkm-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol>
+    <symbol id="rkm-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></symbol>
+    <symbol id="rkm-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+  </svg>
+
+  <div class="rkm-guard">
+    <span class="rkm-guard__tag">Illustrative</span>
+    <span class="rkm-guard__txt">Sample PRs from a made-up shop. Code, people, commits and findings are invented.</span>
+    <details class="rkm-tweak">
+      <summary><svg class="rk-i rk-i--sm" aria-hidden="true"><use href="#rkm-right"/></svg>Tweak</summary>
+      <div class="rkm-tweak__rows">
+        <div class="rkm-tweak__row" role="group" aria-label="Assessment state for this PR" data-tweak="state">
+          <span>State</span>
+          <button type="button" data-v="sampled">As sampled</button>
+          <button type="button" data-v="assessing">Assessing</button>
+          <button type="button" data-v="stale">Stale</button>
+          <button type="button" data-v="failed">Failed</button>
+          <button type="button" data-v="idle">Not assessed</button>
+        </div>
+        <div class="rkm-tweak__row" role="group" aria-label="Theme" data-tweak="theme">
+          <span>Theme</span>
+          <button type="button" data-v="auto">Auto</button>
+          <button type="button" data-v="light">Light</button>
+          <button type="button" data-v="dark">Dark</button>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="rk-app" data-app></div>
+</div>
+
+<script>
+(() => {
+  const root = document.getElementById('rkm');
+  const app = root.querySelector('[data-app]');
+
+  /* ── Sample data (illustrative) ──────────────────────────────────────── */
+  const LVL = {
+    high: { word: 'High', letter: 'H', on: 2 },
+    medium: { word: 'Medium', letter: 'M', on: 1 },
+    low: { word: 'Low', letter: 'L', on: 0 },
+    unknown: { word: 'Unknown', letter: '?', on: -1 },
+  };
+
+  const LIMIT_CODE = "It reads code. It didn't run the tests or the build, or read CI logs.";
+
+  const PRS = [
+    {
+      id: 'a', num: 4821, title: 'Split refund calculation for partly shipped orders',
+      author: 'mira-k', initials: 'MK', opened: '2 d ago', commits: 5, ci: { tone: 'ok', label: 'CI 14/14' },
+      guide: { s: 'ready', t: '4 chapters by Claude · sonnet' },
+      risk: {
+        state: 'ready', level: 'high', head: '9c41e7a', ago: '6 min ago', by: 'Claude · sonnet', decided: 'R1',
+        headline: 'A refund that names a cancelled line pays it out in full, and no test builds an order with one.',
+        cov: '6 of 7 changed files read in full. <code>pnpm-lock.yaml</code> by name only, as a generated file. 2 files outside the diff read to check what the change touches.',
+        limits: LIMIT_CODE,
+        reasons: [
+          { id: 'R1', dir: 'raise', lvl: 'high', title: 'Refunds on orders with a cancelled line',
+            because: 'The new code picks lines from <code>order.lines</code> instead of <code>refundableLines()</code>, which left cancelled lines out. A request that names a cancelled line pays it out in full, and <code>remaining</code> grows by the same amount, so the cap doesn\'t stop it.',
+            why: 'It pays out money, on a path no test covers.',
+            test: { s: 'none', t: 'No test builds an order with a cancelled line' },
+            cites: [
+              { f: 'src/refunds/calculate.ts', a: 139, b: 141, old: [138, 139] },
+              { f: 'src/refunds/refundable-lines.ts', a: 12, b: 12 },
+            ] },
+          { id: 'R2', dir: 'raise', lvl: 'medium', title: 'Shipping refunds split over three or more lines',
+            because: 'Shipping is shared per shipped line and rounded per line, so the shares can add up to a cent more or less than was charged. €5.00 over 3 lines returns €5.01 once all three are refunded.',
+            why: 'A cent per refund, and only when shipping is refunded.',
+            test: { s: 'part', t: 'Tested with 2 shipped lines only', at: { f: 'src/refunds/__tests__/calculate.test.ts', a: 105, b: 107 } },
+            cites: [
+              { f: 'src/refunds/allocate-shipping.ts', a: 25, b: 27 },
+              { f: 'src/refunds/calculate.ts', a: 143, b: 143 },
+            ] },
+          { id: 'R3', dir: 'raise', lvl: 'medium', title: 'The storefront\'s "too much" refund message',
+            because: 'Over-refunds now answer <code>422</code> instead of <code>400</code>. The refund form checks for <code>400</code>, so customers get the generic error instead.',
+            why: 'Customers see a vaguer message. No money moves.',
+            test: { s: 'part', t: 'The controller test moved to 422; the form has none', at: { f: 'src/api/__tests__/refunds.controller.test.ts', a: 72, b: 72 } },
+            cites: [
+              { f: 'src/api/refunds.controller.ts', a: 57, b: 59, old: [57, 57] },
+              { f: 'web/src/account/refund-form.tsx', a: 86, b: 87 },
+            ] },
+          { id: 'L1', dir: 'lower', title: 'The refund paths tested before still are',
+            because: 'The cases for partly shipped orders are added after the existing ones, which stay as they were.',
+            why: 'What worked and was tested before keeps its tests.',
+            cites: [{ f: 'src/refunds/__tests__/calculate.test.ts', a: 99, b: 103 }] },
+          { id: 'L2', dir: 'lower', title: 'Existing refunds keep their data',
+            because: 'The migration only adds a nullable column. No existing row or reader changes.',
+            why: 'Nothing already stored is rewritten.',
+            cites: [{ f: 'db/migrations/20261108_refund_shipping.sql', a: 2, b: 3 }] },
+        ],
+      },
+      files: [
+        { path: 'src/refunds/calculate.ts', add: 58, del: 21, read: 'full', lang: 'ts', hunks: [
+          { h: '@@ -1,4 +1,5 @@', rows: [
+            ['c', 1, 1, "import { Money, sum } from '../money';"],
+            ['c', 2, 2, "import type { Order, RefundRequest } from '../orders/types';"],
+            ['-', 3, null, "import { lineRemaining, refundableLines } from './refundable-lines';"],
+            ['+', null, 3, "import { allocateShipping } from './allocate-shipping';"],
+            ['+', null, 4, "import { lineRemaining } from './refundable-lines';"],
+            ['c', 4, 5, ''],
+          ] },
+          { h: '@@ -136,5 +137,10 @@ export function refundableTotal', rows: [
+            ['c', 136, 137, "/** What a refund request may return, in the order's currency. */"],
+            ['c', 137, 138, 'export function refundableTotal(order: Order, request: RefundRequest): Money {'],
+            ['-', 138, null, '  const lines = refundableLines(order).filter((l) => request.lineIds.includes(l.id));'],
+            ['-', 139, null, '  return sum(lines.map(lineRemaining));'],
+            ['+', null, 139, '  const remaining = sum(order.lines.map(lineRemaining));'],
+            ['+', null, 140, '  const shipped = order.lines.filter((l) => l.shippedQty > 0);'],
+            ['+', null, 141, '  const lines = order.lines.filter((l) => request.lineIds.includes(l.id));'],
+            ['+', null, 142, '  const requested = sum(lines.map(lineRemaining));'],
+            ['+', null, 143, '  const shipping = allocateShipping(order, shipped, request);'],
+            ['+', null, 144, '  return Money.min(requested.plus(shipping), remaining.plus(order.shippingTotal));'],
+            ['c', 140, 145, '}'],
+          ] },
+        ] },
+        { path: 'src/refunds/allocate-shipping.ts', add: 34, del: 0, read: 'full', lang: 'ts', hunks: [
+          { h: '@@ -0,0 +1,34 @@ new file', rows: [
+            ['+', null, 1, "import { Money } from '../money';"],
+            ['+', null, 2, "import type { Order, OrderLine, RefundRequest } from '../orders/types';"],
+            ['gap', '17 lines'],
+            ['+', null, 20, '/** Shipping a refund returns: an equal share per shipped line. */'],
+            ['+', null, 21, 'export function allocateShipping('],
+            ['+', null, 22, '  order: Order, shipped: OrderLine[], request: RefundRequest,'],
+            ['+', null, 23, '): Money {'],
+            ['+', null, 24, '  if (!request.includeShipping || shipped.length === 0) return Money.zero(order.currency);'],
+            ['+', null, 25, '  const perLine = Math.round(order.shippingTotal.cents / shipped.length);'],
+            ['+', null, 26, '  const picked = shipped.filter((l) => request.lineIds.includes(l.id));'],
+            ['+', null, 27, '  return Money.fromCents(perLine * picked.length, order.currency);'],
+            ['+', null, 28, '}'],
+          ] },
+        ] },
+        { path: 'src/api/refunds.controller.ts', add: 3, del: 1, read: 'full', lang: 'ts', hunks: [
+          { h: '@@ -54,6 +54,8 @@ export async function createRefund', rows: [
+            ['c', 54, 54, '  const refundable = refundableTotal(order, body);'],
+            ['c', 55, 55, '  const requested = Money.of(body.amount, order.currency);'],
+            ['c', 56, 56, '  if (requested.gt(refundable)) {'],
+            ['-', 57, null, "    return reply.code(400).send({ error: 'amount_exceeds_refundable' });"],
+            ['+', null, 57, '    return reply'],
+            ['+', null, 58, '      .code(422)'],
+            ['+', null, 59, "      .send({ error: 'amount_exceeds_refundable', refundable: refundable.toJSON() });"],
+            ['c', 58, 60, '  }'],
+            ['c', 59, 61, '  return refunds.create(order, requested, body);'],
+          ] },
+        ] },
+        { path: 'src/refunds/__tests__/calculate.test.ts', add: 61, del: 0, read: 'full', lang: 'ts', hunks: [
+          { h: "@@ -96,3 +96,64 @@ describe('refundableTotal'", rows: [
+            ['c', 96, 96, '    expect(refundableTotal(order, all(order))).toEqual(eur(84.5));'],
+            ['c', 97, 97, '  });'],
+            ['c', 98, 98, ''],
+            ['+', null, 99, "  describe('partly shipped orders', () => {"],
+            ['+', null, 100, "    it('refunds only the lines picked', () => {"],
+            ['+', null, 101, '      const order = orderWith([shipped(2, 19.99), unshipped(1, 5)]);'],
+            ['+', null, 102, '      expect(refundableTotal(order, pick(order, 0))).toEqual(eur(39.98));'],
+            ['+', null, 103, '    });'],
+            ['+', null, 104, ''],
+            ['+', null, 105, "    it('splits shipping over two shipped lines', () => {"],
+            ['+', null, 106, '      const order = orderWith([shipped(1, 10), shipped(1, 10)], { shipping: 4.99 });'],
+            ['+', null, 107, '      expect(refundableTotal(order, pick(order, 0, { shipping: true }))).toEqual(eur(12.5));'],
+            ['+', null, 108, '    });'],
+            ['gap', '4 more cases, 50 lines'],
+          ] },
+        ] },
+        { path: 'src/api/__tests__/refunds.controller.test.ts', add: 1, del: 1, read: 'full', lang: 'ts', hunks: [
+          { h: "@@ -70,4 +70,4 @@ describe('POST /orders/:id/refunds'", rows: [
+            ['c', 70, 70, "  it('refuses more than is refundable', async () => {"],
+            ['c', 71, 71, '    const res = await post(orderWithTwoLines, { amount: 120 });'],
+            ['-', 72, null, '    expect(res.statusCode).toBe(400);'],
+            ['+', null, 72, '    expect(res.statusCode).toBe(422);'],
+            ['c', 73, 73, '  });'],
+          ] },
+        ] },
+        { path: 'db/migrations/20261108_refund_shipping.sql', add: 6, del: 0, read: 'full', lang: 'sql', hunks: [
+          { h: '@@ -0,0 +1,6 @@ new file', rows: [
+            ['+', null, 1, '-- Refunds can now return part of the shipping.'],
+            ['+', null, 2, 'ALTER TABLE refunds'],
+            ['+', null, 3, '  ADD COLUMN shipping_cents integer NULL;'],
+            ['+', null, 4, ''],
+            ['+', null, 5, 'COMMENT ON COLUMN refunds.shipping_cents IS'],
+            ['+', null, 6, "  'Shipping returned with this refund; NULL before 2026-11.';"],
+          ] },
+        ] },
+        { path: 'pnpm-lock.yaml', add: 6, del: 33, read: 'name', gen: true },
+      ],
+      outside: [
+        { path: 'src/refunds/refundable-lines.ts', lang: 'ts', why: 'R1', hunks: [
+          { h: 'Lines 10–17 · not changed by this PR', rows: [
+            ['o', null, 10, '/** Lines a customer can still get money back for. */'],
+            ['o', null, 11, 'export function refundableLines(order: Order): OrderLine[] {'],
+            ['o', null, 12, "  return order.lines.filter((l) => l.status !== 'cancelled' && lineRemaining(l).cents > 0);"],
+            ['o', null, 13, '}'],
+            ['o', null, 14, ''],
+            ['o', null, 15, 'export function lineRemaining(line: OrderLine): Money {'],
+            ['o', null, 16, '  return line.unitPrice.times(line.quantity - line.refunded);'],
+            ['o', null, 17, '}'],
+          ] },
+        ] },
+        { path: 'web/src/account/refund-form.tsx', lang: 'ts', why: 'R3', hunks: [
+          { h: 'Lines 83–90 · not changed by this PR', rows: [
+            ['o', null, 83, '  async function submit() {'],
+            ['o', null, 84, '    const res = await api.post(`/orders/${orderId}/refunds`, { amount, lineIds });'],
+            ['o', null, 85, '    if (res.ok) return onDone();'],
+            ['o', null, 86, '    if (res.status === 400) {'],
+            ['o', null, 87, "      return setError(t('refund.tooMuch'));"],
+            ['o', null, 88, '    }'],
+            ['o', null, 89, "    setError(t('refund.generic'));"],
+            ['o', null, 90, '  }'],
+          ] },
+        ] },
+      ],
+    },
+
+    {
+      id: 'b', num: 4830, title: 'Bump money-fmt from 2.4.1 to 3.0.0',
+      author: 'dependabot[bot]', bot: true, opened: '5 h ago', commits: 1, ci: { tone: 'ok', label: 'CI 14/14' },
+      guide: { s: 'skipped', t: 'A dependency update' },
+      risk: {
+        state: 'ready', level: 'high', head: '5d0a3be', ago: '2 h ago', by: 'Claude · sonnet', decided: 'R1',
+        headline: 'money-fmt 3 rounds half to even, and invoice VAT rounds with it.',
+        cov: 'Both changed files read in full, the lockfile too. Also the release notes in the description and 3 files outside the diff that use money-fmt.',
+        limits: "It reads code. It didn't install 3.0 or run the tests; what 3.0 changes comes from its release notes.",
+        reasons: [
+          { id: 'R1', dir: 'raise', lvl: 'high', title: 'Invoice VAT on amounts that end in half a cent',
+            because: 'The release notes say <code>round()</code> now rounds half to even. Invoice totals round VAT per line with it, so €2.50 at 21% VAT (52.5 cents) becomes 52 cents instead of 53.',
+            why: 'Amounts on invoices you send change.',
+            test: { s: 'none', t: 'No invoice test has a half-cent amount' },
+            cites: [
+              { f: 'package.json', a: 40, b: 40, old: [40, 40] },
+              { f: 'PR description', a: 6, b: 6 },
+              { f: 'src/invoices/totals.ts', a: 77, b: 77 },
+            ] },
+          { id: 'R2', dir: 'raise', lvl: 'medium', title: 'Where the € sign goes in Dutch prices',
+            because: '3.0 drops <code>symbolFirst</code>. The price label passes it for nl-NL through an untyped object, so the compiler won\'t flag it, and Dutch prices show the sign after the amount.',
+            why: 'Visible on every Dutch price. No amount changes.',
+            test: { s: 'part', t: 'Price label stories cover en-US only' },
+            cites: [
+              { f: 'src/catalog/price-label.tsx', a: 9, b: 9 },
+              { f: 'src/catalog/price-label.tsx', a: 21, b: 22 },
+              { f: 'PR description', a: 7, b: 7 },
+            ] },
+          { id: 'L1', dir: 'lower', title: 'Nothing else in the lockfile moves',
+            because: 'Only money-fmt changes. Its new Node floor (20) is below the 22 the project runs on.',
+            why: 'No other package changes under you.',
+            cites: [
+              { f: 'pnpm-lock.yaml', a: 1184, b: 1186, old: [1184, 1185] },
+              { f: '.nvmrc', a: 1, b: 1 },
+            ] },
+        ],
+      },
+      files: [
+        { path: 'package.json', add: 1, del: 1, read: 'full', lang: 'json', hunks: [
+          { h: '@@ -38,4 +38,4 @@ "dependencies"', rows: [
+            ['c', 38, 38, '    "fastify": "^4.28.1",'],
+            ['c', 39, 39, '    "kysely": "^0.27.4",'],
+            ['-', 40, null, '    "money-fmt": "^2.4.1",'],
+            ['+', null, 40, '    "money-fmt": "^3.0.0",'],
+            ['c', 41, 41, '    "pino": "^9.4.0",'],
+          ] },
+        ] },
+        { path: 'pnpm-lock.yaml', add: 3, del: 2, read: 'full', gen: true, lang: 'yaml', hunks: [
+          { h: '@@ -1184,4 +1184,5 @@', rows: [
+            ['-', 1184, null, '  money-fmt@2.4.1:'],
+            ['-', 1185, null, '    resolution: {integrity: sha512-Qm3dX0…a1Q==}'],
+            ['+', null, 1184, '  money-fmt@3.0.0:'],
+            ['+', null, 1185, '    resolution: {integrity: sha512-8vXk2L…k9w==}'],
+            ['+', null, 1186, "    engines: {node: '>=20'}"],
+            ['c', 1186, 1187, ''],
+            ['c', 1187, 1188, '  pino@9.4.0:'],
+          ] },
+        ] },
+      ],
+      outside: [
+        { path: 'PR description', body: true, lang: 'text', hunks: [
+          { h: 'Written by Dependabot', rows: [
+            ['o', null, 1, 'Bumps money-fmt from 2.4.1 to 3.0.0.'],
+            ['o', null, 2, ''],
+            ['o', null, 3, 'Release notes'],
+            ['o', null, 4, '3.0.0'],
+            ['o', null, 5, 'Breaking'],
+            ['o', null, 6, '- round() now rounds half to even. Pass { mode: "half-up" } for the old behaviour.'],
+            ['o', null, 7, '- formatMoney() drops the symbolFirst option; the locale decides where the sign goes.'],
+          ] },
+        ] },
+        { path: 'src/invoices/totals.ts', lang: 'ts', hunks: [
+          { h: 'Lines 74–79 · not changed by this PR', rows: [
+            ['o', null, 74, '  for (const line of invoice.lines) {'],
+            ['o', null, 75, '    const net = line.unitPrice.times(line.quantity);'],
+            ['o', null, 76, '    // VAT per line, as it is printed on the invoice.'],
+            ['o', null, 77, '    const vat = round((net.cents * line.vatRate) / 100, 0);'],
+            ['o', null, 78, '    totals.vat = totals.vat.plus(Money.fromCents(vat, invoice.currency));'],
+            ['o', null, 79, '  }'],
+          ] },
+        ] },
+        { path: 'src/catalog/price-label.tsx', lang: 'ts', hunks: [
+          { h: 'Lines 7–10 · not changed by this PR', rows: [
+            ['o', null, 7, 'const LOCALE_OPTS: Record<string, unknown> = {'],
+            ['o', null, 8, "  'en-US': {},"],
+            ['o', null, 9, "  'nl-NL': { symbolFirst: true },"],
+            ['o', null, 10, '};'],
+          ] },
+          { h: 'Lines 20–23', rows: [
+            ['o', null, 20, 'export function PriceLabel({ price, locale }: Props) {'],
+            ['o', null, 21, '  const text = formatMoney(price.cents / 100, price.currency, {'],
+            ['o', null, 22, '    locale, ...(LOCALE_OPTS[locale] as object),'],
+            ['o', null, 23, '  });'],
+          ] },
+        ] },
+        { path: '.nvmrc', lang: 'text', hunks: [
+          { h: 'Whole file · not changed by this PR', rows: [['o', null, 1, '22.11.0']] },
+        ] },
+      ],
+    },
+
+    {
+      id: 'c', num: 4834, title: 'Fix off-by-one in coupon expiry',
+      author: 'jonas-r', initials: 'JR', opened: '1 d ago', commits: 1, ci: { tone: 'ok', label: 'CI 14/14' },
+      guide: { s: 'skipped', t: 'A small change: 2 lines in 1 file' },
+      risk: {
+        state: 'ready', level: 'medium', head: 'e71c2f9', ago: '25 min ago', by: 'Codex', decided: 'R1',
+        headline: 'Two lines, but a nightly stock job asks the same question and would hold reserved stock a day longer.',
+        cov: 'The one changed file read in full, plus 2 files outside the diff: a caller and the function\'s test.',
+        limits: LIMIT_CODE,
+        reasons: [
+          { id: 'R1', dir: 'raise', lvl: 'medium', title: 'Stock held for coupon orders on the expiry day',
+            because: '<code>isExpired</code> now counts the expiry day as valid. The nightly reservation job asks the same function, so stock held for an expiring coupon stays held a day longer.',
+            why: 'Stock is held a day longer. Nothing is charged wrongly.',
+            test: { s: 'none', t: 'No test checks the expiry day itself', at: { f: 'src/coupons/__tests__/expiry.test.ts', a: 8, b: 13 } },
+            cites: [
+              { f: 'src/coupons/expiry.ts', a: 18, b: 18, old: [18, 18] },
+              { f: 'src/jobs/release-reservations.ts', a: 40, b: 40 },
+            ] },
+          { id: 'L1', dir: 'lower', title: 'Checkout gets the fix it asks for',
+            because: 'The comment above says a coupon works up to and including its expiry date, and the new line does exactly that.',
+            why: 'The change does what it says for its own caller.',
+            cites: [{ f: 'src/coupons/expiry.ts', a: 15, b: 18 }] },
+        ],
+      },
+      files: [
+        { path: 'src/coupons/expiry.ts', add: 1, del: 1, read: 'full', lang: 'ts', hunks: [
+          { h: '@@ -15,5 +15,5 @@', rows: [
+            ['c', 15, 15, "/** A coupon works up to and including its expiry date, in the shop's time zone. */"],
+            ['c', 16, 16, 'export function isExpired(coupon: Coupon, now: Date): boolean {'],
+            ['c', 17, 17, '  const end = startOfDay(coupon.expiresOn, coupon.timeZone);'],
+            ['-', 18, null, '  return now >= end;'],
+            ['+', null, 18, '  return now >= addDays(end, 1);'],
+            ['c', 19, 19, '}'],
+          ] },
+        ] },
+      ],
+      outside: [
+        { path: 'src/jobs/release-reservations.ts', lang: 'ts', hunks: [
+          { h: 'Lines 36–42 · not changed by this PR', rows: [
+            ['o', null, 36, 'export async function releaseReservations(now = new Date()) {'],
+            ['o', null, 37, '  const held = await reservations.heldForCoupons();'],
+            ['o', null, 38, '  for (const r of held) {'],
+            ['o', null, 39, "    // Free stock held for a coupon order once the coupon can't be used."],
+            ['o', null, 40, '    if (isExpired(r.coupon, now)) await reservations.release(r.id);'],
+            ['o', null, 41, '  }'],
+            ['o', null, 42, '}'],
+          ] },
+        ] },
+        { path: 'src/coupons/__tests__/expiry.test.ts', lang: 'ts', hunks: [
+          { h: 'Lines 8–13 · not changed by this PR', rows: [
+            ['o', null, 8, "it('is expired the day after', () => {"],
+            ['o', null, 9, "  expect(isExpired(coupon('2026-11-10'), at('2026-11-11T09:00'))).toBe(true);"],
+            ['o', null, 10, '});'],
+            ['o', null, 11, "it('is valid the day before', () => {"],
+            ['o', null, 12, "  expect(isExpired(coupon('2026-11-10'), at('2026-11-09T09:00'))).toBe(false);"],
+            ['o', null, 13, '});'],
+          ] },
+        ] },
+      ],
+    },
+
+    {
+      id: 'd', num: 4819, title: 'Reword the order confirmation email',
+      author: 'ana-p', initials: 'AP', opened: '3 d ago', commits: 2, ci: { tone: 'ok', label: 'CI 14/14' },
+      guide: { s: 'skipped', t: 'A small change: 28 lines in 2 files' },
+      risk: {
+        state: 'ready', level: 'low', head: '11ab0c4', ago: '1 h ago', by: 'Claude · sonnet', decided: null,
+        headline: 'Only the wording changes. Every placeholder stays.',
+        cov: 'Both changed files read in full.',
+        limits: "It read the template. It didn't render the email in mail clients or run the tests.",
+        reasons: [
+          { id: 'L1', dir: 'lower', title: 'Every placeholder stays',
+            because: 'The same 9 placeholders appear before and after. None is renamed or dropped.',
+            why: 'The data the email shows is the same.',
+            cites: [{ f: 'templates/email/order-confirmation.mjml', a: 13, b: 14, old: [13, 14] }] },
+          { id: 'L2', dir: 'lower', title: 'The snapshot follows the new text',
+            because: 'The test snapshot changes line for line with the template.',
+            why: 'The test still checks the whole email.',
+            cites: [{ f: 'templates/email/__snapshots__/order-confirmation.test.ts.snap', a: 4, b: 5, old: [4, 5] }] },
+        ],
+      },
+      files: [
+        { path: 'templates/email/order-confirmation.mjml', add: 12, del: 12, read: 'full', lang: 'html', hunks: [
+          { h: '@@ -12,4 +12,4 @@ <mj-column>', rows: [
+            ['c', 12, 12, '<mj-text>'],
+            ['-', 13, null, '  Hi {{customer.firstName}}, thanks for your order!'],
+            ['-', 14, null, "  We'll let you know when order {{order.number}} ships."],
+            ['+', null, 13, '  Hi {{customer.firstName}}, your order is in.'],
+            ['+', null, 14, "  We'll email you when order {{order.number}} is on its way."],
+            ['c', 15, 15, '</mj-text>'],
+          ] },
+        ] },
+        { path: 'templates/email/__snapshots__/order-confirmation.test.ts.snap', add: 2, del: 2, read: 'full', lang: 'text', hunks: [
+          { h: '@@ -3,4 +3,4 @@', rows: [
+            ['c', 3, 3, 'exports[`order confirmation 1`] = `'],
+            ['-', 4, null, '"Hi Sam, thanks for your order!'],
+            ['-', 5, null, "We'll let you know when order A-10293 ships."],
+            ['+', null, 4, '"Hi Sam, your order is in.'],
+            ['+', null, 5, "We'll email you when order A-10293 is on its way."],
+            ['c', 6, 6, '"`;'],
+          ] },
+        ] },
+      ],
+      outside: [],
+    },
+
+    {
+      id: 'e', num: 4840, title: 'Move sessions to the Redis cluster',
+      author: 'tdevries', initials: 'TV', opened: '6 h ago', commits: 18, ci: { tone: 'warn', label: 'CI 12/14' },
+      totals: { add: 3912, del: 1204 },
+      guide: { s: 'ready', t: '9 chapters by Claude · sonnet' },
+      risk: {
+        state: 'unknown', level: 'unknown', head: '7f3e9d2', ago: '12 min ago', by: 'Claude · sonnet', decided: null,
+        headline: 'Too much of this PR went unread to judge it. What it did read changes how sessions expire.',
+        unknownWhy: '151 of 212 files were read by name only and 23 were cut at the prompt budget, most of <code>src/session/**</code> among them. Unknown is not Low. Review it as unassessed, or split the PR.',
+        cov: '38 of 212 changed files read in full, 23 cut at the prompt budget, 151 by name only.',
+        limits: "It reads code. It didn't run the tests or the build, or read CI logs. Most of this change is unread, so it can't say Low.",
+        reasons: [
+          { id: 'R1', dir: 'raise', lvl: 'medium', title: 'Guest sessions without "remember me"',
+            because: '<code>save</code> writes without an expiry when <code>remember</code> is false, so those keys stay in Redis until it evicts them. The old store dropped them with the process.',
+            why: 'Seen in the part it read. The unread files may change this.',
+            test: { s: 'unknown', t: 'The session tests were in the unread part' },
+            cites: [{ f: 'src/session/redis-store.ts', a: 87, b: 88 }] },
+        ],
+      },
+      files: null,
+      outside: [],
+    },
+  ];
+
+  // PR E's 212 files: generated so the coverage map shows a large, mostly unread change.
+  (() => {
+    const pr = PRS.find((p) => p.id === 'e');
+    const dirs = ['src/session', 'src/session/adapters', 'src/auth', 'src/api/middleware', 'src/config', 'src/jobs', 'test/session', 'deploy/helm/templates', 'src/cache', 'src/admin/sessions'];
+    const names = ['store', 'keys', 'ttl', 'cookie', 'serializer', 'lock', 'migrate', 'health', 'metrics', 'pool', 'retry', 'client', 'events', 'cleanup', 'guard', 'index', 'types', 'limits', 'sticky', 'replay', 'flags'];
+    const files = [{ path: 'src/session/redis-store.ts', add: 140, del: 0, read: 'full', lang: 'ts', hunks: [
+      { h: '@@ -0,0 +1,140 @@ new file', rows: [
+        ['gap', '83 lines'],
+        ['+', null, 84, '  async save(id: string, data: SessionData, remember: boolean) {'],
+        ['+', null, 85, '    const key = `sess:${id}`;'],
+        ['+', null, 86, '    const value = JSON.stringify(data);'],
+        ['+', null, 87, "    if (remember) return this.redis.set(key, value, 'EX', REMEMBER_TTL);"],
+        ['+', null, 88, '    return this.redis.set(key, value);'],
+        ['+', null, 89, '  }'],
+        ['gap', '51 lines'],
+      ] },
+    ] }];
+    let i = 0;
+    while (files.length < 212) {
+      const d = dirs[i % dirs.length];
+      const n = names[(i * 7) % names.length];
+      const ext = d.startsWith('deploy') ? 'yaml' : d.startsWith('test') ? 'test.ts' : 'ts';
+      const path = `${d}/${n}${i > 20 ? '-' + (i % 13) : ''}.${ext}`;
+      if (!files.some((f) => f.path === path)) {
+        const k = files.length;
+        files.push({ path, add: 4 + ((k * 37) % 60), del: (k * 13) % 25, read: k < 38 ? 'full' : k < 61 ? 'cut' : 'name' });
+      }
+      i++;
+    }
+    // Interleave so the map reads like a real PR, not three blocks.
+    const order = files.map((f, k) => [f, (k * 89) % 212]).sort((x, y) => x[1] - y[1]).map((x) => x[0]);
+    order.splice(order.indexOf(files[0]), 1);
+    order.splice(3, 0, files[0]);
+    pr.files = order;
+  })();
+
+  /* ── View state ───────────────────────────────────────────────────────── */
+  const state = {
+    pr: 'a',
+    overrides: {},
+    open: { a: new Set(['R1']) },
+    view: 'overview',
+    walk: { path: null, ci: -1 },
+    theme: 'auto',
+  };
+  let assessTimer = 0;
+
+  /* ── Helpers ──────────────────────────────────────────────────────────── */
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const icon = (n, cls = '') => `<svg class="rk-i ${cls}" aria-hidden="true"><use href="#rkm-${n}"/></svg>`;
+  const base = (p) => p.split('/').pop();
+  const dir = (p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/') + 1) : '');
+  const range = (a) => (a.a === a.b ? `${a.a}` : `${a.a}–${a.b}`);
+  const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  const fmt = (n) => n.toLocaleString('en-US');
+  const current = () => PRS.find((p) => p.id === state.pr);
+  const st = (pr) => state.overrides[pr.id] ?? 'sampled';
+  const eff = (pr) => (st(pr) === 'sampled' ? pr.risk.state : st(pr));
+  const lvlOf = (r) => (r.dir === 'lower' ? 'lower' : r.lvl);
+  const agent = (pr) => pr.risk.by.split(' ·')[0];
+  const opened = (pr) => state.open[pr.id] ?? (state.open[pr.id] = new Set());
+  const allFiles = (pr) => [...pr.files, ...pr.outside];
+  const fileOf = (pr, path) => allFiles(pr).find((f) => f.path === path);
+  const isOutside = (pr, path) => pr.outside.some((f) => f.path === path);
+  const whereOf = (pr, path) => (fileOf(pr, path)?.body ? 'body' : isOutside(pr, path) ? 'outside' : 'diff');
+  const WHERE = { diff: 'in this PR', outside: 'outside the diff', body: 'PR description' };
+  const READ = { full: 'Read in full', cut: 'Cut at the prompt budget', name: 'By name only', outside: 'Outside the diff', body: 'Read for context' };
+  // Middle-truncate so two long names in the same folder still differ at their ends.
+  const short = (name, max = 20) => (name.length > max ? `${name.slice(0, 9)}…${name.slice(-(max - 10))}` : name);
+  const totals = (pr) => pr.totals ?? pr.files.reduce((t, f) => ({ add: t.add + f.add, del: t.del + f.del }), { add: 0, del: 0 });
+
+  function citations(pr) {
+    const out = [];
+    for (const r of pr.risk.reasons) {
+      for (const a of r.cites) out.push({ r, a });
+      if (r.test?.at) out.push({ r, a: r.test.at, test: true });
+    }
+    return out;
+  }
+
+  // The commit pushed after the assessment, in the Stale preview: it touches the first file R1 cites.
+  function staleInfo(pr) {
+    const first = pr.risk.reasons[0]?.cites.find((a) => whereOf(pr, a.f) === 'diff');
+    const changed = first?.f ?? pr.files[0].path;
+    const hit = pr.risk.reasons.filter((r) => r.cites.some((a) => a.f === changed));
+    return { head: '2be03f1', newer: 2, pushed: '3 min ago', changed, hit };
+  }
+
+  /* Tiny highlighter: enough to read the samples, same tokens as the app's syntax colours. */
+  const STRQ = "'(?:[^'\\\\]|\\\\.)*'|\"(?:[^\"\\\\]|\\\\.)*\"";
+  const LANG = {
+    ts: [["\\/\\/.*$|\\/\\*.*?\\*\\/", 'com'], [STRQ + '|`(?:[^`\\\\]|\\\\.)*`', 'str'],
+      ['\\b(?:import|from|export|function|const|let|return|if|for|of|await|async|type|interface|new|true|false|null|it|expect|describe|as)\\b', 'kw'],
+      ['\\b\\d+(?:\\.\\d+)?\\b', 'num'], ['\\b[A-Z][A-Za-z0-9]*\\b', 'type'], ['\\b[a-zA-Z_$][\\w$]*(?=\\()', 'fn']],
+    sql: [['--.*$', 'com'], ["'(?:[^']|'')*'", 'str'], ['\\b(?:ALTER|TABLE|ADD|COLUMN|COMMENT|ON|IS|NULL|integer)\\b', 'kw'], ['\\b\\d+\\b', 'num']],
+    yaml: [['#.*$', 'com'], ['^\\s*[\\w@.\\/-]+(?=:)', 'prop'], [STRQ, 'str'], ['\\b\\d+(?:\\.\\d+)*\\b', 'num']],
+    json: [['"(?:[^"\\\\]|\\\\.)*"(?=\\s*:)', 'prop'], [STRQ, 'str'], ['\\b(?:true|false|null)\\b', 'kw'], ['\\b\\d+(?:\\.\\d+)?\\b', 'num']],
+    html: [['<!--.*?-->', 'com'], ['\\{\\{[^}]*\\}\\}', 'prop'], ['<\\/?[a-z][\\w-]*|\\/?>', 'tag'], ['"[^"]*"', 'str']],
+  };
+  const RX = Object.fromEntries(Object.entries(LANG).map(([k, parts]) => [k, { re: new RegExp(parts.map(([s]) => `(${s})`).join('|'), 'g'), cls: parts.map(([, c]) => c) }]));
+  function hl(text, lang) {
+    const spec = RX[lang];
+    if (!spec || !text) return esc(text);
+    const { re, cls } = spec;
+    re.lastIndex = 0;
+    let out = '';
+    let last = 0;
+    let m;
+    while ((m = re.exec(text))) {
+      if (!m[0]) { re.lastIndex++; continue; }
+      const g = m.slice(1).findIndex((x) => x !== undefined);
+      out += esc(text.slice(last, m.index)) + `<span class="rk-s-${cls[g]}">${esc(m[0])}</span>`;
+      last = re.lastIndex;
+    }
+    return out + esc(text.slice(last));
+  }
+
+  const flat = (file) => (file.hunks ?? []).flatMap((h) => [{ t: 'hunk', text: h.h }, ...h.rows.map((r) => (r[0] === 'gap' ? { t: 'gap', text: r[1] } : { t: r[0], o: r[1], n: r[2], text: r[3] }))]);
+  function cites(anchor, row) {
+    if (row.t === 'hunk' || row.t === 'gap') return false;
+    if (row.n != null && row.n >= anchor.a && row.n <= anchor.b) return true;
+    return row.t === '-' && !!anchor.old && row.o >= anchor.old[0] && row.o <= anchor.old[1];
+  }
+
+  function codeBlock(file, rows, marks, single) {
+    let prev = new Set();
+    const html = rows.map((row) => {
+      if (row.t === 'hunk' || row.t === 'gap') {
+        prev = new Set();
+        return `<div class="rk-l" data-t="${row.t}">${row.t === 'gap' ? '⋯ ' : ''}${esc(row.text)}</div>`;
+      }
+      const hits = marks.filter((m) => cites(m.anchor, row));
+      const label = hits.find((h) => !prev.has(h.r.id))?.r.id;
+      prev = new Set(hits.map((h) => h.r.id));
+      const top = hits.find((h) => h.current) ?? hits[0];
+      const cur = hits.some((h) => h.current);
+      const sign = row.t === '+' ? '+' : row.t === '-' ? '−' : '';
+      return `<div class="rk-l" data-t="${row.t}"${top ? ` data-lvl="${lvlOf(top.r)}"` : ''}${cur ? ' data-current' : ''}><span class="rk-l__m">${label ? `<b>${label}</b>` : ''}</span><span class="rk-l__o">${row.t === 'o' ? '' : row.o ?? ''}</span><span class="rk-l__n">${row.n ?? ''}</span><span class="rk-l__s">${sign}</span><span class="rk-l__c">${hl(row.text, file.lang) || ' '}</span></div>`;
+    }).join('');
+    return `<div class="rk-code"${single ? ' data-single' : ''}><div class="rk-code__in">${html}</div></div>`;
+  }
+
+  /* ── Pieces ───────────────────────────────────────────────────────────── */
+  function pip(pr) {
+    const s = eff(pr);
+    if (s === 'assessing') return `<span class="rk-pip" data-lvl="none">${icon('loader', 'rk-spin')}</span>`;
+    if (s === 'failed' || s === 'idle') return '<span class="rk-pip" data-lvl="none">–</span>';
+    return `<span class="rk-pip" data-lvl="${pr.risk.level}"${s === 'stale' ? ' data-stale' : ''}>${LVL[pr.risk.level].letter}</span>`;
+  }
+
+  function tabs() {
+    return PRS.map((pr) => {
+      const s = eff(pr);
+      const word = s === 'assessing' ? 'assessing' : s === 'failed' || s === 'idle' ? 'not assessed' : `${LVL[pr.risk.level].word.toLowerCase()} risk${s === 'stale' ? ', stale' : ''}`;
+      return `<button type="button" class="rk-tab" role="tab" aria-selected="${pr.id === state.pr}" data-act="pr" data-id="${pr.id}" data-fk="tab-${pr.id}" aria-label="#${pr.num}, ${word}">${pip(pr)}<span class="rk-tab__num">#${pr.num}</span><span class="rk-tab__title">${esc(pr.title)}</span></button>`;
+    }).join('');
+  }
+
+  function riskPill(pr) {
+    const s = eff(pr);
+    if (s === 'assessing') return `<span class="rk-pill" data-tone="ghost">${icon('loader', 'rk-spin')}Assessing risk</span>`;
+    if (s === 'failed') return `<span class="rk-pill" data-tone="ghost">${icon('alert')}Risk not assessed</span>`;
+    if (s === 'idle') return '<span class="rk-pill" data-tone="ghost">Risk not assessed</span>';
+    const L = pr.risk.level;
+    const label = L === 'unknown' ? 'Risk unknown' : `${LVL[L].word} risk`;
+    return `<span class="rk-pill" data-lvl="${L}"${s === 'stale' ? ' data-stale' : ''}>${icon(L === 'unknown' ? 'help' : L === 'low' ? 'check' : 'alert')}${label}${s === 'stale' ? ' · older commit' : ''}</span>`;
+  }
+
+  function prHead(pr) {
+    const t = totals(pr);
+    const files = pr.files.length;
+    const av = pr.bot ? `<span class="rk-av" data-bot>${icon('bot', 'rk-i--sm')}</span>` : `<span class="rk-av">${pr.initials}</span>`;
+    return `<header class="rk-prhead">
+      <div class="rk-prhead__meta">${av}<b>${esc(pr.author)}</b><span>into <code>main</code></span><span aria-hidden="true">·</span><span>opened ${pr.opened}</span></div>
+      <h2>${esc(pr.title)} <span>#${pr.num}</span></h2>
+      <div class="rk-chips">
+        <span class="rk-pill" data-tone="${pr.ci.tone}">${icon(pr.ci.tone === 'ok' ? 'check' : 'loader')}${pr.ci.label}</span>
+        ${riskPill(pr)}
+        <span class="rk-size">${plural(files, 'file')} · <span class="rk-plus">+${fmt(t.add)}</span> <span class="rk-minus">−${fmt(t.del)}</span> · ${plural(pr.commits, 'commit')}</span>
+      </div>
+    </header>`;
+  }
+
+  function scale(level) {
+    const on = level ? LVL[level].on : -2;
+    return `<div class="rk-scale" aria-hidden="true">${['Low', 'Medium', 'High'].map((w, i) => `<span${i === on ? ' data-on' : ''}>${w}</span>`).join('')}</div>`;
+  }
+
+  function guideNote(pr) {
+    const assessed = ['ready', 'stale', 'unknown'].includes(eff(pr));
+    return pr.guide.s === 'skipped'
+      ? `<span>${icon('book')}No guide (${esc(pr.guide.t.toLowerCase())}). ${assessed ? 'Risk is assessed anyway.' : "Risk doesn't wait for one."}</span>`
+      : `<span>${icon('book')}Guide: ${esc(pr.guide.t)}</span>`;
+  }
+
+  function verdict(pr) {
+    const s = eff(pr);
+    const R = pr.risk;
+    const ready = s === 'ready' || s === 'unknown' || s === 'stale';
+    const level = ready ? R.level : null;
+    const lvl = level ?? 'none';
+    let word;
+    let main;
+    let prov;
+    if (s === 'assessing') {
+      word = `${icon('loader', 'rk-spin')}Assessing`;
+      main = `<p class="rk-headline rk-headline--quiet">${agent(pr)} is reading the diff and the code it calls. It cites a line for every reason. You can start the walk meanwhile.</p>`;
+      prov = `<span>${icon('commit')}<code>${R.head}</code><span class="rk-fresh" data-f="busy">Head</span></span><span>${icon('clock')}Started 40 s ago</span><span>${R.by}</span>${guideNote(pr)}`;
+    } else if (s === 'failed') {
+      word = 'Not assessed';
+      main = '<p class="rk-headline rk-headline--quiet">No assessment for this commit. Not assessed is not Low.</p>';
+      prov = `<span>${icon('commit')}<code>${R.head}</code></span><span>${icon('clock')}Failed 1 min ago</span><span>${R.by}</span>${guideNote(pr)}`;
+    } else if (s === 'idle') {
+      word = 'Not assessed';
+      main = `<p class="rk-headline rk-headline--quiet">${agent(pr)} can read the diff and the code it calls, and say what could break, with a line for every reason.</p>
+        <div class="rk-cta"><button type="button" class="rk-btn" data-act="assess" data-fk="assess">Assess risk</button></div>`;
+      prov = `<span>${icon('commit')}<code>${R.head}</code><span class="rk-fresh" data-f="busy">Head</span></span>${guideNote(pr)}`;
+    } else {
+      const decided = R.level === 'unknown'
+        ? 'Unknown until more of it is read. Below is what it saw so far.'
+        : R.decided
+          ? `Its highest reason sets the level: <button type="button" class="rk-link" data-act="jump" data-r="${R.decided}" data-fk="jump">${R.decided}</button>.`
+          : `${R.reasons.map((r) => r.id).join(' and ')} keep it down.`;
+      word = `${icon(level === 'unknown' ? 'help' : level === 'low' ? 'check' : 'alert')}${LVL[level].word}`;
+      main = `<p class="rk-headline">${esc(R.headline)}</p><p class="rk-decided">${decided}</p>`;
+      if (s === 'stale') {
+        const x = staleInfo(pr);
+        prov = `<span>${icon('commit')}Assessed <code>${R.head}</code><span class="rk-fresh" data-f="behind">${x.newer} commits behind</span></span><span><span>Head <code>${x.head}</code>, pushed ${x.pushed}</span></span><span>${R.by}</span>${guideNote(pr)}`;
+      } else {
+        prov = `<span>${icon('commit')}<code>${R.head}</code><span class="rk-fresh" data-f="current">Current head</span></span><span>${icon('clock')}${R.ago}</span><span>${R.by}</span>${guideNote(pr)}`;
+      }
+    }
+    const sub = s === 'stale' ? `<span class="rk-level__sub">for <code>${R.head}</code>, not the head</span>` : '';
+    return `<div class="rk-verdict" data-lvl="${lvl}"${s === 'stale' ? ' data-stale' : ''}>
+      <div class="rk-level"><div><p class="rk-level__word">${word}</p>${sub}</div>${scale(level)}</div>
+      <div class="rk-verdict__main">${main}</div>
+      <div class="rk-prov">${prov}</div>
+    </div>`;
+  }
+
+  function anchorChip(pr, a, ci) {
+    const w = whereOf(pr, a.f);
+    const label = w === 'body' ? `description:${range(a)}` : `${base(a.f)}:${range(a)}`;
+    return `<button type="button" class="rk-anchor" data-where="${w}" data-act="walk" data-ci="${ci}" data-fk="cite-${ci}" title="${esc(a.f)}, lines ${range(a)} (${WHERE[w]})"><span>${esc(label)}</span>${w === 'diff' ? '' : `<small>${w === 'body' ? 'release notes' : 'outside diff'}</small>`}</button>`;
+  }
+
+  function snippet(pr, a, ci, r) {
+    const file = fileOf(pr, a.f);
+    const rows = flat(file);
+    const idx = rows.map((row, i) => (cites(a, row) ? i : -1)).filter((i) => i >= 0);
+    if (!idx.length) return '';
+    const from = Math.max(0, idx[0] - 2);
+    const to = Math.min(rows.length, idx[idx.length - 1] + 3);
+    const slice = rows.slice(from, to).filter((row) => row.t !== 'hunk');
+    const w = whereOf(pr, a.f);
+    return `<figure class="rk-snip">
+      <figcaption><code>${esc(a.f)}</code><span>${w === 'body' ? 'line' : 'lines'} ${range(a)}</span><span class="rk-where" data-where="${w}">${WHERE[w]}</span>
+        <button type="button" class="rk-btn rk-btn--ghost" data-act="walk" data-ci="${ci}" data-fk="open-${ci}">Open in walk${icon('right', 'rk-i--sm')}</button></figcaption>
+      ${codeBlock(file, slice, [{ r, anchor: a, current: true }], w !== 'diff')}
+    </figure>`;
+  }
+
+  function reasonItem(pr, r, cits, stale) {
+    const open = opened(pr).has(r.id);
+    const ci = (a) => cits.findIndex((c) => c.a === a);
+    const changed = stale && stale.hit.includes(r);
+    const lvl = lvlOf(r);
+    const tag = r.dir === 'lower' ? `${icon('down')}Lowers` : `${icon('up')}${LVL[r.lvl].word}`;
+    const test = r.test
+      ? `<span class="rk-test" data-s="${r.test.s}">${icon(r.test.s === 'yes' ? 'check' : r.test.s === 'unknown' ? 'help' : 'flask')}<span>${esc(r.test.t)}</span>${r.test.at ? ` ${anchorChip(pr, r.test.at, ci(r.test.at))}` : ''}</span>`
+      : '';
+    return `<li class="rk-reason" data-lvl="${lvl}" id="rk-r-${pr.id}-${r.id}"${open ? ' data-open' : ''}${changed ? ' data-changed' : ''}>
+      <div class="rk-reason__row" data-act="toggle" data-r="${r.id}">
+        <div class="rk-reason__tag"><span class="rk-rid">${r.id}</span><span class="rk-rlvl">${tag}</span></div>
+        <div class="rk-reason__main">
+          <button type="button" class="rk-reason__title" data-act="toggle" data-r="${r.id}" data-fk="toggle-${r.id}" aria-expanded="${open}" aria-controls="rk-ev-${pr.id}-${r.id}"><span>${esc(r.title)}</span>${icon('right')}</button>
+          <p class="rk-because">${r.because}</p>
+          <div class="rk-meta">${r.cites.map((a) => anchorChip(pr, a, ci(a))).join('')}${test}</div>
+          ${changed ? `<span class="rk-changed">${icon('alert', 'rk-i--sm')}${esc(base(stale.changed))} changed since. This may no longer hold.</span>` : ''}
+        </div>
+      </div>
+      <div class="rk-evidence" id="rk-ev-${pr.id}-${r.id}"${open ? '' : ' hidden'}>
+        <p class="rk-why"><b>${r.dir === 'lower' ? 'Keeps it down.' : `Why ${LVL[r.lvl].word.toLowerCase()}.`}</b>${esc(r.why)}</p>
+        ${r.cites.map((a) => snippet(pr, a, ci(a), r)).join('')}
+      </div>
+    </li>`;
+  }
+
+  function reasons(pr) {
+    const s = eff(pr);
+    const cits = citations(pr);
+    const stale = s === 'stale' ? staleInfo(pr) : null;
+    const raise = pr.risk.reasons.filter((r) => r.dir === 'raise');
+    const lower = pr.risk.reasons.filter((r) => r.dir === 'lower');
+    const unknown = pr.risk.level === 'unknown';
+    const out = [];
+    if (raise.length) {
+      out.push(`<div class="rk-group"><h4 class="rk-group__h">${unknown ? 'Seen in what it read' : 'What could break'} <span>${raise.length}</span>${unknown ? '<small>Not a verdict</small>' : ''}</h4><ol class="rk-reasons">${raise.map((r) => reasonItem(pr, r, cits, stale)).join('')}</ol></div>`);
+    } else {
+      out.push(`<p class="rk-none"><b>Nothing found that could break.</b> Low covers what it read. See its limits below.</p>`);
+    }
+    if (lower.length) {
+      out.push(`<div class="rk-group"><h4 class="rk-group__h">What keeps it down <span>${lower.length}</span></h4><ol class="rk-reasons">${lower.map((r) => reasonItem(pr, r, cits, stale)).join('')}</ol></div>`);
+    }
+    return `<div class="rk-groups">${out.join('')}</div>`;
+  }
+
+  function coverage(pr) {
+    const cits = citations(pr);
+    const citedBy = (path) => [...new Map(cits.filter((c) => c.a.f === path).map((c) => [c.r.id, c.r])).values()];
+    const states = new Set(pr.files.map((f) => f.read));
+    if (pr.outside.length) states.add('outside');
+    let map;
+    if (pr.files.length <= 12) {
+      const tile = (f, read) => {
+        const by = citedBy(f.path);
+        const meta = f.body ? 'release notes' : read === 'outside' ? 'not changed' : `<span class="rk-plus">+${f.add}</span><span class="rk-minus">−${f.del}</span>${f.gen ? ' gen' : ''}`;
+        return `<button type="button" class="rk-tile" data-read="${read}" data-act="file" data-path="${esc(f.path)}" data-fk="file-${esc(f.path)}" title="${esc(f.path)} · ${READ[read]}">
+          <span class="rk-rd" data-read="${read}"></span><span class="rk-tile__name">${esc(short(base(f.path)))}</span>
+          <span class="rk-tile__meta">${meta}<span class="rk-cites">${by.map((r) => `<i data-lvl="${lvlOf(r)}">${r.id}</i>`).join('')}</span></span>
+        </button>`;
+      };
+      map = `<div class="rk-tiles">${pr.files.map((f) => tile(f, f.read)).join('')}${pr.outside.length ? `<p class="rk-tiles__sep">Read outside the diff, to check what the change touches</p>${pr.outside.map((f) => tile(f, f.body ? 'body' : 'outside')).join('')}` : ''}</div>`;
+    } else {
+      map = `<div class="rk-cells" role="list" aria-label="Changed files by how they were read">${pr.files.map((f) => {
+        const by = citedBy(f.path);
+        return `<button type="button" role="listitem" class="rk-cell rk-rd" data-read="${f.read}"${by.length ? ` data-cited data-lvl="${lvlOf(by[0])}"` : ''} data-act="file" data-path="${esc(f.path)}" title="${esc(f.path)} · ${READ[f.read]}${by.length ? ` · cited by ${by.map((r) => r.id).join(', ')}` : ''}" aria-label="${esc(f.path)}, ${READ[f.read].toLowerCase()}"></button>`;
+      }).join('')}</div>`;
+    }
+    const legend = ['full', 'cut', 'name', 'outside'].filter((k) => states.has(k)).map((k) => `<li><span class="rk-rd" data-read="${k}"></span>${READ[k]}</li>`).join('');
+    return `<section class="rk-cov" aria-label="What the assessment read">
+      <h4 class="rk-group__h">What it read <span>${plural(pr.files.length, 'changed file')}</span></h4>
+      ${map}
+      <ul class="rk-legend">${legend}</ul>
+      <p class="rk-cov__sum">${pr.risk.cov}</p>
+      <p class="rk-limits">${icon('eye')}<span>${esc(pr.risk.limits)}</span></p>
+    </section>`;
+  }
+
+  function riskSection(pr) {
+    const s = eff(pr);
+    const R = pr.risk;
+    let after = '';
+    if (s === 'stale') {
+      const x = staleInfo(pr);
+      after = `<p class="rk-alert">${icon('alert')}<span>The head moved since this assessment. ${x.newer} new commits change <code>${esc(base(x.changed))}</code>, where ${x.hit.map((r) => r.id).join(' and ')} cite lines. The level and reasons below are for <code>${R.head}</code>.</span><button type="button" class="rk-btn" data-act="assess" data-fk="assess">Assess head</button></p>`;
+    } else if (s === 'failed') {
+      after = `<p class="rk-alert" data-tone="error">${icon('x')}<span>No assessment: ${agent(pr).toLowerCase()} exited with code 1. Usage limit reached, resets at 14:00.</span><button type="button" class="rk-btn" data-act="assess" data-fk="assess">Try again</button></p>`;
+    } else if (s === 'unknown') {
+      after = `<p class="rk-alert" data-tone="neutral">${icon('help')}<span><b>Why unknown.</b> ${R.unknownWhy}</span></p>`;
+    }
+    let body = '';
+    if (s === 'assessing') {
+      body = `<div class="rk-skel" aria-hidden="true">${[78, 64, 70].map((w) => `<div><span><i style="width:26px"></i><i style="width:44px"></i></span><span><i style="width:${w}%"></i><i style="width:${w - 18}%"></i><i style="width:38%"></i></span></div>`).join('')}</div>`;
+    } else if (s === 'ready' || s === 'stale' || s === 'unknown') {
+      body = reasons(pr) + coverage(pr);
+    }
+    const again = s === 'ready' || s === 'unknown'
+      ? `<button type="button" class="rk-btn rk-btn--ghost" data-act="assess" data-fk="again" title="Assess this commit again">${icon('refresh', 'rk-i--sm')}Assess again</button>`
+      : '';
+    return `<section class="rk-risk" aria-label="Regression risk" aria-live="polite">
+      <h3 class="rk-h3">Regression risk${again}</h3>
+      ${verdict(pr)}${after}${body}
+    </section>`;
+  }
+
+  function existingGuide(pr) {
+    const text = pr.guide.s === 'skipped'
+      ? `<span>${esc(pr.guide.t)}. It reads faster than a guide is written.</span><button type="button" class="rk-btn" tabindex="-1">Write guide</button>`
+      : `<span>${esc(pr.guide.t)}. The walk follows its chapters.</span>`;
+    return `<section class="rk-existing" aria-label="Review guide (existing)"><h3 class="rk-h3">Review guide <span class="rk-existing__tag">existing, unchanged</span></h3><p>${text}</p></section>`;
+  }
+
+  /* Walk drilldown: the file with every cited line marked, and a strip saying why. */
+  function walk(pr) {
+    const cits = citations(pr);
+    const cur = cits[state.walk.ci];
+    const path = state.walk.path;
+    const file = fileOf(pr, path);
+    const w = whereOf(pr, path);
+    const stale = eff(pr) === 'stale' ? staleInfo(pr) : null;
+    const marks = cits.filter((c) => c.a.f === path).map((c) => ({ r: c.r, anchor: c.a, current: c === cur }));
+    const seen = new Map();
+    for (const m of marks) {
+      if (!seen.has(m.r.id)) seen.set(m.r.id, { r: m.r, lines: [] });
+      seen.get(m.r.id).lines.push(range(m.anchor));
+    }
+    const strips = [...seen.values()].map(({ r, lines }) => `<div class="rk-strip" data-lvl="${lvlOf(r)}">${icon(r.dir === 'lower' ? 'down' : 'alert')}<p><b>${r.id} · ${r.dir === 'lower' ? 'Lowers' : LVL[r.lvl].word}</b> ${esc(r.title)}<em>Lines</em>${[...new Set(lines)].join(', ')}</p></div>`);
+    if (stale && stale.changed === path) strips.unshift(`<div class="rk-strip" data-tone="warn">${icon('alert')}<p><b>Changed since the assessment.</b> This is the diff at <code>${pr.risk.head}</code>. The cited lines may have moved in <code>${stale.head}</code>.</p></div>`);
+    if (!seen.size) {
+      const msg = file.read === 'name' ? `<b>Read by name only.</b> The assessment didn't see what changed here${file.gen ? ' (generated)' : ''}.`
+        : file.read === 'cut' ? '<b>Cut at the prompt budget.</b> The assessment saw how this file starts, not all of it.'
+          : '<b>No reason cites this file.</b> It was read in full and nothing in it changed the level.';
+      strips.push(`<div class="rk-strip" data-lvl="none">${icon(file.read === 'full' ? 'check' : 'eye')}<p>${msg}</p></div>`);
+    }
+    const read = w === 'diff' ? file.read : w;
+    const counts = w === 'diff' ? `<span><span class="rk-plus">+${file.add}</span> <span class="rk-minus">−${file.del}</span></span>` : '';
+    const content = file.read === 'name' ? '<p class="rk-empty">Its contents were not part of the assessment.</p>'
+      : file.hunks ? codeBlock(file, flat(file), marks, w !== 'diff')
+        : '<p class="rk-empty">Sample diff not included in this mockup.</p>';
+    const treeItem = (f) => {
+      const by = [...new Map(cits.filter((c) => c.a.f === f.path).map((c) => [c.r.id, c.r])).values()];
+      const r = pr.files.includes(f) ? f.read : f.body ? 'body' : 'outside';
+      return `<button type="button" data-act="file" data-path="${esc(f.path)}" data-fk="tree-${esc(f.path)}" aria-current="${f.path === path}" title="${esc(f.path)} · ${READ[r]}"><span class="rk-rd" data-read="${r}"></span><span class="rk-tree__name">${esc(base(f.path))}</span><span class="rk-cites">${by.map((x) => `<i data-lvl="${lvlOf(x)}">${x.id}</i>`).join('')}</span></button>`;
+    };
+    return `<div class="rk-walkbar">
+        <button type="button" class="rk-btn rk-btn--ghost" data-act="back" data-fk="back">${icon('back')}Overview</button>
+        <span class="rk-walkbar__path" title="${esc(path)}">${esc(path)}</span>
+        <span class="rk-walkbar__count">${cur ? `Citation ${state.walk.ci + 1} of ${cits.length}` : plural(cits.length, 'citation')}</span>
+        <button type="button" class="rk-btn rk-btn--icon" data-act="cite" data-d="-1" data-fk="prev" aria-label="Previous citation">${icon('left')}</button>
+        <button type="button" class="rk-btn rk-btn--icon" data-act="cite" data-d="1" data-fk="next" aria-label="Next citation">${icon('right')}</button>
+      </div>
+      <div class="rk-walk">
+        <nav class="rk-tree" aria-label="Files">
+          <p class="rk-tree__h">In this PR</p>${pr.files.map(treeItem).join('')}
+          ${pr.outside.length ? `<p class="rk-tree__h">Read outside the diff</p>${pr.outside.map(treeItem).join('')}` : ''}
+        </nav>
+        <section class="rk-file" aria-label="${esc(path)}">
+          ${strips.join('')}
+          <div class="rk-fhead"><code>${esc(path)}</code>${counts}<span><span class="rk-rd" data-read="${read}"></span>${READ[read]}</span></div>
+          ${content}
+        </section>
+      </div>`;
+  }
+
+  /* ── Render and events ────────────────────────────────────────────────── */
+  function syncTweak() {
+    const pr = current();
+    root.querySelectorAll('[data-tweak="state"] button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === st(pr))));
+    root.querySelectorAll('[data-tweak="theme"] button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === state.theme)));
+  }
+
+  function render(focusKey) {
+    const fk = focusKey ?? document.activeElement?.dataset?.fk;
+    const pr = current();
+    const card = state.view === 'walk' ? walk(pr) : `<div class="rk-body">${riskSection(pr)}${existingGuide(pr)}</div>`;
+    app.innerHTML = `<div class="rk-deck"><span class="rk-deck__title">Quick review</span><div class="rk-tabs" role="tablist" aria-label="Pull requests">${tabs()}</div></div>
+      <article class="rk-card" aria-label="Pull request #${pr.num}">${prHead(pr)}${card}</article>`;
+    syncTweak();
+    if (fk) app.querySelector(`[data-fk="${CSS.escape(fk)}"]`)?.focus({ preventScroll: true });
+  }
+
+  function openWalk(pr, ci, path) {
+    const cits = citations(pr);
+    state.view = 'walk';
+    state.walk = ci >= 0 ? { path: cits[ci].a.f, ci } : { path, ci: cits.findIndex((c) => c.a.f === path) };
+    render('back');
+    const row = app.querySelector('.rk-l[data-current]');
+    row?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function assess(pr) {
+    clearTimeout(assessTimer);
+    state.overrides[pr.id] = 'assessing';
+    render();
+    assessTimer = setTimeout(() => {
+      delete state.overrides[pr.id];
+      render();
+    }, 1800);
+  }
+
+  root.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act], [data-tweak] button');
+    if (!t || !root.contains(t)) return;
+    const pr = current();
+    const group = t.closest('[data-tweak]');
+    if (group) {
+      if (group.dataset.tweak === 'state') {
+        clearTimeout(assessTimer);
+        if (t.dataset.v === 'sampled') delete state.overrides[pr.id];
+        else state.overrides[pr.id] = t.dataset.v;
+        if (state.view === 'walk' && !['sampled', 'stale'].includes(t.dataset.v)) state.view = 'overview';
+      } else {
+        state.theme = t.dataset.v;
+        applyTheme();
+      }
+      render();
+      return;
+    }
+    switch (t.dataset.act) {
+      case 'pr':
+        state.pr = t.dataset.id;
+        state.view = 'overview';
+        render(`tab-${t.dataset.id}`);
+        break;
+      case 'toggle': {
+        if (t.classList.contains('rk-reason__row') && window.getSelection()?.toString()) return;
+        const set = opened(pr);
+        set.has(t.dataset.r) ? set.delete(t.dataset.r) : set.add(t.dataset.r);
+        render(`toggle-${t.dataset.r}`);
+        break;
+      }
+      case 'jump': {
+        opened(pr).add(t.dataset.r);
+        render(`toggle-${t.dataset.r}`);
+        app.querySelector(`#rk-r-${pr.id}-${t.dataset.r}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        break;
+      }
+      case 'walk':
+        e.stopPropagation();
+        openWalk(pr, Number(t.dataset.ci), null);
+        break;
+      case 'file':
+        openWalk(pr, -1, t.dataset.path);
+        break;
+      case 'cite': {
+        const n = citations(pr).length;
+        const ci = ((state.walk.ci < 0 ? -1 : state.walk.ci) + Number(t.dataset.d) + n) % n;
+        openWalk(pr, ci, null);
+        app.querySelector(`[data-fk="${t.dataset.fk}"]`)?.focus({ preventScroll: true });
+        break;
+      }
+      case 'back':
+        state.view = 'overview';
+        render();
+        break;
+      case 'assess':
+        assess(pr);
+        break;
+    }
+  });
+
+  root.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && state.view === 'walk') {
+      state.view = 'overview';
+      render();
+    }
+    if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && e.target.classList?.contains('rk-tab')) {
+      const i = PRS.findIndex((p) => p.id === state.pr);
+      const next = PRS[(i + (e.key === 'ArrowRight' ? 1 : -1) + PRS.length) % PRS.length];
+      state.pr = next.id;
+      state.view = 'overview';
+      render(`tab-${next.id}`);
+    }
+  });
+
+  /* Theme: follow the host page in Auto. The base sheet sets the body text colour from its theme. */
+  function hostIsDark() {
+    const m = getComputedStyle(document.body).color.match(/[\d.]+/g);
+    if (m && m.length >= 3) {
+      const [r, g, b] = m.slice(0, 3).map(Number);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b > 128;
+    }
+    return matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function applyTheme() {
+    root.dataset.theme = state.theme === 'auto' ? (hostIsDark() ? 'dark' : 'light') : state.theme;
+  }
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => state.theme === 'auto' && applyTheme());
+  new MutationObserver(() => state.theme === 'auto' && applyTheme()).observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
+
+  applyTheme();
+  render();
+})();
+</script>

@@ -462,6 +462,16 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
             onChange={(backgroundReviewGuides) =>
               onSummariesChange({ ...summaries, backgroundReviewGuides })
             }
+          />
+        </div>
+        <div id="field-risk-assessment-auto">
+          <ToggleRow
+            label="Assess regression risk automatically"
+            hint="Quick Review asks what could break as soon as a PR opens, small changes and dependency updates too, and once per new push. Off, it waits for Assess risk. After a failed run it waits ten minutes before starting another on its own."
+            on={summaries.autoRiskAssessment !== false}
+            onChange={(autoRiskAssessment) =>
+              onSummariesChange({ ...summaries, autoRiskAssessment })
+            }
             last
           />
         </div>

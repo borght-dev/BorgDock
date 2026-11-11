@@ -59,10 +59,12 @@ import {
 import { guideEntryFor, guideGroups } from '@/services/review-guide';
 import { classifyNoise } from '@/services/review-noise';
 import { reviewVerb } from '@/services/review-since';
+import type { RiskCitation, RiskReason } from '@/services/risk-assessment';
 import { useCiFailuresStore } from '@/stores/ci-failures-store';
 import { usePrStore } from '@/stores/pr-store';
 import { type ReviewDecision, useQuickReviewStore } from '@/stores/quick-review-store';
 import { ensureReviewGuide, guideKey, useReviewGuideStore } from '@/stores/review-guide-store';
+import { ensureRiskAssessment, useRiskView } from '@/stores/risk-assessment-store';
 import { toastError } from '@/stores/toast-store';
 import type { DiffLine, PullRequest, PullRequestWithChecks } from '@/types';
 import { motionMs, motionOK } from '@/utils/motion';
@@ -89,6 +91,13 @@ import { QuickReviewNavigation } from './QuickReviewNavigation';
 import { noiseFolds } from './QuickReviewNoise';
 import { QuickReviewPrHeader } from './QuickReviewPrHeader';
 import { proofCount, proofsFor, QuickReviewProof } from './QuickReviewProof';
+import {
+  QuickReviewRiskSection,
+  RiskFileStrip,
+  RiskLineMark,
+  RiskPill,
+  riskTagsByPath,
+} from './QuickReviewRisk';
 import { QuickReviewSummary } from './QuickReviewSummary';
 import { holdApproval, undoHeldApproval, useHeldApproval } from './quick-review-approval';
 import './quick-review.css';
@@ -659,6 +668,7 @@ function QuickReviewWorkspace({
   const [order, setOrder] = useState<ReadingOrder>(readOrder);
   usePrefetchReviewSnapshot(snapshot && !loading ? peeks[0]?.pullRequest : undefined, {
     guide: order === 'guide',
+    risk: true,
   });
   const [commitSha, setCommitSha] = useState<string | null>(null);
   const [openedFolds, setOpenedFolds] = useState<ReadonlySet<string>>(() => new Set());
@@ -706,6 +716,26 @@ function QuickReviewWorkspace({
   );
   const guide = guideEntry?.status === 'ready' ? guideEntry.guide : null;
   const guided = order === 'guide' && !!guide;
+  const riskHead = snapshot?.pr.headSha ?? null;
+  const riskView = useRiskView(detail, riskHead);
+  /** The assessment on screen: this head's, or an older head's shown stale. */
+  const riskShown =
+    riskView.kind === 'ready'
+      ? riskView.assessment
+      : riskView.kind === 'waiting'
+        ? null
+        : riskView.previous;
+  const riskStale = riskView.kind !== 'ready' && !!riskShown;
+  const riskTags = riskTagsByPath(riskShown);
+  /** The cited line "Open in walk" went to: highlighted and scrolled into view. `at` counts the opens. */
+  const [riskTarget, setRiskTarget] = useState<{
+    path: string;
+    side: 'new' | 'old';
+    from: number;
+    at: number;
+  } | null>(null);
+  /** A reason the walk's strip asked the card to show. */
+  const [riskFocus, setRiskFocus] = useState<{ id: string; at: number } | null>(null);
   const walkGroups = (guided ? guideGroups(guide, files) : (snapshot?.groups ?? []))
     .map((group) =>
       sinceScoped ? { ...group, files: group.files.filter((f) => changed.has(f.filename)) } : group,
@@ -738,6 +768,38 @@ function QuickReviewWorkspace({
   const chapter = guided && prFile ? guideEntryFor(guide, prFile.filename) : null;
   const imageFile = !!file && isImagePath(file.filename);
   const richDiffVisible = imageFile && richDiff && !commitsView;
+  // Reasons whose cited lines end on a line of the shown diff; not on an
+  // interdiff or an older head's assessment, whose line numbers differ.
+  const riskMarks = new Map<string, RiskReason[]>();
+  if (riskShown && !riskStale && file && !sinceFile) {
+    for (const reason of riskShown.reasons) {
+      const cited = [...reason.citations, reason.test?.citation];
+      // Its removed lines sit beside the new ones: one mark under the new is enough.
+      const citesNew = cited.some(
+        (c) => c?.where === 'diff' && c.path === file.filename && c.side === 'new',
+      );
+      for (const citation of cited) {
+        if (citation?.where !== 'diff' || citation.path !== file.filename) continue;
+        if (citation.side === 'old' && citesNew) continue;
+        const key = `${citation.side}:${citation.to}`;
+        const list = riskMarks.get(key) ?? [];
+        if (!list.includes(reason)) list.push(reason);
+        riskMarks.set(key, list);
+      }
+    }
+  }
+  function riskMarksFor(line: DiffLine): RiskReason[] | null {
+    if (!riskMarks.size) return null;
+    const found = new Set([
+      ...(line.type !== 'delete' && line.newLineNumber !== undefined
+        ? (riskMarks.get(`new:${line.newLineNumber}`) ?? [])
+        : []),
+      ...(line.type !== 'add' && line.oldLineNumber !== undefined
+        ? (riskMarks.get(`old:${line.oldLineNumber}`) ?? [])
+        : []),
+    ]);
+    return found.size ? [...found] : null;
+  }
   const commentsByLine = new Map<string, ReviewCommentDraft[]>();
   for (const comment of doc.comments) {
     if (comment.outdated || comment.path !== file?.filename) continue;
@@ -791,6 +853,25 @@ function QuickReviewWorkspace({
   useEffect(() => {
     if (snapshot && order === 'guide') void ensureReviewGuide(snapshot);
   }, [snapshot, order]);
+
+  // Every order gets this head's regression risk, simple PRs included.
+  useEffect(() => {
+    if (snapshot) void ensureRiskAssessment(snapshot);
+  }, [snapshot]);
+
+  // "Open in walk" puts the cited line in the middle of the diff.
+  const riskTargetFile = file?.filename;
+  useEffect(() => {
+    if (!riskTarget || mode !== 'walk' || riskTargetFile !== riskTarget.path) return;
+    const kind =
+      riskTarget.side === 'old' ? '[data-line-kind="del"]' : ':not([data-line-kind="del"])';
+    const frame = requestAnimationFrame(() => {
+      mainRef.current
+        ?.querySelector<HTMLElement>(`tr${kind}[data-line-no="${riskTarget.from}"]`)
+        ?.scrollIntoView?.({ block: 'center' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [riskTarget, mode, riskTargetFile]);
 
   // A guide written while you read in folders reorders the tree: start it
   // at its first file not reviewed yet. A cached guide keeps your place.
@@ -918,6 +999,40 @@ function QuickReviewWorkspace({
   }
   function writeGuide() {
     if (snapshot) void ensureReviewGuide(snapshot, { force: true });
+  }
+  function assessRisk() {
+    if (snapshot) void ensureRiskAssessment(snapshot, { force: true });
+  }
+  /** Opens the walk at a changed file the risk cites, at the cited line when there is one. */
+  function openRisk(path: string, target: { side: 'new' | 'old'; from: number } | null) {
+    if (!ready || !paths.includes(path)) return;
+    // Cited lines are the whole PR's: an interdiff numbers them differently.
+    if (sinceScoped && (target || !changed?.has(path))) setScope('all');
+    // Commits order shows commits, not the file.
+    if (order === 'commits') setOrder('folders');
+    go(path);
+    setMode('walk');
+    update((d) => ({ ...d, walked: true }));
+    setRiskTarget((before) => (target ? { path, ...target, at: (before?.at ?? 0) + 1 } : null));
+  }
+  function openRiskCitation(citation: RiskCitation) {
+    if (citation.where === 'description') return;
+    openRisk(
+      citation.path,
+      citation.where === 'diff' ? { side: citation.side, from: citation.from } : null,
+    );
+  }
+  function openRiskOnGitHub(citation: RiskCitation) {
+    if (citation.where !== 'file' || !riskShown) return;
+    const repository = detail.htmlUrl.replace(/\/pull\/\d+.*$/, '');
+    const path = citation.path.split('/').map(encodeURIComponent).join('/');
+    void openUrl(
+      `${repository}/blob/${riskShown.headSha}/${path}#L${citation.from}-L${citation.to}`,
+    ).catch(() => setNotice('Could not open GitHub.'));
+  }
+  function showRiskReason(id: string) {
+    setRiskFocus((before) => ({ id, at: (before?.at ?? 0) + 1 }));
+    toCard();
   }
   function toggleFold(key: string) {
     setOpenedFolds((before) => {
@@ -1311,6 +1426,16 @@ function QuickReviewWorkspace({
     ),
     comments: <QuickReviewDiscussion pr={detail} enabled conversation={conversation} />,
   };
+  const guideReason =
+    guideEntry?.status === 'skipped'
+      ? `${guideEntry.reason.charAt(0).toLowerCase()}${guideEntry.reason.slice(1)}`
+      : null;
+  const guideNote = guideReason
+    ? `No guide (${guideReason}). ${riskView.kind === 'ready' ? 'Risk is assessed anyway.' : "Risk doesn't wait for one."}`
+    : guideEntry?.status === 'ready'
+      ? `Guide: ${guideEntry.guide.chapters.length} chapters`
+      : null;
+  const riskPill = <RiskPill view={riskView} />;
   const orderSwitch = (
     <ReadingOrderSwitch
       order={order}
@@ -1353,6 +1478,23 @@ function QuickReviewWorkspace({
               onReloadFiles={reload}
               reviewed={doc.reviewed}
               alert={alert}
+              risk={{
+                pill: riskPill,
+                section: (
+                  <QuickReviewRiskSection
+                    key={riskShown ? `${riskShown.headSha}:${riskShown.createdAt}` : 'none'}
+                    view={riskView}
+                    head={riskHead}
+                    files={ready ? paths : null}
+                    guideNote={guideNote}
+                    onAssess={assessRisk}
+                    onOpenCitation={ready ? openRiskCitation : undefined}
+                    onOpenFile={ready ? (path) => openRisk(path, null) : undefined}
+                    onOpenOnGitHub={openRiskOnGitHub}
+                    focus={riskFocus}
+                  />
+                ),
+              }}
               guide={
                 order === 'guide' ? (
                   <QuickReviewGuideSection
@@ -1421,6 +1563,7 @@ function QuickReviewWorkspace({
               workItems={workItems}
               commentCount={conversation.items.length}
               reReview={!!since}
+              risk={riskPill}
               expanded={describing}
               onToggleDescription={() => setDescribing((v) => !v)}
               onOpenComments={() => openContext('comments')}
@@ -1485,6 +1628,7 @@ function QuickReviewWorkspace({
                 onNavigate={go}
                 onToggleReviewed={toggleReviewed}
                 progress={walkProgress}
+                riskTags={riskTags}
                 changed={changed ?? undefined}
                 unchanged={
                   sinceScoped && since
@@ -1618,6 +1762,14 @@ function QuickReviewWorkspace({
                   why={chapter.why}
                 />
               )}
+              {!commitsView && prFile && riskShown && (
+                <RiskFileStrip
+                  assessment={riskShown}
+                  path={prFile.filename}
+                  stale={riskStale}
+                  onShowReason={showRiskReason}
+                />
+              )}
               {!commitsView && sinceFile && since && (
                 <div className="qr-interdiff">
                   <GitCommitHorizontal size={14} strokeWidth={2.25} aria-hidden="true" />
@@ -1686,11 +1838,27 @@ function QuickReviewWorkspace({
                               );
                             }),
                         )}
+                        highlightLine={
+                          riskTarget &&
+                          !sinceFile &&
+                          riskTarget.side === 'new' &&
+                          riskTarget.path === file.filename
+                            ? riskTarget.from
+                            : null
+                        }
                         renderLineAttachment={(line) => {
                           const anchor = inlineDrafts ? reviewLineAnchor(line) : null;
-                          return anchor
-                            ? commentsByLine.get(`${anchor.side}:${anchor.line}`)?.map(commentView)
-                            : null;
+                          const drafts = anchor
+                            ? commentsByLine.get(`${anchor.side}:${anchor.line}`)
+                            : undefined;
+                          const marks = riskMarksFor(line);
+                          if (!marks && !drafts?.length) return null;
+                          return (
+                            <>
+                              {marks && <RiskLineMark reasons={marks} />}
+                              {drafts?.map(commentView)}
+                            </>
+                          );
                         }}
                       />
                       {!inlineDrafts && !richDiffVisible && fileDrafts.map(commentView)}

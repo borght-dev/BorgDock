@@ -3,12 +3,14 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ToastViewport } from '@/components/shared/Toast';
 import type { HeldPr } from '@/services/author-run';
 import { useE2eStore } from '@/services/e2e/load';
+import { RISK_PROMPT_TITLE } from '@/services/risk-assessment';
 import { useLinkStore } from '@/stores/link-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useReviewGuideStore } from '@/stores/review-guide-store';
+import { resetRiskAssessments } from '@/stores/risk-assessment-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import type { PullRequestFileChange } from '@/types';
+import type { PullRequestFileChange, RepoSettings } from '@/types';
 import type { ClaudeReviewComment } from '@/types/claude-review';
 import beforeDispatch from '../../../../../docs/whats-new/4.0.0/dispatch.png?inline';
 import afterDispatch from '../../../../../docs/whats-new/4.0.1/dispatch-width.png?inline';
@@ -20,6 +22,20 @@ import {
   PLANBOARD_GUIDE,
   planboardCommitFiles,
 } from './__fixtures__/quick-review-reading';
+import {
+  BUMP_ANSWER,
+  BUMP_BODY,
+  BUMP_FILES,
+  BUMP_HEAD,
+  BUMP_SOURCES,
+  REFUND_ANSWER,
+  REFUND_FILES,
+  REFUND_GUIDE,
+  REFUND_NEXT_HEAD,
+  REFUND_SOURCES,
+  refundAssessment,
+  refundPr,
+} from './__fixtures__/quick-review-risk';
 import {
   PLANBOARD_BODY,
   PLANBOARD_FILES,
@@ -162,6 +178,13 @@ const meta: Meta<typeof QuickReviewOverlay> = {
     },
   ],
   beforeEach: () => {
+    // The design frames show no agent at work: risk waits for a click here.
+    // The Risk… stories turn it on themselves.
+    const settings = useSettingsStore.getState().settings;
+    resetRiskAssessments();
+    useSettingsStore.setState({
+      settings: { ...settings, summaries: { ...settings.summaries!, autoRiskAssessment: false } },
+    });
     useQuickReviewStore.setState({ activity: {} });
     resetReviewDisplayPreferences();
     const control = getControl();
@@ -169,7 +192,10 @@ const meta: Meta<typeof QuickReviewOverlay> = {
     control.githubResponses.getPRFiles = files;
     useQuickReviewStore.setState({ documents: {} });
     useQuickReviewStore.getState().startSinglePr(pr);
-    return () => useQuickReviewStore.getState().endSession();
+    return () => {
+      useQuickReviewStore.getState().endSession();
+      useSettingsStore.setState({ settings });
+    };
   },
 };
 export default meta;
@@ -1296,5 +1322,200 @@ export const SeparateReviewsComplete: Story = {
     store.endSession();
     store.startSinglePr(runThird);
     store.advance('approved');
+  },
+};
+
+// ── Regression risk (design/risk-assessment/opus-mockup.html) ─────────────
+
+const refunds = {
+  ...makePr(refundPr({ updatedAt: ago(2 * HOUR) })),
+  passedCount: 14,
+  totalCheckCount: 14,
+};
+
+const bump = {
+  ...makePr(
+    refundPr({
+      number: 4830,
+      title: 'Bump money-fmt from 2.4.1 to 3.0.0',
+      headSha: BUMP_HEAD,
+      headRef: 'dependabot/npm_and_yarn/money-fmt-3.0.0',
+      authorLogin: 'dependabot[bot]',
+      body: BUMP_BODY,
+      changedFiles: BUMP_FILES.length,
+      additions: 4,
+      deletions: 3,
+      commitCount: 1,
+      updatedAt: ago(5 * HOUR),
+      htmlUrl: 'https://github.com/acme/shop/pull/4830',
+    }),
+  ),
+  passedCount: 14,
+  totalCheckCount: 14,
+};
+
+function headlessResult(answer: unknown, durationMs = 48_000) {
+  return { text: JSON.stringify(answer), provider: 'claude', model: 'sonnet', durationMs };
+}
+
+/** GitHub's contents API for the files the answer cites outside the diff. */
+function contentsOf(sources: Record<string, string>) {
+  return (path: string) => {
+    const match = /\/contents\/(.+)\?ref=/.exec(path);
+    const file = match ? decodeURIComponent(match[1]!) : '';
+    const text = sources[file];
+    if (text === undefined) return Promise.reject(new Error(`No ${file} in this story`));
+    return { type: 'file', size: text.length, encoding: 'base64', content: btoa(text) };
+  };
+}
+
+/** The refunds PR: the agent answers a risk prompt with the assessment, any other with the guide. */
+function riskDecorator(
+  target: typeof refunds,
+  files: PullRequestFileChange[],
+  answers: { risk: unknown; guide?: unknown; sources: Record<string, string> },
+): Decorator {
+  return (Story) => {
+    const control = getControl();
+    control.githubResponses.getPRReviewDetails = { pr: target.pullRequest, baseSha: 'main' };
+    control.githubResponses.getPRFiles = files;
+    control.githubResponses.getReviews = [];
+    control.githubResponses.getAllComments = [];
+    control.githubResponses.getRepositoryObject = contentsOf(answers.sources);
+    control.invokeResponses.run_headless_prompt = (args: unknown) => {
+      const prompt = (args as { request: { prompt: string } }).request.prompt;
+      return prompt.startsWith(RISK_PROMPT_TITLE)
+        ? headlessResult(answers.risk)
+        : headlessResult(answers.guide ?? {}, 31_000);
+    };
+    return (
+      <>
+        <Story />
+        <ToastViewport />
+      </>
+    );
+  };
+}
+
+/** Risk assessed automatically, with the repository checked out so it can cite outside the diff. */
+function startRisk(target: typeof refunds, { auto = true } = {}) {
+  resetReviewDisplayPreferences();
+  localStorage.setItem('borgdock-quick-review-order', 'guide');
+  localStorage.setItem('borgdock-quick-review-context-open', 'false');
+  const settings = useSettingsStore.getState().settings;
+  useSettingsStore.setState({
+    settings: {
+      ...settings,
+      repos: [
+        {
+          owner: 'acme',
+          name: 'shop',
+          enabled: true,
+          worktreeBasePath: '/repos/shop',
+          worktreeSubfolder: '',
+        } as RepoSettings,
+      ],
+      summaries: { ...settings.summaries!, autoRiskAssessment: auto },
+    },
+  });
+  useQuickReviewStore.setState({ documents: {} });
+  useReviewGuideStore.setState({ entries: {} });
+  resetRiskAssessments();
+  useQuickReviewStore.getState().startSinglePr(target);
+  return () => useSettingsStore.setState({ settings });
+}
+
+/** The card: regression risk first, the guide under it. High, set by R1, its evidence open. */
+export const RiskOnCard: Story = {
+  decorators: [
+    riskDecorator(refunds, REFUND_FILES, {
+      risk: REFUND_ANSWER,
+      guide: REFUND_GUIDE,
+      sources: REFUND_SOURCES,
+    }),
+  ],
+  beforeEach: () => startRisk(refunds),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(/A refund that names a cancelled line pays it out in full/);
+    await canvas.findByText('High risk');
+    await canvas.findByText(/Refunds can now return part of the shipping/);
+  },
+};
+
+export const RiskOnCardLight: Story = { ...RiskOnCard, globals: { theme: 'light' } };
+
+/** "Open in walk": the cited file, R1 tagged in the tree, the reason above the diff and under its lines. */
+export const RiskWalk: Story = {
+  ...RiskOnCard,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const chip = await canvas.findByRole('button', { name: 'calculate.ts:139–141' });
+    await waitFor(() => expect(chip.closest('fieldset')).toBeEnabled());
+    await userEvent.click(chip);
+    await canvas.findByText('Chapter 2 of 3');
+    await waitFor(() => expect(canvasElement.querySelector('.qr-risk-linemark')).not.toBeNull());
+  },
+};
+
+export const RiskWalkLight: Story = { ...RiskWalk, globals: { theme: 'light' } };
+
+/** A dependency update gets no guide; its risk comes from the release notes and the code that uses it. */
+export const RiskDependencyUpdate: Story = {
+  decorators: [riskDecorator(bump, BUMP_FILES, { risk: BUMP_ANSWER, sources: BUMP_SOURCES })],
+  beforeEach: () => startRisk(bump),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(/No guide \(a dependency update\)\. Risk is assessed anyway\./);
+    await canvas.findByText('High risk');
+  },
+};
+
+/** The head moved since the cached assessment: shown, marked older, with Assess head. */
+export const RiskStale: Story = {
+  decorators: [
+    riskDecorator(
+      { ...refunds, pullRequest: { ...refunds.pullRequest, headSha: REFUND_NEXT_HEAD } },
+      REFUND_FILES,
+      {
+        risk: REFUND_ANSWER,
+        guide: REFUND_GUIDE,
+        sources: REFUND_SOURCES,
+      },
+    ),
+    (Story) => {
+      getControl().invokeResponses.cache_load_tab_data = (args: unknown) =>
+        (args as { dataType: string }).dataType === 'riskAssessment'
+          ? {
+              data: refundAssessment({ minutesAgo: 95 }),
+              prUpdatedAt: refundAssessment().headSha,
+              cachedAt: ago(HOUR),
+            }
+          : null;
+      return <Story />;
+    },
+  ],
+  beforeEach: () =>
+    startRisk(
+      { ...refunds, pullRequest: { ...refunds.pullRequest, headSha: REFUND_NEXT_HEAD } },
+      { auto: false },
+    ),
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByText('High risk · older commit');
+  },
+};
+
+/** The assessment is still being written. */
+export const RiskAssessing: Story = {
+  decorators: [
+    riskDecorator(refunds, REFUND_FILES, { risk: REFUND_ANSWER, sources: REFUND_SOURCES }),
+    (Story) => {
+      getControl().invokeResponses.run_headless_prompt = () => new Promise(() => {});
+      return <Story />;
+    },
+  ],
+  beforeEach: () => startRisk(refunds),
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByText('Assessing risk');
   },
 };

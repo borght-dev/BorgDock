@@ -53,6 +53,8 @@ interface Props {
   reReview?: boolean;
   /** Chips that only the card shows, before the shared ones. */
   statusChips?: ReactNode;
+  /** The regression risk chip, first of the shared ones. */
+  risk?: ReactNode;
   /** The description is open in full. */
   expanded?: boolean;
   /** Without it the header has no description toggle (the card shows the description itself). */
@@ -79,6 +81,7 @@ export function QuickReviewPrHeader({
   commentCount = 0,
   reReview = false,
   statusChips,
+  risk,
   expanded = false,
   onToggleDescription,
   onOpenComments,
@@ -124,6 +127,7 @@ export function QuickReviewPrHeader({
         </code>
         <span className="qr-prhead__chips">
           {statusChips}
+          {risk}
           <Pill tone={ci.tone} icon={ci.icon}>
             {ci.label}
           </Pill>

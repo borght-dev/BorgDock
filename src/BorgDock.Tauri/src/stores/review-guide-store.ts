@@ -9,7 +9,7 @@ import {
   parseGuide,
   type ReviewGuide,
 } from '@/services/review-guide';
-import { runSummaryAgent } from '@/services/summary-agent';
+import { runSummaryAgent, summaryCheckout } from '@/services/summary-agent';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequest } from '@/types';
 import { parseError } from '@/utils/parse-error';
@@ -49,7 +49,8 @@ function isGuide(value: unknown, headSha: string): value is ReviewGuide {
   return !!guide && guide.headSha === headSha && Array.isArray(guide.chapters);
 }
 
-async function commitLines(pr: PullRequest): Promise<string[]> {
+/** First lines of the PR's commit messages, oldest first; none when they don't load. */
+export async function commitLines(pr: PullRequest): Promise<string[]> {
   const client = getClientForRepo(pr.repoOwner, pr.repoName);
   if (!client) return [];
   try {
@@ -123,18 +124,14 @@ export async function ensureReviewGuide(
   }
   setEntry(key, { status: 'loading', provider });
   try {
-    const repoPath = settings.repos.find(
-      (repo) =>
-        repo.owner.toLowerCase() === pr.repoOwner.toLowerCase() &&
-        repo.name.toLowerCase() === pr.repoName.toLowerCase(),
-    )?.worktreeBasePath;
+    const repoPath = summaryCheckout(settings, pr);
     const prompt = buildGuidePrompt({
       pr,
       files: snapshot.files,
       commits: await commitLines(pr),
       instructions: settings.summaries?.guideInstructions,
       skip: settings.summaries?.guideSkip,
-      checkout: repoPath || undefined,
+      checkout: repoPath,
     });
     const result = await runSummaryAgent(settings, {
       prompt,

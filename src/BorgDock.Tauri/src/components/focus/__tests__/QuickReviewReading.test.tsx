@@ -10,6 +10,7 @@ import {
 } from '@/services/github/pulls';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { guideKey, useReviewGuideStore } from '@/stores/review-guide-store';
+import { resetRiskAssessments } from '@/stores/risk-assessment-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { QuickReviewOverlay } from '../QuickReviewOverlay';
 import { makePr, resetSeq } from './helpers';
@@ -125,10 +126,15 @@ function guideAnswer(text = JSON.stringify(ANSWER)) {
   };
 }
 
-const SETTINGS = useSettingsStore.getState().settings;
+const DEFAULTS = useSettingsStore.getState().settings;
+/** These tests count the guide's agent runs; the risk assessment has its own suite. */
+const SETTINGS = {
+  ...DEFAULTS,
+  summaries: { ...DEFAULTS.summaries!, autoRiskAssessment: false },
+};
 function writeGuidesAutomatically(on: boolean) {
   useSettingsStore.setState({
-    settings: { ...SETTINGS, summaries: { ...SETTINGS.summaries!, autoReviewGuide: on } },
+    settings: { ...SETTINGS, summaries: { ...SETTINGS.summaries, autoReviewGuide: on } },
   });
 }
 
@@ -141,6 +147,8 @@ beforeEach(() => {
   useQuickReviewStore.getState().endSession();
   useQuickReviewStore.setState({ documents: {} });
   useReviewGuideStore.setState({ entries: {} });
+  resetRiskAssessments();
+  useSettingsStore.setState({ settings: SETTINGS });
   pr = makePr({ changedFiles: files.length, body: 'Body' });
   vi.mocked(getPRReviewDetails).mockResolvedValue({ pr: pr.pullRequest, baseSha: 'base' });
   vi.mocked(getPRFiles).mockResolvedValue(files);
@@ -149,7 +157,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  useSettingsStore.setState({ settings: SETTINGS });
+  useSettingsStore.setState({ settings: DEFAULTS });
   document.documentElement.classList.remove('reduce-motion');
 });
 

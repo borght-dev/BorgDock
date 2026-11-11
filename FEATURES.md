@@ -152,6 +152,8 @@ Ties break on oldest update, then smallest PR. The weights are fixed in code.
 - Opens from a row's Review, the board, the detail view, the tray flyout, `R`, `Shift+R` or Start Quick Review
 - Card deck: the current PR on top with the next two behind; title bar "Quick review", "PR i / n" with progress, **Previous PR**, Close
 - PR card: description (Show more), branch into base, file and commit counts, +/−, review chip, **Files by folder** ("N of M to review, K generated"), check bar
+- **Regression risk**, first on the card and as a header chip: Low / Medium / High / Unknown from the summary agent, set by its most serious reason; **What could break** and **What keeps it down** with cited lines (expandable evidence, **Open in walk**), **What it read** (in full, cut, by name only, outside the diff), commit and agent; stale when the head moved (**Assess head**), **Try again** after a failure; every PR including dependency updates and small changes (Settings → Agents → Summaries → Assess regression risk automatically)
+  - In the walk: reason tags in the tree, a strip above the diff and a mark under cited lines
   - Buttons: **Review later**, **Review files** (or Continue reviewing / Review files again), **Write review**, **Approve**
   - **Approve** unlocks once every non-generated file is marked reviewed; otherwise it says how many are left
   - Keys: `→` approve, `←` review later, `Enter` review files, `Esc` close

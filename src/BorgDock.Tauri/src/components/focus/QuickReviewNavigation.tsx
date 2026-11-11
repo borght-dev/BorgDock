@@ -8,6 +8,8 @@ import {
   type ReviewProgress,
 } from '@/services/quick-review';
 import type { FileNoise } from '@/services/review-noise';
+import type { RiskReason } from '@/services/risk-assessment';
+import { RiskTreeTags } from './QuickReviewRisk';
 
 interface Props {
   document: ReviewDocument;
@@ -26,6 +28,8 @@ interface Props {
   header?: ReactNode;
   /** Files whose every hunk is noise are drawn muted, with what they hold. */
   noise?: ReadonlyMap<string, FileNoise>;
+  /** The regression risk's reasons that cite each file, tagged beside it. */
+  riskTags?: ReadonlyMap<string, readonly RiskReason[]>;
 }
 
 /** Characters a long file name keeps at its end when it is cut in the middle. */
@@ -64,6 +68,7 @@ export function QuickReviewNavigation({
   onToggleReviewed,
   header,
   noise,
+  riskTags,
 }: Props) {
   const [open, setOpen] = useState(false);
   const reviewed = new Set(doc.reviewed);
@@ -170,6 +175,7 @@ export function QuickReviewNavigation({
                     >
                       <FileName name={name} />
                       <span className="qr-delta">
+                        <RiskTreeTags reasons={riskTags?.get(file.filename) ?? []} />
                         {commented.has(file.filename) && (
                           <span className="qr-has-draft" role="img" aria-label="Has draft comment">
                             •

@@ -28,6 +28,7 @@ export function QuickReviewOverview({
   linkedWorkItems,
   onFileSelect,
   guide,
+  risk,
 }: {
   pr: PullRequestWithChecks;
   detail: PullRequest;
@@ -41,11 +42,14 @@ export function QuickReviewOverview({
   onFileSelect?: (path: string) => void;
   /** The review guide, above the description. */
   guide?: ReactNode;
+  /** The regression risk, first: above the guide. */
+  risk?: ReactNode;
 }) {
   const progress = files ? reviewProgress(files, reviewed) : null;
   return (
     <div className="qr-overview-grid">
       <div className="qr-overview-reading">
+        {risk}
         {guide}
         <section className="qr-overview-section" aria-label="PR description">
           <h3>PR description</h3>
