@@ -64,18 +64,17 @@ jobs:
 
   playwright:
     name: playwright (e2e)
-    # Playwright 1.59 installs no chromium on ubuntu-latest (26.04).
     runs-on: ubuntu-24.04
+    container:
+      # Keep the preinstalled browsers aligned with Playwright in bun.lock.
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
+      options: --init --ipc=host
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.3.10'
       - run: bun install --frozen-lockfile
-      - name: Use Ubuntu archives for browser dependencies
-        run: |
-          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' 'https://security.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt
-      - run: bunx playwright install chromium --with-deps
       - run: bun run test:e2e
       - name: Upload Playwright report
         if: failure()
