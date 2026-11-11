@@ -132,6 +132,12 @@ test('keyboard navigation reaches rows outside the virtual viewport', async ({ p
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await bootApp(page, '', 'happy-path');
   await seedMainWindow(page, { prs: PRS });
+  // Grouped by author: my group is past the virtualization threshold, so
+  // the 45th row starts outside the rendered window.
+  await page.evaluate(async () => {
+    const { usePrViewStore } = await import('/src/stores/pr-view-store.ts');
+    usePrViewStore.getState().setDisplay({ groupBy: 'author' });
+  });
   await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: /^Pull requests/ }).click();
   const rows = page.locator('.bd-wb-list .bd-wb-row[data-pr-key]');
   await expect(page.locator('[data-virtual-prs]').first()).toBeVisible();

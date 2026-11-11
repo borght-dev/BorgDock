@@ -143,21 +143,20 @@ interface PrRowProps {
  *   with Undo) or Merge (progress fill, then the row updates from the
  *   store; the result is a toast).
  */
-export const PrRow = memo(function PrRow({
-  prWithChecks,
-  density = 'comfortable',
-  now,
-  animateKey = true,
-  meta,
-  keepSection = false,
-  extraAction,
-}: PrRowProps) {
+/**
+ * What every PR row and card does, whatever it looks like: selection by
+ * `owner/repo#number`, click and Enter open the in-window detail,
+ * Ctrl/Cmd+click and middle-click the pop-out, the check bar opens the
+ * Checks tab, right-click the context menu, and the trailing action
+ * (Review, Approve or Merge). `PrRow`, the table rows and the board cards
+ * share it.
+ */
+export function usePrRowBehaviour(prWithChecks: PullRequestWithChecks, keepSection = false) {
   const pr = prWithChecks.pullRequest;
   const key = prRowKey(pr);
   const selected = useUiStore((s) => s.selectedPrKey === key);
   const username = usePrStore((s) => s.username);
   const teams = usePrStore((s) => s.teams);
-  const staleAfterDays = useSettingsStore((s) => s.settings.ui?.staleAfterDays);
   const actions = usePrCardActions(prWithChecks);
   const lens = usePrCiLens(prWithChecks);
   const approving = useDependencyUpdatesStore((s) => s.pending.has(key));
@@ -207,7 +206,7 @@ export const PrRow = memo(function PrRow({
   }, [owner, repo, number]);
 
   const handleClick = useCallback(
-    (e: MouseEvent<HTMLDivElement>) => {
+    (e: MouseEvent<HTMLElement>) => {
       if ((e.target as HTMLElement).closest?.('[data-pr-card-action]')) return;
       useUiStore.getState().selectPrKey(key, number);
       if (e.ctrlKey || e.metaKey) openPopOut();
@@ -217,7 +216,7 @@ export const PrRow = memo(function PrRow({
   );
 
   const handleAuxClick = useCallback(
-    (e: MouseEvent<HTMLDivElement>) => {
+    (e: MouseEvent<HTMLElement>) => {
       if (e.button !== MIDDLE_BUTTON) return;
       if ((e.target as HTMLElement).closest?.('[data-pr-card-action]')) return;
       e.preventDefault();
@@ -226,6 +225,50 @@ export const PrRow = memo(function PrRow({
     },
     [key, number, openPopOut],
   );
+
+  const handleMouseDown = useCallback((e: MouseEvent<HTMLElement>) => {
+    // No autoscroll cursor on middle-click.
+    if (e.button === MIDDLE_BUTTON) e.preventDefault();
+  }, []);
+
+  const action = actionKind ? <RowAction kind={actionKind} prWithChecks={prWithChecks} /> : null;
+
+  return {
+    key,
+    selected,
+    cardData,
+    sharedFailure,
+    lens,
+    actions,
+    action,
+    openChecks,
+    handleClick,
+    handleAuxClick,
+    handleMouseDown,
+  };
+}
+
+export const PrRow = memo(function PrRow({
+  prWithChecks,
+  density = 'comfortable',
+  now,
+  animateKey = true,
+  meta,
+  keepSection = false,
+  extraAction,
+}: PrRowProps) {
+  const staleAfterDays = useSettingsStore((s) => s.settings.ui?.staleAfterDays);
+  const {
+    selected,
+    cardData,
+    sharedFailure,
+    actions,
+    action,
+    openChecks,
+    handleClick,
+    handleAuxClick,
+    handleMouseDown,
+  } = usePrRowBehaviour(prWithChecks, keepSection);
 
   return (
     <>
@@ -242,15 +285,12 @@ export const PrRow = memo(function PrRow({
         onChecksClick={openChecks}
         onClick={handleClick}
         onAuxClick={handleAuxClick}
-        onMouseDown={(e) => {
-          // No autoscroll cursor on middle-click.
-          if (e.button === MIDDLE_BUTTON) e.preventDefault();
-        }}
+        onMouseDown={handleMouseDown}
         onContextMenu={actions.handleContextMenu}
         action={
-          actionKind || extraAction ? (
+          action || extraAction ? (
             <>
-              {actionKind && <RowAction kind={actionKind} prWithChecks={prWithChecks} />}
+              {action}
               {extraAction}
             </>
           ) : null

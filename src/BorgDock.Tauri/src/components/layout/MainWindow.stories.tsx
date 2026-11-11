@@ -29,10 +29,12 @@ import {
   userStoryWithRichBody,
 } from '@/components/work-items/__fixtures__/work-item-data';
 import type { BriefFilter } from '@/services/dispatch/walk';
+import { DEFAULT_DISPLAY } from '@/services/pr-list/display';
 import { reviewRequestKey } from '@/services/priority-scoring';
 import { type DispatchViewMode, type RunIntent, useDispatchStore } from '@/stores/dispatch-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
+import { usePrViewStore } from '@/stores/pr-view-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { type ActiveSection, type MainView, useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
@@ -421,9 +423,16 @@ function Harness({
         dispatchFilter,
       );
     }
+    usePrViewStore.setState({
+      display: { ...DEFAULT_DISPLAY, groupBy },
+      baseDisplay: { ...DEFAULT_DISPLAY, groupBy },
+      savedViews: [],
+      activeViewId: null,
+      showCiSummary: true,
+      expandedGroups: new Set(),
+    });
     useUiStore.setState({
       activeSection: section,
-      prGroupBy: groupBy,
       viewStack: view ? [{ kind: 'list' }, view] : [{ kind: 'list' }],
     });
     useSettingsStore.setState((s) => ({

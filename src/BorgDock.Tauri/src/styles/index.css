@@ -12,6 +12,7 @@
 @import "./tool-windows.css";
 @import "./ci-failures.css";
 @import "./dependency-updates.css";
+@import "./pr-list.css";
 @import "./activity-workbench.css";
 @import "./notes-workbench.css";
 @import "./notes-editor.css";
@@ -4595,7 +4596,7 @@ body.sql-resizing-v .sql-resize-handle {
   }
   .bd-wb-head__search {
     display: flex;
-    flex: 0 1 220px;
+    flex: 0 1 360px;
     align-items: center;
     gap: 8px;
     min-width: 90px;
@@ -4800,13 +4801,24 @@ body.sql-resizing-v .sql-resize-handle {
     container-type: inline-size;
   }
 
-  /* Group heading: label, count, hairline (the mockup's `.wb-group`). */
-  .bd-wb-group__head {
+  /* Group heading: the fold button (chevron, label, count), an optional
+     summary, a hairline and an aside (the mockup's `.wb-group`). */
+  .bd-wb-group__headrow {
     display: flex;
     align-items: center;
-    gap: 8px;
-    width: 100%;
+    gap: 10px;
+    min-width: 0;
     padding: 14px 16px 6px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .bd-wb-group__head {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 0;
     border: 0;
     background: transparent;
     font: inherit;

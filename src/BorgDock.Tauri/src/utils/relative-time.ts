@@ -34,6 +34,21 @@ export function formatAgo(iso: string, now: number = Date.now()): string {
   return `${days} d ago`;
 }
 
+/**
+ * "now", "5m", "2h", "3d", "6w" — the narrow age of a table cell. Future
+ * timestamps read as "now"; an unparseable one gives an empty string.
+ */
+export function formatAgoShort(iso: string, now: number = Date.now()): string {
+  const then = timeOf(iso);
+  if (!Number.isFinite(then)) return '';
+  const diff = now - then;
+  if (diff < MINUTE) return 'now';
+  if (diff < HOUR) return `${Math.floor(diff / MINUTE)}m`;
+  if (diff < DAY) return `${Math.floor(diff / HOUR)}h`;
+  if (diff < 14 * DAY) return `${Math.floor(diff / DAY)}d`;
+  return `${Math.floor(diff / (7 * DAY))}w`;
+}
+
 /** True when `iso` is at least `days` days before `now`. */
 export function isOlderThanDays(
   iso: string,

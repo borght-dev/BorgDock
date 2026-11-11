@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pull requests: table view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+sc-for,sc-if{display:contents}
+a{color:#4f46e5}a:hover{color:#3730a3}
+.app{font-family:Inter,system-ui,sans-serif;color:#17181c;background:#ffffff;display:flex;flex-wrap:wrap;font-size:13px;min-height:100%;position:relative}
+.rail{flex:1 1 180px;max-width:196px;box-sizing:border-box;border-right:1px solid #e5e6ea;padding:14px 10px;display:flex;flex-direction:column;gap:2px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:650;font-size:14px;padding:0 8px 14px}
+.brand i{width:16px;height:16px;border-radius:4px;background:#4f46e5;display:block}
+.ri{display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;color:#5d606a}
+.ri b{font-weight:500;color:#6d707a;font-variant-numeric:tabular-nums}
+.ri.on{background:rgba(79,70,229,.08);color:#17181c;font-weight:500}
+.ri.on b{color:#4f46e5}
+.main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:12px;padding:14px 20px 8px;flex-wrap:wrap}
+.top h1{font-size:16px;font-weight:650;margin:0;letter-spacing:-.01em}
+.search{margin-left:auto;display:flex;align-items:center;gap:8px;height:30px;width:340px;max-width:100%;box-sizing:border-box;border:1px solid #d9dbe0;border-radius:7px;padding:0 10px;color:#6d707a;font-size:12.5px;background:#ffffff}
+.search input{border:0;outline:0;flex:1;min-width:0;font:inherit;color:#17181c;background:transparent}
+.kbd{font-family:"JetBrains Mono",monospace;font-size:10.5px;border:1px solid #e5e6ea;border-radius:4px;padding:1px 5px;color:#6d707a}
+.ic{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.iconbtn{width:30px;height:30px;border:1px solid #e5e6ea;border-radius:7px;background:#ffffff;color:#5d606a;display:grid;place-items:center;cursor:pointer}
+.tabs{display:flex;align-items:flex-end;gap:2px;padding:0 20px;border-bottom:1px solid #e5e6ea;overflow-x:auto}
+.tab{font:inherit;font-size:12.5px;border:0;background:transparent;color:#5d606a;padding:9px 10px 10px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;display:inline-flex;gap:6px;align-items:center;margin-bottom:-1px}
+.tab i{font-style:normal;color:#6d707a;font-variant-numeric:tabular-nums;font-size:11.5px}
+.tab:hover{color:#17181c}
+.tab.on{color:#17181c;border-bottom-color:#4f46e5;font-weight:600}
+.tab.on i{color:#4f46e5}
+.tab.add{color:#6d707a}
+.vbar{display:flex;align-items:center;gap:8px;padding:10px 20px;flex-wrap:wrap}
+.chipbtn{font:inherit;font-size:12px;height:28px;border:1px solid #d9dbe0;background:#ffffff;color:#17181c;border-radius:7px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap}
+.chipbtn:hover{background:#f6f6f8}
+.chipbtn span{color:#6d707a}
+.chipbtn.ghost{border-style:dashed;color:#5d606a}
+.chipbtn.on{border-color:#4f46e5;box-shadow:0 0 0 1px #4f46e5 inset}
+.spacer{flex:1}
+.anchor{position:relative;display:inline-flex}
+.menu{position:absolute;top:34px;right:0;z-index:30;min-width:236px;background:#ffffff;border-radius:10px;box-shadow:0 12px 32px rgba(20,22,30,.14),0 2px 6px rgba(20,22,30,.08),0 0 0 1px rgba(20,22,30,.08);padding:6px}
+.menu .ml{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#6d707a;font-weight:600;padding:6px 8px 4px}
+.mi{font:inherit;font-size:12.5px;display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:transparent;padding:6px 8px;border-radius:6px;cursor:pointer;color:#17181c}
+.mi:hover{background:#f3f3f6}
+.mi .ck{width:14px;color:#4f46e5;font-weight:700}
+.mi small{margin-left:auto;color:#6d707a;font-size:11px}
+.scrim{position:fixed;inset:0;z-index:20;background:transparent;border:0;cursor:default}
+.attn{display:flex;gap:8px;padding:0 20px 10px;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:10px;border:1px solid #e5e6ea;border-radius:8px;padding:7px 10px;font-size:12.5px;min-width:0;flex:1 1 380px}
+.pill.bad{border-color:rgba(214,69,96,.25);background:rgba(214,69,96,.04)}
+.pill .lead{font-weight:600;white-space:nowrap}
+.pill.bad .lead{color:#bf3552}
+.pill .sub{color:#5d606a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.linkbtn{font:inherit;font-size:12px;border:0;background:transparent;color:#4f46e5;cursor:pointer;padding:2px 4px;white-space:nowrap}
+.primary{font:inherit;font-size:12px;border:0;background:#4f46e5;color:#ffffff;border-radius:6px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+.fails{margin:0 20px 10px;border:1px solid rgba(214,69,96,.25);border-radius:8px;overflow:hidden}
+.fail{display:flex;gap:12px;align-items:center;padding:7px 12px;font-size:12.5px;border-top:1px solid #f0f0f3}
+.fail:first-child{border-top:0}
+.fail .msg{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fail .meta{color:#6d707a;white-space:nowrap;font-size:12px}
+.dot{width:7px;height:7px;border-radius:50%;background:#d64560;flex:none}
+.scroll{overflow-x:auto;padding:0 0 24px}
+.tbl{min-width:980px;padding:0 20px}
+.r,.hrow{display:grid;grid-template-columns:22px minmax(260px,1fr) 136px 150px 156px 84px 64px;column-gap:14px;align-items:center}
+.hrow{position:sticky;top:0;background:#ffffff;z-index:5;height:30px;border-bottom:1px solid #e5e6ea;font-size:11.5px;color:#6d707a;font-weight:500}
+.hc{font:inherit;border:0;background:transparent;color:inherit;padding:0;text-align:left;cursor:pointer;display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
+.hc:hover{color:#17181c}
+.hc.on{color:#17181c;font-weight:600}
+.hc.num,.hs.num{justify-content:flex-end;text-align:right}
+.hs{white-space:nowrap}
+.r{min-height:46px;border-bottom:1px solid #f1f1f4;padding:4px 0}
+.r:hover{background:#fafafb}
+.compact .r{min-height:32px;padding:2px 0}
+.compact .meta{display:none}
+.ct{min-width:0;display:flex;flex-direction:column;gap:2px}
+.tl{display:flex;align-items:center;gap:6px;min-width:0}
+.scope{color:#6d707a;flex:none;font-weight:500}
+.subj{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ab{flex:none;font-size:11px;color:#4f46e5;background:rgba(79,70,229,.07);border-radius:4px;padding:1px 5px;font-weight:500}
+.lbl{flex:none;font-size:10.5px;color:#5d606a;border:1px solid #e5e6ea;border-radius:999px;padding:0 6px}
+.meta{font-size:11.5px;color:#6d707a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glyph{width:10px;height:10px;border-radius:50%;display:block;margin:0 auto;box-sizing:border-box}
+.g-turn{background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.18)}
+.g-failing{background:#d64560}
+.g-waiting{border:2px solid #c98a12}
+.g-ready{background:#1f9d6b}
+.g-draft{border:2px dashed #8f929c}
+.g-plain{background:#c2c4cb}
+.cb{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums}
+.bar{display:flex;width:40px;height:5px;border-radius:3px;overflow:hidden;background:#ececf0;flex:none}
+.bar span{display:block;height:100%}
+.s-ok{background:#1f9d6b}.s-fail{background:#d64560}.s-run{background:#e2a93b}
+.t-ok{color:#1a7f57}.t-bad{color:#bf3552}.t-wait{color:#8f620b}.t-muted{color:#5d606a}.t-faint{color:#6d707a}.t-you{color:#4f46e5;font-weight:600}
+.shared{font-size:10.5px;color:#8f620b;background:rgba(201,138,18,.12);border-radius:4px;padding:1px 5px;font-weight:500}
+.rv{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:12px}
+.stack{display:inline-flex}
+.av{width:22px;height:22px;border-radius:50%;display:inline-grid;place-items:center;font-size:9px;font-weight:700;color:#ffffff;flex:none}
+.av-s{width:20px;height:20px;font-size:8.5px;margin-left:-5px;box-shadow:0 0 0 2px #ffffff}
+.stack .av-s:first-child{margin-left:0}
+.ring-approved{box-shadow:0 0 0 2px #ffffff,0 0 0 3.5px #1f9d6b}
+.ring-changes{box-shadow:0 0 0 2px #ffffff,0 0 0 3.5px #d64560}
+.ring-pending{opacity:.55}
+.next{display:inline-flex;align-items:center;font-size:11.5px;border-radius:999px;padding:2px 9px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;border:1px solid #e5e6ea;color:#5d606a}
+.n-you{background:#4f46e5;border-color:#4f46e5;color:#ffffff;font-weight:600}
+.n-go{background:rgba(31,157,107,.1);border-color:rgba(31,157,107,.3);color:#1a7f57;font-weight:600}
+.n-block{border-color:rgba(214,69,96,.3);color:#bf3552}
+.n-wait{border-color:rgba(201,138,18,.3);color:#8f620b}
+.size{font-family:"JetBrains Mono",monospace;font-size:11px;text-align:right;white-space:nowrap}
+.size .add{color:#1a7f57}.size .del{color:#bf3552}
+.sz{display:inline-block;font-family:Inter,sans-serif;font-size:10px;font-weight:600;color:#5d606a;background:#f1f1f4;border-radius:3px;padding:0 4px;margin-right:6px}
+.upd{text-align:right;font-size:12px;color:#5d606a;font-variant-numeric:tabular-nums;white-space:nowrap}
+.upd.stale{color:#8f620b;font-weight:600}
+.gh{display:flex;align-items:center;gap:10px;padding:16px 0 6px;border-bottom:1px solid #e5e6ea;flex-wrap:wrap}
+.ghb{font:inherit;display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;padding:0;cursor:pointer;color:#17181c}
+.ghb .lab{font-weight:600;font-size:13px}
+.ghb .n{color:#6d707a;font-variant-numeric:tabular-nums}
+.chev{transition:transform .15s}
+.chev.closed{transform:rotate(-90deg)}
+.gbar{display:flex;width:84px;height:6px;border-radius:3px;overflow:hidden;background:#ececf0}
+.gbar span{display:block;height:100%}
+.b-turn{background:#4f46e5}.b-failing{background:#d64560}.b-waiting{background:#e2a93b}.b-ready{background:#1f9d6b}.b-draft{background:#b9bbc3}
+.gstats{font-size:12px;color:#5d606a}
+.ghint{font-size:12px;color:#6d707a}
+.gsize{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:11px;color:#6d707a}
+.empty{padding:48px 0;text-align:center;color:#6d707a}
+.foot{display:flex;gap:16px;padding:8px 20px;border-top:1px solid #e5e6ea;font-size:11.5px;color:#6d707a;flex-wrap:wrap}
+</style>
+</helmet>
+<div class="app">
+  <nav class="rail" aria-label="Sections">
+    <div class="brand"><i></i>BorgDock</div>
+    <span class="ri">Focus <b>79</b></span>
+    <span class="ri">Dispatch <b>10</b></span>
+    <span class="ri">Workstreams</span>
+    <span class="ri on">Pull requests <b>23</b></span>
+    <span class="ri">Work items <b>28</b></span>
+    <span class="ri">Worktrees <b>142</b></span>
+    <span class="ri">Activity <b>774</b></span>
+    <span class="ri">Notes</span>
+  </nav>
+  <main class="main">
+    <div class="top">
+      <h1>Pull requests</h1>
+      <label class="search">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input type="text" placeholder="Search, or filter: author:vera is:failing repo:shop-web" aria-label="Search pull requests">
+        <span class="kbd">Ctrl K</span>
+      </label>
+      <button type="button" class="iconbtn" aria-label="Refresh"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg></button>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Views">
+      <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="6">
+        <button type="button" role="tab" class="tab {{tb.cls}}" aria-selected="{{tb.on}}" onClick="{{tb.pick}}">{{tb.label}} <i>{{tb.count}}</i></button>
+      </sc-for>
+      <button type="button" class="tab add" title="Save the current filters, grouping and order as a view">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>View
+      </button>
+    </div>
+
+    <div class="vbar">
+      <button type="button" class="chipbtn ghost">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>Filter
+      </button>
+      <span class="spacer"></span>
+      <span class="anchor">
+        <button type="button" class="chipbtn {{groupBtnCls}}" aria-haspopup="menu" aria-expanded="{{groupMenuOpen}}" onClick="{{openGroup}}">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path></svg>
+          <span>Group</span> {{groupLabel}}
+        </button>
+        <sc-if value="{{groupMenuOpen}}" hint-placeholder-val="{{ false }}">
+          <div class="menu" role="menu" aria-label="Group by">
+            <div class="ml">Group by</div>
+            <sc-for list="{{groupOpts}}" as="o" hint-placeholder-count="6">
+              <button type="button" role="menuitemradio" aria-checked="{{o.on}}" class="mi" onClick="{{o.pick}}"><span class="ck">{{o.mark}}</span>{{o.label}}<small>{{o.hint}}</small></button>
+            </sc-for>
+          </div>
+        </sc-if>
+      </span>
+      <span class="anchor">
+        <button type="button" class="chipbtn {{sortBtnCls}}" aria-haspopup="menu" aria-expanded="{{sortMenuOpen}}" onClick="{{openSort}}">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 16 4 4 4-4"></path><path d="M7 20V4"></path><path d="m21 8-4-4-4 4"></path><path d="M17 4v16"></path></svg>
+          <span>Sort</span> {{sortLabel}}
+        </button>
+        <sc-if value="{{sortMenuOpen}}" hint-placeholder-val="{{ false }}">
+          <div class="menu" role="menu" aria-label="Sort by">
+            <div class="ml">Order by</div>
+            <sc-for list="{{sortOpts}}" as="o" hint-placeholder-count="5">
+              <button type="button" role="menuitemradio" aria-checked="{{o.on}}" class="mi" onClick="{{o.pick}}"><span class="ck">{{o.mark}}</span>{{o.label}}<small>{{o.hint}}</small></button>
+            </sc-for>
+            <div class="ml">Direction</div>
+            <button type="button" class="mi" onClick="{{flipDir}}"><span class="ck"></span>{{dirLabel}}<small>click to reverse</small></button>
+          </div>
+        </sc-if>
+      </span>
+      <button type="button" class="chipbtn" title="Layout, sub-grouping and visible columns (artboard B)">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4h-7"></path><path d="M10 4H3"></path><path d="M21 12h-9"></path><path d="M8 12H3"></path><path d="M21 20h-5"></path><path d="M12 20H3"></path><path d="M14 2v4"></path><path d="M8 10v4"></path><path d="M16 18v4"></path></svg>Display
+      </button>
+    </div>
+
+    <div class="attn">
+      <div class="pill bad">
+        <span class="dot"></span>
+        <span class="lead">3 shared CI failures block 6 PRs</span>
+        <span class="sub">Worst: No files were found at e2e/test-results (4 PRs)</span>
+        <button type="button" class="linkbtn" onClick="{{toggleCi}}">{{ciBtn}}</button>
+      </div>
+      <div class="pill">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"></path><path d="m3 8 9 5 9-5"></path><path d="M12 13v8"></path></svg>
+        <span class="lead">2 dependency updates</span>
+        <span class="sub">1 ready to approve · 1 failing</span>
+        <button type="button" class="primary">Approve 1</button>
+      </div>
+    </div>
+    <sc-if value="{{ciOpen}}" hint-placeholder-val="{{ false }}">
+      <div class="fails">
+        <div class="fail"><span class="dot"></span><span class="msg">No files were found at e2e/test-results. No artifacts will be uploaded.</span><span class="meta">4 PRs · first failed 1 h ago · no owner</span><button type="button" class="linkbtn">Show PRs</button><button type="button" class="linkbtn">Fix once…</button></div>
+        <div class="fail"><span class="dot"></span><span class="msg">The action 'Install Playwright browsers' has timed out after 10 minutes.</span><span class="meta">1 PR · first failed 1 h ago · no owner</span><button type="button" class="linkbtn">Show PRs</button><button type="button" class="linkbtn">Fix once…</button></div>
+        <div class="fail"><span class="dot"></span><span class="msg">Unhandled error: expected one completed Claude report for this run, found 0</span><span class="meta">1 PR · also on main · no owner</span><button type="button" class="linkbtn">Show PRs</button><button type="button" class="linkbtn">Fix once…</button></div>
+      </div>
+    </sc-if>
+
+    <div class="scroll">
+      <div class="tbl {{densityCls}}">
+        <div class="hrow">
+          <span></span>
+          <button type="button" class="hc {{hd.title.cls}}" onClick="{{hd.title.click}}">Pull request {{hd.title.arrow}}</button>
+          <span class="hs">Checks</span>
+          <span class="hs">Reviews</span>
+          <span class="hs">Next step</span>
+          <button type="button" class="hc num {{hd.size.cls}}" onClick="{{hd.size.click}}">Size {{hd.size.arrow}}</button>
+          <button type="button" class="hc num {{hd.updated.cls}}" onClick="{{hd.updated.click}}">Updated {{hd.updated.arrow}}</button>
+        </div>
+
+        <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+          <div class="empty">No pull requests in this view</div>
+        </sc-if>
+
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+          <sc-if value="{{g.hasHead}}" hint-placeholder-val="{{ true }}">
+            <div class="gh">
+              <button type="button" class="ghb" aria-expanded="{{g.open}}" onClick="{{g.toggle}}">
+                <svg class="ic chev {{g.chevCls}}" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                <sc-if value="{{g.hasAv}}" hint-placeholder-val="{{ false }}"><span class="av" style="background: {{g.avCol}}">{{g.avIni}}</span></sc-if>
+                <sc-if value="{{g.hasGlyph}}" hint-placeholder-val="{{ true }}"><span class="glyph g-{{g.bucket}}" style="margin: 0"></span></sc-if>
+                <span class="lab">{{g.label}}</span>
+                <span class="n">{{g.count}}</span>
+              </button>
+              <span class="gbar" aria-hidden="true">
+                <span class="b-turn" style="width: {{g.w.turn}}%"></span>
+                <span class="b-failing" style="width: {{g.w.failing}}%"></span>
+                <span class="b-waiting" style="width: {{g.w.waiting}}%"></span>
+                <span class="b-ready" style="width: {{g.w.ready}}%"></span>
+                <span class="b-draft" style="width: {{g.w.draft}}%"></span>
+              </span>
+              <span class="gstats">{{g.stats}}</span>
+              <sc-if value="{{g.hasHint}}" hint-placeholder-val="{{ false }}"><span class="ghint">· {{g.hint}}</span></sc-if>
+              <span class="gsize">{{g.size}}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{g.open}}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{g.rows}}" as="row" hint-placeholder-count="4">
+              <div class="r">
+                <span title="{{row.bucketLabel}}"><span class="glyph g-{{row.glyph}}"></span></span>
+                <div class="ct">
+                  <div class="tl">
+                    <sc-if value="{{row.hasScope}}" hint-placeholder-val="{{ true }}"><span class="scope">{{row.scope}}</span></sc-if>
+                    <span class="subj">{{row.t}}</span>
+                    <sc-if value="{{row.hasAb}}" hint-placeholder-val="{{ true }}"><span class="ab">{{row.abText}}</span></sc-if>
+                    <sc-for list="{{row.labels}}" as="lb" hint-placeholder-count="0"><span class="lbl">{{lb.name}}</span></sc-for>
+                  </div>
+                  <div class="meta">{{row.meta}}</div>
+                </div>
+                <div class="cb">
+                  <span class="bar"><span class="s-ok" style="width: {{row.okW}}%"></span><span class="s-fail" style="width: {{row.failW}}%"></span><span class="s-run" style="width: {{row.runW}}%"></span></span>
+                  <span class="t-{{row.checkTone}}">{{row.checkText}}</span>
+                  <sc-if value="{{row.hasShared}}" hint-placeholder-val="{{ false }}"><span class="shared" title="{{row.sharedMsg}}">{{row.sharedText}}</span></sc-if>
+                </div>
+                <div class="rv">
+                  <span class="stack">
+                    <sc-for list="{{row.revAv}}" as="ra" hint-placeholder-count="1"><span class="av av-s ring-{{ra.s}}" style="background: {{ra.col}}" title="{{ra.title}}">{{ra.ini}}</span></sc-for>
+                  </span>
+                  <span class="t-{{row.revTone}}">{{row.revText}}</span>
+                </div>
+                <div><span class="next n-{{row.nextTone}}">{{row.next}}</span></div>
+                <div class="size"><span class="sz">{{row.sz}}</span><span class="add">+{{row.add}}</span> <span class="del">−{{row.del}}</span></div>
+                <div class="upd {{row.updCls}}">{{row.upd}}</div>
+              </div>
+            </sc-for>
+          </sc-if>
+        </sc-for>
+      </div>
+    </div>
+    <div class="foot"><span>Synced 12 s ago</span><span>4,357 of 5,000 requests left</span><span class="spacer"></span><span>/ search · G group · S sort · V next view</span></div>
+  </main>
+  <sc-if value="{{anyMenu}}" hint-placeholder-val="{{ false }}">
+    <button type="button" class="scrim" aria-label="Close menu" onClick="{{closeMenus}}"></button>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"density":{"editor":"enum","options":["comfortable","compact"],"default":"comfortable"},"$preview":{"width":1440,"height":1360}}'>
+var H = 60, D = 1440;
+var AUTHORS = {
+  you: { name: 'you', ini: 'KV', col: '#15803d' },
+  vera: { name: 'vera', ini: 'VE', col: '#5b4bc4' },
+  maria: { name: 'maria', ini: 'MA', col: '#b45309' },
+  jonas: { name: 'jonas', ini: 'JO', col: '#0e7490' },
+  dependabot: { name: 'dependabot', ini: 'DB', col: '#475569' }
+};
+var SHARED_A = 'No files were found at e2e/test-results. No artifacts will be uploaded.';
+var PRS = [
+  { n: 6398, repo: 'shop-api', scope: 'fix(grids):', t: 'answer filter values too long for a LIKE pattern instead of a 500', ab: '61313', a: 'you', c: [17, 0, 2], rv: 'commented', revs: [['maria', 'commented']], req: [], cr: 26 * H, up: 2, add: 42, del: 8 },
+  { n: 6388, repo: 'shop-api', scope: 'fix(mobile-api):', t: 'bound the inbound shadow predecessor wait inside the device cap', ab: '61901', a: 'you', c: [61, 1, 0], sh: 1, shMsg: "The action 'Install Playwright browsers' has timed out after 10 minutes.", rv: 'commented', revs: [['jonas', 'commented']], req: [], cr: 2 * D, up: 4, add: 120, del: 35 },
+  { n: 6382, repo: 'shop-api', scope: 'feat(teams):', t: 'check environment, fixes and existing items before filing a Teams request', a: 'you', c: [60, 0, 2], rv: 'none', revs: [], req: ['maria', 'jonas'], cr: 3 * D, up: 6, add: 410, del: 52 },
+  { n: 6397, repo: 'shop-api', scope: 'fix(orders):', t: 'void a margin acceptance when the cost of an order that sells nothing changes', ab: '60469', a: 'you', c: [45, 0, 1], rv: 'none', revs: [], req: ['maria'], cr: D, up: 10, add: 88, del: 12 },
+  { n: 6377, repo: 'shop-web', scope: 'fix(profitability):', t: 'show item names, not translation keys, in the profitability sections', ab: '60468', a: 'you', c: [50, 5, 0], rv: 'none', revs: [], req: ['jonas'], cr: 4 * D, up: 9, add: 64, del: 20 },
+  { n: 1268, repo: 'mobile', scope: '', t: 'Quote pricing keeps its ten-minute wait on Android', ab: '61881', a: 'you', c: [5, 0, 0], rv: 'none', revs: [], req: ['maria'], cr: 2 * D, up: 2 * H, add: 30, del: 6 },
+  { n: 6365, repo: 'shop-api', scope: 'docs(plans):', t: 'record the decisions for the Teams integration plan', a: 'you', c: [2, 0, 0], rv: 'approved', revs: [['maria', 'approved']], req: [], cr: D, up: 5 * H, add: 210, del: 0 },
+  { n: 6298, repo: 'shop-web', scope: 'test(e2e):', t: 'pick usable planboard engineers, not the top rows', a: 'you', c: [40, 2, 0], nc: true, shMsg: 'Expected one completed Claude report for this run, found 0 (also on main)', conf: true, rv: 'commented', revs: [['jonas', 'commented']], req: [], cr: 9 * D, up: 22 * H, add: 56, del: 40 },
+  { n: 1226, repo: 'mobile', scope: '', t: 'Price imported line items on the server for item-pricing organisations', ab: '60455', a: 'you', c: [5, 0, 0], rv: 'none', revs: [], req: ['jonas'], cr: 6 * D, up: D, add: 140, del: 22 },
+  { n: 6368, repo: 'shop-web', scope: 'fix(search):', t: 'resolve configured custom-field filter aliases', ab: '61472', a: 'vera', c: [54, 1, 0], sh: 4, shMsg: SHARED_A, rv: 'commented', revs: [['you', 'commented']], req: [], cr: 2 * D, up: 1, add: 76, del: 14 },
+  { n: 6403, repo: 'shop-api', scope: 'fix(users):', t: 'exempt system accounts from licence limits', ab: '61804', a: 'vera', c: [21, 0, 7], rv: 'none', revs: [], req: ['you'], cr: 3 * H, up: 1, add: 48, del: 9 },
+  { n: 6395, repo: 'shop-web', scope: 'fix(planboard):', t: 'load the order list when customer number and a custom field are combined', ab: '61576', a: 'vera', c: [16, 0, 6], rv: 'none', revs: [], req: ['you'], cr: D, up: 3, add: 132, del: 41 },
+  { n: 6396, repo: 'shop-web', scope: 'docs(customer):', t: 'Quotes bundle: corrected list guide, help, tour and screenshots', ab: '61948', a: 'vera', c: [53, 2, 0], sh: 4, shMsg: SHARED_A, rv: 'commented', revs: [['you', 'commented']], req: [], cr: D, up: 5, add: 620, del: 180 },
+  { n: 6402, repo: 'shop-web', scope: 'fix(planboard):', t: 'unplan at once with a working Ctrl+Z, and say so in the guide', ab: '61610', a: 'vera', c: [55, 1, 0], sh: 4, shMsg: SHARED_A, rv: 'none', revs: [], req: ['you'], cr: 2 * D, up: 7, add: 94, del: 30 },
+  { n: 6400, repo: 'shop-web', scope: 'fix(planboard):', t: '2 Days view shows the configured working hours', ab: '61750', a: 'vera', c: [56, 0, 0], rv: 'approved', revs: [['you', 'approved']], req: [], cr: 3 * D, up: 40, add: 38, del: 12 },
+  { n: 6385, repo: 'shop-web', scope: 'fix(planboard):', t: 'keep timeline travel buffers inside the gap to the neighbouring order', ab: '61563', a: 'vera', c: [56, 0, 0], rv: 'none', revs: [], req: ['you'], cr: 4 * D, up: 3 * H, add: 71, del: 18 },
+  { n: 6255, repo: 'shop-web', scope: 'fix(grid):', t: 'keep group headers under column filters', ab: '61627', a: 'vera', c: [55, 1, 0], sh: 4, shMsg: SHARED_A, rv: 'changes', revs: [['you', 'changes']], req: [], cr: 12 * D, up: 9 * D, add: 160, del: 66 },
+  { n: 6371, repo: 'shop-web', scope: 'feat(reports):', t: 'export the margin report as CSV', a: 'maria', c: [58, 0, 0], rv: 'approved', revs: [['jonas', 'approved'], ['you', 'approved']], req: [], cr: 2 * D, up: 3 * H, add: 180, del: 12, labels: ['reports'] },
+  { n: 6390, repo: 'shop-api', scope: 'refactor(pricing):', t: 'split the order pricing service', a: 'jonas', draft: true, c: [3, 0, 0], rv: 'none', revs: [], req: [], cr: 5 * D, up: D, add: 1240, del: 980 },
+  { n: 6359, repo: 'shop-web', scope: 'chore(deps):', t: 'bump vite from 7.1.2 to 7.1.5', a: 'dependabot', c: [58, 0, 0], rv: 'none', revs: [], req: ['you'], cr: D, up: 20 * H, add: 6, del: 6, labels: ['dependencies'] },
+  { n: 6360, repo: 'shop-web', scope: 'chore(deps):', t: 'bump @sentry/browser from 10.3.0 to 10.4.1', a: 'dependabot', c: [57, 1, 0], rv: 'none', revs: [], req: ['you'], cr: D, up: 20 * H, add: 6, del: 6, labels: ['dependencies'] },
+  { n: 412, repo: 'infra', scope: 'ci:', t: 'cache Playwright browsers between runs', a: 'jonas', c: [4, 0, 5], rv: 'none', revs: [], req: ['you', 'maria'], cr: 5 * H, up: 30, add: 44, del: 3 },
+  { n: 415, repo: 'infra', scope: 'feat(k8s):', t: 'add a staging-6 namespace', a: 'maria', draft: true, c: [2, 0, 0], rv: 'none', revs: [], req: [], cr: 15 * D, up: 11 * D, add: 96, del: 0 }
+];
+
+var BUCKETS = {
+  turn: { label: 'Your turn', hint: 'your review is requested, or your PR needs a fix or a reply' },
+  failing: { label: 'Failing', hint: 'red checks on someone else’s PR, shared failures included' },
+  waiting: { label: 'Waiting for review', hint: 'green or running, no approval yet' },
+  ready: { label: 'Ready to merge', hint: 'approved, green, no conflicts' },
+  draft: { label: 'Draft', hint: 'not ready for review' }
+};
+var BUCKET_ORDER = ['turn', 'failing', 'waiting', 'ready', 'draft'];
+
+var REVIEW_GROUPS = {
+  you: 'Awaiting your review', changes: 'Changes requested', commented: 'Commented',
+  others: 'Awaiting other reviewers', approved: 'Approved', none: 'No reviewers'
+};
+var REVIEW_ORDER = ['you', 'changes', 'commented', 'others', 'approved', 'none'];
+var AGE_GROUPS = { today: 'Opened today', week: 'Opened this week', older: 'Older than a week' };
+var AGE_ORDER = ['today', 'week', 'older'];
+
+var GROUP_OPTS = [
+  { key: 'status', label: 'Status', hint: 'what it waits on' },
+  { key: 'author', label: 'Author', hint: '' },
+  { key: 'repo', label: 'Repository', hint: '' },
+  { key: 'review', label: 'Review state', hint: '' },
+  { key: 'age', label: 'Age', hint: 'opened' },
+  { key: 'none', label: 'No grouping', hint: '' }
+];
+var SORT_OPTS = [
+  { key: 'priority', label: 'Priority', hint: 'your turn first, oldest first', dir: 'desc' },
+  { key: 'updated', label: 'Last updated', hint: '', dir: 'desc' },
+  { key: 'created', label: 'Created', hint: '', dir: 'desc' },
+  { key: 'title', label: 'Title', hint: '', dir: 'asc' },
+  { key: 'size', label: 'Size', hint: 'lines changed', dir: 'desc' }
+];
+var VIEWS = [
+  { key: 'all', label: 'All' },
+  { key: 'turn', label: 'Your turn' },
+  { key: 'mine', label: 'Mine' },
+  { key: 'failing', label: 'Failing' },
+  { key: 'ready', label: 'Ready to merge' },
+  { key: 'stale', label: 'Stale' }
+];
+
+function ago(m) {
+  if (m < H) return m + 'm';
+  if (m < D) return Math.floor(m / H) + 'h';
+  if (m < 14 * D) return Math.floor(m / D) + 'd';
+  return Math.floor(m / (7 * D)) + 'w';
+}
+function sizeLabel(n) { return n < 10 ? 'XS' : n < 100 ? 'S' : n < 500 ? 'M' : n < 1000 ? 'L' : 'XL'; }
+function fmtNum(n) { return n.toLocaleString('en-US'); }
+
+function derive(p) {
+  var ok = p.c[0], fail = p.c[1], run = p.c[2], total = ok + fail + run;
+  var mine = p.a === 'you';
+  var req = p.req || [];
+  var needsMyReview = !mine && req.indexOf('you') >= 0;
+  var failing = fail > 0, running = run > 0;
+  var shared = !!p.sh || !!p.nc;
+  var ready = !p.draft && !failing && !running && p.rv === 'approved' && !p.conf;
+  var turn = needsMyReview || (mine && !p.draft && ((failing && !shared) || p.conf || p.rv === 'changes' || p.rv === 'commented'));
+  var bucket = p.draft ? 'draft' : turn ? 'turn' : ready ? 'ready' : failing ? 'failing' : 'waiting';
+  var next, tone;
+  if (p.draft) { next = 'Finish draft · ' + p.a; tone = 'them'; }
+  else if (p.conf) { next = mine ? 'Resolve conflicts' : 'Conflicts · ' + p.a; tone = mine ? 'you' : 'block'; }
+  else if (needsMyReview) { next = 'Your review'; tone = 'you'; }
+  else if (failing && !shared) { next = mine ? 'Fix checks' : 'Fix checks · ' + p.a; tone = mine ? 'you' : 'block'; }
+  else if (p.rv === 'changes') { next = mine ? 'Address changes' : 'Address changes · ' + p.a; tone = mine ? 'you' : 'them'; }
+  else if (mine && p.rv === 'commented') { next = 'Reply to comments'; tone = 'you'; }
+  else if (failing && shared) { next = 'Blocked by shared CI'; tone = 'block'; }
+  else if (running) { next = 'Checks running'; tone = 'wait'; }
+  else if (ready) { next = mine ? 'Merge' : 'Merge · ' + p.a; tone = 'go'; }
+  else if (req.length) { next = 'Review · ' + req.filter(function (r) { return r !== 'you'; }).join(', '); tone = 'them'; }
+  else { next = 'Request a review'; tone = mine ? 'you' : 'them'; }
+
+  var reviewKey = needsMyReview ? 'you' : p.rv === 'changes' ? 'changes' : p.rv === 'commented' ? 'commented' : p.rv === 'approved' ? 'approved' : req.length ? 'others' : 'none';
+  var revText, revTone;
+  if (p.rv === 'approved') { revText = 'Approved'; revTone = 'ok'; }
+  else if (p.rv === 'changes') { revText = 'Changes requested'; revTone = 'bad'; }
+  else if (needsMyReview) { revText = 'Awaiting you'; revTone = 'you'; }
+  else if (p.rv === 'commented') { revText = 'Commented'; revTone = 'muted'; }
+  else if (req.length) { revText = 'Awaiting ' + req.length; revTone = 'wait'; }
+  else { revText = 'No reviewers'; revTone = 'faint'; }
+  var revAv = (p.revs || []).map(function (r) {
+    var who = AUTHORS[r[0]];
+    return { ini: who.ini, col: who.col, s: r[1], title: who.name + ': ' + r[1] };
+  }).concat(req.map(function (r) {
+    var who = AUTHORS[r];
+    return { ini: who.ini, col: who.col, s: 'pending', title: who.name + ': requested' };
+  }));
+
+  var checkText = fail ? fail + ' failing' : run ? ok + ' of ' + total : total + ' passed';
+  var checkTone = fail ? 'bad' : run ? 'wait' : 'ok';
+  var lines = p.add + p.del;
+  var score = { turn: 4000, ready: 3000, failing: 2000, waiting: 1000, draft: 0 }[bucket] + Math.min(p.cr / H, 999);
+  var ageKey = p.cr < D ? 'today' : p.cr < 7 * D ? 'week' : 'older';
+  return {
+    p: p, mine: mine, failing: failing, ready: ready, bucket: bucket, reviewKey: reviewKey, ageKey: ageKey,
+    score: score, lines: lines, stale: p.up > 7 * D,
+    row: {
+      key: p.repo + '#' + p.n,
+      glyph: bucket, bucketLabel: BUCKETS[bucket].label,
+      hasScope: !!p.scope, scope: p.scope, t: p.t,
+      hasAb: !!p.ab, abText: p.ab ? 'AB#' + p.ab : '',
+      labels: (p.labels || []).map(function (l) { return { name: l }; }),
+      okW: total ? (ok / total) * 100 : 0, failW: total ? (fail / total) * 100 : 0, runW: total ? (run / total) * 100 : 0,
+      checkText: checkText, checkTone: checkTone,
+      hasShared: shared, sharedText: p.nc ? 'not this PR' : 'shared ×' + (p.sh || 1), sharedMsg: p.shMsg || '',
+      revAv: revAv, revText: revText, revTone: revTone,
+      next: next, nextTone: tone,
+      sz: sizeLabel(lines), add: fmtNum(p.add), del: fmtNum(p.del),
+      upd: ago(p.up), updCls: p.up > 7 * D ? 'stale' : ''
+    }
+  };
+}
+
+var ALL = PRS.map(derive);
+
+function inView(d, view) {
+  if (view === 'turn') return d.bucket === 'turn';
+  if (view === 'mine') return d.mine;
+  if (view === 'failing') return d.failing;
+  if (view === 'ready') return d.ready;
+  if (view === 'stale') return d.stale;
+  return true;
+}
+
+function sortValue(d, key) {
+  if (key === 'updated') return -d.p.up;
+  if (key === 'created') return -d.p.cr;
+  if (key === 'size') return d.lines;
+  if (key === 'title') return (d.p.scope + ' ' + d.p.t).toLowerCase();
+  return d.score;
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { view: 'all', groupBy: 'status', sortBy: 'priority', dir: 'desc', menu: null, collapsed: {}, ciOpen: false };
+  }
+
+  setSort(key) {
+    var opt = SORT_OPTS.filter(function (o) { return o.key === key; })[0];
+    if (this.state.sortBy === key) this.setState({ dir: this.state.dir === 'asc' ? 'desc' : 'asc', menu: null });
+    else this.setState({ sortBy: key, dir: opt.dir, menu: null });
+  }
+
+  renderVals() {
+    var self = this;
+    var st = this.state;
+    var groupBy = st.groupBy;
+
+    var tabs = VIEWS.map(function (v) {
+      var count = ALL.filter(function (d) { return inView(d, v.key); }).length;
+      var on = st.view === v.key;
+      return { label: v.label, count: count, on: on, cls: on ? 'on' : '', pick: function () { self.setState({ view: v.key }); } };
+    });
+
+    var list = ALL.filter(function (d) { return inView(d, st.view); });
+    var mul = st.dir === 'asc' ? 1 : -1;
+    list = list.slice().sort(function (a, b) {
+      var va = sortValue(a, st.sortBy), vb = sortValue(b, st.sortBy);
+      if (typeof va === 'string') return va.localeCompare(vb) * mul;
+      if (va !== vb) return (va - vb) * mul;
+      return b.p.n - a.p.n;
+    });
+
+    var buckets = {};
+    var order = [];
+    function put(key, d) {
+      if (!buckets[key]) { buckets[key] = []; order.push(key); }
+      buckets[key].push(d);
+    }
+    list.forEach(function (d) {
+      var key = groupBy === 'status' ? d.bucket
+        : groupBy === 'author' ? d.p.a
+        : groupBy === 'repo' ? d.p.repo
+        : groupBy === 'review' ? d.reviewKey
+        : groupBy === 'age' ? d.ageKey
+        : 'all';
+      put(key, d);
+    });
+    if (groupBy === 'status') order = BUCKET_ORDER.filter(function (k) { return buckets[k]; });
+    if (groupBy === 'review') order = REVIEW_ORDER.filter(function (k) { return buckets[k]; });
+    if (groupBy === 'age') order = AGE_ORDER.filter(function (k) { return buckets[k]; });
+    if (groupBy === 'author' || groupBy === 'repo') {
+      order.sort(function (a, b) {
+        if (a === 'you') return -1;
+        if (b === 'you') return 1;
+        return buckets[b].length - buckets[a].length || a.localeCompare(b);
+      });
+    }
+
+    var groups = order.map(function (key) {
+      var items = buckets[key];
+      var counts = { turn: 0, failing: 0, waiting: 0, ready: 0, draft: 0 };
+      var add = 0, del = 0;
+      items.forEach(function (d) { counts[d.bucket]++; add += d.p.add; del += d.p.del; });
+      var w = {};
+      BUCKET_ORDER.forEach(function (b) { w[b] = (counts[b] / items.length) * 100; });
+      var stats = [];
+      if (groupBy !== 'status') {
+        if (counts.turn) stats.push(counts.turn + ' your turn');
+        if (counts.failing) stats.push(counts.failing + ' failing');
+        if (counts.ready) stats.push(counts.ready + ' ready');
+        if (counts.draft) stats.push(counts.draft + ' draft');
+      }
+      var label = groupBy === 'status' ? BUCKETS[key].label
+        : groupBy === 'author' ? (key === 'you' ? 'You' : AUTHORS[key].name)
+        : groupBy === 'repo' ? 'acme/' + key
+        : groupBy === 'review' ? REVIEW_GROUPS[key]
+        : groupBy === 'age' ? AGE_GROUPS[key]
+        : 'All';
+      var open = !st.collapsed[groupBy + ':' + key];
+      return {
+        key: key, label: label, count: items.length, open: open,
+        chevCls: open ? '' : 'closed',
+        toggle: function () {
+          var next = Object.assign({}, st.collapsed);
+          next[groupBy + ':' + key] = open;
+          self.setState({ collapsed: next });
+        },
+        hasHead: groupBy !== 'none',
+        hasAv: groupBy === 'author', avIni: groupBy === 'author' ? AUTHORS[key].ini : '', avCol: groupBy === 'author' ? AUTHORS[key].col : '',
+        hasGlyph: groupBy === 'status', bucket: groupBy === 'status' ? key : 'plain',
+        hasHint: groupBy === 'status', hint: groupBy === 'status' ? BUCKETS[key].hint : '',
+        w: w, stats: stats.join(' · '),
+        size: '+' + fmtNum(add) + ' −' + fmtNum(del),
+        rows: items.map(function (d) {
+          var parts = [];
+          if (groupBy !== 'repo') parts.push(d.p.repo + ' #' + d.p.n); else parts.push('#' + d.p.n);
+          if (groupBy !== 'author') parts.push(d.mine ? 'you' : AUTHORS[d.p.a].name);
+          parts.push('opened ' + ago(d.p.cr) + ' ago');
+          return Object.assign({}, d.row, { meta: parts.join(' · ') });
+        })
+      };
+    });
+
+    function header(key) {
+      var on = st.sortBy === key;
+      return {
+        cls: on ? 'on' : '',
+        arrow: on ? (st.dir === 'asc' ? '↑' : '↓') : '',
+        click: function () { self.setSort(key); }
+      };
+    }
+
+    var groupOpt = GROUP_OPTS.filter(function (o) { return o.key === groupBy; })[0];
+    var sortOpt = SORT_OPTS.filter(function (o) { return o.key === st.sortBy; })[0];
+    var dirLabel = st.sortBy === 'title'
+      ? (st.dir === 'asc' ? 'A to Z' : 'Z to A')
+      : st.sortBy === 'priority'
+        ? (st.dir === 'desc' ? 'Most urgent first' : 'Least urgent first')
+        : st.sortBy === 'size'
+          ? (st.dir === 'desc' ? 'Largest first' : 'Smallest first')
+          : (st.dir === 'desc' ? 'Newest first' : 'Oldest first');
+
+    return {
+      tabs: tabs,
+      groups: groups,
+      isEmpty: list.length === 0,
+      densityCls: (this.props.density ?? 'comfortable') === 'compact' ? 'compact' : '',
+      hd: { title: header('title'), size: header('size'), updated: header('updated') },
+      groupLabel: groupOpt.label,
+      sortLabel: sortOpt.label + ' ' + (st.dir === 'asc' ? '↑' : '↓'),
+      dirLabel: dirLabel,
+      groupMenuOpen: st.menu === 'group',
+      sortMenuOpen: st.menu === 'sort',
+      groupBtnCls: st.menu === 'group' ? 'on' : '',
+      sortBtnCls: st.menu === 'sort' ? 'on' : '',
+      anyMenu: st.menu !== null,
+      openGroup: function () { self.setState({ menu: st.menu === 'group' ? null : 'group' }); },
+      openSort: function () { self.setState({ menu: st.menu === 'sort' ? null : 'sort' }); },
+      closeMenus: function () { self.setState({ menu: null }); },
+      flipDir: function () { self.setState({ dir: st.dir === 'asc' ? 'desc' : 'asc', menu: null }); },
+      groupOpts: GROUP_OPTS.map(function (o) {
+        return { label: o.label, hint: o.hint, on: o.key === groupBy, mark: o.key === groupBy ? '✓' : '', pick: function () { self.setState({ groupBy: o.key, menu: null }); } };
+      }),
+      sortOpts: SORT_OPTS.map(function (o) {
+        return { label: o.label, hint: o.hint, on: o.key === st.sortBy, mark: o.key === st.sortBy ? '✓' : '', pick: function () { self.setSort(o.key); } };
+      }),
+      ciOpen: st.ciOpen,
+      ciBtn: st.ciOpen ? 'Hide' : 'Show all',
+      toggleCi: function () { self.setState({ ciOpen: !st.ciOpen }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -25,6 +25,7 @@ import { createLogger } from '@/services/logger';
 import { useInitStore } from '@/stores/initStore';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
+import { usePrViewStore } from '@/stores/pr-view-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useUiStore } from '@/stores/ui-store';
@@ -160,6 +161,10 @@ export default function App() {
     void usePrStore
       .getState()
       .restoreHideFailing()
+      .catch(() => {});
+    void usePrViewStore
+      .getState()
+      .restore()
       .catch(() => {});
     useOnboardingStore.getState().restoreOnboardingState();
   }, []);

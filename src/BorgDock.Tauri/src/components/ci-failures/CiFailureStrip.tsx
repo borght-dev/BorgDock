@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { ChevronRight, X } from 'lucide-react';
 import { useState } from 'react';
 import { HoverPopover, isTextClipped } from '@/components/shared/primitives';
 import { useBranchStory } from '@/hooks/useBranchStory';
@@ -8,13 +8,14 @@ import { healModeOf } from '@/services/ci-failures/rerun';
 import type { CiGroupSummary } from '@/services/ci-failures/types';
 import { useBlockedPrs, useCiBranch, useCiFailuresStore } from '@/stores/ci-failures-store';
 import { usePrStore } from '@/stores/pr-store';
+import { usePrViewStore } from '@/stores/pr-view-store';
 import type { PullRequestWithChecks } from '@/types';
 import { parseError } from '@/utils/parse-error';
 import { formatAgo } from '@/utils/relative-time';
 import { BranchStoryLine } from './BranchStoryLine';
 import { CiFailureTooltip, OwnerText } from './CiFailureTooltip';
 
-/** Rows shown before "and N more". */
+/** Rows shown before "and N more" once the summary is opened. */
 const SHOWN = 3;
 
 function plural(n: number, word: string): string {
@@ -130,15 +131,20 @@ function StripRow({ group, blocked, selected }: StripRowProps) {
 }
 
 /**
- * CiFailureStrip — above the Pull requests list: each shared CI failure that
- * still fails open PRs, as one item with its cause, owner and what to do.
- * Narrowed to one failure (a row marker or "Show PRs"), it shows only that
- * one. Renders nothing when no shared failure blocks a PR.
+ * CiFailureStrip — above the Pull requests list: one line saying how many
+ * shared CI failures block how many PRs and naming the worst one. "Show"
+ * opens each failure with its cause, owner and what to do; × hides the
+ * summary (Display → "Shared CI failures summary" brings it back).
+ * Narrowed to one failure (a row marker or "Show PRs"), it shows that one
+ * in full whatever the setting. Renders nothing when no shared failure
+ * blocks a PR.
  */
 export function CiFailureStrip() {
   const groups = useCiFailuresStore((s) => s.groups);
   const relatedFailure = usePrStore((s) => s.relatedFailure);
   const blocked = useBlockedPrs();
+  const showSummary = usePrViewStore((s) => s.showCiSummary);
+  const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   const blocking = groups
@@ -181,36 +187,77 @@ export function CiFailureStrip() {
     );
   }
 
-  if (blocking.length === 0) return null;
+  if (blocking.length === 0 || !showSummary) return null;
   const shown = expanded ? blocking : blocking.slice(0, SHOWN);
   const total = new Set(
     blocking.flatMap((g) => (blocked.get(g.id) ?? []).map((pr) => pr.pullRequest.htmlUrl)),
   ).size;
+  const worst = blocking[0]!;
+  const worstCount = blocked.get(worst.id)?.length ?? 0;
   return (
-    <section className="bd-ci-strip" aria-label="Shared CI failures" data-ci-strip="">
-      <h2 className="bd-ci-strip__heading">
-        {blocking.length === 1
-          ? `1 shared CI failure blocks ${plural(total, 'PR')}`
-          : `${blocking.length} shared CI failures block ${plural(total, 'PR')}`}
-      </h2>
-      <ul className="bd-ci-strip__rows">
-        {shown.map((group) => (
-          <StripRow
-            key={group.id}
-            group={group}
-            blocked={blocked.get(group.id) ?? []}
-            selected={false}
-          />
-        ))}
-      </ul>
-      {blocking.length > SHOWN && (
+    <section
+      className="bd-ci-strip"
+      aria-label="Shared CI failures"
+      data-ci-strip=""
+      data-open={open ? 'true' : undefined}
+    >
+      <div className="bd-ci-strip__summary">
         <button
           type="button"
-          className="bd-ci-link bd-ci-link--quiet bd-ci-strip__more"
-          onClick={() => setExpanded((was) => !was)}
+          className="bd-ci-strip__toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((was) => !was)}
         >
-          {expanded ? 'Show fewer' : `and ${blocking.length - SHOWN} more`}
+          <ChevronRight
+            size={12}
+            strokeWidth={2.25}
+            aria-hidden="true"
+            className="bd-ci-strip__chevron"
+          />
+          <span className="bd-ci-group__dot" data-tone="shared" aria-hidden />
+          <h2 className="bd-ci-strip__heading">
+            {blocking.length === 1
+              ? `1 shared CI failure blocks ${plural(total, 'PR')}`
+              : `${blocking.length} shared CI failures block ${plural(total, 'PR')}`}
+          </h2>
+          {!open && (
+            <span className="bd-ci-strip__worst" title={worst.title}>
+              Worst: {worst.title} ({plural(worstCount, 'PR')})
+            </span>
+          )}
         </button>
+        <button
+          type="button"
+          className="bd-ci-strip__hide"
+          aria-label="Hide the shared CI failures summary"
+          title="Hide this summary (Display menu brings it back)"
+          onClick={() => usePrViewStore.getState().setShowCiSummary(false)}
+        >
+          <X size={12} strokeWidth={2.25} aria-hidden="true" />
+        </button>
+      </div>
+      {open && (
+        <>
+          <ul className="bd-ci-strip__rows">
+            {shown.map((group) => (
+              <StripRow
+                key={group.id}
+                group={group}
+                blocked={blocked.get(group.id) ?? []}
+                selected={false}
+              />
+            ))}
+          </ul>
+          {blocking.length > SHOWN && (
+            <button
+              type="button"
+              className="bd-ci-link bd-ci-link--quiet bd-ci-strip__more"
+              onClick={() => setExpanded((was) => !was)}
+            >
+              {expanded ? 'Show fewer' : `and ${blocking.length - SHOWN} more`}
+            </button>
+          )}
+        </>
       )}
     </section>
   );

@@ -158,7 +158,7 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   await expect(page.locator('.bd-wb-rowwrap[data-key="test-org/borgdock#2"] .bd-row-action')).toHaveCount(0);
 
   const row = page.locator('.bd-wb-row[data-pr-key="test-org/borgdock#3"]');
-  const box = await row.locator('.bd-wb-row__num').boundingBox();
+  const box = await row.locator('[data-col="checks"]').boundingBox();
   await row.hover();
   // The slot sits beside the row (not inside its role="button"), in the wrapper.
   const review = page
@@ -166,7 +166,7 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
     .getByRole('button', { name: 'Review #3' });
   await expect(review).toBeVisible();
   // The slot draws over the row: the columns did not move.
-  expect(await row.locator('.bd-wb-row__num').boundingBox()).toEqual(box);
+  expect(await row.locator('[data-col="checks"]').boundingBox()).toEqual(box);
   await page.screenshot({ path: test.info().outputPath('row-review-slot.png') });
   await review.click();
 

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BorgDock · Pull requests overview mockups</title>
+<style>
+  body { margin: 0; padding: 24px; background: #e9eaee; font-family: Inter, system-ui, sans-serif; color: #17181c; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { margin: 0 0 20px; color: #5d606a; font-size: 13px; max-width: 760px; line-height: 1.5; }
+  h2 { font-size: 14px; margin: 28px 0 8px; }
+  iframe { display: block; border: 1px solid #c9cbd2; border-radius: 8px; background: #fff; max-width: 100%; }
+</style>
+</head>
+<body>
+<h1>Pull requests overview</h1>
+<p>The five artboards of the approved design. Each is a Design canvas artboard (<code>*.dc.html</code>);
+<code>support.js</code> is a small stand-in for the canvas runtime so they open from a local static server
+(<code>python3 -m http.server</code> in this folder). Spec: <code>docs/superpowers/specs/2026-11-11-pr-overview.md</code>.</p>
+<h2>A · Table view (clickable: tabs, Group, Sort, column headings)</h2>
+<iframe src="Main.dc.html" width="1440" height="1360" title="Table view"></iframe>
+<h2>B · Display menu</h2>
+<iframe src="Display.dc.html" width="1440" height="900" title="Display menu"></iframe>
+<h2>C · Facet filters, query syntax, saved views</h2>
+<iframe src="Filters.dc.html" width="1440" height="820" title="Filters"></iframe>
+<h2>D · Board by status</h2>
+<iframe src="Board.dc.html" width="1440" height="820" title="Board"></iframe>
+<h2>E · Docked sidebar width</h2>
+<iframe src="Dock.dc.html" width="440" height="900" title="Docked sidebar"></iframe>
+</body>
+</html>

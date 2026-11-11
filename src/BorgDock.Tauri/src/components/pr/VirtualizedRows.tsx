@@ -1,40 +1,44 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { useUiStore } from '@/stores/ui-store';
-import type { PrDensity, PullRequestWithChecks } from '@/types';
-import { PrRow } from './PrRow';
-import { prRowKey } from './pr-card-data';
+import type { PrDensity } from '@/types';
 
 export const VIRTUALIZE_THRESHOLD = 50;
 
-export function VirtualizedPrRows({
-  prs,
-  density,
-  now,
-}: {
-  prs: PullRequestWithChecks[];
+interface VirtualizedRowsProps<T> {
+  items: readonly T[];
+  /** `owner/repo#number`: the virtualizer's item key and what selection scrolls to. */
+  keyOf: (item: T) => string;
   density: PrDensity;
-  now: number;
-}) {
+  /** One row; rows a virtualizer recycles must not animate (`animateKey` false). */
+  render: (item: T) => ReactNode;
+}
+
+/**
+ * A long group's rows, virtualized at the Workbench's fixed row height
+ * (42 px, 32 px compact) inside a box of its own that scrolls; the
+ * selected row is kept in view.
+ */
+export function VirtualizedRows<T>({ items, keyOf, density, render }: VirtualizedRowsProps<T>) {
   const parent = useRef<HTMLDivElement>(null);
   const selected = useUiStore((s) => s.selectedPrKey);
   const virtualizer = useVirtualizer({
-    count: prs.length,
+    count: items.length,
     getScrollElement: () => parent.current,
     estimateSize: () => (density === 'compact' ? 32 : 42),
-    getItemKey: (index) => prRowKey(prs[index]!.pullRequest),
+    getItemKey: (index) => keyOf(items[index]!),
     initialRect: { width: 1000, height: 400 },
     overscan: 10,
   });
   useEffect(() => {
-    const index = prs.findIndex((pr) => prRowKey(pr.pullRequest) === selected);
+    const index = items.findIndex((item) => keyOf(item) === selected);
     if (index >= 0) virtualizer.scrollToIndex(index, { align: 'auto' });
-  }, [prs, selected, virtualizer]);
+  }, [items, keyOf, selected, virtualizer]);
   return (
     <div
       ref={parent}
       className="bd-wb-virtual"
-      data-virtual-prs={prs.length}
+      data-virtual-prs={items.length}
       data-virtual=""
       data-crossfade=""
     >
@@ -46,7 +50,7 @@ export function VirtualizedPrRows({
             className="bd-wb-virtual__item"
             style={{ transform: `translateY(${item.start}px)` }}
           >
-            <PrRow prWithChecks={prs[item.index]!} density={density} now={now} animateKey={false} />
+            {render(items[item.index]!)}
           </div>
         ))}
       </div>

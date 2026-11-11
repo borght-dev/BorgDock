@@ -2,13 +2,16 @@ import { useCallback, useEffect } from 'react';
 import { handleActivityKey } from '@/components/activity/keyboard';
 import { unitActions } from '@/components/dispatch/unit-actions';
 import { handleWorkstreamsKey } from '@/components/workstreams/keyboard';
+import { readPrListModel } from '@/hooks/usePrListModel';
 import { dispatchActions } from '@/services/dispatch/actions';
 import { isOverlayOpen, showPr, showSection, showWorkItem } from '@/services/navigation';
-import { groupWorkbenchPrs, isReady } from '@/services/pr-grouping';
+import { isReady } from '@/services/pr-grouping';
+import { visibleFacts } from '@/services/pr-list/groups';
 import { matchesSearch } from '@/services/pr-search';
 import { openPrDetail } from '@/services/windows';
 import { selectItemOverview, useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
+import { prGroupCollapsed, usePrViewStore } from '@/stores/pr-view-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
 import { SECTION_ORDER, useUiStore } from '@/stores/ui-store';
 import type { PullRequestWithChecks } from '@/types';
@@ -110,12 +113,12 @@ export function useKeyboardNav(): void {
       const cards = live<HTMLElement>(BOARD_CARD_SELECTOR);
       if (cards.length > 0 && handleBoardKey(e, cards)) return;
 
-      // PR rows: J/K follow the rows as drawn ("Needs you" first, then the
-      // groups; collapsed groups skipped) and Enter opens the selected one in
-      // the detail view.
+      // PR rows: J/K follow the rows as drawn ("Your turn" first, then the
+      // groups; folded groups skipped; the board column by column) and Enter
+      // opens the selected one in the detail view.
       if (
         useUiStore.getState().activeSection === 'prs' &&
-        document.querySelector('.bd-wb-prs [data-virtual-prs]') &&
+        document.querySelector('.bd-wb-prs [data-virtual-prs], .bd-wb-prs [data-board]') &&
         handleVirtualPrKey(e)
       )
         return;
@@ -196,8 +199,8 @@ export function useKeyboardNav(): void {
   }, [handleKeyDown]);
 }
 
-/** Rows of the PR list and the Focus list (`PrRow`). */
-const PR_ROW_SELECTOR = '.bd-wb-row[data-pr-key]';
+/** Rows of the PR list and the Focus list (`PrRow`), and the PR board's cards. */
+const PR_ROW_SELECTOR = '.bd-wb-row[data-pr-key], .bd-prl-card[data-pr-key]';
 
 /**
  * J/K/arrows and Enter over the PR rows, in DOM order. Returns true when the
@@ -575,18 +578,15 @@ function handleVirtualPrKey(e: KeyboardEvent): boolean {
   if (!['ArrowDown', 'j', 'ArrowUp', 'k', 'Enter'].includes(e.key)) return false;
   const ui = useUiStore.getState();
   const state = usePrStore.getState();
-  const groups = groupWorkbenchPrs(
-    state.filteredPrs(),
-    ui.prGroupBy,
-    state.username,
-    state.teams,
-    state.filter === 'all',
+  const model = readPrListModel();
+  const board = usePrViewStore.getState().display.layout === 'board';
+  // The board has no folding; the list skips folded groups.
+  const prs = visibleFacts(model.groups, (group) => !board && prGroupCollapsed(group)).map(
+    (f) => f.pr,
   );
-  const prs = groups
-    .filter((group) => !ui.collapsedGroups.has(group.key))
-    .flatMap((group) => group.prs);
-  if (state.filter !== 'closed' && !ui.collapsedGroups.has('recently-closed')) {
-    prs.push(...state.closedPullRequests.filter((pr) => matchesSearch(pr, state.searchQuery)));
+  if (!board && !state.relatedFailure && !ui.collapsedGroups.has('recently-closed')) {
+    const text = model.parsed.text;
+    prs.push(...state.closedPullRequests.filter((pr) => matchesSearch(pr, text)));
   }
   if (!prs.length) return false;
   const keyOf = (pr: PullRequestWithChecks) =>
@@ -606,9 +606,11 @@ function handleVirtualPrKey(e: KeyboardEvent): boolean {
     current < 0 ? 0 : Math.max(0, Math.min(prs.length - 1, current + (forward ? 1 : -1)));
   const selected = prs[index]!;
   ui.selectPrKey(keyOf(selected), selected.pullRequest.number);
-  const row = [...document.querySelectorAll<HTMLElement>('.bd-wb-row[data-pr-key]')].find(
-    (row) => row.dataset.prKey === keyOf(selected),
-  );
+  const row = [
+    ...document.querySelectorAll<HTMLElement>(
+      '[data-pr-row][data-pr-key], [data-pr-card][data-pr-key]',
+    ),
+  ].find((row) => row.dataset.prKey === keyOf(selected));
   row?.scrollIntoView?.({ block: 'nearest' });
   return true;
 }

@@ -120,7 +120,6 @@ describe('installTestSeed', () => {
       closedPullRequests: [],
       filter: 'all',
       searchQuery: '',
-      sortBy: 'updated',
       username: '',
       isPolling: false,
       lastPollTime: null,
@@ -130,8 +129,6 @@ describe('installTestSeed', () => {
       _cachedPriorityScores: null,
       _cachedTeamReviewLoad: null,
       _cachedCounts: null,
-      _viewDeps: null,
-      _cachedFilteredPrs: null,
       _cachedNeedsMyReview: null,
       _cachedFocusPrs: null,
     });

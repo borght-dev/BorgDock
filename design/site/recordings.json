@@ -42,7 +42,7 @@
     },
     "theme": "both",
     "delay": 2500,
-    "alt": "Switching the filter from All to Needs you to Failing; the rows that stay slide to their new place",
+    "alt": "Switching the view from All to Your turn to Failing; the rows that stay slide to their new place",
     "page": "Pull requests",
     "fallback": "workbench-list",
     "steps": [
@@ -52,17 +52,17 @@
       },
       {
         "do": "click",
-        "selector": "role=group[name=\"Filter pull requests\"] >> text=Needs you",
+        "selector": "role=tablist[name=\"Pull request views\"] >> text=Your turn",
         "ms": 1400
       },
       {
         "do": "click",
-        "selector": "role=group[name=\"Filter pull requests\"] >> text=Failing",
+        "selector": "role=tablist[name=\"Pull request views\"] >> text=Failing",
         "ms": 1400
       },
       {
         "do": "click",
-        "selector": "role=group[name=\"Filter pull requests\"] >> text=All",
+        "selector": "role=tablist[name=\"Pull request views\"] >> text=All",
         "ms": 1400
       }
     ],

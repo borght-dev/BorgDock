@@ -18,7 +18,7 @@ test('typing in the PR search filters the list', async ({ page }) => {
   await expect(page.getByText('Fix bug')).toBeVisible();
 });
 
-test('search also filters the Needs you group and Recently closed', async ({ page }) => {
+test('search also filters the Your turn group and Recently closed', async ({ page }) => {
   await bootApp(page, '', 'happy-path');
   const [coolFeature, fixBug] = SAMPLE_PRS as { pullRequest: Record<string, unknown> }[];
   const awaitingMe = {
@@ -32,9 +32,9 @@ test('search also filters the Needs you group and Recently closed', async ({ pag
     usePrStore.getState().setClosedPullRequests([closed]);
   }, MERGED_PR);
   await railButton(page, /^Pull requests/).click();
-  await page.getByRole('button', { name: 'Group and sort' }).click();
-  await page.getByRole('menuitemradio', { name: 'Repo', exact: true }).click();
-  await expect(page.locator('.bd-wb-group__label').first()).toHaveText('Needs you');
+  await page.locator('[data-group-button]').click();
+  await page.getByRole('menuitemradio', { name: /^Repository/ }).click();
+  await expect(page.locator('.bd-wb-group__label').first()).toHaveText('Your turn');
   await expect(page.getByText('Just merged')).toBeVisible();
 
   await page.getByRole('textbox', { name: 'Filter pull requests' }).fill('fix');

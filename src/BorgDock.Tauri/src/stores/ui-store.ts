@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { WorktreeBranchMapping } from '@/hooks/useWorktreeMap';
 import type { FocusFilter } from '@/services/focus-bucket';
-import type { PrGroupBy } from '@/services/pr-grouping';
 import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
@@ -86,7 +85,6 @@ interface UiState {
   isDragging: boolean;
   /** Maps branch name (lowercase) → worktree slot info */
   worktreeBranchMap: Map<string, WorktreeBranchMapping>;
-  prGroupBy: PrGroupBy;
   _hasUserNavigated: boolean;
   /**
    * Navigation stack of the main window. Always starts with the list view and
@@ -113,7 +111,6 @@ interface UiState {
   collapseAllRepoGroups: (groupKeys: Iterable<string>) => void;
   setDragging: (dragging: boolean) => void;
   setWorktreeBranchMap: (map: Map<string, WorktreeBranchMapping>) => void;
-  setPrGroupBy: (groupBy: PrGroupBy) => void;
   restorePersistedSection: () => void;
   /** Push a view on top of the stack. */
   pushView: (view: MainView) => void;
@@ -152,7 +149,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
   collapsedGroups: new Set<string>(),
   isDragging: false,
   worktreeBranchMap: new Map(),
-  prGroupBy: 'author',
   _hasUserNavigated: false,
   viewStack: [LIST_VIEW],
   focusFilter: 'all',
@@ -190,28 +186,13 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   setWorktreeBranchMap: (map) => set({ worktreeBranchMap: map }),
 
-  setPrGroupBy: (prGroupBy) => {
-    set({ prGroupBy });
-    persistToTauriStore('ui-state.json', 'prGroupBy', prGroupBy).catch(() => {});
-  },
-
   restorePersistedSection: () => {
     get().restoreFocusSnoozes();
     if (get()._hasUserNavigated) return;
-    Promise.all([
-      readFromTauriStore<ActiveSection>('ui-state.json', 'activeSection'),
-      readFromTauriStore<PrGroupBy>('ui-state.json', 'prGroupBy'),
-    ])
-      .then(([section, groupBy]) => {
+    readFromTauriStore<ActiveSection>('ui-state.json', 'activeSection')
+      .then((section) => {
         if (get()._hasUserNavigated) return;
-        const preferences: Partial<UiState> = {};
-        if (isActiveSection(section)) {
-          preferences.activeSection = section;
-        }
-        if (groupBy && (groupBy === 'repo' || groupBy === 'author' || groupBy === 'status')) {
-          preferences.prGroupBy = groupBy;
-        }
-        set(preferences);
+        if (isActiveSection(section)) set({ activeSection: section });
       })
       .catch((err) => console.warn('Failed to restore persisted UI preferences:', err));
   },

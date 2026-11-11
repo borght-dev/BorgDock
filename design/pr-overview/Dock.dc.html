@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pull requests: docked sidebar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+sc-for,sc-if{display:contents}
+.dock{width:440px;height:900px;box-sizing:border-box;font-family:Inter,system-ui,sans-serif;color:#17181c;background:#ffffff;font-size:13px;display:flex;flex-direction:column;border-left:1px solid #e5e6ea;overflow:hidden}
+.ic{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.head{display:flex;align-items:center;gap:6px;padding:12px 12px 6px}
+.head h1{font-size:14px;font-weight:650;margin:0;flex:1}
+.iconbtn{width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#5d606a;display:grid;place-items:center;position:relative}
+.badge{position:absolute;top:2px;right:1px;min-width:13px;height:13px;border-radius:7px;background:#4f46e5;color:#ffffff;font-size:9px;font-weight:700;display:grid;place-items:center;padding:0 3px;box-sizing:border-box}
+.tabs{display:flex;gap:4px;padding:0 12px 8px;overflow-x:auto}
+.tab{font:inherit;font-size:12px;border:1px solid #e5e6ea;background:#ffffff;color:#5d606a;border-radius:999px;padding:3px 10px;white-space:nowrap}
+.tab i{font-style:normal;color:#6d707a;margin-left:5px}
+.tab.on{background:#17181c;border-color:#17181c;color:#ffffff;font-weight:600}
+.tab.on i{color:#c2c4cb}
+.vbar{display:flex;align-items:center;gap:6px;padding:0 12px 8px;flex-wrap:wrap}
+.vbtn{font:inherit;font-size:11.5px;height:24px;border:1px solid #d9dbe0;border-radius:6px;background:#ffffff;color:#17181c;padding:0 8px;display:inline-flex;align-items:center;gap:5px}
+.vbtn span{color:#6d707a}
+.fchip{font:inherit;font-size:11.5px;height:24px;border-radius:6px;background:rgba(79,70,229,.08);color:#3f37c9;border:1px solid rgba(79,70,229,.25);padding:0 4px 0 8px;display:inline-flex;align-items:center;gap:4px}
+.fchip b{font-weight:600}
+.fchip button{border:0;background:transparent;color:inherit;width:18px;height:18px;display:grid;place-items:center;padding:0;border-radius:4px}
+.attn{margin:0 12px 8px;display:flex;align-items:center;gap:8px;font-size:12px;border:1px solid rgba(214,69,96,.25);background:rgba(214,69,96,.04);border-radius:7px;padding:6px 8px}
+.attn .dot{width:7px;height:7px;border-radius:50%;background:#d64560;flex:none}
+.attn b{color:#bf3552;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.attn button{font:inherit;font-size:12px;border:0;background:transparent;color:#4f46e5;padding:0}
+.list{flex:1;overflow:hidden;padding:0 4px 0 12px}
+.gh{display:flex;align-items:center;gap:7px;padding:10px 8px 4px 0;font-weight:600;font-size:12px;position:sticky;top:0;background:#ffffff}
+.gh small{color:#6d707a;font-weight:500;font-size:12px}
+.gh .gbar{margin-left:auto;display:flex;width:56px;height:5px;border-radius:3px;overflow:hidden;background:#ececf0}
+.gbar span{display:block;height:100%}
+.b-turn{background:#4f46e5}.b-failing{background:#d64560}.b-waiting{background:#e2a93b}.b-ready{background:#1f9d6b}
+.chev{color:#6d707a}
+.r{display:grid;grid-template-columns:14px minmax(0,1fr) auto;column-gap:8px;row-gap:2px;padding:6px 8px 6px 0;border-bottom:1px solid #f1f1f4;align-items:center}
+.glyph{width:9px;height:9px;border-radius:50%;display:block;box-sizing:border-box}
+.g-turn{background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.18)}
+.g-failing{background:#d64560}
+.g-waiting{border:2px solid #c98a12}
+.g-ready{background:#1f9d6b}
+.g-draft{border:2px dashed #8f929c}
+.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;grid-column:2 / span 2}
+.t b{color:#6d707a;font-weight:500}
+.m{grid-column:2;font-size:11.5px;color:#6d707a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st{grid-column:3;display:flex;align-items:center;gap:6px;justify-self:end}
+.bar{display:flex;width:28px;height:4px;border-radius:2px;overflow:hidden;background:#ececf0}
+.bar span{display:block;height:100%}
+.s-ok{background:#1f9d6b}.s-fail{background:#d64560}.s-run{background:#e2a93b}
+.next{font-size:10.5px;border-radius:999px;padding:1px 7px;border:1px solid #e5e6ea;color:#5d606a;white-space:nowrap}
+.n-you{background:#4f46e5;border-color:#4f46e5;color:#ffffff;font-weight:600}
+.n-go{background:rgba(31,157,107,.1);border-color:rgba(31,157,107,.3);color:#1a7f57;font-weight:600}
+.n-block{border-color:rgba(214,69,96,.3);color:#bf3552}
+.n-wait{border-color:rgba(201,138,18,.3);color:#8f620b}
+.collapsed{display:flex;align-items:center;gap:7px;padding:10px 0 8px;font-weight:600;font-size:12px;color:#5d606a;border-bottom:1px solid #f1f1f4}
+.collapsed small{color:#6d707a;font-weight:500}
+.foot{display:flex;gap:10px;padding:7px 12px;border-top:1px solid #e5e6ea;font-size:11px;color:#6d707a}
+</style>
+</helmet>
+<div class="dock">
+  <div class="head">
+    <h1>Pull requests</h1>
+    <button type="button" class="iconbtn" aria-label="Search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></button>
+    <button type="button" class="iconbtn" aria-label="Filters, 1 active"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg><span class="badge">1</span></button>
+    <button type="button" class="iconbtn" aria-label="Display options"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4h-7"></path><path d="M10 4H3"></path><path d="M21 12h-9"></path><path d="M8 12H3"></path><path d="M21 20h-5"></path><path d="M12 20H3"></path><path d="M14 2v4"></path><path d="M8 10v4"></path><path d="M16 18v4"></path></svg></button>
+  </div>
+  <div class="tabs">
+    <button type="button" class="tab on">All<i>23</i></button>
+    <button type="button" class="tab">Your turn<i>11</i></button>
+    <button type="button" class="tab">Mine<i>9</i></button>
+    <button type="button" class="tab">Failing<i>8</i></button>
+    <button type="button" class="tab">Ready<i>3</i></button>
+    <button type="button" class="tab">Stale<i>2</i></button>
+  </div>
+  <div class="vbar">
+    <button type="button" class="vbtn"><span>Group</span> Status</button>
+    <button type="button" class="vbtn"><span>Sort</span> Priority ↓</button>
+    <span class="fchip">repo <b>shop-web</b><button type="button" aria-label="Remove filter"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></span>
+  </div>
+  <div class="attn"><span class="dot"></span><b>Shared CI failure blocks 4 of these PRs</b><button type="button">Show</button></div>
+  <div class="list">
+    <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+      <div class="gh">
+        <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        {{g.label}} <small>{{g.count}}</small>
+        <span class="gbar"><span class="b-turn" style="width: {{g.w.turn}}%"></span><span class="b-failing" style="width: {{g.w.failing}}%"></span><span class="b-waiting" style="width: {{g.w.waiting}}%"></span><span class="b-ready" style="width: {{g.w.ready}}%"></span></span>
+      </div>
+      <sc-for list="{{g.rows}}" as="row" hint-placeholder-count="3">
+        <div class="r">
+          <span class="glyph g-{{row.g}}"></span>
+          <span class="t"><b>{{row.scope}}</b> {{row.t}}</span>
+          <span class="m">{{row.meta}}</span>
+          <span class="st">
+            <span class="bar"><span class="s-ok" style="width: {{row.ok}}%"></span><span class="s-fail" style="width: {{row.fail}}%"></span><span class="s-run" style="width: {{row.run}}%"></span></span>
+            <span class="next n-{{row.tone}}">{{row.next}}</span>
+          </span>
+        </div>
+      </sc-for>
+    </sc-for>
+    <div class="collapsed"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true" style="transform: rotate(-90deg)"><path d="m6 9 6 6 6-6"></path></svg>Waiting for review <small>4 · nothing for you</small></div>
+    <div class="collapsed"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true" style="transform: rotate(-90deg)"><path d="m6 9 6 6 6-6"></path></svg>Ready to merge <small>2</small></div>
+  </div>
+  <div class="foot"><span>Synced 12 s ago</span><span>4,357 requests left</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      groups: [
+        { label: 'Your turn', count: 7, w: { turn: 100, failing: 0, waiting: 0, ready: 0 }, rows: [
+          { g: 'turn', scope: 'fix(planboard):', t: 'load the order list when customer number and a custom field are combined', meta: '#6395 · vera · AB#61576 · 3m', ok: 73, fail: 0, run: 27, next: 'Your review', tone: 'you' },
+          { g: 'turn', scope: 'fix(planboard):', t: 'unplan at once with a working Ctrl+Z, and say so in the guide', meta: '#6402 · vera · AB#61610 · 7m', ok: 98, fail: 2, run: 0, next: 'Your review', tone: 'you' },
+          { g: 'turn', scope: 'fix(planboard):', t: 'keep timeline travel buffers inside the gap to the neighbouring order', meta: '#6385 · vera · AB#61563 · 3h', ok: 100, fail: 0, run: 0, next: 'Your review', tone: 'you' },
+          { g: 'turn', scope: 'fix(profitability):', t: 'show item names, not translation keys, in the profitability sections', meta: '#6377 · you · AB#60468 · 9m', ok: 91, fail: 9, run: 0, next: 'Fix checks', tone: 'you' },
+          { g: 'turn', scope: 'test(e2e):', t: 'pick usable planboard engineers, not the top rows', meta: '#6298 · you · 22h', ok: 95, fail: 5, run: 0, next: 'Resolve conflicts', tone: 'you' },
+          { g: 'turn', scope: 'chore(deps):', t: 'bump vite from 7.1.2 to 7.1.5', meta: '#6359 · dependabot · 20h', ok: 100, fail: 0, run: 0, next: 'Your review', tone: 'you' },
+          { g: 'turn', scope: 'chore(deps):', t: 'bump @sentry/browser from 10.3.0 to 10.4.1', meta: '#6360 · dependabot · 20h', ok: 98, fail: 2, run: 0, next: 'Your review', tone: 'you' }
+        ] },
+        { label: 'Failing', count: 3, w: { turn: 0, failing: 100, waiting: 0, ready: 0 }, rows: [
+          { g: 'failing', scope: 'fix(search):', t: 'resolve configured custom-field filter aliases', meta: '#6368 · vera · shared ×4 · 1m', ok: 98, fail: 2, run: 0, next: 'Blocked by CI', tone: 'block' },
+          { g: 'failing', scope: 'docs(customer):', t: 'Quotes bundle: corrected list guide, help, tour and screenshots', meta: '#6396 · vera · shared ×4 · 5m', ok: 96, fail: 4, run: 0, next: 'Blocked by CI', tone: 'block' },
+          { g: 'failing', scope: 'fix(grid):', t: 'keep group headers under column filters', meta: '#6255 · vera · stale 9d', ok: 98, fail: 2, run: 0, next: 'Changes · vera', tone: 'them' }
+        ] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -47,7 +47,7 @@ function markerReach(marker: SharedFailureMarker): string {
 }
 
 /** "CI red, not caused by this PR: also fails on master" for the marker and the check bar. */
-function markerSummary(marker: SharedFailureMarker): string {
+export function markerSummary(marker: SharedFailureMarker): string {
   if (marker.notCausedBy) return `CI red, not caused by this PR: ${marker.notCausedBy}`;
   return marker.prCount > 1
     ? `Failure shared with ${marker.prCount - 1} other ${marker.prCount === 2 ? 'PR' : 'PRs'}`
@@ -60,19 +60,36 @@ function tooltipReach(marker: SharedFailureMarker): string {
   return `fails ${prs}${marker.alsoOn ? ` and ${marker.alsoOn}` : ''}`;
 }
 
+/** "not this PR", "shared ×4" or "also on main": the compact marker's words. */
+function compactLabel(marker: SharedFailureMarker): string {
+  if (marker.notCausedBy) return 'not this PR';
+  if (marker.prCount > 1) return `shared ×${marker.prCount}`;
+  return `also on ${marker.alsoOn ?? 'base'}`;
+}
+
 /**
  * The marker in the meta line: names the failure and opens it, without
  * opening the PR. A name cut off at the column's edge shows in full on hover.
+ * `compact` (the table's Checks cell) says only "shared ×4" or "not this
+ * PR" and always shows the failure on hover.
  */
-function FailureMarker({ marker }: { marker: SharedFailureMarker }) {
+export function FailureMarker({
+  marker,
+  compact = false,
+}: {
+  marker: SharedFailureMarker;
+  compact?: boolean;
+}) {
   const reach = markerReach(marker);
   const { title } = marker.group;
   return (
     <HoverPopover
       variant="tooltip"
       maxWidth={440}
-      when={isTextClipped}
-      triggerClassName="bd-ci-marker-slot"
+      when={compact ? undefined : isTextClipped}
+      triggerClassName={
+        compact ? 'bd-ci-marker-slot bd-ci-marker-slot--compact' : 'bd-ci-marker-slot'
+      }
       content={
         <CiFailureTooltip
           group={marker.group}
@@ -89,7 +106,7 @@ function FailureMarker({ marker }: { marker: SharedFailureMarker }) {
     >
       <button
         type="button"
-        className="bd-ci-marker"
+        className={compact ? 'bd-ci-marker bd-ci-marker--compact' : 'bd-ci-marker'}
         data-ci-marker=""
         data-not-caused={marker.notCausedBy ? 'true' : undefined}
         aria-label={`${markerSummary(marker)}. ${title}. Show the PRs it fails.`}
@@ -99,11 +116,19 @@ function FailureMarker({ marker }: { marker: SharedFailureMarker }) {
         }}
         onKeyDown={(e) => e.stopPropagation()}
       >
-        {marker.notCausedBy && <span className="bd-ci-marker__lead">Not caused by this PR</span>}
-        <span className="bd-ci-marker__name" data-clip="">
-          {title}
-        </span>
-        {reach && <span className="bd-ci-marker__reach">{reach}</span>}
+        {compact ? (
+          compactLabel(marker)
+        ) : (
+          <>
+            {marker.notCausedBy && (
+              <span className="bd-ci-marker__lead">Not caused by this PR</span>
+            )}
+            <span className="bd-ci-marker__name" data-clip="">
+              {title}
+            </span>
+            {reach && <span className="bd-ci-marker__reach">{reach}</span>}
+          </>
+        )}
       </button>
     </HoverPopover>
   );

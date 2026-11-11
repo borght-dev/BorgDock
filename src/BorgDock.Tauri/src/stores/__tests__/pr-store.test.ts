@@ -1,44 +1,45 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { groupPrs } from '@/services/pr-grouping';
 import type { OverallStatus, PullRequestWithChecks, ReviewStatus } from '@/types';
-import { PR_REFRESHED_EVENT, type PrRefreshedDetail, usePrStore } from '../pr-store';
+import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
+import {
+  PR_HIDE_FAILING_STORE_KEY,
+  PR_REFRESHED_EVENT,
+  type PrRefreshedDetail,
+  usePrStore,
+} from '../pr-store';
+
+vi.mock('@/utils/tauri-persist', () => ({
+  persistToTauriStore: vi.fn().mockResolvedValue(undefined),
+  readFromTauriStore: vi.fn().mockResolvedValue(undefined),
+}));
 
 function makePr(overrides: {
   number?: number;
-  title?: string;
   authorLogin?: string;
   repoOwner?: string;
   repoName?: string;
-  headRef?: string;
   overallStatus?: OverallStatus;
-  isDraft?: boolean;
-  mergeable?: boolean;
   reviewStatus?: ReviewStatus;
-  updatedAt?: string;
-  createdAt?: string;
-  labels?: string[];
-  state?: string;
 }): PullRequestWithChecks {
   return {
     pullRequest: {
       number: overrides.number ?? 1,
-      title: overrides.title ?? 'Test PR',
-      headRef: overrides.headRef ?? 'feature/test',
+      title: 'Test PR',
+      headRef: 'feature/test',
       baseRef: 'main',
       authorLogin: overrides.authorLogin ?? 'testuser',
       authorAvatarUrl: '',
-      state: overrides.state ?? 'open',
-      createdAt: overrides.createdAt ?? '2025-01-01T00:00:00Z',
-      updatedAt: overrides.updatedAt ?? '2025-01-02T00:00:00Z',
-      isDraft: overrides.isDraft ?? false,
-      mergeable: overrides.mergeable,
+      state: 'open',
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-02T00:00:00Z',
+      isDraft: false,
       htmlUrl: '',
       body: '',
       repoOwner: overrides.repoOwner ?? 'owner',
       repoName: overrides.repoName ?? 'repo',
       reviewStatus: overrides.reviewStatus ?? 'none',
       commentCount: 0,
-      labels: overrides.labels ?? [],
+      labels: [],
       additions: 10,
       deletions: 5,
       changedFiles: 2,
@@ -62,7 +63,6 @@ describe('pr-store', () => {
       closedPullRequests: [],
       filter: 'all',
       searchQuery: '',
-      sortBy: 'updated',
       relatedFailure: null,
       hideFailing: false,
       username: 'me',
@@ -79,89 +79,6 @@ describe('pr-store', () => {
     expect(usePrStore.getState().needsMyReview()).toBe(first);
   });
 
-  describe('filtering', () => {
-    const prs: PullRequestWithChecks[] = [
-      makePr({ number: 1, authorLogin: 'me', overallStatus: 'green', reviewStatus: 'approved' }),
-      makePr({ number: 2, authorLogin: 'other', overallStatus: 'red' }),
-      makePr({ number: 3, authorLogin: 'other', overallStatus: 'green', reviewStatus: 'approved' }),
-      makePr({ number: 4, authorLogin: 'other', overallStatus: 'yellow', reviewStatus: 'pending' }),
-    ];
-
-    beforeEach(() => {
-      usePrStore.getState().setPullRequests(prs);
-      usePrStore.getState().setUsername('me');
-    });
-
-    it('shows all PRs with "all" filter', () => {
-      usePrStore.getState().setFilter('all');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(4);
-    });
-
-    it('filters by "mine"', () => {
-      usePrStore.getState().setFilter('mine');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(1);
-      expect(result[0]!.pullRequest.authorLogin).toBe('me');
-    });
-
-    it('filters by "failing"', () => {
-      usePrStore.getState().setFilter('failing');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(1);
-      expect(result[0]!.overallStatus).toBe('red');
-    });
-
-    it('filters by "ready" (green + approved + not draft + mergeable)', () => {
-      usePrStore.getState().setFilter('ready');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(2);
-      result.forEach((pr) => {
-        expect(pr.overallStatus).toBe('green');
-        expect(pr.pullRequest.reviewStatus).toBe('approved');
-      });
-    });
-
-    it('excludes drafts from "ready"', () => {
-      usePrStore
-        .getState()
-        .setPullRequests([
-          makePr({ number: 10, overallStatus: 'green', reviewStatus: 'approved', isDraft: true }),
-        ]);
-      usePrStore.getState().setFilter('ready');
-      expect(usePrStore.getState().filteredPrs()).toHaveLength(0);
-    });
-
-    it('excludes unmergeable PRs from "ready"', () => {
-      usePrStore.getState().setPullRequests([
-        makePr({
-          number: 10,
-          overallStatus: 'green',
-          reviewStatus: 'approved',
-          mergeable: false,
-        }),
-      ]);
-      usePrStore.getState().setFilter('ready');
-      expect(usePrStore.getState().filteredPrs()).toHaveLength(0);
-    });
-
-    it('filters by "reviewing"', () => {
-      usePrStore.getState().setFilter('reviewing');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(1);
-      expect(result[0]!.pullRequest.reviewStatus).toBe('pending');
-    });
-
-    it('filters by "closed"', () => {
-      const closedPrs = [makePr({ number: 99, state: 'closed' })];
-      usePrStore.getState().setClosedPullRequests(closedPrs);
-      usePrStore.getState().setFilter('closed');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(1);
-      expect(result[0]!.pullRequest.number).toBe(99);
-    });
-  });
-
   describe('hide failing', () => {
     const prs: PullRequestWithChecks[] = [
       makePr({ number: 1, authorLogin: 'me', overallStatus: 'green', reviewStatus: 'approved' }),
@@ -171,22 +88,9 @@ describe('pr-store', () => {
     ];
 
     beforeEach(() => {
+      vi.mocked(persistToTauriStore).mockClear();
       usePrStore.getState().setPullRequests(prs);
       usePrStore.getState().setUsername('me');
-    });
-
-    const numbers = () =>
-      usePrStore
-        .getState()
-        .filteredPrs()
-        .map((pr) => pr.pullRequest.number)
-        .sort();
-
-    it('leaves PRs with a failing check out of every filter', () => {
-      usePrStore.getState().setHideFailing(true);
-      expect(numbers()).toEqual([1, 4]);
-      usePrStore.getState().setFilter('mine');
-      expect(numbers()).toEqual([1]);
     });
 
     it('counts what each segment would show, and keeps the Failing count', () => {
@@ -198,186 +102,34 @@ describe('pr-store', () => {
       expect(counts.failing).toBe(2);
     });
 
-    it('does not empty the Failing filter', () => {
+    it('counts every PR again when turned off', () => {
       usePrStore.getState().setHideFailing(true);
-      usePrStore.getState().setFilter('failing');
-      expect(numbers()).toEqual([2, 3]);
-    });
-
-    it('shows every PR again when turned off', () => {
-      usePrStore.getState().setHideFailing(true);
-      expect(numbers()).toEqual([1, 4]);
+      expect(usePrStore.getState().counts().all).toBe(2);
       usePrStore.getState().setHideFailing(false);
-      expect(numbers()).toEqual([1, 2, 3, 4]);
       expect(usePrStore.getState().counts().all).toBe(4);
     });
-  });
 
-  describe('search', () => {
-    beforeEach(() => {
-      usePrStore.getState().setPullRequests([
-        makePr({ number: 1, title: 'Fix login bug', authorLogin: 'alice', headRef: 'fix/login' }),
-        makePr({
-          number: 2,
-          title: 'Add dashboard',
-          authorLogin: 'bob',
-          headRef: 'add/dashboard',
-          labels: ['enhancement'],
-        }),
-        makePr({
-          number: 3,
-          title: 'Update README',
-          repoOwner: 'acme',
-          repoName: 'docs',
-          headRef: 'docs/readme',
-        }),
-      ]);
+    it('remembers the choice across launches', async () => {
+      usePrStore.getState().setHideFailing(true);
+      expect(persistToTauriStore).toHaveBeenCalledWith(
+        'ui-state.json',
+        PR_HIDE_FAILING_STORE_KEY,
+        true,
+      );
+
+      usePrStore.setState({ hideFailing: false });
+      vi.mocked(readFromTauriStore).mockResolvedValueOnce(true);
+      await usePrStore.getState().restoreHideFailing();
+      expect(readFromTauriStore).toHaveBeenCalledWith('ui-state.json', PR_HIDE_FAILING_STORE_KEY);
+      expect(usePrStore.getState().hideFailing).toBe(true);
+      expect(usePrStore.getState().counts().all).toBe(2);
     });
 
-    it('searches by title (case-insensitive)', () => {
-      usePrStore.getState().setSearchQuery('LOGIN');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(1);
-      expect(result[0]!.pullRequest.number).toBe(1);
-    });
-
-    it('searches by author', () => {
-      usePrStore.getState().setSearchQuery('bob');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(1);
-      expect(result[0]!.pullRequest.number).toBe(2);
-    });
-
-    it('searches by branch name', () => {
-      usePrStore.getState().setSearchQuery('fix/login');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(1);
-    });
-
-    it('searches by repo name', () => {
-      usePrStore.getState().setSearchQuery('acme/docs');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(1);
-      expect(result[0]!.pullRequest.number).toBe(3);
-    });
-
-    it('searches by label', () => {
-      usePrStore.getState().setSearchQuery('enhancement');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(1);
-      expect(result[0]!.pullRequest.number).toBe(2);
-    });
-
-    it('searches by PR number', () => {
-      usePrStore.getState().setSearchQuery('3');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result).toHaveLength(1);
-      expect(result[0]!.pullRequest.number).toBe(3);
-    });
-
-    it('returns all when search query is empty', () => {
-      usePrStore.getState().setSearchQuery('');
-      expect(usePrStore.getState().filteredPrs()).toHaveLength(3);
-    });
-  });
-
-  describe('sorting', () => {
-    const prs = [
-      makePr({
-        number: 1,
-        title: 'Zebra',
-        updatedAt: '2025-01-01T00:00:00Z',
-        createdAt: '2025-01-03T00:00:00Z',
-      }),
-      makePr({
-        number: 2,
-        title: 'Alpha',
-        updatedAt: '2025-01-03T00:00:00Z',
-        createdAt: '2025-01-01T00:00:00Z',
-      }),
-      makePr({
-        number: 3,
-        title: 'Middle',
-        updatedAt: '2025-01-02T00:00:00Z',
-        createdAt: '2025-01-02T00:00:00Z',
-      }),
-    ];
-
-    beforeEach(() => {
-      usePrStore.getState().setPullRequests(prs);
-      usePrStore.getState().setUsername('');
-    });
-
-    it('sorts by updated date descending (default)', () => {
-      usePrStore.getState().setSortBy('updated');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result.map((p) => p.pullRequest.number)).toEqual([2, 3, 1]);
-    });
-
-    it('sorts by created date descending', () => {
-      usePrStore.getState().setSortBy('created');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result.map((p) => p.pullRequest.number)).toEqual([1, 3, 2]);
-    });
-
-    it('sorts by title alphabetically', () => {
-      usePrStore.getState().setSortBy('title');
-      const result = usePrStore.getState().filteredPrs();
-      expect(result.map((p) => p.pullRequest.title)).toEqual(['Alpha', 'Middle', 'Zebra']);
-    });
-
-    it('sorts user PRs first', () => {
-      usePrStore.getState().setUsername('testuser');
-      usePrStore
-        .getState()
-        .setPullRequests([
-          makePr({ number: 1, authorLogin: 'other', updatedAt: '2025-01-03T00:00:00Z' }),
-          makePr({ number: 2, authorLogin: 'testuser', updatedAt: '2025-01-01T00:00:00Z' }),
-        ]);
-      const result = usePrStore.getState().filteredPrs();
-      expect(result[0]!.pullRequest.number).toBe(2);
-    });
-
-    it('sorts drafts after non-drafts', () => {
-      usePrStore
-        .getState()
-        .setPullRequests([
-          makePr({ number: 1, isDraft: true, updatedAt: '2025-01-03T00:00:00Z' }),
-          makePr({ number: 2, isDraft: false, updatedAt: '2025-01-01T00:00:00Z' }),
-        ]);
-      const result = usePrStore.getState().filteredPrs();
-      expect(result[0]!.pullRequest.number).toBe(2);
-    });
-  });
-
-  describe('grouping', () => {
-    it('groups PRs by owner/repo', () => {
-      usePrStore
-        .getState()
-        .setPullRequests([
-          makePr({ number: 1, repoOwner: 'acme', repoName: 'api' }),
-          makePr({ number: 2, repoOwner: 'acme', repoName: 'web' }),
-          makePr({ number: 3, repoOwner: 'acme', repoName: 'api' }),
-        ]);
-      const state = usePrStore.getState();
-      const groups = groupPrs(state.filteredPrs(), 'repo', state.username, state.teams);
-      expect(groups).toHaveLength(2);
-      expect(groups.find((group) => group.label === 'acme/api')?.prs).toHaveLength(2);
-      expect(groups.find((group) => group.label === 'acme/web')?.prs).toHaveLength(1);
-    });
-
-    it('sorts groups with user PRs first', () => {
-      usePrStore.getState().setUsername('me');
-      usePrStore
-        .getState()
-        .setPullRequests([
-          makePr({ number: 1, repoOwner: 'a', repoName: 'first', authorLogin: 'other' }),
-          makePr({ number: 2, repoOwner: 'z', repoName: 'last', authorLogin: 'me' }),
-        ]);
-      const state = usePrStore.getState();
-      const groups = groupPrs(state.filteredPrs(), 'repo', state.username, state.teams);
-      expect(groups[0]?.label).toBe('z/last');
-      expect(groups[1]?.label).toBe('a/first');
+    it('keeps the current choice when nothing was stored', async () => {
+      usePrStore.setState({ hideFailing: true });
+      vi.mocked(readFromTauriStore).mockResolvedValueOnce(undefined);
+      await usePrStore.getState().restoreHideFailing();
+      expect(usePrStore.getState().hideFailing).toBe(true);
     });
   });
 

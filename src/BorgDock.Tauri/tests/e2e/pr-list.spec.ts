@@ -4,11 +4,10 @@ import { FAILING_PR, SAMPLE_PRS } from './helpers/seed';
 import { bootApp, seedMainWindow } from './helpers/test-utils';
 
 /**
- * The pull request list (plans/ui-overhaul-workbench.md, phase 2): the
- * shared row grammar, the All / Needs you / Mine /
- * Failing filter, and a row click that pushes the in-window detail view
- * (phase 3's full-screen PR detail) and comes back to the same scroll
- * position and selection.
+ * The pull request list (design/pr-overview/mockups.html): the table rows,
+ * the view tabs (All / Your turn / Mine / Failing / Ready to merge /
+ * Stale), and a row click that pushes the in-window detail view and comes
+ * back to the same scroll position and selection.
  *
  * The seeded user is `test-user` (the happy-path `check_github_auth`).
  */
@@ -95,49 +94,59 @@ async function bootPrList(page: Page, prs: unknown[] = PRS) {
 }
 
 const rows = (page: Page) => page.locator('.bd-wb-list .bd-wb-row');
-const segment = (page: Page, name: RegExp) =>
-  page.getByRole('group', { name: 'Filter pull requests' }).getByRole('button', { name });
+const tab = (page: Page, name: RegExp) =>
+  page.getByRole('tablist', { name: 'Pull request views' }).getByRole('tab', { name });
 
-test('rows render with the Workbench grammar', async ({ page }) => {
+test('rows render as a table: status, title, meta, checks, reviews, next step', async ({
+  page,
+}) => {
   await bootPrList(page);
 
   await expect(page.getByRole('heading', { name: 'Pull requests' })).toBeVisible();
-  await page.getByRole('button', { name: 'Group and sort' }).click();
-  await page.getByRole('menuitemradio', { name: 'Created', exact: true }).click();
+  // The default: grouped by status, Your turn first, with column headings.
+  await expect(page.locator('.bd-wb-group__label').first()).toHaveText('Your turn');
+  await expect(page.locator('[data-table-head]')).toBeVisible();
+
+  await page.locator('[data-group-button]').click();
+  await page.getByRole('menuitemradio', { name: /^Author/ }).click();
+  await page.locator('[data-sort-button]').click();
+  await page.getByRole('menuitemradio', { name: /^Created/ }).click();
+  await expect(page.locator('[data-sort-button]')).toContainText('Created');
   await expect(page.locator('.bd-wb-group__label').first()).toContainText(`${ME} (you)`);
-  await expect(page.locator('[data-group-key="needs-you"]')).toHaveCount(0);
+  await expect(page.locator('[data-group-key="your-turn"]')).toHaveCount(0);
   await expect(page.locator('[data-group-key="author:test-user"] .bd-wb-row')).toHaveCount(20);
 
   const failing = page.locator('.bd-wb-row[data-pr-number="1"]');
   await expect(failing.locator('.bd-wb-row__title')).toHaveText('Workbench change 1');
-  await expect(failing.locator('.bd-wb-row__meta')).toContainText(`${ME} in borgdock, updated`);
+  // Grouped by author: the meta line leaves the author out.
+  await expect(failing.locator('.bd-wb-row__meta')).toContainText('borgdock #1 · opened');
   await expect(failing.locator('.bd-checkbar')).toHaveText('1 failing');
-  await expect(failing.locator('.bd-wb-chip')).toHaveText('No review yet');
-  await expect(failing.locator('.bd-wb-row__num')).toHaveText('#1');
+  await expect(failing.locator('.bd-prl-next')).toHaveText('Fix checks');
 
   const requested = page.locator('.bd-wb-row[data-pr-number="3"]');
-  await expect(requested.locator('.bd-wb-chip')).toHaveText('Review requested');
+  await expect(requested.locator('.bd-prl-reviews__text')).toHaveText('Awaiting you');
+  await expect(requested.locator('.bd-prl-next')).toHaveText('Your review');
 
-  // No ring, no hover pill bar, no old chip toolbar.
+  // No ring, no hover pill bar, no chips without a qualifier.
   await expect(page.locator('.bd-wb-list .bd-ring')).toHaveCount(0);
   await expect(page.locator('.bd-pr-item__actions')).toHaveCount(0);
   await expect(page.locator('[data-filter-chip]')).toHaveCount(0);
 });
 
-test('the filter control switches and its counts match the rows', async ({ page }) => {
+test('the view tabs switch and their counts match the rows', async ({ page }) => {
   await bootPrList(page);
 
   const expected: [RegExp, number][] = [
-    [/^Needs you/, 6], // 2 failing mine + 3 requested + 1 changes requested
+    [/^Your turn/, 6], // 2 failing mine + 3 requested + 1 changes requested
     [/^Mine/, 20],
     [/^Failing/, 3],
     [/^All/, 40],
   ];
   for (const [name, count] of expected) {
-    const button = segment(page, name);
-    await expect(button.locator('.bd-filter__count')).toHaveText(String(count));
+    const button = tab(page, name);
+    await expect(button.locator('.bd-prl-tab__count')).toHaveText(String(count));
     await button.click();
-    await expect(button).toHaveAttribute('aria-pressed', 'true');
+    await expect(button).toHaveAttribute('aria-selected', 'true');
     await expect(rows(page)).toHaveCount(count);
   }
 });
@@ -158,7 +167,8 @@ test('a row click pushes the detail view; Esc returns to the same scroll and sel
   await target.scrollIntoViewIfNeeded();
   const scrollAtClick = await list.evaluate((el) => el.scrollTop);
   expect(scrollAtClick).toBeGreaterThan(0);
-  await target.click();
+  // On the title: the check bar in the middle of the row opens the Checks tab.
+  await target.locator('.bd-wb-row__title').click();
 
   await expect(page.locator('.bd-viewstack')).toHaveAttribute('data-depth', '2');
   await expect(page.getByRole('heading', { level: 1, name: 'Workbench change 30' })).toBeVisible();
@@ -180,7 +190,9 @@ test('Ctrl+click opens the pop-out and selects only the PR of that repository', 
   const twin = makePr({ number: 8, author: 'sasha', repoName: 'site' });
   await bootPrList(page, [...PRS, twin]);
   const row = page.locator('.bd-wb-row[data-pr-key="test-org/borgdock#8"]');
-  await row.click({ modifiers: ['Control'] });
+  // On the title: the check bar in the middle of the row opens the Checks tab
+  // instead. ControlOrMeta: on macOS, Control+click is a right-click.
+  await row.locator('.bd-wb-row__title').click({ modifiers: ['ControlOrMeta'] });
 
   await expect
     .poll(async () =>
@@ -259,7 +271,7 @@ test('failing-checks scenario shows the failing PR', async ({ page }) => {
     .getByRole('button', { name: /^Pull requests/ })
     .click();
   await expect(page.locator('.bd-wb-row', { hasText: 'WIP: red checks' })).toBeVisible();
-  await segment(page, /^Failing/).click();
+  await tab(page, /^Failing/).click();
   await expect(rows(page)).toHaveCount(1);
   await expect(rows(page).first()).toContainText('WIP: red checks');
 });
