@@ -29,6 +29,8 @@ fn chrome_offset_for_os() -> i32 {
 /// Build the flyout window invisibly on its first explicit use.
 /// Position is computed from the current primary monitor.
 pub(crate) fn build_flyout_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
+    app.state::<crate::flyout::readiness::FlyoutReadiness>()
+        .reset();
     let win = WebviewWindowBuilder::new(app, "flyout", WebviewUrl::App("flyout.html".into()))
         .title("BorgDock")
         .inner_size(FLYOUT_GLANCE_W, FLYOUT_GLANCE_H)

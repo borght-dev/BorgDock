@@ -36,7 +36,7 @@ export type FlyoutMode =
   | { kind: 'toast'; queue: ToastPayload[]; timerDeadline: number | null };
 
 export type FlyoutEvent =
-  | { type: 'init-complete' }
+  | { type: 'init-complete'; visible?: boolean }
   | { type: 'user-open' }
   | { type: 'toast'; payload: ToastPayload }
   | { type: 'dismiss-toast'; id: string }
@@ -54,7 +54,7 @@ export const initialFlyoutMode: FlyoutMode = { kind: 'initializing' };
 export function reduceFlyoutMode(mode: FlyoutMode, event: FlyoutEvent, now: number): FlyoutMode {
   switch (event.type) {
     case 'init-complete':
-      return mode.kind === 'initializing' ? { kind: 'idle' } : mode;
+      return mode.kind === 'initializing' ? { kind: event.visible ? 'glance' : 'idle' } : mode;
 
     case 'user-open':
       return { kind: 'glance' };
@@ -64,7 +64,6 @@ export function reduceFlyoutMode(mode: FlyoutMode, event: FlyoutEvent, now: numb
 
     case 'toast': {
       if (mode.kind === 'glance') return { kind: 'glance', banner: event.payload };
-      if (mode.kind === 'initializing') return mode;
 
       const prev = mode.kind === 'toast' ? mode.queue : [];
       const next = [...prev, event.payload];
