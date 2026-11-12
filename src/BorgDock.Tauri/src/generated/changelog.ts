@@ -4,6 +4,57 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.12.0",
+    "date": "2026-11-12",
+    "summary": "A work item page that tells you where it stands, The whole history on one timeline, A work item peek that grows with your screen, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "A work item page that tells you where it stands",
+        "description": "Open a work item and every fact sits once in the header, where you change it: state, who it's assigned to (one click on Assign me), priority, iteration, tags, and the one field your type cares about, like Severity on a bug or Effort on a backlog item. Below it, Now shows the pull request with its checks and conflicts, the T3 agent working on the item and the next step, and Latest puts the newest Developer Notes update, comment or agent message at the top.",
+        "hero": {
+          "src": "/whats-new/4.12.0/work-item-detail.png",
+          "alt": "The work item page with the fact strip, Now and Latest"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "The whole history on one timeline",
+        "description": "The Activity tab now shows every state change, field change, linked pull request and comment, newest first. An agent's steps fold into one run you can open step by step, and filters show just the comments, just the changes or just the agent.",
+        "hero": {
+          "src": "/whats-new/4.12.0/work-item-activity.png",
+          "alt": "The Activity timeline with an agent run"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "A work item peek that grows with your screen",
+        "description": "Click an AB# in a pull request and the peek now uses the room you have. On a laptop it stays compact; on a big screen every field opens, and on a 4K screen Activity sits right beside the details.",
+        "hero": {
+          "src": "/whats-new/4.12.0/work-item-peek.png",
+          "alt": "The work item peek on a large screen"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Hover cards that say what an item is about",
+        "description": "Hover an AB# and the card always shows the description (or the repro steps when there is none) without the email disclaimer, with the latest update on one line under it. It also shows the type's own field, the parent item and how many children are done.",
+        "hero": {
+          "src": "/whats-new/4.12.0/work-item-hover-cards.png",
+          "alt": "Work item hover cards for a bug, a backlog item and a custom type"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "The counters on the folded sidebar are readable again in both themes, and a \"99+\" no longer covers its icon."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.11.0",
     "date": "2026-11-11",
     "summary": "Pull requests that tell you what's next, Group, sort and lay out the list your way, Type a filter, save it as a view, and more.",
