@@ -1,20 +1,31 @@
 import XCTest
 @testable import BorgDock
 
-/// The Pull requests tab: the desktop list's filters, search, order and groups.
+/// The Pull requests tab: the pills, search, order, groups that fold, and Review all.
 final class PrListTests: XCTestCase {
-    func testFiltersMatchTheDesktopControl() throws {
+    private let me: Set<String> = ["koen"]
+
+    func testPillsMatchTheirBuckets() throws {
         let prs = [
             try samplePR(1, mine: true, failed: 1),
             try samplePR(2, bucket: "you"),
-            try samplePR(3),
+            try samplePR(3, bucket: "ready"),
+            try samplePR(4, extra: ["approvedBy": ["koen"]]),
+            try samplePR(5),
         ]
-        let query = PrListQuery()
-        XCTAssertEqual(query.count(.all, in: prs), 3)
-        XCTAssertEqual(query.count(.needsYou, in: prs), 1)
-        XCTAssertEqual(query.count(.mine, in: prs), 1)
-        XCTAssertEqual(query.count(.failing, in: prs), 1)
+        let query = PrListQuery(myLogins: me)
+        XCTAssertEqual(PrListFilter.allCases.map(\.title), ["All", "Your turn", "Mine", "Failing", "Ready", "Waiting"])
+        XCTAssertEqual(PrListFilter.allCases.map { query.count($0, in: prs) }, [5, 1, 1, 1, 1, 2])
         XCTAssertEqual(PrListQuery(filter: .failing).visible(prs).map(\.number), [1])
+    }
+
+    func testWaitingIsWhatInvolvesYouAndWaitsOnSomeoneElse() throws {
+        XCTAssertTrue(try samplePR(1, mine: true).isWaitingOnOthers(myLogins: me), "yours under review")
+        XCTAssertTrue(try samplePR(2, extra: ["reviewedHeadSha": "old"]).isWaitingOnOthers(myLogins: me), "you reviewed it")
+        XCTAssertTrue(try samplePR(3, extra: ["approvedBy": ["Koen"]]).isWaitingOnOthers(myLogins: me), "you approved it")
+        XCTAssertFalse(try samplePR(4).isWaitingOnOthers(myLogins: me), "a teammate's pull request you never touched")
+        XCTAssertFalse(try samplePR(5, mine: true, draft: true).isWaitingOnOthers(myLogins: me), "a draft waits on its author")
+        XCTAssertFalse(try samplePR(6, mine: true, bucket: "you").isWaitingOnOthers(myLogins: me))
     }
 
     func testSearchMatchesEveryWordAcrossTitleBranchAuthorAndWorkItem() throws {
@@ -25,55 +36,132 @@ final class PrListTests: XCTestCase {
         XCTAssertEqual(PrListQuery(search: "#2").visible(prs).map(\.number), [2])
     }
 
-    func testHideDraftsAppliesToCountsToo() throws {
+    func testHiddenDraftsLeaveTheCountsToo() throws {
         let prs = [try samplePR(1, draft: true), try samplePR(2)]
-        let query = PrListQuery(hideDrafts: true)
+        let query = PrListQuery(showDrafts: false)
         XCTAssertEqual(query.visible(prs).map(\.number), [2])
         XCTAssertEqual(query.count(.all, in: prs), 1)
     }
 
-    func testMineFirstDraftsLastThenNewestUpdate() throws {
+    func testWaitingLongestPutsTheOldestFirstYoursFirstDraftsLast() throws {
         let prs = [
-            try samplePR(1, updatedHoursAgo: 1),
-            try samplePR(2, draft: true, updatedHoursAgo: 0.5),
-            try samplePR(3, mine: true, updatedHoursAgo: 10),
-            try samplePR(4, updatedHoursAgo: 0.2),
+            try samplePR(1, extra: ["createdAt": sampleISO(hoursAgo: 10)]),
+            try samplePR(2, draft: true, extra: ["createdAt": sampleISO(hoursAgo: 90)]),
+            try samplePR(3, mine: true, extra: ["createdAt": sampleISO(hoursAgo: 1)]),
+            try samplePR(4, extra: ["createdAt": sampleISO(hoursAgo: 50)]),
         ]
-        XCTAssertEqual(PrListQuery(grouping: .flat).groups(prs).flatMap(\.pullRequests).map(\.number), [3, 4, 1, 2])
+        let flat = PrListQuery(grouping: .flat, sort: .waiting)
+        XCTAssertEqual(flat.groups(prs).flatMap(\.pullRequests).map(\.number), [3, 4, 1, 2])
+        var others = flat
+        others.mineFirst = false
+        XCTAssertEqual(others.groups(prs).flatMap(\.pullRequests).map(\.number), [4, 1, 3, 2])
     }
 
-    func testNeedsYouIsPinnedAboveAuthorGroupsOnlyForAll() throws {
+    func testSmallestFirstCountsAddedAndRemovedLines() throws {
         let prs = [
-            try samplePR(1, author: "tom", bucket: "you"),
-            try samplePR(2, author: "tom"),
+            try samplePR(1, extra: ["additions": 50, "deletions": 50]),
+            try samplePR(2, extra: ["additions": 5, "deletions": 1]),
+            try samplePR(3, extra: ["additions": 40, "deletions": 0]),
+        ]
+        XCTAssertEqual(PrListQuery(grouping: .flat, sort: .smallest).groups(prs).flatMap(\.pullRequests).map(\.number), [2, 3, 1])
+    }
+
+    func testTheAgeOnARowIsWhatTheListSortsBy() throws {
+        let pr = try samplePR(1, updatedHoursAgo: 2)
+        XCTAssertEqual(PrListSort.waiting.shownDate(pr), pr.createdAt)
+        XCTAssertEqual(PrListSort.newest.shownDate(pr), pr.createdAt)
+        XCTAssertEqual(PrListSort.updated.shownDate(pr), pr.updatedAt)
+    }
+
+    func testNoGroupIsPinnedAboveTheAuthorsAndYoursComeFirst() throws {
+        let prs = [
+            try samplePR(1, author: "tom", bucket: "you", extra: ["createdAt": sampleISO(hoursAgo: 20)]),
+            try samplePR(2, author: "tom", extra: ["createdAt": sampleISO(hoursAgo: 30)]),
             try samplePR(3, author: "koen", mine: true),
-            try samplePR(4, author: "sanne", updatedHoursAgo: 2),
-            try samplePR(5, author: "sanne", updatedHoursAgo: 0.5),
+            try samplePR(4, author: "sanne", extra: ["createdAt": sampleISO(hoursAgo: 90)]),
+            try samplePR(5, author: "sanne", extra: ["createdAt": sampleISO(hoursAgo: 5)]),
         ]
         let groups = PrListQuery().groups(prs)
-        XCTAssertEqual(groups.map(\.title), ["Needs you", "You", "Sanne Example", "Tom Example"])
-        XCTAssertEqual(groups.map { $0.pullRequests.map(\.number) }, [[1], [3], [5, 4], [2]])
-        XCTAssertFalse(PrListQuery(filter: .mine).groups(prs).contains { $0.id == PrListQuery.needsYouGroupId })
+        XCTAssertEqual(groups.map(\.title), ["You", "Sanne Example", "Tom Example"], "groups follow their longest-waiting pull request")
+        XCTAssertEqual(groups.map { $0.pullRequests.map(\.number) }, [[3], [4, 5], [2, 1]])
+        XCTAssertEqual(groups.map(\.id), ["author:koen", "author:sanne", "author:tom"])
+        XCTAssertTrue(groups[1].namesAuthor)
     }
 
     func testRepositoryGroupsPutReposWithYourPullRequestsFirst() throws {
         let prs = [try samplePR(1, repo: "api"), try samplePR(2, repo: "web", mine: true), try samplePR(3, repo: "docs")]
-        XCTAssertEqual(PrListQuery(grouping: .repository).groups(prs).map(\.title), ["acme/web", "acme/api", "acme/docs"])
+        XCTAssertEqual(PrListQuery(grouping: .repository, sort: .title).groups(prs).map(\.title), ["acme/web", "acme/api", "acme/docs"])
     }
 
-    func testStatusGroupsGoNeedsYouReadyWaitingStale() throws {
+    func testStatusGroupsGoYourTurnReadyWaitingStale() throws {
         let prs = [
             try samplePR(1, bucket: "stale"),
             try samplePR(2, bucket: "wait"),
             try samplePR(3, bucket: "ready"),
             try samplePR(4, bucket: "you"),
-            try samplePR(5, mine: true, bucket: "wait"),
         ]
         let groups = PrListQuery(grouping: .status).groups(prs)
-        XCTAssertEqual(groups.map(\.title), ["Needs you", "Ready to merge", "Waiting on others", "Stale"])
-        XCTAssertEqual(groups.map { $0.pullRequests.map(\.number) }, [[4], [3], [5, 2], [1]])
-        XCTAssertEqual(groups.first?.id, PrListQuery.needsYouGroupId, "the pinned group's icon")
-        XCTAssertNil(groups.first { $0.title == "Needs you" && $0.id != PrListQuery.needsYouGroupId }, "not pinned twice")
+        XCTAssertEqual(groups.map(\.title), ["Your turn", "Ready to merge", "Waiting on others", "Stale"])
+        XCTAssertEqual(groups.map(\.id), ["status:you", "status:ready", "status:wait", "status:stale"])
+    }
+
+    func testDependencyUpdatesBecomeOneGroupAtTheEnd() throws {
+        let prs = [
+            try samplePR(1, author: "dependabot[bot]", extra: ["createdAt": sampleISO(hoursAgo: 99)]),
+            try samplePR(2, author: "tom"),
+            try samplePR(3, author: "app/renovate"),
+        ]
+        let together = PrListQuery(grouping: .repository).groups(prs)
+        XCTAssertEqual(together.map(\.title), ["acme/shop", "Dependency updates"])
+        XCTAssertEqual(together.last?.pullRequests.map(\.number), [1, 3])
+        XCTAssertEqual(PrListQuery(grouping: .repository, dependenciesTogether: false).groups(prs).map(\.title), ["acme/shop"])
+        XCTAssertEqual(PrListQuery(grouping: .flat).groups(prs).count, 1, "without groups there is nothing to gather")
+    }
+
+    func testDependencyBotsWithEverySpelling() throws {
+        for login in ["dependabot", "dependabot[bot]", "app/dependabot", "renovate[bot]", "Renovate"] {
+            XCTAssertTrue(try samplePR(1, author: login).isDependencyUpdate, login)
+        }
+        XCTAssertFalse(try samplePR(1, author: "renovator").isDependencyUpdate)
+    }
+
+    func testAFoldedGroupSaysWhatNeedsAttentionFirst() throws {
+        let yours = [
+            try samplePR(1, mine: true, failed: 1),
+            try samplePR(2, mine: true, failed: 2),
+            try samplePR(3, mine: true, bucket: "ready"),
+        ]
+        XCTAssertEqual(PrGroupSummary.parts(yours, now: samplePRNow), [
+            PrGroupSummary.Part(text: "2 failing", alert: true), PrGroupSummary.Part(text: "1 ready to merge"),
+        ])
+        let toms = [try samplePR(4, bucket: "you"), try samplePR(5, extra: ["createdAt": sampleISO(hoursAgo: 50)])]
+        XCTAssertEqual(PrGroupSummary.parts(toms, now: samplePRNow).map(\.text), ["1 asks you", "oldest 2 d"])
+        XCTAssertEqual(PrGroupSummary.parts([try samplePR(6)], now: samplePRNow).map(\.text), ["oldest 2 d"])
+    }
+
+    func testReviewAllRunsTheAuthorsPullRequestsYouCanApproveOldestFirst() throws {
+        let prs = [
+            try samplePR(1, author: "priya", extra: ["createdAt": sampleISO(hoursAgo: 10)]),
+            try samplePR(2, author: "priya", extra: ["createdAt": sampleISO(hoursAgo: 200)]),
+            try samplePR(3, author: "priya", failed: 1),
+            try samplePR(4, author: "priya", extra: ["mergeable": "conflicting"]),
+            try samplePR(5, author: "priya", extra: ["reviewDecision": "changes_requested"]),
+            try samplePR(6, author: "priya", draft: true),
+            try samplePR(7, author: "priya", extra: ["approvedBy": ["koen"], "reviewedHeadSha": "abc"]),
+            try samplePR(8, author: "priya", extra: ["approvedBy": ["koen"], "reviewedHeadSha": "older"]),
+            try samplePR(9, author: "tom"),
+        ]
+        XCTAssertEqual(AuthorRun.queue(prs, author: "Priya", myLogins: me).map(\.number), [2, 8, 1])
+        XCTAssertTrue(AuthorRun.queue(prs, author: "koen", myLogins: me).isEmpty, "never your own")
+    }
+
+    func testFoldedGroupsSurviveAsOneLineEach() {
+        var folded = FoldedGroups(rawValue: "author:tom\nrepo:acme/shop")
+        XCTAssertTrue(folded.contains("repo:acme/shop"))
+        folded.toggle("author:tom")
+        folded.toggle("status:you")
+        XCTAssertEqual(folded.rawValue, "repo:acme/shop\nstatus:you")
+        XCTAssertEqual(FoldedGroups(rawValue: "").ids, [])
     }
 
     func testTheTrackShowsWhereAPullRequestIsStuck() throws {

@@ -59,10 +59,20 @@ const items = [
     { id: 's-61070', to: null, reason: 'A branch exists but ADO says New.' }),
 ];
 
+// Focus's agents (design/ios-flow/mockups.html, section 02): one runs on #412's branch, one asks a question on #398's
+// (10-github.mjs). Neither has a work item, so their rows open the pull request.
+const focusAgents = [
+  { ...thread(70412, 'Fix the failing checkout e2e test', 'round-line-totals', 'running', 4 / 60), guessItemId: null },
+  {
+    ...thread(70398, 'Export orders to CSV', 'orders-csv-export', 'question', 0.3), guessItemId: null, questionRequestId: 'sample-csv-request',
+    questions: [{ id: 'cancelled', question: 'Should the export include cancelled orders?', options: [{ label: 'Yes, marked as cancelled', value: 'yes' }, { label: 'No, leave them out', value: 'no' }], recommended: 1, allowCustomAnswer: true, multiSelect: false }],
+  },
+];
+
 const overview = () => ({
   generatedAt: at(0),
   items,
-  unlinkedThreads: [{ ...thread(70001, 'Spike: faster product search', 'search-spike', 'your-turn', 5, 'The trigram index halves the query time.'), guessItemId: null }],
+  unlinkedThreads: [{ ...thread(70001, 'Spike: faster product search', 'search-spike', 'your-turn', 5, 'The trigram index halves the query time.'), guessItemId: null }, ...focusAgents],
   worktrees: [],
   sources: { ado: { ok: true, at: at(0), error: null }, t3: { ok: true, at: at(0), error: null } },
   walk: {

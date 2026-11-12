@@ -1,8 +1,8 @@
 import XCTest
 
-/// Screenshots of Today, Sprint, Work and Pull requests in both appearances. Runs against the sample server
+/// Screenshots of Focus, Sprint, Work and Pull requests in both appearances. Runs against the sample server
 /// (`PORT=8801 node e2e/ui-fixture.mjs`); set TEST_RUNNER_I1_SHOTS to a folder to write the PNGs there as well.
-final class TodayUITests: XCTestCase {
+final class FocusUITests: XCTestCase {
     @MainActor
     private func launch(_ route: String) -> XCUIApplication {
         let app = XCUIApplication()
@@ -36,15 +36,16 @@ final class TodayUITests: XCTestCase {
     }
 
     @MainActor
-    func testTodaySprintWorkAndPullRequests() {
+    func testFocusSprintWorkAndPullRequests() {
         XCUIDevice.shared.appearance = .dark
         let app = launch("tab/today")
-        let sprint = app.buttons["today-sprint"]
-        XCTAssertTrue(sprint.waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["Up next"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["focus-start-review"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Your turn"].waitForExistence(timeout: 10))
         sleep(2)
-        capture("today")
+        capture("focus")
 
+        let sprint = app.buttons["focus-sprint"]
+        for _ in 0..<4 where !sprint.isHittable { app.swipeUp() }
         sprint.tap()
         XCTAssertTrue(app.staticTexts["items to go"].waitForExistence(timeout: 10))
         sleep(1)
@@ -68,13 +69,46 @@ final class TodayUITests: XCTestCase {
         capture("prs-light")
         tab(app, "Work")
         capture("work-light")
-        tab(app, "Today")
-        capture("today-light")
+        tab(app, "Focus")
+        capture("focus-light")
         tab(app, "Sprint")
         app.swipeDown()
         sleep(1)
         capture("sprint-light")
         XCUIDevice.shared.appearance = .dark
+    }
+
+    /// An agent row opens the pull request its branch belongs to; the folded and open groups, Display and Repositories.
+    @MainActor
+    func testAgentRowOpensItsPullRequestAndTheListFolds() {
+        XCUIDevice.shared.appearance = .light
+        let app = launch("tab/today")
+        let agent = app.descendants(matching: .any)["focus-agent-sample-70412"]
+        XCTAssertTrue(agent.waitForExistence(timeout: 15))
+        agent.tap()
+        XCTAssertTrue(app.navigationBars.buttons.firstMatch.waitForExistence(timeout: 10))
+        sleep(2)
+        capture("focus-agent-opens-pr")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        tab(app, "Pull requests")
+        app.foldEveryPullRequestGroup()
+        let priya = app.buttons["prs-group-author:priyashah"]
+        XCTAssertTrue(priya.waitForExistence(timeout: 5))
+        priya.tap()
+        XCTAssertTrue(app.buttons["prs-review-all-author:priyashah"].waitForExistence(timeout: 5))
+        sleep(1)
+        capture("prs-one-group-open")
+
+        app.buttons["prs-display"].tap()
+        XCTAssertTrue(app.buttons["prs-sort-smallest"].waitForExistence(timeout: 5))
+        capture("prs-display")
+        app.buttons["Close"].tap()
+        sleep(1)
+
+        app.buttons["prs-repositories"].tap()
+        XCTAssertTrue(app.staticTexts["Also read"].waitForExistence(timeout: 10))
+        capture("prs-repositories")
     }
 
     @MainActor
