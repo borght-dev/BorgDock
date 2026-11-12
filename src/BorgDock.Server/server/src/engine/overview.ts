@@ -1,5 +1,5 @@
 import type { Bay, ItemOverview, Overview, PullRequest, SourceStatus, Suggestion, ThreadSummary, Worktree } from '../../../shared/src/api.ts';
-import type { AdoItem } from '../ado/client.ts';
+import { summaryOf, type AdoItem } from '../ado/client.ts';
 import type { T3Project, T3PullRequest, T3Thread } from '../t3/source.ts';
 import { guessItem, linkThreads } from './link.ts';
 
@@ -124,9 +124,8 @@ export function buildOverview(input: EngineInput): { overview: Overview; dequeue
     // Once an agent is working on a queued item, the queue has done its job.
     if (queuedAt && threads.some((t) => t.open)) dequeue.push(item.id);
     const queued = Boolean(queuedAt) && !dequeue.includes(item.id);
-    const { states: _states, linkedPullRequests: _prs, changedAt: _changed, ...summary } = item;
     return {
-      item: summary,
+      item: summaryOf(item),
       bay: bayOf(item, threads, waiting, suggestion, queued),
       waitingFor: waiting,
       suggestion,

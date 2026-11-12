@@ -304,14 +304,20 @@ export function newestNote(html: unknown): ItemNote | null {
 /** `Vera · plan — …`: an agent signs what it posts from someone else's account. */
 const SIGNED = /^([\p{L}][\p{L}.]*) · ([\p{L}-]+) [—-] /u;
 
+/** Who signed a comment (`Vera · plan`) and the signature as written, or null when nobody did. */
+export function signatureOf(text: string): { author: string; prefix: string } | null {
+  const signed = SIGNED.exec(text);
+  return signed ? { author: `${signed[1]} · ${signed[2]}`, prefix: signed[0] } : null;
+}
+
 export function toItemComment(comment: { text: string; createdDate: string; createdBy: { displayName: string } }, me: string | null): ItemComment {
   const text = htmlToText(comment.text).replace(/\n/g, ' ');
-  const signed = SIGNED.exec(text);
+  const signed = signatureOf(text);
   const poster = comment.createdBy.displayName;
   return {
-    author: signed ? `${signed[1]} · ${signed[2]}` : poster,
+    author: signed ? signed.author : poster,
     at: comment.createdDate,
-    text: clip(signed ? text.slice(signed[0].length) : text, COMMENT_LIMIT),
+    text: clip(signed ? text.slice(signed.prefix.length) : text, COMMENT_LIMIT),
     byMe: !signed && me !== null && poster === me,
   };
 }

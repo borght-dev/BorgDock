@@ -12,6 +12,8 @@ import { openDb } from '../src/db.ts';
 import { Notifier } from '../src/push/notifier.ts';
 import { Sessions } from '../src/auth/sessions.ts';
 import { DeviceKeys } from '../src/borgdock/devices.ts';
+import { AttachmentSigner } from '../src/ado/attachments.ts';
+import { item } from './fixtures.ts';
 import { deviceKey, signedHeaders } from './borgdock-helpers.ts';
 
 const ORIGIN = 'https://dispatch.test';
@@ -22,11 +24,25 @@ function setup() {
   const db = openDb(dataDir);
   const notifier = new Notifier(config, db);
   const started: unknown[] = [];
+  const comments: { id: number; text: string }[] = [];
   const service = Object.assign(new EventEmitter(), {
     queue: () => {},
     syncNow: async () => ({ generatedAt: 'fresh', items: [], unlinkedThreads: [], worktrees: [], sources: {} }),
     overview: { generatedAt: 'now', items: [], unlinkedThreads: [], worktrees: [], sources: {} },
-    ado: { me: async () => ({ name: 'Koen', email: 'koen@example.test' }) },
+    ado: {
+      me: async () => ({ name: 'Koen', email: 'koen@example.test' }),
+      itemRead: async (id: number) => ({
+        item: item({ id }), fields: { 'System.Description': '<ul><li>one</li></ul>' }, relations: [], formats: {}, comments: [], updates: [],
+      }),
+      titles: async () => [],
+      addComment: async (id: number, text: string) => {
+        comments.push({ id, text });
+        return { id: 5, text, format: 'markdown', createdDate: '2026-11-12T10:00:00Z', createdBy: { displayName: 'Koen' } };
+      },
+      attachment: async () => new Response('png-bytes', { headers: { 'content-type': 'image/png' } }),
+    },
+    adoItems: [],
+    threadPullRequests: () => [],
     startThread: async (request: unknown) => {
       started.push(request);
       return { threadId: 't1', link: 'x', adoState: null, warning: null };
@@ -35,11 +51,43 @@ function setup() {
   const github = new GithubService(config, db, service as any);
   const { app, setupCodes } = createApp({ config, db, service: service as any, notifier, github });
   const sessions = new Sessions(db);
-  return { app, db, setupCodes, sessions, started };
+  return { app, db, setupCodes, sessions, started, comments, dataDir };
 }
 
 const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
   new Request(`${ORIGIN}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+
+test('an item page reads as markdown; a comment posts as markdown and lands in the audit log', async () => {
+  const { app, db, sessions, comments } = setup();
+  const { token } = sessions.create({ kind: 'app', name: 'iPhone', passkeyId: null, via: 'local' });
+  const auth = { authorization: `Bearer ${token}` };
+  const detail = (await (await app.request('/api/items/61021', { headers: auth })).json()) as any;
+  assert.equal(detail.markdown.description, '- one');
+  assert.equal(detail.description, '• one');
+  assert.equal((await app.request('/api/items/abc', { headers: auth })).status, 404);
+
+  assert.equal((await app.request(post('/api/items/61021/comments', { text: 'Thanks' }, { 'x-dispatch-intent': '1' }))).status, 401);
+  const posted = await app.request(post('/api/items/61021/comments', { text: 'Looks **right**' }, auth));
+  assert.equal(posted.status, 200, 'no device signature needed, like a pull request comment');
+  assert.deepEqual(((await posted.json()) as any).comment, { id: 5, by: 'Koen', at: '2026-11-12T10:00:00Z', text: 'Looks **right**', markdown: 'Looks **right**' });
+  assert.deepEqual(comments, [{ id: 61021, text: 'Looks **right**' }]);
+  assert.equal((await app.request(post('/api/items/61021/comments', { text: ' ' }, auth))).status, 400);
+  const audit = db.prepare("SELECT detail FROM audit WHERE action = 'ado.comment'").all() as { detail: string }[];
+  assert.deepEqual(audit.map((r) => JSON.parse(r.detail)), [{ itemId: 61021, commentId: 5 }]);
+});
+
+test('an attachment loads by its signed URL alone; a wrong or missing signature is a 403', async () => {
+  const { app, dataDir } = setup();
+  const path = AttachmentSigner.inDataDir(dataDir).path(61021, '1b4e28ba-2fa1-11d2-883f-0016d3cca427', 'shot.png');
+  const response = await app.request(path);
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), 'png-bytes');
+  assert.equal(response.headers.get('cache-control'), 'private, max-age=86400');
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal((await app.request(path.replace(/sig=[^&]+/, 'sig=forged'))).status, 403);
+  assert.equal((await app.request(path.replace('/61021/', '/61022/'))).status, 403);
+  assert.equal((await app.request('/api/items/61021/attachments/1b4e28ba-2fa1-11d2-883f-0016d3cca427')).status, 403);
+});
 
 test('data needs a session', async () => {
   const { app } = setup();
