@@ -721,6 +721,12 @@ export class GithubService extends EventEmitter {
       .sort((a, b) => order[a.state] - order[b.state] || a.name.localeCompare(b.name));
   }
 
+  /** One pull request in any state, read from GitHub (shared with detail reads and their cache). */
+  async pullRequest(ref: PrRef): Promise<PrSummary> {
+    const { record } = await this.recordOf(ref);
+    return this.summaryOf(record);
+  }
+
   async files(ref: PrRef): Promise<PrFiles> {
     const { record, account } = await this.recordOf(ref);
     const client = this.client(account);

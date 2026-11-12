@@ -1,16 +1,36 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { BrowseQuery, ItemDetail, ItemType, WorkItemSummary } from '../../../shared/src/api.ts';
+import type { BrowseQuery, ItemType, WorkItemSummary } from '../../../shared/src/api.ts';
+import type { RawUpdate } from './history.ts';
 
 const run = promisify(execFile);
 const AZURE_DEVOPS_RESOURCE = '499b84ac-1321-427f-aa17-267ca6975798';
 const API = 'api-version=7.1';
+const COMMENTS_API = 'api-version=7.1-preview.4';
 
 export type StateCategory = WorkItemSummary['stateCategory'];
 export type WorkflowState = { name: string; category: StateCategory };
 
+/** A GitHub pull request ADO links to an item: ADO's own repository id (never GitHub's) and the number. */
+export type PullRequestLink = { repositoryId: string; number: number };
+
 /** A work item as the engine needs it: the API summary plus what linking and suggestions use. */
-export type AdoItem = WorkItemSummary & { states: WorkflowState[]; linkedPullRequests: number[]; changedAt: string };
+export type AdoItem = WorkItemSummary & { states: WorkflowState[]; linkedPullRequests: number[]; pullRequestLinks: PullRequestLink[]; changedAt: string };
+
+export type AdoRelation = { rel: string; url: string; attributes?: Record<string, unknown> };
+
+export type AdoComment = { id?: number; text: string; format?: string; createdDate: string; createdBy?: { displayName?: string } };
+
+/** Everything the item page reads from ADO in one go: the item, its raw fields and relations, comments and revisions. */
+export type AdoItemRead = {
+  item: AdoItem;
+  fields: Record<string, any>;
+  relations: AdoRelation[];
+  /** Rich-text fields ADO keeps as markdown already (`multilineFieldsFormat`), lower-cased formats. */
+  formats: Record<string, string>;
+  comments: AdoComment[];
+  updates: RawUpdate[];
+};
 
 export type AdoSprintItem = AdoItem & { stateChangedAt: string | null; finishedAt: string | null };
 
@@ -40,11 +60,17 @@ const ITEM_FIELDS = [
 const STATE_CHANGE_DATE = 'Microsoft.VSTS.Common.StateChangeDate';
 const CLOSED_DATE = 'Microsoft.VSTS.Common.ClosedDate';
 const SPRINT_FIELDS = [...ITEM_FIELDS, STATE_CHANGE_DATE, CLOSED_DATE];
-const GITHUB_PR_LINK = /^vstfs:\/\/\/GitHub\/PullRequest\/[^%]+%2F(\d+)$/i;
+const GITHUB_PR_LINK = /^vstfs:\/\/\/GitHub\/PullRequest\/([^%]+)%2F(\d+)$/i;
 const OPEN_STATES = `[System.State] NOT IN ('Done', 'Closed', 'Removed')`;
 const BACKLOG_ITEM_TYPES = `[System.WorkItemType] IN ('Bug', 'Product Backlog Item', 'Quality Improvement')`;
 
-type RawItem = { id: number; fields: Record<string, any>; relations?: { rel: string; url: string }[] };
+type RawItem = { id: number; fields: Record<string, any>; relations?: AdoRelation[]; multilineFieldsFormat?: Record<string, string> };
+
+/** `vstfs:///GitHub/PullRequest/<ADO repository id>%2f<number>` (either case of `%2f`). */
+export function pullRequestLinkOf(url: string): PullRequestLink | null {
+  const m = GITHUB_PR_LINK.exec(url);
+  return m ? { repositoryId: m[1].toLowerCase(), number: Number(m[2]) } : null;
+}
 
 export class AdoClient {
   private readonly orgUrl: string;
@@ -69,12 +95,16 @@ export class AdoClient {
     return this.token.value;
   }
 
-  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const response = await fetch(`${this.orgUrl}/${path}`, {
+  private async send(path: string, init: RequestInit = {}, timeoutMs = 30_000): Promise<Response> {
+    return fetch(`${this.orgUrl}/${path}`, {
       ...init,
       headers: { Authorization: `Bearer ${await this.accessToken()}`, 'Content-Type': 'application/json', ...init.headers },
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
+  }
+
+  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const response = await this.send(path, init);
     const text = await response.text();
     const body = text ? JSON.parse(text) : {};
     if (!response.ok) throw new AdoError(response.status, body.message ?? `ADO request failed with ${response.status}`);
@@ -147,10 +177,8 @@ export class AdoClient {
       assignedToMe: Boolean(me.email) && String(f['System.AssignedTo']?.uniqueName ?? '').toLowerCase() === me.email.toLowerCase(),
       url: `${this.orgUrl}/${encodeURIComponent(project)}/_workitems/edit/${r.id}`,
       states,
-      linkedPullRequests: (r.relations ?? []).flatMap((rel) => {
-        const m = rel.rel === 'ArtifactLink' ? GITHUB_PR_LINK.exec(rel.url) : null;
-        return m ? [Number(m[1])] : [];
-      }),
+      linkedPullRequests: pullRequestLinksOf(r.relations).map((link) => link.number),
+      pullRequestLinks: pullRequestLinksOf(r.relations),
       changedAt: f['System.ChangedDate'],
     };
   }
@@ -172,20 +200,54 @@ export class AdoClient {
     return items.filter((i) => i.stateCategory !== 'Completed' && i.stateCategory !== 'Removed');
   }
 
-  async item(id: number): Promise<ItemDetail> {
-    const [raw, comments] = await Promise.all([
+  /** One item with its relations, whatever its project. */
+  async workItem(id: number): Promise<AdoItem> {
+    return this.toItem(await this.request<RawItem>(`_apis/wit/workitems/${id}?$expand=Relations&${API}`));
+  }
+
+  /** The item page's reads: the item first (its project names the comments' route), with its revisions alongside. */
+  async itemRead(id: number): Promise<AdoItemRead> {
+    const [raw, updates] = await Promise.all([
       this.request<RawItem>(`_apis/wit/workitems/${id}?$expand=Relations&${API}`),
-      this.request<{ comments: any[] }>(`${encodeURIComponent(this.project)}/_apis/wit/workItems/${id}/comments?$top=20&order=desc&api-version=7.1-preview.4`)
+      this.request<{ value: RawUpdate[] }>(`_apis/wit/workItems/${id}/updates?$top=200&${API}`).catch(() => ({ value: [] })),
+    ]);
+    const project = raw.fields['System.TeamProject'] ?? this.project;
+    const [item, comments] = await Promise.all([
+      this.toItem(raw),
+      this.request<{ comments: AdoComment[] }>(`${encodeURIComponent(project)}/_apis/wit/workItems/${id}/comments?$top=50&order=desc&${COMMENTS_API}`)
         .catch(() => ({ comments: [] })),
     ]);
-    return {
-      item: await this.toItem(raw),
-      description: htmlToText(raw.fields['System.Description']),
-      acceptanceCriteria: htmlToText(raw.fields['Microsoft.VSTS.Common.AcceptanceCriteria']),
-      reproSteps: htmlToText(raw.fields['Microsoft.VSTS.TCM.ReproSteps']),
-      qaNotes: htmlToText(raw.fields['Custom.QANotes']),
-      comments: comments.comments.map((c) => ({ by: c.createdBy?.displayName ?? 'Unknown', at: c.createdDate, text: htmlToText(c.text) })),
-    };
+    const formats = Object.fromEntries(Object.entries(raw.multilineFieldsFormat ?? {}).map(([field, format]) => [field, String(format).toLowerCase()]));
+    return { item, fields: raw.fields, relations: raw.relations ?? [], formats, comments: comments.comments, updates: updates.value };
+  }
+
+  /** Titles and types of a few items (a parent), in the order asked; ids ADO doesn't return are left out. */
+  async titles(ids: number[]): Promise<{ id: number; title: string; typeName: string }[]> {
+    if (!ids.length) return [];
+    const raw = await this.fetchRaw(ids, { fields: ['System.Id', 'System.Title', 'System.WorkItemType'] });
+    return raw.map((r) => ({ id: r.id, title: r.fields['System.Title'] ?? '', typeName: r.fields['System.WorkItemType'] ?? '' }));
+  }
+
+  /** Posts a markdown comment as the signed-in account, in the item's own project. Never changes a field. */
+  async addComment(id: number, text: string): Promise<AdoComment> {
+    const raw = await this.request<RawItem>(`_apis/wit/workitems/${id}?fields=System.TeamProject&${API}`);
+    const project = raw.fields['System.TeamProject'] ?? this.project;
+    return this.request<AdoComment>(`${encodeURIComponent(project)}/_apis/wit/workItems/${id}/comments?format=markdown&${COMMENTS_API}`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  /** An attachment's bytes, read with this server's ADO sign-in. */
+  async attachment(guid: string, name: string): Promise<Response> {
+    const response = await this.send(`_apis/wit/attachments/${encodeURIComponent(guid)}?fileName=${encodeURIComponent(name)}&download=false&${API}`, {
+      headers: { Accept: '*/*' },
+    }, 60_000);
+    if (!response.ok) {
+      await response.body?.cancel();
+      throw new AdoError(response.status, `ADO answered ${response.status} for the attachment.`);
+    }
+    return response;
   }
 
   /** Developer Notes (HTML) and the newest comment, for BorgDock's states walk. One item, read-only. */
@@ -294,6 +356,18 @@ export class AdoClient {
     );
     return this.fetchItems(ids, false);
   }
+}
+
+/** The item as the API sends it, without what only the engine reads. */
+export function summaryOf({ states: _s, linkedPullRequests: _l, pullRequestLinks: _p, changedAt: _c, ...summary }: AdoItem): WorkItemSummary {
+  return summary;
+}
+
+function pullRequestLinksOf(relations: AdoRelation[] | undefined): PullRequestLink[] {
+  return (relations ?? []).flatMap((rel) => {
+    const link = rel.rel === 'ArtifactLink' ? pullRequestLinkOf(rel.url) : null;
+    return link ? [link] : [];
+  });
 }
 
 function idsFrom(result: { workItems?: { id: number }[]; workItemRelations?: { target?: { id: number } }[] }): number[] {

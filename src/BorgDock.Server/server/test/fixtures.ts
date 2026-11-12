@@ -29,6 +29,7 @@ export function item(overrides: Partial<AdoItem> & { id: number }): AdoItem {
     url: `https://dev.azure.com/acme/Shop/_workitems/edit/${overrides.id}`,
     states,
     linkedPullRequests: [],
+    pullRequestLinks: [],
     changedAt: '2026-10-01T00:00:00Z',
     ...overrides,
   };

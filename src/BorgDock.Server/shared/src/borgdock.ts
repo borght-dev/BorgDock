@@ -573,8 +573,9 @@ export type OwnerAllowlist = { emails: string[]; githubLogins: string[] };
  *    `borgdock://link-desktop?server=<url>&code=<code>`.
  * 2. The phone calls `POST /api/desktop/links/approve` (signed) with the code; the server answers with the desktop's name.
  * 3. The desktop polls `GET /api/desktop/links/:linkId?secret=<pollSecret>` (no session) until it gets its token, once.
- * A desktop session may only read the server info and activity, mark read, sync reads, send presence and sign out;
- * everything else answers 403. Links expire after 10 minutes; a code works once.
+ * A desktop session may only read the server info and activity, mark read, sync reads, send presence, share its
+ * watched repositories (`PUT /api/desktop/repositories`) and sign out; everything else answers 403. Links expire after
+ * 10 minutes; a code works once.
  */
 export type DesktopLinkRequest = { deviceName: string };
 export type DesktopLinkStart = { linkId: string; code: string; pollSecret: string; expiresAt: string; link: string };
