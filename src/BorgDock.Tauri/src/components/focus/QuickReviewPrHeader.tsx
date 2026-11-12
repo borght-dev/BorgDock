@@ -8,38 +8,102 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { ChecksHoverCard } from '@/components/pr/ChecksHoverCard';
+import { CHECKS_CARD_SIZE } from '@/components/pr/checks-card-data';
 import { avatarInitials, checkCountsFor } from '@/components/pr/pr-card-data';
 import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { PrDescription } from '@/components/shared/PrDescription';
 import { PrLabels } from '@/components/shared/PrLabels';
-import { Avatar, checkBarSummary, Pill, type PillTone } from '@/components/shared/primitives';
+import {
+  Avatar,
+  checkBarSummary,
+  HoverPopover,
+  Pill,
+  type PillTone,
+} from '@/components/shared/primitives';
 import type { PullRequest, PullRequestWithChecks, WorkItem } from '@/types';
 import { formatAgo } from '@/utils/relative-time';
 
 const ICON = { size: 12, strokeWidth: 2.25, 'aria-hidden': true } as const;
 
-function ciPill(pr: PullRequestWithChecks): { tone: PillTone; icon: ReactNode; label: string } {
+interface CiPill {
+  tone: PillTone;
+  icon: ReactNode;
+  label: string;
+  /** There are checks to list in the hover card. */
+  hasChecks: boolean;
+}
+
+function ciPill(pr: PullRequestWithChecks): CiPill {
   const counts = checkCountsFor(pr);
   const { state } = checkBarSummary(counts);
   if (state === 'fail')
-    return { tone: 'error', icon: <CircleX {...ICON} />, label: `CI ${counts.fail} failing` };
+    return {
+      tone: 'error',
+      icon: <CircleX {...ICON} />,
+      label: `CI ${counts.fail} failing`,
+      hasChecks: true,
+    };
   if (state === 'run')
     return {
       tone: 'warning',
       icon: <Loader {...ICON} />,
       label: `CI ${counts.total - counts.run}/${counts.total}`,
+      hasChecks: true,
     };
   if (state === 'ok')
     return {
       tone: 'success',
       icon: <CircleCheck {...ICON} />,
       label: `CI ${counts.ok}/${counts.total}`,
+      hasChecks: true,
     };
   return {
     tone: 'neutral',
     icon: null,
     label: counts.unavailable ? 'CI unavailable' : 'No checks',
+    hasChecks: false,
   };
+}
+
+/**
+ * The CI chip. With checks it opens the PR list's checks card on hover, and
+ * with `onOpen` a click shows the walk's Checks panel.
+ */
+function CiChip({ pr, onOpen }: { pr: PullRequestWithChecks; onOpen?: () => void }) {
+  const ci = ciPill(pr);
+  if (!ci.hasChecks) {
+    return (
+      <Pill tone={ci.tone} icon={ci.icon}>
+        {ci.label}
+      </Pill>
+    );
+  }
+  const chip = onOpen ? (
+    <button
+      type="button"
+      className={`bd-pill bd-pill--${ci.tone} qr-prhead__ci`}
+      data-ci-chip=""
+      onClick={onOpen}
+    >
+      {ci.icon}
+      {ci.label}
+    </button>
+  ) : (
+    <Pill tone={ci.tone} icon={ci.icon} className="qr-prhead__ci" data-ci-chip="">
+      {ci.label}
+    </Pill>
+  );
+  return (
+    <HoverPopover
+      variant="card"
+      triggerClassName="qr-prhead__ci-trigger"
+      content={<ChecksHoverCard pr={pr} />}
+      {...CHECKS_CARD_SIZE}
+    >
+      {chip}
+    </HoverPopover>
+  );
 }
 
 interface Props {
@@ -61,6 +125,8 @@ interface Props {
   onToggleDescription?: () => void;
   onOpenComments?: () => void;
   onOpenGitHub?: () => void;
+  /** Click on the CI chip: show the PR's checks. Without it the chip only hovers. */
+  onOpenChecks?: () => void;
   /** Under the header: the re-review banner. */
   children?: ReactNode;
   now?: number;
@@ -86,10 +152,10 @@ export function QuickReviewPrHeader({
   onToggleDescription,
   onOpenComments,
   onOpenGitHub,
+  onOpenChecks,
   children,
   now,
 }: Props) {
-  const ci = ciPill(pr);
   const ago = formatAgo(p.updatedAt, now);
   const hasBody = !!p.body.trim();
   return (
@@ -128,9 +194,7 @@ export function QuickReviewPrHeader({
         <span className="qr-prhead__chips">
           {statusChips}
           {risk}
-          <Pill tone={ci.tone} icon={ci.icon}>
-            {ci.label}
-          </Pill>
+          <CiChip pr={pr} onOpen={onOpenChecks} />
           {p.mergeable === false ? (
             <Pill tone="error" icon={<GitMerge {...ICON} />}>
               Conflicts
