@@ -1,17 +1,19 @@
 import clsx from 'clsx';
-import { Copy, ExternalLink, Play, Star } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { BackButton } from '@/components/layout/BackButton';
-import { Button } from '@/components/shared/primitives';
 import {
-  avatarToneFor,
-  getInitials,
-  MiniAvatar,
-  PrioBars,
-  StatePill,
-  WI_PRIO,
-} from '@/components/work-items/shared/wi-visuals';
-import { WorkItemTypePill } from '@/components/work-items/WorkItemTypePill';
+  AlertCircle,
+  Check,
+  ChevronRight,
+  Copy,
+  ExternalLink,
+  MoreHorizontal,
+  Play,
+  Star,
+  Trash2,
+} from 'lucide-react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { BackButton } from '@/components/layout/BackButton';
+import { Button, IconButton } from '@/components/shared/primitives';
+import { typeVisual, useTypeMeta } from '@/components/work-items/shared/wi-visuals';
 import {
   toggleTrackedWorkItem,
   toggleWorkingOnWorkItem,
@@ -20,59 +22,143 @@ import { ItemMembership } from '@/components/workstreams/Membership';
 import { startWorkItem } from '@/services/dispatch/actions';
 import { isMainWindow } from '@/services/navigation';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import { ChipPicker } from './ChipPicker';
-import type { TitleBlockChange } from './TitleBlock';
+import type { ItemContext } from '../detail/useItemContext';
+import { type FactsChange, WorkItemFacts, type WorkItemFactsProps } from '../detail/WorkItemFacts';
+import { WorkItemNow } from '../detail/WorkItemNow';
 
 const ICON = { size: 13, strokeWidth: 2.25, 'aria-hidden': true } as const;
 
-const PRIORITY_OPTIONS = [
-  { value: '1', label: 'P1 · Urgent' },
-  { value: '2', label: 'P2 · High' },
-  { value: '3', label: 'P3 · Med' },
-  { value: '4', label: 'P4 · Low' },
-];
-
-/** "Active, P2" — the state line of a row and of the detail header. */
+/** "Active, P2" — the state line of a row. */
 export function workItemStateLine(state: string, priority?: number): string {
   return priority ? `${state}, P${priority}` : state;
+}
+
+export interface SaveStatus {
+  label: string;
+  tone: 'ok' | 'bad' | 'busy';
+  onRetry?: () => void;
 }
 
 export interface WorkItemDetailHeaderProps {
   id?: number;
   title: string;
   workItemType: string;
-  state: string;
-  priority?: number;
-  assignedTo: string;
-  iteration?: string;
-  availableStates: string[];
-  changedAgo?: string;
+  /** The full area path; the last two segments show as the crumb. */
+  areaPath: string;
+  facts: Omit<WorkItemFactsProps, 'onChange' | 'workItemType'>;
+  context: ItemContext;
+  /** "Updated 4 h ago by Vera". */
+  updated: string | null;
+  save: SaveStatus | null;
   htmlUrl: string;
-  onChange: (patch: TitleBlockChange) => void;
+  /** The main window's view: Back leads to the list. */
+  showBack: boolean;
+  /** Extra controls at the start of the bar (the pop-out's ↑ ↓). */
+  leading?: ReactNode;
+  readOnly?: boolean;
+  onTitleChange: (title: string) => void;
+  onFactsChange: (change: FactsChange) => void;
   onOpenInBrowser: () => void;
+  onDelete?: () => void;
+}
+
+function TypePill({ type }: { type: string }) {
+  const visual = typeVisual(type, useTypeMeta(type));
+  return (
+    <span className="bd-wid-typepill" style={{ '--bd-wid-type': visual.color } as never}>
+      <span className="bd-wid-typepill__glyph" aria-hidden="true">
+        {visual.glyph}
+      </span>
+      {type || 'Work item'}
+    </span>
+  );
+}
+
+function MoreMenu({ id, onDelete }: { id?: number; onDelete?: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const working = useWorkItemsStore((s) => id !== undefined && s.workingOnWorkItemIds.has(id));
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+  if (id === undefined && !onDelete) return null;
+  return (
+    <div className="bd-wid-menu" ref={ref}>
+      <IconButton
+        icon={<MoreHorizontal size={15} aria-hidden />}
+        aria-label="More actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        tooltip="More"
+        onClick={() => setOpen((o) => !o)}
+      />
+      {open && (
+        <div className="bd-wid-menu__list" role="menu">
+          {id !== undefined && (
+            <button
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked={working}
+              onClick={() => {
+                toggleWorkingOnWorkItem(id);
+                setOpen(false);
+              }}
+            >
+              <span
+                className="bd-wi-detail__dot"
+                style={working ? { background: 'currentColor' } : undefined}
+              />
+              {working ? 'Stop working on it' : 'Start working'}
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              role="menuitem"
+              data-danger=""
+              onClick={() => {
+                setOpen(false);
+                onDelete();
+              }}
+            >
+              <Trash2 {...ICON} />
+              Delete…
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
- * WorkItemDetailHeader — the head of the full-screen work item view
- * (plans/ui-overhaul-workbench.md, phase 5), in the PR detail header's shape:
- * Back, `AB#id`, the type pill and the state line on the top line; the title
- * (click to edit); the state, priority, assignee and iteration pickers;
- * then the action bar: Open in ADO, Copy id, and the Track and Working
- * toggles. Replaces the panel's `TitleBlock` when the panel is embedded.
+ * The head of the work item detail (design/work-item-detail/mockups.html,
+ * frame A): the crumb with the type and area, save state and the item's
+ * actions; the title (click to edit); the fact strip, each fact in one place;
+ * then "Now" — the pull request, the agent and the next step.
  */
 export function WorkItemDetailHeader({
   id,
   title,
   workItemType,
-  state,
-  priority,
-  assignedTo,
-  iteration,
-  availableStates,
-  changedAgo,
+  areaPath,
+  facts,
+  context,
+  updated,
+  save,
   htmlUrl,
-  onChange,
+  showBack,
+  leading,
+  readOnly = false,
+  onTitleChange,
+  onFactsChange,
   onOpenInBrowser,
+  onDelete,
 }: WorkItemDetailHeaderProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
@@ -83,31 +169,82 @@ export function WorkItemDetailHeader({
     const timer = window.setTimeout(() => setCopied(false), 1500);
     return () => window.clearTimeout(timer);
   }, [copied]);
-
   const tracked = useWorkItemsStore((s) => id !== undefined && s.trackedWorkItemIds.has(id));
-  const working = useWorkItemsStore((s) => id !== undefined && s.workingOnWorkItemIds.has(id));
 
-  const initials = getInitials(assignedTo || '??');
-  const prio = priority != null ? WI_PRIO[priority] : null;
+  const area = areaPath.split('\\').filter(Boolean);
+  const crumb = area.slice(-2);
 
   const commitTitle = () => {
     setEditing(false);
-    if (draft.trim() && draft !== title) onChange({ title: draft });
+    if (draft.trim() && draft !== title) onTitleChange(draft);
     else setDraft(title);
   };
 
   return (
-    <header className="bd-detail__head bd-wi-detail__head" data-wi-id={id}>
-      <div className="bd-detail__bar">
-        <BackButton />
-        <span className="bd-detail__crumb bd-wi-detail__crumb">
-          {id !== undefined && <span className="bd-wi-detail__id">AB#{id}</span>}
-          <WorkItemTypePill type={workItemType} />
-          <span className="bd-wi-detail__stateline">{workItemStateLine(state, priority)}</span>
+    <header className="bd-wid-head" data-wi-id={id}>
+      <div className="bd-wid-bar">
+        {showBack && <BackButton />}
+        {leading}
+        <span className="bd-wid-crumb">
+          {id !== undefined && <span className="bd-wid-id">AB#{id}</span>}
+          <TypePill type={workItemType} />
+          {crumb.length > 0 && (
+            <span className="bd-wid-path" title={area.join(' › ')}>
+              {crumb.length > 1 && (
+                <>
+                  {crumb[0]}
+                  <ChevronRight size={12} strokeWidth={2} aria-hidden />
+                </>
+              )}
+              <b>{crumb[crumb.length - 1]}</b>
+            </span>
+          )}
         </span>
+        <span className="bd-wid-spacer" />
+        {id !== undefined && !readOnly && <ItemMembership id={id} title={title} />}
+        {save && (
+          <span className="bd-wid-saved" data-tone={save.tone === 'bad' ? 'bad' : undefined}>
+            {save.tone === 'ok' && <Check size={12} strokeWidth={2.25} aria-hidden />}
+            {save.tone === 'bad' && <AlertCircle size={12} strokeWidth={2.25} aria-hidden />}
+            {save.label}
+            {save.onRetry && (
+              <button type="button" className="bd-wid-latest__all" onClick={save.onRetry}>
+                Retry
+              </button>
+            )}
+          </span>
+        )}
+        {save && updated && <span className="bd-wid-vsep" />}
+        {updated && <span className="bd-wid-updated">{updated}</span>}
+        {id !== undefined && (
+          <IconButton
+            icon={copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+            aria-label={copied ? 'Copied' : 'Copy id'}
+            tooltip={copied ? 'Copied' : `Copy AB#${id}`}
+            onClick={() => {
+              navigator.clipboard
+                ?.writeText(`AB#${id}`)
+                .then(() => setCopied(true))
+                .catch(() => {});
+            }}
+            data-action-bar-action="copy-id"
+          />
+        )}
+        {htmlUrl && (
+          <Button
+            variant="secondary"
+            size="md"
+            leading={<ExternalLink {...ICON} />}
+            onClick={onOpenInBrowser}
+            data-action-bar-action="ado"
+          >
+            Open in ADO
+          </Button>
+        )}
+        {!readOnly && <MoreMenu id={id} onDelete={onDelete} />}
       </div>
 
-      <div className="bd-detail__titlerow">
+      <div className="bd-wid-title">
         {editing ? (
           <input
             autoFocus
@@ -121,137 +258,72 @@ export function WorkItemDetailHeader({
               if (e.key === 'Escape') {
                 // Esc cancels the edit here; it must not also leave the view.
                 e.preventDefault();
+                e.stopPropagation();
                 setDraft(title);
                 setEditing(false);
               }
             }}
           />
         ) : (
-          <h1 className="bd-detail__title">
-            <button
-              type="button"
-              className="bd-wi-detail__title-btn"
-              title="Edit title"
-              onClick={() => {
-                setDraft(title);
-                setEditing(true);
-              }}
-            >
-              {title}
-            </button>
+          <h1
+            className="bd-detail__title"
+            style={{ fontSize: 'inherit', letterSpacing: 'inherit' }}
+          >
+            {readOnly ? (
+              title
+            ) : (
+              <button
+                type="button"
+                className="bd-wi-detail__title-btn"
+                title="Edit title"
+                onClick={() => {
+                  setDraft(title);
+                  setEditing(true);
+                }}
+              >
+                {title}
+              </button>
+            )}
           </h1>
         )}
       </div>
 
-      <div className="bd-wi-detail__fields">
-        <ChipPicker
-          label="State"
-          value={state}
-          options={availableStates}
-          onChange={(next) => onChange({ state: next })}
-        >
-          <StatePill state={state} compact />
-        </ChipPicker>
-        <ChipPicker
-          label="Priority"
-          value={priority != null ? String(priority) : ''}
-          options={PRIORITY_OPTIONS}
-          onChange={(next) => onChange({ priority: Number(next) })}
-        >
-          <span className="bd-wi-detail__field">
-            <PrioBars prio={priority} />
-            {prio ? `P${priority} · ${prio.label}` : 'No priority'}
-          </span>
-        </ChipPicker>
-        <ChipPicker
-          label="Assigned to"
-          value={assignedTo}
-          placeholder="display name or email"
-          onChange={(next) => onChange({ assignedTo: next })}
-        >
-          <span className="bd-wi-detail__field">
-            <MiniAvatar initials={initials} tone={avatarToneFor(initials)} size={16} />
-            {assignedTo || 'Unassigned'}
-          </span>
-        </ChipPicker>
-        <ChipPicker
-          label="Iteration"
-          value={iteration ?? ''}
-          placeholder="e.g. R5.2.7.5"
-          onChange={(next) => onChange({ iteration: next })}
-        >
-          <span className="bd-wi-detail__field">{iteration || 'No iteration'}</span>
-        </ChipPicker>
-        {changedAgo && <span className="bd-wi-detail__changed">updated {changedAgo} ago</span>}
+      <div className="bd-wid-factrow">
+        <WorkItemFacts
+          {...facts}
+          workItemType={workItemType}
+          readOnly={readOnly}
+          onChange={onFactsChange}
+        />
+        {id !== undefined && !readOnly && (
+          <div className="bd-wid-acts" data-action-bar="">
+            <Button
+              variant="secondary"
+              size="md"
+              leading={<Star {...ICON} fill={tracked ? 'currentColor' : 'none'} />}
+              aria-pressed={tracked}
+              className={clsx(tracked && 'bd-detail-actions__toggle--on')}
+              onClick={() => toggleTrackedWorkItem(id)}
+              data-action-bar-action="track"
+            >
+              {tracked ? 'Tracked' : 'Track'}
+            </Button>
+            {isMainWindow() && (
+              <Button
+                variant="primary"
+                size="md"
+                leading={<Play {...ICON} fill="currentColor" />}
+                onClick={() => startWorkItem(id)}
+                data-action-bar-action="start"
+              >
+                Start in T3
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="bd-detail-actions" data-action-bar="">
-        {htmlUrl && (
-          <Button
-            variant="secondary"
-            size="md"
-            leading={<ExternalLink {...ICON} />}
-            onClick={onOpenInBrowser}
-            data-action-bar-action="ado"
-          >
-            Open in ADO
-          </Button>
-        )}
-        {id !== undefined && (
-          <Button
-            variant="secondary"
-            size="md"
-            leading={<Copy {...ICON} />}
-            onClick={() => {
-              navigator.clipboard
-                ?.writeText(`AB#${id}`)
-                .then(() => setCopied(true))
-                .catch(() => {});
-            }}
-            data-action-bar-action="copy-id"
-          >
-            {copied ? 'Copied' : 'Copy id'}
-          </Button>
-        )}
-        {id !== undefined && isMainWindow() && (
-          <Button
-            variant="secondary"
-            size="md"
-            leading={<Play {...ICON} />}
-            onClick={() => startWorkItem(id)}
-            data-action-bar-action="start"
-          >
-            Start in T3
-          </Button>
-        )}
-        {id !== undefined && (
-          <Button
-            variant="secondary"
-            size="md"
-            leading={<Star {...ICON} fill={tracked ? 'currentColor' : 'none'} />}
-            aria-pressed={tracked}
-            className={clsx(tracked && 'bd-detail-actions__toggle--on')}
-            onClick={() => toggleTrackedWorkItem(id)}
-            data-action-bar-action="track"
-          >
-            {tracked ? 'Tracked' : 'Track'}
-          </Button>
-        )}
-        {id !== undefined && (
-          <Button
-            variant="secondary"
-            size="md"
-            leading={<span className="bd-wi-detail__dot" aria-hidden="true" />}
-            aria-pressed={working}
-            className={clsx(working && 'bd-detail-actions__toggle--on')}
-            onClick={() => toggleWorkingOnWorkItem(id)}
-            data-action-bar-action="working"
-          >
-            {working ? 'Working on it' : 'Start working'}
-          </Button>
-        )}
-        {id !== undefined && <ItemMembership id={id} title={title} />}
-      </div>
+      <WorkItemNow context={context} />
     </header>
   );
 }

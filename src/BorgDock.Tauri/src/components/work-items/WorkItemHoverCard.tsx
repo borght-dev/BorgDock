@@ -3,21 +3,27 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Avatar } from '@/components/shared/primitives';
 import {
   avatarToneFor,
-  DEFAULT_STATE_META,
-  DEFAULT_TYPE_META,
   getInitials,
+  PrioBars,
+  stateDot,
   TypeGlyph,
-  WI_STATES,
-  WI_TYPES,
+  typeVisual,
+  useStateMeta,
+  useTypeMeta,
 } from '@/components/work-items/shared/wi-visuals';
 import { useWorkItemPeek, type WorkItemPeekState } from '@/hooks/useWorkItemPeek';
-import { THREAD_STATUS_LABEL } from '@/services/dispatch/types';
+import { relatedLinks } from '@/services/ado/relations';
+import { adoClient } from '@/services/ado/singleton';
+import { type LatestMessage, THREAD_STATUS_LABEL } from '@/services/dispatch/types';
 import { detectWorkItemIds } from '@/services/work-item-linker';
 import { workItemPeekOf } from '@/services/work-item-peek';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
+import { useWorkItemsStore } from '@/stores/work-items-store';
 import type { WorkItem } from '@/types';
 import { formatAgo } from '@/utils/relative-time';
+import { type RelatedItem, useRelatedItems } from './detail/useRelatedItems';
 
 /** A pull request or agent thread the card names, with how it is doing. */
 export interface WorkItemCardLink {
@@ -92,28 +98,95 @@ function useCardLinks(id: number): WorkItemCardLink[] {
     );
 }
 
+/** The item's parent and how far its children are, when it has them. */
+export interface WorkItemCardFamily {
+  parent: RelatedItem | null;
+  children: { done: number; total: number } | null;
+}
+
+const DONE_STATE = /^(done|closed|resolved|removed|completed)$/i;
+
+/** The parent and children of the card's item, read once (batched, cached). */
+function useCardFamily(peek: WorkItemPeekState): WorkItemCardFamily {
+  const ado = useSettingsStore((s) => s.settings.azureDevOps);
+  const links = peek.status === 'ready' ? relatedLinks(peek.item.relations) : [];
+  const parentId = links.find((l) => l.kind === 'parent')?.id ?? null;
+  const childIds = links.filter((l) => l.kind === 'child').map((l) => l.id);
+  const ids = parentId === null ? childIds : [parentId, ...childIds];
+  const items = useRelatedItems(ids, () => adoClient(ado));
+  const parent = parentId === null ? null : (items.get(parentId) ?? null);
+  const known = childIds.map((id) => items.get(id)).filter((c): c is RelatedItem => !!c);
+  return {
+    parent,
+    children:
+      childIds.length > 0
+        ? { done: known.filter((c) => DONE_STATE.test(c.state)).length, total: childIds.length }
+        : null,
+  };
+}
+
 interface WorkItemCardViewProps {
   id: number;
   peek: WorkItemPeekState;
   links: WorkItemCardLink[];
   /** Ctrl+click opens the item in Azure DevOps. */
   canOpenWeb: boolean;
+  /** The newest update; one line under the description. */
+  latest?: LatestMessage | null;
+  family?: WorkItemCardFamily;
   now?: number;
 }
 
+/** The card's last line: who changed it last, then the two clicks. Never wraps. */
 function Footer({ children, canOpenWeb }: { children?: ReactNode; canOpenWeb: boolean }) {
   return (
-    <div className="bd-hover-card__foot">
-      {children}
-      <span className="bd-hover-card__spacer" />
-      <span>
-        <kbd>Click</kbd> read
-      </span>
-      {canOpenWeb && (
+    <div className="bd-hover-card__foot bd-wi-card__foot">
+      <span className="bd-wi-card__who">{children}</span>
+      <span className="bd-wi-card__hints">
         <span>
-          <kbd>Ctrl</kbd>+<kbd>Click</kbd> ADO
+          <b>Click</b> open
         </span>
-      )}
+        {canOpenWeb && (
+          <span>
+            <b>Ctrl+click</b> ADO
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+/** The newest update about the item: Dispatch's latest message, else its newest Developer Notes entry. */
+function useLatest(id: number): LatestMessage | null {
+  return useDispatchStore((s) => {
+    const unit =
+      s.overview?.items.find((u) => u.item.id === id) ??
+      s.overview?.context?.find((u) => u.item.id === id);
+    return unit?.latest ?? null;
+  });
+}
+
+function shortWhen(at: string | null, now?: number): string {
+  if (!at) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(at)) {
+    const d = new Date(`${at}T12:00:00`);
+    return Number.isNaN(d.getTime())
+      ? at
+      : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  }
+  return formatAgo(at, now).replace(/ ago$/, '');
+}
+
+function LatestLine({ message, now }: { message: LatestMessage; now?: number }) {
+  const who = message.source === 'notes' ? message.author : message.author.split(' · ')[0];
+  const when = shortWhen(message.at, now);
+  return (
+    <div className="bd-wi-card__latest">
+      <span className="bd-wi-card__latest-label">Latest</span>
+      <span className="bd-wi-card__latest-text">
+        <b>{who}</b>
+        {when && ` · ${when}`} · {message.text}
+      </span>
     </div>
   );
 }
@@ -135,7 +208,23 @@ const MISSING_TEXT: Record<'unconfigured' | 'missing' | 'error', { title: string
   };
 
 /** The card itself, for any state of the item; the container feeds it. */
-export function WorkItemCardView({ id, peek, links, canOpenWeb, now }: WorkItemCardViewProps) {
+export function WorkItemCardView({
+  id,
+  peek,
+  links,
+  canOpenWeb,
+  latest = null,
+  family,
+  now,
+}: WorkItemCardViewProps) {
+  const ready = peek.status === 'ready' ? peek.item : null;
+  const typeName = ready ? String(ready.fields['System.WorkItemType'] ?? '') : '';
+  const stateName = ready ? String(ready.fields['System.State'] ?? '') : '';
+  const typeMeta = useTypeMeta(typeName);
+  const stateMeta = useStateMeta(stateName, typeName);
+  const layout = useWorkItemsStore((s) =>
+    typeName ? (s.workItemTypeLayouts.get(typeName) ?? null) : null,
+  );
   if (peek.status === 'loading') {
     return (
       <div className="bd-wi-card" data-work-item-card={id} aria-busy="true">
@@ -175,9 +264,14 @@ export function WorkItemCardView({ id, peek, links, canOpenWeb, now }: WorkItemC
     );
   }
 
-  const item = workItemPeekOf(peek.item);
-  const type = WI_TYPES[item.type] ?? DEFAULT_TYPE_META;
-  const stateDot = (WI_STATES[item.state] ?? DEFAULT_STATE_META).dot;
+  const item = workItemPeekOf(peek.item, layout);
+  const type = typeVisual(item.type, typeMeta);
+  const dot = stateDot(item.state, stateMeta);
+  const newest: LatestMessage | null =
+    latest ??
+    (item.note
+      ? { source: 'notes', author: 'Developer Notes', at: item.note.date, text: item.note.text }
+      : null);
   const initials = item.assignee ? getInitials(item.assignee) : '';
   const changed = item.changedAt ? formatAgo(item.changedAt, now) : '';
 
@@ -196,11 +290,17 @@ export function WorkItemCardView({ id, peek, links, canOpenWeb, now }: WorkItemC
           <span className="bd-wi-card__id">{id}</span>
           {item.state && (
             <span className="bd-wi-card__state">
-              <span className="bd-wi-card__state-dot" style={{ background: stateDot }} />
+              <span className="bd-wi-card__state-dot" style={{ background: dot }} />
               {item.state}
             </span>
           )}
         </div>
+        {family?.parent && (
+          <div className="bd-wi-card__parent">
+            <TypeGlyph type={family.parent.type} size={10} />
+            {family.parent.type} {family.parent.id} · {family.parent.title}
+          </div>
+        )}
         <h3 className="bd-wi-card__title">{item.title || `Work item ${id}`}</h3>
         <div className="bd-wi-card__meta">
           <span>
@@ -221,18 +321,34 @@ export function WorkItemCardView({ id, peek, links, canOpenWeb, now }: WorkItemC
           )}
           {item.priority !== null && (
             <span>
-              <Flag size={12} strokeWidth={2} aria-hidden />P{item.priority}
+              <PrioBars prio={item.priority} />P{item.priority}
             </span>
           )}
-          {item.points !== null && <span>{item.points} pts</span>}
+          {item.typeFact ? (
+            <span data-due={item.typeFact.due || undefined}>
+              {item.typeFact.due && <Flag size={12} strokeWidth={2} aria-hidden />}
+              {item.typeFact.text}
+            </span>
+          ) : (
+            item.points !== null && <span>{item.points} pts</span>
+          )}
         </div>
-        {item.description ? (
-          <p className="bd-wi-card__desc">{item.description}</p>
-        ) : (
-          <p className="bd-wi-card__desc" data-empty="">
-            No description.
-          </p>
+        <div className="bd-wi-card__gist" data-empty={item.description ? undefined : ''}>
+          <span className="bd-wi-card__gist-label">From the {item.descriptionSource}</span>
+          <p className="bd-wi-card__desc">{item.description || 'No description.'}</p>
+        </div>
+        {family?.children && (
+          <div className="bd-wi-card__progress">
+            <span>Children</span>
+            <span className="bd-wi-card__bar">
+              <i style={{ width: `${(family.children.done / family.children.total) * 100}%` }} />
+            </span>
+            <span>
+              {family.children.done} of {family.children.total}
+            </span>
+          </div>
         )}
+        {newest && <LatestLine message={newest} now={now} />}
         {links.length > 0 && (
           <div className="bd-wi-card__links">
             {links.map((link) => (
@@ -251,12 +367,8 @@ export function WorkItemCardView({ id, peek, links, canOpenWeb, now }: WorkItemC
         )}
       </div>
       <Footer canOpenWeb={canOpenWeb}>
-        {changed && (
-          <span>
-            Updated {changed}
-            {item.changedBy ? ` by ${item.changedBy.split(' <')[0]}` : ''}
-          </span>
-        )}
+        {changed &&
+          (item.changedBy ? `${item.changedBy.split(' <')[0]} · ${changed}` : `Updated ${changed}`)}
       </Footer>
     </div>
   );
@@ -274,5 +386,16 @@ export function WorkItemHoverCard({
 }) {
   const peek = useWorkItemPeek(id, initial);
   const links = useCardLinks(id);
-  return <WorkItemCardView id={id} peek={peek} links={links} canOpenWeb={canOpenWeb} />;
+  const latest = useLatest(id);
+  const family = useCardFamily(peek);
+  return (
+    <WorkItemCardView
+      id={id}
+      peek={peek}
+      links={links}
+      canOpenWeb={canOpenWeb}
+      latest={latest}
+      family={family}
+    />
+  );
 }

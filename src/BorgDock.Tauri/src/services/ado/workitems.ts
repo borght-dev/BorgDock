@@ -1,4 +1,4 @@
-import type { JsonPatchOperation, WorkItem, WorkItemComment } from '@/types';
+import type { JsonPatchOperation, WorkItem, WorkItemComment, WorkItemUpdate } from '@/types';
 import type { AdoClient } from './client';
 
 interface AdoWorkItemListResponse {
@@ -133,6 +133,24 @@ export async function addWorkItemComment(
     undefined,
     COMMENTS_API_VERSION,
   );
+}
+
+// --- Work item history (Activity) ---
+
+interface AdoUpdatesResponse {
+  count: number;
+  value: WorkItemUpdate[];
+}
+
+/** The item's revisions, oldest first: who changed which fields and links, and when. */
+export async function getWorkItemUpdates(
+  client: AdoClient,
+  workItemId: number,
+): Promise<WorkItemUpdate[]> {
+  const response = await client.get<AdoUpdatesResponse>(
+    `wit/workItems/${workItemId}/updates?$top=200`,
+  );
+  return response.value ?? [];
 }
 
 export function buildIdPrefixWiql(prefix: string): string {

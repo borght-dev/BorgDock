@@ -12,6 +12,11 @@ interface DetailDialogProps {
   className?: string;
   actions?: ReactNode;
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
+  /**
+   * Draws the whole header instead of the title row; it gets the id the
+   * dialog is labelled by and puts it on its own heading. The body follows.
+   */
+  header?: (titleId: string) => ReactNode;
 }
 
 export function DetailDialog({
@@ -21,6 +26,7 @@ export function DetailDialog({
   className = '',
   actions,
   onKeyDown,
+  header,
 }: DetailDialogProps) {
   const root = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -72,16 +78,20 @@ export function DetailDialog({
             if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
           }}
         >
-          <header className="bd-preview-header">
-            <h2 id={titleId}>{title}</h2>
-            {actions}
-            <IconButton
-              icon={<X size={15} aria-hidden />}
-              aria-label={`Close ${title}`}
-              tooltip="Close"
-              onClick={onClose}
-            />
-          </header>
+          {header ? (
+            header(titleId)
+          ) : (
+            <header className="bd-preview-header">
+              <h2 id={titleId}>{title}</h2>
+              {actions}
+              <IconButton
+                icon={<X size={15} aria-hidden />}
+                aria-label={`Close ${title}`}
+                tooltip="Close"
+                onClick={onClose}
+              />
+            </header>
+          )}
           <div className="bd-preview-body">{children}</div>
         </div>
       </div>

@@ -6,12 +6,14 @@ import type {
 import { parseLinkedPRs } from '@/components/work-items/WorkItemDetailPanel/parseLinkedPRs';
 import { AdoClient } from '@/services/ado/client';
 import { getProjectFields, indexFieldsByRef } from '@/services/ado/fields';
+import { buildFormModel, type FormModel } from '@/services/ado/form-model';
 import {
   getProcessLayout,
   getProcessWitTypeRefs,
   getProjectProcessId,
-  type ProcessTab,
+  type ProcessLayout,
 } from '@/services/ado/layout';
+import { getWorkItemTypes } from '@/services/ado/work-item-types';
 import {
   addWorkItemComment,
   deleteWorkItem,
@@ -24,15 +26,9 @@ import {
 import { createLogger } from '@/services/logger';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import type {
-  DynamicFieldItem,
-  JsonPatchOperation,
-  WorkItem,
-  WorkItemAttachment,
-  WorkItemComment,
-} from '@/types';
+import type { JsonPatchOperation, WorkItem, WorkItemAttachment, WorkItemComment } from '@/types';
 import type { AzureDevOpsSettings } from '@/types/settings';
-import { classifyFields, extractAttachments } from '@/utils/work-item-fields';
+import { extractAttachments } from '@/utils/work-item-fields';
 import { getField } from '@/utils/work-item-helpers';
 
 const log = createLogger('useWorkItemDetailData');
@@ -118,6 +114,9 @@ export function workItemPatch(item: WorkItem, updates: WorkItemFieldUpdates): Js
   if (updates.priority !== (Number(item.fields['Microsoft.VSTS.Common.Priority']) || undefined))
     replace('Microsoft.VSTS.Common.Priority', updates.priority ?? '');
   if (updates.tags !== getField(item, 'System.Tags')) replace('System.Tags', updates.tags);
+  for (const [field, value] of Object.entries(updates.fields ?? {})) {
+    if (String(value ?? '') !== String(item.fields[field] ?? '')) replace(field, value ?? '');
+  }
   if (updates.iteration !== undefined) {
     const currentPath = String(item.fields['System.IterationPath'] ?? '');
     const currentSeg = currentPath ? (currentPath.split(/[\\/]/).pop() ?? '') : '';
@@ -176,6 +175,23 @@ async function ensureTypeLayout(client: AdoClient, project: string, wit: string)
   useWorkItemsStore.getState().setWorkItemTypeLayout(wit, layout);
 }
 
+let typesRequest: Promise<void> | null = null;
+
+/** Reads the colour, icon and states of the project's types once per session. */
+function ensureTypes(client: AdoClient): Promise<void> {
+  if (useWorkItemsStore.getState().workItemTypes !== null) return Promise.resolve();
+  typesRequest ??= getWorkItemTypes(client)
+    .then((types) => useWorkItemsStore.getState().setWorkItemTypes(types))
+    .catch((err) => {
+      log.debug('work item types unavailable', { error: String(err) });
+      useWorkItemsStore.getState().setWorkItemTypes(new Map());
+    })
+    .finally(() => {
+      typesRequest = null;
+    });
+  return typesRequest;
+}
+
 // ---- Image auth (pop-out) ----
 
 async function replaceAdoImageUrls(html: string, pat: string): Promise<string> {
@@ -198,17 +214,12 @@ async function replaceAdoImageUrls(html: string, pat: string): Promise<string> {
   return result;
 }
 
-async function processFieldImages(
-  fields: DynamicFieldItem[],
-  pat: string,
-): Promise<DynamicFieldItem[]> {
-  const processed: DynamicFieldItem[] = [];
-  for (const field of fields) {
-    if (field.isHtml && field.htmlContent) {
-      processed.push({ ...field, htmlContent: await replaceAdoImageUrls(field.htmlContent, pat) });
-    } else {
-      processed.push(field);
-    }
+/** The item's long-text fields with their ADO images inlined, by field. */
+async function processFieldImages(item: WorkItem, pat: string): Promise<Record<string, string>> {
+  const processed: Record<string, string> = {};
+  for (const [key, value] of Object.entries(item.fields)) {
+    if (typeof value !== 'string' || key === 'System.History' || !/<img/i.test(value)) continue;
+    processed[key] = await replaceAdoImageUrls(value, pat);
   }
   return processed;
 }
@@ -234,11 +245,10 @@ export interface WorkItemDetailDataResult {
   workItem: WorkItem | null;
   /** The item as the panel shows it; null until there is one. */
   detailData: WorkItemDetailData | null;
-  richText: DynamicFieldItem[];
-  standard: DynamicFieldItem[];
-  custom: DynamicFieldItem[];
-  extraTabs?: ProcessTab[];
-  detailsFieldKeys?: string[];
+  /** The form: header fact, tabs, main column and rail groups, from the ADO layout. */
+  form: FormModel | null;
+  /** The type's ADO form layout; null without one (the form falls back). */
+  layout: ProcessLayout | null;
   attachments: WorkItemAttachment[];
   availableStates: string[];
   comments: WorkItemComment[];
@@ -257,12 +267,6 @@ export interface WorkItemDetailDataResult {
   /** Saves an attachment through a download link (the main window). */
   downloadAttachment: (attachment: WorkItemAttachment) => Promise<void>;
 }
-
-const EMPTY_FIELDS: Record<'richText' | 'standard' | 'custom', DynamicFieldItem[]> = {
-  richText: [],
-  standard: [],
-  custom: [],
-};
 
 /**
  * useWorkItemDetailData — a work item and everything its detail panel needs,
@@ -294,7 +298,7 @@ export function useWorkItemDetailData(
     options.prepare ? null : useSettingsStore.getState().settings.azureDevOps,
   );
   const [availableStates, setAvailableStates] = useState<string[]>([]);
-  const [processedRichText, setProcessedRichText] = useState<DynamicFieldItem[] | null>(null);
+  const [processedHtml, setProcessedHtml] = useState<Record<string, string> | null>(null);
   const [comments, setComments] = useState<WorkItemComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isLoading, setIsLoading] = useState(seedItem === undefined);
@@ -322,7 +326,7 @@ export function useWorkItemDetailData(
       setIsLoading(seed === null);
     }
     setComments((c) => (c.length === 0 ? c : []));
-    setProcessedRichText(null);
+    setProcessedHtml(null);
     setAvailableStates((s) => (s.length === 0 ? s : []));
     setStatusText(undefined);
     setError(null);
@@ -367,6 +371,7 @@ export function useWorkItemDetailData(
           ensureTypeLayout(client, settings.project, itemType).catch((err) =>
             log.debug('process layout unavailable', { error: String(err) }),
           );
+          void ensureTypes(client);
         }
 
         if (useWorkItemsStore.getState().fieldDefinitions === null) {
@@ -392,10 +397,9 @@ export function useWorkItemDetailData(
 
         const pat = settings.personalAccessToken;
         if (resolveImages && pat) {
-          const { richText } = classifyFields(item, useWorkItemsStore.getState().fieldDefinitions);
-          const processed = await processFieldImages(richText, pat);
+          const processed = await processFieldImages(item, pat);
           if (cancelled) return;
-          setProcessedRichText(processed);
+          setProcessedHtml(processed);
         }
       } catch (err) {
         if (cancelled) return;
@@ -517,24 +521,24 @@ export function useWorkItemDetailData(
     () => (workItem && ado ? toWorkItemDetailData(workItem, ado) : null),
     [workItem, ado],
   );
-  const fields = useMemo(
-    () => (workItem ? classifyFields(workItem, fieldDefinitions) : EMPTY_FIELDS),
-    [workItem, fieldDefinitions],
-  );
   const attachments = useMemo(() => (workItem ? extractAttachments(workItem) : []), [workItem]);
   const layout = useMemo(() => {
     const wit = workItem ? getField(workItem, 'System.WorkItemType') : '';
     return wit ? (workItemTypeLayouts.get(wit) ?? null) : null;
   }, [workItem, workItemTypeLayouts]);
+  const form = useMemo(() => {
+    if (!workItem) return null;
+    const shown = processedHtml
+      ? { ...workItem, fields: { ...workItem.fields, ...processedHtml } }
+      : workItem;
+    return buildFormModel(shown, layout, fieldDefinitions);
+  }, [workItem, processedHtml, layout, fieldDefinitions]);
 
   return {
     workItem,
     detailData,
-    richText: processedRichText ?? fields.richText,
-    standard: fields.standard,
-    custom: fields.custom,
-    extraTabs: layout?.extraTabs,
-    detailsFieldKeys: layout?.detailsFieldKeys,
+    form,
+    layout,
     attachments,
     availableStates,
     comments,

@@ -1,32 +1,35 @@
-import clsx from 'clsx';
+import { PanelRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NotesTab, useNoteCount } from '@/components/notes/NotesTab';
-import { Button, Kbd, Tabs } from '@/components/shared/primitives';
+import { Tabs } from '@/components/shared/primitives';
 import { useDetailViewKeys } from '@/hooks/useDetailViewKeys';
-import type { ProcessTab } from '@/services/ado/layout';
+import type { WorkItemDetailDataResult } from '@/hooks/useWorkItemDetailData';
+import { itemLatest, notesFieldOf } from '@/services/ado/work-item-latest';
+import { getFieldAllowedValues } from '@/services/ado/work-item-types';
+import { isMainWindow, showWorkItem } from '@/services/navigation';
 import { rememberCaptureContext } from '@/services/notes/capture';
 import { refKey } from '@/services/workstreams/identity';
 import { useSettingsStore } from '@/stores/settings-store';
-import type { DynamicFieldItem, WorkItemAttachment, WorkItemComment } from '@/types';
+import { useWorkItemsStore } from '@/stores/work-items-store';
+import type { WorkItemAttachment } from '@/types';
+import { formatAgo } from '@/utils/relative-time';
+import { DetailsPane } from './detail/DetailsPane';
+import { LayoutRail } from './detail/LayoutRail';
+import { useItemContext } from './detail/useItemContext';
+import type { FactsChange } from './detail/WorkItemFacts';
 import { ActivityTab } from './WorkItemDetailPanel/ActivityTab';
 import { AttachmentsTab } from './WorkItemDetailPanel/AttachmentsTab';
-import { DiscussionRail } from './WorkItemDetailPanel/DiscussionRail';
 import { LinksTab, useMentioningPrs } from './WorkItemDetailPanel/LinksTab';
-import { OverviewTab } from './WorkItemDetailPanel/OverviewTab';
 import type { LinkedPR } from './WorkItemDetailPanel/parseLinkedPRs';
-import { buildDetailTabs } from './WorkItemDetailPanel/partitionFields';
-import { RightRail } from './WorkItemDetailPanel/RightRail';
-import { TitleBlock, type TitleBlockChange } from './WorkItemDetailPanel/TitleBlock';
 import type { AdjacentNav } from './WorkItemDetailPanel/useAdjacentNav';
 import {
   type AutoSavePatch,
   type AutoSaveValues,
   useAutoSave,
 } from './WorkItemDetailPanel/useAutoSave';
-import { WorkItemDetailHeader } from './WorkItemDetailPanel/WorkItemDetailHeader';
+import { type SaveStatus, WorkItemDetailHeader } from './WorkItemDetailPanel/WorkItemDetailHeader';
 
-/** Below this width the right rail collapses behind a drawer. Pairs with the
- * `[data-wi-detail][data-rail-collapsed='true']` rule in styles/index.css. */
+/** Below this width the rail hides; the main column takes the whole width. */
 const RAIL_COLLAPSE_BREAKPOINT_PX = 760;
 
 export interface WorkItemDetailData {
@@ -58,151 +61,147 @@ export interface WorkItemFieldUpdates {
   tags: string;
   workItemType?: string;
   iteration?: string;
+  /** Any other field by reference name (the type's header fact). */
+  fields?: Record<string, unknown>;
 }
 
 interface Props {
-  item: WorkItemDetailData;
-  isLoading: boolean;
-  statusText?: string;
-  availableStates: string[];
-  richTextFields: DynamicFieldItem[];
-  standardFields: DynamicFieldItem[];
-  customFields: DynamicFieldItem[];
-  /** ADO layout-derived custom pages, rendered as extra tabs after Overview. */
-  extraTabs?: ProcessTab[];
-  /** Field reference names ADO marks as belonging to the implicit Details
-   *  page. Anything not in this set and not claimed by an extraTab also
-   *  falls through to Overview. */
-  detailsFieldKeys?: string[];
-  attachments: WorkItemAttachment[];
-  comments?: WorkItemComment[];
-  isLoadingComments?: boolean;
-  onSave: (updates: WorkItemFieldUpdates) => Promise<void> | void;
-  onDelete?: () => void;
-  onClose: () => void;
-  onOpenInBrowser: (url: string) => void;
-  onDownloadAttachment: (attachment: WorkItemAttachment) => void;
-  onAddComment?: (text: string) => Promise<void>;
-  /** Optional adjacent nav callback — if absent, ↑↓ buttons hide. */
-  onArrowNav?: (dir: 'prev' | 'next') => void;
-  adjacent?: AdjacentNav;
+  /** The item and everything around it (`useWorkItemDetailData`). */
+  data: WorkItemDetailDataResult;
   /**
-   * Hosted by the main window's full-screen `WorkItemDetailView`: the
-   * Workbench header (Back, `AB#id`, type and state line, title, the field
-   * pickers and the action bar) replaces the title block, the tabs get the
-   * sliding underline and a crossfade, `J` / `K` step through them, and the
-   * footer drops Close and Open in ADO (Back and the action bar have them).
+   * The main window's full-screen view: Back leads to the list and `J` / `K`
+   * step through the tabs. The pop-out window has neither.
    */
   embedded?: boolean;
-  readOnly?: boolean;
+  onDelete?: () => void;
+  /** Overrides the hook's download (the pop-out saves through a dialog). */
+  onDownloadAttachment?: (attachment: WorkItemAttachment) => void;
+  /** ↑ ↓ through the palette's list (the pop-out). */
+  onArrowNav?: (dir: 'prev' | 'next') => void;
+  adjacent?: AdjacentNav;
 }
 
-export function WorkItemDetailPanel(props: Props) {
-  const {
-    item,
-    isLoading,
-    statusText,
-    availableStates,
-    richTextFields,
-    standardFields,
-    customFields,
-    extraTabs,
-    detailsFieldKeys,
-    attachments,
-    comments,
-    isLoadingComments,
-    onSave,
-    readOnly = false,
-    onDelete,
-    onClose,
-    onOpenInBrowser,
-    onDownloadAttachment,
-    onAddComment,
-    onArrowNav,
-    adjacent,
-    embedded = false,
-  } = props;
+const NO_VALUES: AutoSaveValues = {
+  title: '',
+  state: '',
+  assignedTo: '',
+  priority: undefined,
+  tags: '',
+  iteration: '',
+};
 
-  const [tab, setTab] = useState<string>('overview');
-  const [railCollapsed, setRailCollapsed] = useState(false);
-  const [values, setValues] = useState<AutoSaveValues>({
+function valuesOf(item: NonNullable<WorkItemDetailDataResult['detailData']>): AutoSaveValues {
+  return {
     title: item.title,
     state: item.state,
     assignedTo: item.assignedTo,
     priority: item.priority,
     tags: item.tags,
     iteration: item.iteration ?? '',
-  });
+  };
+}
+
+/** The allowed values of the type's header fact, read once per type when its picker opens. */
+function useTypeFactOptions(
+  type: string,
+  key: string | null,
+  getClient: WorkItemDetailDataResult['getClient'],
+) {
+  const cacheKey = key ? `${type}|${key}` : '';
+  const options = useWorkItemsStore((s) =>
+    cacheKey ? s.fieldAllowedValues.get(cacheKey) : undefined,
+  );
+  const load = useCallback(() => {
+    if (!key || options !== undefined) return;
+    const client = getClient();
+    if (!client) return;
+    getFieldAllowedValues(client, type, key)
+      .then((values) => useWorkItemsStore.getState().setFieldAllowedValues(cacheKey, values))
+      .catch(() => useWorkItemsStore.getState().setFieldAllowedValues(cacheKey, []));
+  }, [cacheKey, key, type, options, getClient]);
+  return { options: options ?? [], load };
+}
+
+/**
+ * WorkItemDetailPanel — a work item in full (design/work-item-detail/mockups.html,
+ * frames A and B): the header with every fact once and what happens now, the
+ * form's pages as tabs with Latest and the long-text fields, Activity, Links,
+ * Attachments and Notes, and the ADO layout's groups in the rail. Hosted by
+ * the main window's `WorkItemDetailView` (embedded) and the pop-out window.
+ */
+export function WorkItemDetailPanel({
+  data,
+  embedded = false,
+  onDelete,
+  onDownloadAttachment,
+  onArrowNav,
+  adjacent,
+}: Props) {
+  const item = data.detailData;
+  const workItem = data.workItem;
+  const form = data.form;
+  const [tab, setTab] = useState<string>('details');
+  const [railCollapsed, setRailCollapsed] = useState(false);
+  const [values, setValues] = useState<AutoSaveValues | null>(item ? valuesOf(item) : null);
+  const [factDraft, setFactDraft] = useState<{ key: string; value: unknown } | null>(null);
+  const fieldDefinitions = useWorkItemsStore((s) => s.fieldDefinitions);
 
   const auto = useAutoSave({
-    initial: {
-      title: item.title,
-      state: item.state,
-      assignedTo: item.assignedTo,
-      priority: item.priority,
-      tags: item.tags,
-      iteration: item.iteration ?? '',
-    },
+    initial: item ? valuesOf(item) : NO_VALUES,
     onPatch: async (_patch: AutoSavePatch, target: AutoSaveValues) => {
-      if (readOnly) return;
-      await onSave({
-        title: target.title,
-        state: target.state,
-        assignedTo: target.assignedTo,
-        priority: target.priority,
-        tags: target.tags,
-        iteration: target.iteration,
-      });
+      await data.save({ ...target, fields: undefined });
     },
   });
-  // useAutoSave returns a fresh object literal each render; the inner
-  // members (flush/reset) are useCallback-stable. Bind them by name so
-  // dep arrays don't see spurious changes that infinite-loop the sync
-  // effect below.
   const { flush: flushAutoSave, reset: resetAutoSave } = auto;
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
 
-  // Sync local state when the item identity changes (next/prev nav reload).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: item.id triggers re-sync on identity change even though it isn't read in the body
+  // Re-sync when the item changes (another id, or a newer revision).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: item.id triggers re-sync on identity change
   useEffect(() => {
-    const next: AutoSaveValues = {
-      title: item.title,
-      state: item.state,
-      assignedTo: item.assignedTo,
-      priority: item.priority,
-      tags: item.tags,
-      iteration: item.iteration ?? '',
-    };
+    if (!item) return;
+    const next = valuesOf(item);
     setValues(next);
     resetAutoSave(next);
+    setFactDraft(null);
   }, [
-    item.id,
-    item.title,
-    item.state,
-    item.assignedTo,
-    item.priority,
-    item.tags,
-    item.iteration,
+    item?.id,
+    item?.title,
+    item?.state,
+    item?.assignedTo,
+    item?.priority,
+    item?.tags,
+    item?.iteration,
     resetAutoSave,
   ]);
 
-  const handleChange = useCallback(
-    (patch: TitleBlockChange) => {
-      setValues((prev) => {
-        const next = { ...prev, ...patch };
-        flushAutoSave(next);
-        return next;
-      });
+  const { save: saveItem } = data;
+  const handleFacts = useCallback(
+    (change: FactsChange & { title?: string }) => {
+      const current = valuesRef.current;
+      if (!current) return;
+      if (change.fields) {
+        const [key, value] = Object.entries(change.fields)[0] ?? [];
+        if (key) setFactDraft({ key, value });
+        void saveItem({ ...current, fields: change.fields });
+        return;
+      }
+      const next = { ...current, ...change };
+      setValues(next);
+      flushAutoSave(next);
     },
-    [flushAutoSave],
+    [flushAutoSave, saveItem],
   );
 
-  const linkedPRs = useMemo(() => item.linkedPRs ?? [], [item.linkedPRs]);
-  // GitHub pull requests in the main window's list that mention AB#<id>.
-  const mentioningPrs = useMentioningPrs(item.id);
+  const handleTitle = useCallback((title: string) => handleFacts({ title }), [handleFacts]);
+
+  const context = useItemContext(item?.id);
+  const mentioningPrs = useMentioningPrs(item?.id);
+  const linkedPRs = useMemo(() => item?.linkedPRs ?? [], [item?.linkedPRs]);
   const adoOrganization = useSettingsStore((s) => s.settings.azureDevOps.organization);
   const adoProject = useSettingsStore((s) => s.settings.azureDevOps.project);
   const noteKey =
-    item.id && adoOrganization
+    item?.id && adoOrganization
       ? refKey({
           kind: 'ado-item',
           organization: adoOrganization,
@@ -213,8 +212,8 @@ export function WorkItemDetailPanel(props: Props) {
   const noteCount = useNoteCount(noteKey ?? '');
 
   // The item on screen is what a quick note (Ctrl+F8) refers to.
-  const itemId = item.id;
-  const itemTitle = item.title;
+  const itemId = item?.id;
+  const itemTitle = item?.title ?? '';
   useEffect(() => {
     if (!itemId) return;
     const remember = () => rememberCaptureContext({ kind: 'item', id: itemId, title: itemTitle });
@@ -223,64 +222,78 @@ export function WorkItemDetailPanel(props: Props) {
     return () => window.removeEventListener('focus', remember);
   }, [itemId, itemTitle]);
 
-  const savedLabel = useMemo(() => {
-    if (auto.error) return `Save failed — ${auto.error}`;
-    if (auto.isSaving) return 'Saving…';
-    if (auto.lastSavedAt) {
-      const ago = Math.floor((Date.now() - auto.lastSavedAt) / 1000);
-      if (ago < 5) return 'Saved just now';
-      if (ago < 60) return `Saved ${ago}s ago`;
-      return `Saved ${Math.floor(ago / 60)}m ago`;
+  const notes = useMemo(
+    () => (workItem ? notesFieldOf(workItem, fieldDefinitions) : null),
+    [workItem, fieldDefinitions],
+  );
+  const newestComment = data.comments.length > 0 ? data.comments[data.comments.length - 1]! : null;
+  const latest = useMemo(
+    () => itemLatest({ notes, newestComment, threads: context.overview?.threads ?? [] }),
+    [notes, newestComment, context.overview],
+  );
+
+  const typeFactKey = form?.typeFact?.key ?? null;
+  const typeFactOptions = useTypeFactOptions(item?.workItemType ?? '', typeFactKey, data.getClient);
+  const typeFact = useMemo(() => {
+    const fact = form?.typeFact ?? null;
+    if (!fact || !factDraft || factDraft.key !== fact.key) return fact;
+    return { ...fact, value: factDraft.value, text: String(factDraft.value ?? '') };
+  }, [form?.typeFact, factDraft]);
+
+  const save: SaveStatus | null = useMemo(() => {
+    if (auto.error || data.statusText === 'Save failed') {
+      return {
+        label: 'Save failed',
+        tone: 'bad',
+        onRetry: values ? () => flushAutoSave(values) : undefined,
+      };
     }
-    return 'Auto-saves on blur';
-  }, [auto.error, auto.isSaving, auto.lastSavedAt]);
+    if (data.statusText === 'Delete failed') return { label: 'Delete failed', tone: 'bad' };
+    if (auto.isSaving) return { label: 'Saving…', tone: 'busy' };
+    if (auto.lastSavedAt || data.statusText === 'Saved') return { label: 'Saved', tone: 'ok' };
+    return null;
+  }, [auto.error, auto.isSaving, auto.lastSavedAt, data.statusText, values, flushAutoSave]);
+
+  const updated = useMemo(() => {
+    const at = workItem?.fields['System.ChangedDate'];
+    if (typeof at !== 'string') return null;
+    const by = workItem?.fields['System.ChangedBy'] as
+      | { displayName?: string }
+      | string
+      | undefined;
+    const name = typeof by === 'string' ? by.split(' <')[0] : by?.displayName;
+    return `Updated ${formatAgo(at)}${name ? ` by ${name}` : ''}`;
+  }, [workItem]);
 
   const rootRef = useRef<HTMLDivElement>(null);
-  // The element the rail collapses in: the whole panel, or the body under
-  // the header when embedded.
-  const gridRef = useRef<HTMLDivElement>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the grid only mounts once the loading spinner is gone; `isLoading` re-attaches the observer then
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the body mounts once the item is there
   useEffect(() => {
-    const el = gridRef.current;
+    const el = bodyRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
-      if (!entry) return;
-      setRailCollapsed(entry.contentRect.width < RAIL_COLLAPSE_BREAKPOINT_PX);
+      if (entry) setRailCollapsed(entry.contentRect.width < RAIL_COLLAPSE_BREAKPOINT_PX);
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [isLoading]);
+  }, [item !== null]);
 
-  const detailSlices = useMemo(
-    () =>
-      buildDetailTabs(
-        { richText: richTextFields, standard: standardFields, custom: customFields },
-        detailsFieldKeys,
-        extraTabs,
-      ),
-    [richTextFields, standardFields, customFields, detailsFieldKeys, extraTabs],
-  );
-
-  // If the active tab disappears (e.g. the user navigated to an item
-  // whose layout doesn't include the current page), snap back to Overview.
+  const pages = form?.tabs ?? [];
+  // A page that's gone (another type's layout) snaps back to Details.
   useEffect(() => {
-    if (
-      tab !== 'activity' &&
-      tab !== 'links' &&
-      tab !== 'files' &&
-      tab !== 'notes' &&
-      !detailSlices.some((s) => s.id === tab)
-    ) {
-      setTab('overview');
-    }
-  }, [detailSlices, tab]);
+    const fixed = ['activity', 'links', 'files', 'notes'];
+    if (!fixed.includes(tab) && pages.length > 0 && !pages.some((p) => p.id === tab))
+      setTab('details');
+  }, [pages, tab]);
 
+  const [firstPage, ...laterPages] = pages;
   const tabOrder = [
-    ...detailSlices.map((s) => s.id),
+    ...(firstPage ? [firstPage.id] : []),
     'activity',
     'links',
     'files',
     ...(noteKey ? ['notes'] : []),
+    ...laterPages.map((p) => p.id),
   ];
   const stepTab = (delta: number) => {
     const index = tabOrder.indexOf(tab);
@@ -289,297 +302,165 @@ export function WorkItemDetailPanel(props: Props) {
   };
   useDetailViewKeys(rootRef, { j: () => stepTab(1), k: () => stepTab(-1) }, embedded);
 
-  if (isLoading) {
+  if (!item || !workItem || !values) {
     return (
-      <div className="flex h-full items-center justify-center bg-[var(--color-surface)]">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--color-text-ghost)] border-t-[var(--color-accent)]" />
+      <div className="bd-detail__state" role="status">
+        <span className="bd-detail__spinner" aria-label="Loading work item" />
       </div>
     );
   }
 
+  const openInAdo = () => void data.openInBrowser(item.htmlUrl);
+  const openItem = (id: number) => {
+    if (isMainWindow()) void showWorkItem(id);
+  };
+  const activePage = pages.find((p) => p.id === tab);
+  // The rail shows the page on screen; a page without groups of its own keeps Details' rail.
+  const railGroups = activePage?.groups.length ? activePage.groups : (pages[0]?.groups ?? []);
+
+  // Details first, BorgDock's own tabs, then the layout's other pages.
   const tabs = [
-    ...detailSlices.map((s) => ({ id: s.id, label: s.label })),
-    { id: 'activity', label: 'Activity' },
+    ...(firstPage ? [{ id: firstPage.id, label: firstPage.label }] : []),
+    { id: 'activity', label: 'Activity', count: data.comments.length || undefined },
     { id: 'links', label: 'Links', count: linkedPRs.length + mentioningPrs.length || undefined },
-    { id: 'files', label: 'Attachments', count: attachments.length || undefined },
+    { id: 'files', label: 'Attachments', count: data.attachments.length || undefined },
     ...(noteKey ? [{ id: 'notes', label: 'Notes', count: noteCount || undefined }] : []),
+    ...laterPages.map((p) => ({ id: p.id, label: p.label })),
   ];
 
-  const activeSlice = detailSlices.find((s) => s.id === tab);
-
-  const tabBar = (
-    <div
-      className={embedded ? 'bd-detail__tabs bd-wi-detail__tabs' : undefined}
-      style={
-        embedded
-          ? undefined
-          : {
-              padding: '0 28px',
-              background: 'var(--color-surface)',
-              borderBottom: '1px solid var(--color-subtle-border)',
-            }
-      }
-    >
-      <Tabs
-        value={tab}
-        onChange={(id) => setTab(id as typeof tab)}
-        tabs={tabs}
-        sliding={embedded}
-        aria-keyshortcuts={embedded ? 'J K' : undefined}
-      />
-    </div>
-  );
-
-  const tabContent = (
-    <>
-      {activeSlice && (
-        <OverviewTab
-          richTextFields={activeSlice.fields.richText}
-          standardFields={activeSlice.fields.standard}
-          customFields={activeSlice.fields.custom}
-        />
-      )}
-      {tab === 'activity' && <ActivityTab />}
-      {tab === 'links' && <LinksTab linkedPRs={linkedPRs} mentioningPrs={mentioningPrs} />}
-      {tab === 'files' && (
-        <AttachmentsTab attachments={attachments} onDownload={onDownloadAttachment} />
-      )}
-      {tab === 'notes' && noteKey && item.id && (
-        <NotesTab
-          refKey={noteKey}
-          newTitle={item.title}
-          newFirstLine={`AB#${item.id} · ${item.title}`}
-        />
-      )}
-    </>
-  );
-
-  const footer = (
-    <div
-      className={embedded ? 'bd-wi-detail__footer' : undefined}
-      style={
-        embedded
-          ? undefined
-          : {
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 28px',
-              borderTop: '1px solid var(--color-subtle-border)',
-              background: 'var(--color-status-bar-bg)',
-            }
-      }
-    >
-      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-        {readOnly ? 'Read-only preview' : savedLabel}
-        {statusText ? ` · ${statusText}` : ''}
-      </span>
-      {auto.error && (
-        <Button variant="secondary" size="sm" onClick={() => auto.flush(values)}>
-          Retry
-        </Button>
-      )}
-      <span style={{ flex: 1 }} />
-      {!item.isNewItem && onDelete && (
-        <Button variant="danger" size="sm" onClick={onDelete}>
-          Delete
-        </Button>
-      )}
-      {!embedded && item.htmlUrl && (
-        <Button variant="secondary" size="sm" onClick={() => onOpenInBrowser(item.htmlUrl)}>
-          Open in ADO ↗
-        </Button>
-      )}
-      {!embedded && (
-        <Button variant="secondary" size="sm" onClick={onClose}>
-          <Kbd>esc</Kbd> Close
-        </Button>
-      )}
-    </div>
-  );
-
-  const rail = (
-    <div
-      className={clsx('bd-scroll wi-rail', embedded && 'bd-wi-detail__rail')}
-      style={
-        embedded
-          ? undefined
-          : {
-              overflowY: 'auto',
-              background: 'var(--color-surface)',
-              padding: '16px 18px 32px',
-            }
-      }
-    >
-      <RightRail
-        state={values.state}
-        priority={values.priority}
-        severity={item.severity}
-        workItemType={item.workItemType}
-        assignedTo={values.assignedTo}
-        reporter={item.reporter ?? ''}
-        iteration={item.iteration ?? ''}
-        area={item.area ?? ''}
-        backlogPriority={item.backlogPriority}
-        foundIn={item.foundIn}
-        tags={
-          values.tags
-            ? values.tags
-                .split(';')
-                .map((t) => t.trim())
-                .filter(Boolean)
-            : []
-        }
-        linkedPRs={linkedPRs}
-      />
-      {!item.isNewItem && onAddComment && (
-        <DiscussionRail
-          comments={comments ?? []}
-          isLoading={!!isLoadingComments}
-          onAddComment={onAddComment}
-        />
-      )}
-    </div>
-  );
-
-  if (embedded) {
-    return (
-      <div ref={rootRef} className="bd-detail__panel bd-wi-detail">
-        <WorkItemDetailHeader
-          id={item.id}
-          title={values.title}
-          workItemType={item.workItemType}
-          state={values.state}
-          priority={values.priority}
-          assignedTo={values.assignedTo}
-          iteration={values.iteration}
-          availableStates={availableStates}
-          changedAgo={item.changedAgo}
-          htmlUrl={item.htmlUrl}
-          onChange={handleChange}
-          onOpenInBrowser={() => onOpenInBrowser(item.htmlUrl)}
-        />
-        <div
-          ref={gridRef}
-          className="bd-wi-detail__body"
-          data-wi-detail
-          data-rail-collapsed={railCollapsed ? 'true' : 'false'}
+  const arrows =
+    adjacent && onArrowNav && (adjacent.prevId !== null || adjacent.nextId !== null) ? (
+      <span className="bd-wid-crumb" style={{ gap: 2 }}>
+        <button
+          type="button"
+          className="bd-icon-btn bd-icon-btn--sm"
+          disabled={adjacent.prevId === null}
+          onClick={() => onArrowNav('prev')}
+          aria-label="Previous work item"
         >
-          <div className="bd-wi-detail__main">
-            {tabBar}
-            <div className="bd-detail__content bd-wi-detail__content">
-              {/* Keyed by tab: each switch mounts a fresh pane, whose
-               *  entrance animation is the crossfade. */}
-              <div key={tab} className="bd-detail__pane bd-wi-detail__pane" role="tabpanel">
-                {tabContent}
-              </div>
-            </div>
-            {footer}
-          </div>
-          {rail}
-        </div>
-      </div>
-    );
-  }
+          ↑
+        </button>
+        <button
+          type="button"
+          className="bd-icon-btn bd-icon-btn--sm"
+          disabled={adjacent.nextId === null}
+          onClick={() => onArrowNav('next')}
+          aria-label="Next work item"
+        >
+          ↓
+        </button>
+        {adjacent.total > 0 && (
+          <span className="bd-wid-updated" style={{ margin: '0 6px 0 2px' }}>
+            {adjacent.index + 1} / {adjacent.total}
+          </span>
+        )}
+      </span>
+    ) : null;
 
   return (
-    <div
-      ref={(el) => {
-        rootRef.current = el;
-        gridRef.current = el;
-      }}
-      data-wi-detail
-      data-rail-collapsed={railCollapsed ? 'true' : 'false'}
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) 320px',
-        height: '100%',
-        background: 'var(--color-surface)',
-        containerType: 'inline-size',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-          borderRight: '1px solid var(--color-subtle-border)',
+    <div ref={rootRef} className="bd-detail__panel bd-wid" data-wi-detail="">
+      <WorkItemDetailHeader
+        id={item.id}
+        title={values.title}
+        workItemType={item.workItemType}
+        areaPath={String(workItem.fields['System.AreaPath'] ?? '')}
+        facts={{
+          state: values.state,
+          availableStates: data.availableStates.length > 0 ? data.availableStates : [values.state],
+          assignedTo: values.assignedTo,
+          priority: values.priority,
+          iteration: values.iteration ?? '',
+          tags: values.tags,
+          typeFact,
+          typeFactOptions: typeFactOptions.options,
+          onLoadTypeFactOptions: typeFactOptions.load,
         }}
-      >
-        <TitleBlock
-          readOnly={readOnly}
-          id={item.id}
-          title={values.title}
-          workItemType={item.workItemType}
-          state={values.state}
-          priority={values.priority}
-          assignedTo={values.assignedTo}
-          iteration={values.iteration}
-          availableStates={availableStates}
-          changedAgo={item.changedAgo}
-          onChange={handleChange}
-          onCopyId={() => {
-            if (item.id) navigator.clipboard?.writeText(`#${item.id}`).catch(() => {});
-          }}
-          onOpenInBrowser={() => onOpenInBrowser(item.htmlUrl)}
+        context={context}
+        updated={updated}
+        save={save}
+        htmlUrl={item.htmlUrl}
+        showBack={embedded}
+        leading={arrows}
+        onTitleChange={handleTitle}
+        onFactsChange={handleFacts}
+        onOpenInBrowser={openInAdo}
+        onDelete={item.isNewItem ? undefined : onDelete}
+      />
+      <div className="bd-wid-tabs">
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          tabs={tabs}
+          sliding={embedded}
+          aria-keyshortcuts={embedded ? 'J K' : undefined}
         />
-
-        {adjacent && (adjacent.prevId !== null || adjacent.nextId !== null) && onArrowNav && (
-          <div
-            style={{
-              display: 'flex',
-              gap: 4,
-              padding: '4px 28px',
-              borderBottom: '1px solid var(--color-subtle-border)',
-              background: 'var(--color-surface)',
-              fontSize: 11,
-              color: 'var(--color-text-muted)',
-            }}
+        {form && (
+          <span
+            className="bd-wid-tabs__layout"
+            title={form.fromLayout ? 'Built from the ADO form layout' : 'No ADO layout'}
           >
-            <button
-              type="button"
-              disabled={adjacent.prevId === null}
-              onClick={() => onArrowNav('prev')}
-              className="bd-icon-btn"
-              aria-label="Previous work item"
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              disabled={adjacent.nextId === null}
-              onClick={() => onArrowNav('next')}
-              className="bd-icon-btn"
-              aria-label="Next work item"
-            >
-              ↓
-            </button>
-            {adjacent.total > 0 && (
-              <span style={{ alignSelf: 'center' }}>
-                {adjacent.index + 1} / {adjacent.total}
-              </span>
+            <PanelRight size={12} strokeWidth={2} aria-hidden />
+            {form.fromLayout ? `Layout: ${item.workItemType}` : 'Default layout'}
+          </span>
+        )}
+      </div>
+      <div
+        ref={bodyRef}
+        className="bd-wid-body"
+        data-rail-collapsed={railCollapsed ? 'true' : 'false'}
+      >
+        <div className="bd-wid-main bd-scroll">
+          {/* Keyed by tab: each switch mounts a fresh pane, whose entrance is the crossfade. */}
+          <div key={tab} className="bd-wid-pane" role="tabpanel">
+            {activePage && (
+              <DetailsPane
+                tab={activePage}
+                latest={activePage.id === 'details' ? latest : null}
+                notes={notes}
+                onShowActivity={() => setTab('activity')}
+                onOpenInAdo={openInAdo}
+              />
+            )}
+            {tab === 'activity' && item.id !== undefined && (
+              <ActivityTab
+                itemId={item.id}
+                comments={data.comments}
+                isLoadingComments={data.isLoadingComments}
+                onAddComment={data.addComment}
+                getClient={data.getClient}
+              />
+            )}
+            {tab === 'links' && <LinksTab linkedPRs={linkedPRs} mentioningPrs={mentioningPrs} />}
+            {tab === 'files' && (
+              <AttachmentsTab
+                attachments={data.attachments}
+                onDownload={(a) =>
+                  onDownloadAttachment ? onDownloadAttachment(a) : void data.downloadAttachment(a)
+                }
+              />
+            )}
+            {tab === 'notes' && noteKey && item.id && (
+              <NotesTab
+                refKey={noteKey}
+                newTitle={item.title}
+                newFirstLine={`AB#${item.id} · ${item.title}`}
+              />
             )}
           </div>
-        )}
-
-        {tabBar}
-
-        <div
-          className="bd-scroll"
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            background: 'var(--color-background)',
-            padding: '20px 28px 80px',
-          }}
-        >
-          {tabContent}
         </div>
-
-        {footer}
+        <aside className="bd-wid-rail bd-scroll" aria-label="Fields">
+          <LayoutRail
+            groups={railGroups}
+            workItem={workItem}
+            context={context}
+            workItemType={item.workItemType}
+            fromLayout={form?.fromLayout ?? false}
+            getClient={data.getClient}
+            onOpenInAdo={openInAdo}
+            onOpenItem={openItem}
+          />
+        </aside>
       </div>
-
-      {rail}
     </div>
   );
 }

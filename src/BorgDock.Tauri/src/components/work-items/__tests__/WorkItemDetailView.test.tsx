@@ -113,15 +113,16 @@ describe('WorkItemDetailView', () => {
     useUiStore.setState({ viewStack: [{ kind: 'list' }] });
   });
 
-  it('shows a listed item at once in the reading-font host with the Workbench header', () => {
+  it('shows a listed item at once with the header: type, facts and title', () => {
     const { container } = render(<WorkItemDetailView id={54482} />);
     const article = screen.getByRole('article', { name: 'Work item AB#54482' });
     expect(article).toHaveClass('bd-detail');
     expect(within(article).getByText('AB#54482')).toBeInTheDocument();
-    // The type pill in the header (the rail names the type again).
-    expect(article.querySelector('.bd-wi-type')).toHaveAttribute('data-type-tone', 'bug');
-    expect(article.querySelector('.bd-wi-type')).toHaveTextContent('Bug');
-    expect(within(article).getByText('Active, P2')).toBeInTheDocument();
+    expect(article.querySelector('.bd-wid-typepill')).toHaveTextContent('Bug');
+    const facts = article.querySelector('[data-wid-facts]') as HTMLElement;
+    expect(within(facts).getByText('Active')).toBeInTheDocument();
+    expect(within(facts).getByText('P2 · High')).toBeInTheDocument();
+    expect(within(facts).getByText('Alice')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Quote footer broken' })).toBeVisible();
     // The title block of the pop-out is replaced, not stacked.
     expect(screen.queryByText('copy ID')).not.toBeInTheDocument();
@@ -147,7 +148,7 @@ describe('WorkItemDetailView', () => {
     fireEvent.click(within(tablist).getByRole('tab', { name: /Links/ }));
     expect(selected()).toMatch(/^Links/);
     // The pane is keyed by tab, so each switch mounts a fresh (fading) pane.
-    expect(container.querySelector('.bd-wi-detail__pane')).toHaveClass('bd-detail__pane');
+    expect(container.querySelector('.bd-wid-pane')).toHaveAttribute('role', 'tabpanel');
 
     act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j' }));
@@ -162,7 +163,9 @@ describe('WorkItemDetailView', () => {
   it('Links lists the pull requests that mention the item and opens one in place', async () => {
     render(<WorkItemDetailView id={54482} />);
     fireEvent.click(screen.getByRole('tab', { name: /Links/ }));
-    const link = screen.getByRole('button', { name: /Fix the quote footer/ });
+    const link = within(screen.getByRole('tabpanel')).getByRole('button', {
+      name: /Fix the quote footer/,
+    });
     fireEvent.click(link);
     await waitFor(() =>
       expect(useUiStore.getState().viewStack.slice(-1)[0]).toEqual({
@@ -189,7 +192,9 @@ describe('WorkItemDetailView', () => {
     usePrStore.setState({ pullRequests: [mentioning, plain] });
     render(<WorkItemDetailView id={54482} />);
     fireEvent.click(screen.getByRole('tab', { name: /Links/ }));
-    expect(screen.getByRole('button', { name: /Fix the quote footer/ })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('tabpanel')).getByRole('button', { name: /Fix the quote footer/ }),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Fix crash (#54482)')).not.toBeInTheDocument();
   });
 
@@ -202,13 +207,14 @@ describe('WorkItemDetailView', () => {
     expect(mentionsWorkItem(pr('AB#999 and AB#1234'), 1234)).toBe(true);
   });
 
-  it('the action bar toggles Track and Working', () => {
+  it('the header toggles Track, and Working from its menu', () => {
     render(<WorkItemDetailView id={54482} />);
     const track = screen.getByRole('button', { name: 'Track' });
     fireEvent.click(track);
     expect(useWorkItemsStore.getState().trackedWorkItemIds.has(54482)).toBe(true);
     expect(screen.getByRole('button', { name: 'Tracked' })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(screen.getByRole('button', { name: 'Start working' }));
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Start working' }));
     expect(useWorkItemsStore.getState().workingOnWorkItemIds.has(54482)).toBe(true);
     expect(screen.getByRole('button', { name: 'Open in ADO' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy id' })).toBeInTheDocument();

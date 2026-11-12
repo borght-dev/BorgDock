@@ -6,6 +6,7 @@
 @import "./motion.css";
 @import "./focus-workbench.css";
 @import "./work-items-workbench.css";
+@import "./work-item-detail.css";
 @import "./dispatch-workbench.css";
 @import "./workstreams-workbench.css";
 @import "./worktrees-workbench.css";

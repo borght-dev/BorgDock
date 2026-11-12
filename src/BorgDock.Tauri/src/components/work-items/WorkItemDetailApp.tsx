@@ -79,10 +79,6 @@ export function WorkItemDetailApp() {
     if (await remove()) getCurrentWindow().close().catch(console.debug); /* fire-and-forget */
   }, [remove]);
 
-  const handleClose = useCallback(() => {
-    getCurrentWindow().close().catch(console.debug); /* fire-and-forget */
-  }, []);
-
   // The pop-out saves attachments through the native save dialog.
   const handleDownloadAttachment = useCallback(
     async (attachment: WorkItemAttachment) => {
@@ -146,26 +142,11 @@ export function WorkItemDetailApp() {
   return (
     <div className="flex h-screen flex-col bg-[var(--color-surface)]" data-app-ready={appReady}>
       <WindowTitleBar title={titleText} />
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col">
         <WorkItemDetailPanel
-          item={detailData}
-          isLoading={isLoading}
-          statusText={data.statusText}
-          availableStates={data.availableStates}
-          richTextFields={data.richText}
-          standardFields={data.standard}
-          customFields={data.custom}
-          extraTabs={data.extraTabs}
-          detailsFieldKeys={data.detailsFieldKeys}
-          attachments={data.attachments}
-          comments={data.comments}
-          isLoadingComments={data.isLoadingComments}
-          onSave={data.save}
+          data={data}
           onDelete={() => void handleDelete()}
-          onClose={handleClose}
-          onOpenInBrowser={(url) => void data.openInBrowser(url)}
           onDownloadAttachment={(a) => void handleDownloadAttachment(a)}
-          onAddComment={data.addComment}
           adjacent={adjacent}
           onArrowNav={handleArrowNav}
         />

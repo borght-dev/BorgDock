@@ -1,5 +1,27 @@
 # Changelog
 
+## 4.12.0 — 2026-11-12
+
+### New Features
+
+- **A work item page that tells you where it stands** — Open a work item and every fact sits once in the header, where you change it: state, who it's assigned to (one click on Assign me), priority, iteration, tags, and the one field your type cares about, like Severity on a bug or Effort on a backlog item. Below it, Now shows the pull request with its checks and conflicts, the T3 agent working on the item and the next step, and Latest puts the newest Developer Notes update, comment or agent message at the top. ![The work item page with the fact strip, Now and Latest](whats-new/4.12.0/work-item-detail.png)
+- **The whole history on one timeline** — The Activity tab now shows every state change, field change, linked pull request and comment, newest first. An agent's steps fold into one run you can open step by step, and filters show just the comments, just the changes or just the agent. ![The Activity timeline with an agent run](whats-new/4.12.0/work-item-activity.png)
+- **A work item peek that grows with your screen** — Click an AB# in a pull request and the peek now uses the room you have. On a laptop it stays compact; on a big screen every field opens, and on a 4K screen Activity sits right beside the details. ![The work item peek on a large screen](whats-new/4.12.0/work-item-peek.png)
+- **Hover cards that say what an item is about** — Hover an AB# and the card always shows the description (or the repro steps when there is none) without the email disclaimer, with the latest update on one line under it. It also shows the type's own field, the parent item and how many children are done. ![Work item hover cards for a bug, a backlog item and a custom type](whats-new/4.12.0/work-item-hover-cards.png)
+
+### Improvements
+
+- The work item side panel follows your Azure DevOps form: its groups, its labels and your custom fields, in the order your team set up. Custom pages become tabs, empty fields fold away, and an extension BorgDock can't draw gets an Open in ADO row.
+- Work items filed from an email are readable again. The external-sender warning, the signature and images that can never load each fold to one line, and Show brings them back.
+- Developer Notes reads as a list of dated updates, and `[FAILED]` in repro steps turns into a red Fails badge.
+- Work item types and states that BorgDock doesn't know take their colour and icon from Azure DevOps.
+- In the Pull requests overview, the Group and Sort descriptions fit their rows, + View stays visible beside a long row of tabs, and large groups use the full height of the list.
+- The regression risk assessment now reads complete copies of the change instead of trimmed code, and only claims full coverage for what it actually read.
+
+### Bug Fixes
+
+- The counters on the folded sidebar are readable again in both themes, and a "99+" no longer covers its icon.
+
 ## 4.11.0 — 2026-11-11
 
 ### New Features

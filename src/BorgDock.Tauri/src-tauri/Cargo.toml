@@ -1,6 +1,6 @@
 [package]
 name = "borgdock"
-version = "4.11.0"
+version = "4.12.0"
 description = "BorgDock — cross-platform PR monitor sidebar"
 authors = ["Koen van der Borght"]
 edition = "2021"
@@ -57,7 +57,7 @@ grep-searcher = "0.1"
 grep-regex = "0.1"
 grep-matcher = "0.1"
 blake3 = "1"
-git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+git2 = { version = "0.20", default-features = false, features = ["vendored-libgit2"] }
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 gethostname = "1"
 [dev-dependencies]

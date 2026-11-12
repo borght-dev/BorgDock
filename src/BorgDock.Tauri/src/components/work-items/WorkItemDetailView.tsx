@@ -15,11 +15,10 @@ export interface WorkItemDetailViewProps {
  *
  * The data comes from `useWorkItemDetailData`: an item from the list's query
  * shows at once; any other loads behind a header that already has Back and
- * the id. The body is `WorkItemDetailPanel` in embedded mode: the Workbench
- * header (title morphs from the row), the field pickers, the action bar, then
- * Overview, Activity, Links and Attachments with the sliding underline, and
- * the properties and discussion rail. The root sets the reading font at
- * 14 px for everything inside. Deleting the item returns to the list.
+ * the id. The body is `WorkItemDetailPanel` in embedded mode: the header with
+ * every fact once and "Now", the form's pages, Activity, Links, Attachments
+ * and Notes with the sliding underline, and the ADO layout's groups in the
+ * rail. Deleting the item returns to the list.
  */
 export function WorkItemDetailView({ id }: WorkItemDetailViewProps) {
   const data = useWorkItemDetailData(id);
@@ -32,29 +31,7 @@ export function WorkItemDetailView({ id }: WorkItemDetailViewProps) {
   return (
     <article className="bd-detail bd-wi-detail-view" aria-label={`Work item AB#${id}`}>
       {detailData ? (
-        <WorkItemDetailPanel
-          embedded
-          item={detailData}
-          isLoading={false}
-          statusText={data.statusText}
-          availableStates={
-            data.availableStates.length > 0 ? data.availableStates : [detailData.state]
-          }
-          richTextFields={data.richText}
-          standardFields={data.standard}
-          customFields={data.custom}
-          extraTabs={data.extraTabs}
-          detailsFieldKeys={data.detailsFieldKeys}
-          attachments={data.attachments}
-          comments={data.comments}
-          isLoadingComments={data.isLoadingComments}
-          onSave={data.save}
-          onDelete={() => void handleDelete()}
-          onClose={() => void popView()}
-          onOpenInBrowser={(url) => void data.openInBrowser(url)}
-          onDownloadAttachment={(a) => void data.downloadAttachment(a)}
-          onAddComment={data.addComment}
-        />
+        <WorkItemDetailPanel embedded data={data} onDelete={() => void handleDelete()} />
       ) : (
         <>
           <header className="bd-detail__head">
