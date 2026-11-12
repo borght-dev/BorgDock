@@ -17,7 +17,12 @@
 // (attachment download) monkeypatch the prototype in the harness and
 // restore on unmount.
 
-import type { JsonPatchOperation, WorkItem, WorkItemComment } from '../../src/types';
+import type {
+  JsonPatchOperation,
+  WorkItem,
+  WorkItemComment,
+  WorkItemUpdate,
+} from '../../src/types';
 import { getControl } from './control';
 
 export async function getWorkItem(_client: unknown, id: number): Promise<WorkItem> {
@@ -48,6 +53,12 @@ export async function getWorkItemComments(
   if (s.commentsBehavior === 'pending') return new Promise(() => {});
   if (s.commentsBehavior === 'reject') throw new Error('storybook: comments fetch failed');
   return s.comments ?? [];
+}
+
+export async function getWorkItemUpdates(_client: unknown, id: number): Promise<WorkItemUpdate[]> {
+  const ctrl = getControl();
+  ctrl.invocations.push({ command: 'workitems.getWorkItemUpdates', args: { id } });
+  return ctrl.workItemScenario.updates ?? [];
 }
 
 export async function getNewestWorkItemComment(

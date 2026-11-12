@@ -50,8 +50,12 @@
   min-height: 0;
   overflow: auto;
 }
+/* The work item peek: 960 × 780 on a laptop; on a big screen it grows with
+   the window, up to a cap (styles/work-item-detail.css spends the room). */
 .bd-work-item-preview .bd-preview-dialog {
-  height: min(740px, calc(100dvh - 48px));
+  container-type: inline-size;
+  width: min(100%, max(960px, 76vw), 2400px);
+  height: min(calc(100dvh - 48px), max(780px, 86dvh), 1840px);
 }
 .bd-work-item-preview .bd-preview-body {
   flex: 1;

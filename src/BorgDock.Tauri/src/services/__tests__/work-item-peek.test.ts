@@ -89,10 +89,35 @@ describe('workItemPeekOf', () => {
       iteration: 'Sprint 2026-22',
       priority: 2,
       points: 5,
-      description: 'Repro: scroll & drag\nLands low',
+      description: 'Repro: scroll & drag Lands low',
+      descriptionSource: 'repro steps',
+      typeFact: { key: 'Microsoft.VSTS.Scheduling.Effort', text: 'Effort 5', due: false },
+      note: null,
       changedAt: '2026-10-29T08:00:00Z',
       changedBy: 'Vera',
     });
+  });
+
+  it('always shows what the item is about: the description without email clutter', () => {
+    const peek = workItemPeekOf(
+      item({
+        'System.WorkItemType': 'Bug',
+        'Microsoft.VSTS.Common.Severity': '2 - Not Critical',
+        'System.Description':
+          '<p><b>CAUTION:</b> This email originated from outside of the organization. Do not click links.</p>' +
+          '<p>Hi Support Team,</p><p>The holiday timeplan is not visible in the new portal.</p>' +
+          '<p>Kind regards,</p><p>Sam Peeters</p>',
+        'Custom.DeveloperNotes': '<p>Update (2026-11-11) — Holidays now show in the overview</p>',
+      }),
+    );
+    expect(peek.description).toBe('The holiday timeplan is not visible in the new portal.');
+    expect(peek.descriptionSource).toBe('description');
+    expect(peek.typeFact).toEqual({
+      key: 'Microsoft.VSTS.Common.Severity',
+      text: 'Sev 2',
+      due: false,
+    });
+    expect(peek.note).toEqual({ text: 'Holidays now show in the overview', date: '2026-11-11' });
   });
 
   it('has no iteration at the project root and nulls for missing numbers', () => {

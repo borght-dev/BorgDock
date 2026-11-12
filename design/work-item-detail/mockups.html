@@ -1,0 +1,1243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work item redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-ui: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-read: "Instrument Sans", "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-code: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+}
+body.light {
+  --canvas: #e8eaee; --bg: #ffffff; --sunken: #f6f7f9; --rail-bg: #fbfbfc; --modal: #ffffff;
+  --hover: rgba(23,24,28,.045); --chip: rgba(23,24,28,.055); --chip-strong: rgba(23,24,28,.085);
+  --border: #e5e6ea; --border-strong: #d9dbe0;
+  --text: #17181c; --text-2: #5d606a; --text-3: #6b6e78; --faint: #c2c4cb;
+  --accent: #4f46e5; --accent-text: #4338ca; --accent-subtle: rgba(79,70,229,.09);
+  --green: #1f9d6b; --green-subtle: rgba(31,157,107,.1);
+  --red: #d64560; --red-subtle: rgba(214,69,96,.1);
+  --yellow: #b7790c; --yellow-subtle: rgba(201,138,18,.13);
+  --blue: #2d6be4; --purple: #8250df; --teal: #0e8f8a; --orange: #d9731a; --grey: #8b8e98;
+  --pin: #ea580c;
+  --latest-bg: linear-gradient(180deg, rgba(79,70,229,.055), rgba(79,70,229,.018));
+  --latest-border: rgba(79,70,229,.22);
+  --board-shadow: 0 1px 2px rgba(16,18,27,.05), 0 12px 40px rgba(16,18,27,.08);
+  --card-shadow: 0 12px 32px rgba(20,22,30,.14), 0 2px 6px rgba(20,22,30,.08), 0 0 0 1px rgba(20,22,30,.06);
+  --scrim: rgba(18,19,24,.36);
+}
+body.dark {
+  --canvas: #0d0e10; --bg: #151618; --sunken: #1b1c1f; --rail-bg: #17181b; --modal: #1b1c1f;
+  --hover: rgba(255,255,255,.05); --chip: rgba(255,255,255,.07); --chip-strong: rgba(255,255,255,.11);
+  --border: rgba(255,255,255,.07); --border-strong: rgba(255,255,255,.12);
+  --text: #ededef; --text-2: #a3a4ab; --text-3: #8e8f96; --faint: #3f4046;
+  --accent: #7f7eff; --accent-text: #aaa9ff; --accent-subtle: rgba(127,126,255,.15);
+  --green: #5cc98f; --green-subtle: rgba(92,201,143,.13);
+  --red: #f0616d; --red-subtle: rgba(240,97,109,.14);
+  --yellow: #e5b454; --yellow-subtle: rgba(229,180,84,.14);
+  --blue: #6b9bff; --purple: #a371f7; --teal: #3cc4bd; --orange: #f59e4a; --grey: #8e8f96;
+  --pin: #ff8a3d;
+  --latest-bg: linear-gradient(180deg, rgba(127,126,255,.10), rgba(127,126,255,.03));
+  --latest-border: rgba(127,126,255,.28);
+  --board-shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 48px rgba(0,0,0,.45);
+  --card-shadow: 0 16px 40px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.07);
+  --scrim: rgba(0,0,0,.55);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--canvas); color: var(--text); font-family: var(--font-ui); font-size: 13px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent-text); text-decoration: none; }
+.i { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.i.s12 { width: 12px; height: 12px; }
+.i.s16 { width: 16px; height: 16px; }
+.sp { flex: 1; }
+.muted { color: var(--text-3); }
+.mono { font-family: var(--font-code); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- document ---------- */
+.doc { max-width: 1520px; margin: 0 auto; padding: 40px 40px 120px; }
+.doc-head { display: flex; align-items: flex-end; gap: 24px; }
+.eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+.doc h1 { font-size: 30px; letter-spacing: -.022em; margin: 6px 0 10px; font-weight: 650; }
+.lede { max-width: 860px; color: var(--text-2); font-size: 14.5px; line-height: 1.6; margin: 0; }
+.switch { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; padding: 2px; background: var(--bg); flex: none; }
+.switch button { border: 0; background: transparent; font: inherit; font-size: 12.5px; padding: 5px 14px; border-radius: 6px; color: var(--text-2); cursor: pointer; }
+.switch button[aria-pressed="true"] { background: var(--accent-subtle); color: var(--accent-text); font-weight: 500; }
+.toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; }
+.toc a { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 12.5px; }
+.toc a b { font-family: var(--font-code); font-size: 11.5px; color: var(--accent-text); font-weight: 500; }
+
+.sec-title { font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); font-weight: 600; margin: 44px 0 12px; }
+.findings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.finding { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px 14px; }
+.finding .n { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--red); font-weight: 600; letter-spacing: .03em; margin-bottom: 6px; }
+.finding .n.ok { color: var(--green); }
+.finding b { display: block; font-size: 13.5px; margin-bottom: 4px; font-weight: 600; }
+.finding p { margin: 0; color: var(--text-2); font-size: 12.5px; line-height: 1.5; }
+
+.frame { margin-top: 64px; scroll-margin-top: 24px; }
+.frame-h { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+.frame-h .k { font-family: var(--font-code); font-size: 13px; color: var(--accent-text); font-weight: 500; }
+.frame-h h2 { font-size: 20px; margin: 0; font-weight: 600; letter-spacing: -.012em; }
+.frame-cap { color: var(--text-2); max-width: 900px; margin: 0 0 14px; font-size: 14px; line-height: 1.6; }
+.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 32px; margin: 0 0 18px; padding: 0; list-style: none; max-width: 1180px; }
+.legend li { display: flex; gap: 10px; font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.legend li b { color: var(--text); font-weight: 600; }
+.pin { width: 20px; height: 20px; border-radius: 50%; background: var(--pin); color: #fff; font: 600 11px/20px var(--font-ui); text-align: center; flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--pin) 22%, transparent); }
+.pin.at { position: absolute; z-index: 6; }
+.fitwrap { width: 100%; }
+
+/* ---------- app chrome ---------- */
+.board { position: relative; background: var(--bg); border: 1px solid var(--border-strong); border-radius: 12px; overflow: hidden; box-shadow: var(--board-shadow); color: var(--text); }
+.titlebar { height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-2); font-weight: 500; }
+.tb-logo { width: 14px; height: 14px; border-radius: 4px; background: var(--accent); }
+.winctl { margin-left: auto; display: flex; gap: 16px; color: var(--text-3); align-items: center; }
+.winctl .rec { width: 7px; height: 7px; border-radius: 50%; background: var(--red); }
+.appbody { display: flex; }
+.iconrail { width: 48px; flex: none; border-right: 1px solid var(--border); padding: 10px 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.ir { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--text-3); position: relative; }
+.ir.on { background: var(--accent-subtle); color: var(--accent-text); }
+.ir .bdg { position: absolute; top: -2px; right: -4px; min-width: 16px; height: 15px; border-radius: 8px; background: var(--red); color: #fff; font-size: 9px; font-weight: 600; display: grid; place-items: center; padding: 0 4px; }
+.statusbar { height: 26px; border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; font-size: 11px; color: var(--text-3); gap: 12px; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--text); font: 500 12.5px var(--font-ui); white-space: nowrap; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--text-2); }
+.btn.icon { width: 28px; padding: 0; justify-content: center; color: var(--text-2); }
+.btn.sm { height: 24px; font-size: 12px; padding: 0 8px; }
+.btn.sm.icon { width: 24px; padding: 0; }
+.kbd { font-family: var(--font-code); font-size: 10.5px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--text-2); line-height: 15px; }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--grey)); flex: none; display: inline-block; }
+.g { color: var(--tc); font-size: 11px; line-height: 1; }
+.av { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 8.5px; font-weight: 600; color: #fff; background: var(--avc, #6b7280); flex: none; letter-spacing: 0; }
+.av.lg { width: 24px; height: 24px; font-size: 10px; }
+.av.empty { background: transparent; border: 1px dashed var(--faint); color: var(--text-3); }
+.av.bot { border-radius: 6px; background: linear-gradient(135deg, #8b5cf6, #4f46e5); }
+.prio { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 11px; }
+.prio i { width: 3px; background: var(--faint); border-radius: 1px; }
+.prio i:nth-child(1) { height: 4px; } .prio i:nth-child(2) { height: 7px; } .prio i:nth-child(3) { height: 10px; }
+.prio i.on { background: var(--orange); }
+.tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11.5px; font-weight: 500; background: var(--chip); color: var(--text-2); white-space: nowrap; }
+.state { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 11px; border: 1px solid var(--border-strong); font-size: 12px; font-weight: 500; color: var(--text); background: var(--bg); white-space: nowrap; }
+.state.sm { height: 20px; font-size: 11.5px; padding: 0 7px; }
+.badge { display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 7px; border-radius: 5px; font-size: 10.5px; font-weight: 600; letter-spacing: .03em; white-space: nowrap; }
+.badge.accent { background: var(--accent); color: #fff; }
+.badge.red { background: var(--red-subtle); color: var(--red); }
+.badge.green { background: var(--green-subtle); color: var(--green); }
+.badge.yellow { background: var(--yellow-subtle); color: var(--yellow); }
+.badge.soft { background: var(--chip); color: var(--text-2); }
+.ok { color: var(--green); } .warn { color: var(--yellow); } .fail { color: var(--red); }
+
+/* ---------- work item full view ---------- */
+.wi { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.wi-head { padding: 14px 28px 0; position: relative; }
+.wi-bar { display: flex; align-items: center; gap: 10px; height: 28px; }
+.crumb { display: inline-flex; align-items: center; gap: 10px; }
+.id { font-family: var(--font-code); font-size: 12px; color: var(--text-2); }
+.typepill { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 6px; background: color-mix(in srgb, var(--tc) 10%, transparent); color: var(--text); font-size: 12px; font-weight: 500; }
+.path { color: var(--text-3); font-size: 12px; display: inline-flex; align-items: center; gap: 2px; }
+.path b { color: var(--text-2); font-weight: 500; }
+.vsep { width: 1px; height: 14px; background: var(--border-strong); }
+.saved { display: inline-flex; align-items: center; gap: 4px; color: var(--text-3); font-size: 12px; }
+.saved .i { color: var(--green); }
+.wi-title { font-size: 23px; line-height: 1.28; font-weight: 600; letter-spacing: -.017em; margin: 12px 0 14px; max-width: 1000px; }
+.factrow { display: flex; align-items: center; gap: 12px; position: relative; }
+.facts { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); min-width: 0; }
+.fact { display: flex; flex-direction: column; gap: 3px; padding: 7px 14px 8px; border-left: 1px solid var(--border); min-width: 0; position: relative; }
+.fact:first-child { border-left: 0; }
+.fact-l { font-size: 10.5px; color: var(--text-3); font-weight: 500; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.fact-l .from { font-size: 9.5px; color: var(--text-3); border: 1px solid var(--border-strong); border-radius: 3px; padding: 0 3px; line-height: 13px; }
+.fact-v { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; }
+.fact-v .chev { color: var(--text-3); width: 12px; height: 12px; margin-left: -1px; }
+.fact.hov { background: var(--hover); }
+.fact-v .assign { color: var(--accent-text); font-weight: 500; font-size: 12px; }
+.acts { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+.now { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 7px 8px 7px 12px; border-radius: 10px; background: var(--sunken); border: 1px solid var(--border); position: relative; }
+.now-l { font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); padding-right: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border-radius: 7px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; color: var(--text); white-space: nowrap; min-width: 0; }
+.chip .t { overflow: hidden; text-overflow: ellipsis; max-width: 300px; color: var(--text-2); }
+.chip .mid { width: 1px; height: 12px; background: var(--border-strong); }
+.next { font-size: 12.5px; color: var(--text-2); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.next b { color: var(--text); font-weight: 500; }
+
+.wi-tabs { display: flex; align-items: flex-end; gap: 2px; padding: 0 28px; margin-top: 16px; border-bottom: 1px solid var(--border); position: relative; }
+.tab { display: inline-flex; align-items: center; gap: 6px; padding: 9px 10px 10px; font-size: 13px; color: var(--text-2); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tab:first-child { padding-left: 0; }
+.tab.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 500; }
+.tab .c { font-size: 11px; color: var(--text-3); background: var(--chip); border-radius: 8px; padding: 0 6px; line-height: 16px; font-variant-numeric: tabular-nums; font-weight: 500; }
+.tab .pg { font-size: 9.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); border: 1px dashed var(--border-strong); border-radius: 4px; padding: 0 4px; line-height: 14px; font-weight: 500; }
+.tabs-right { margin-left: auto; align-self: center; font-size: 12px; color: var(--text-3); display: flex; gap: 6px; align-items: center; padding-bottom: 2px; }
+
+.wi-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.wi-main { padding: 24px 48px 40px 28px; min-width: 0; }
+.wi-main > * { max-width: 860px; }
+.wi-rail { border-left: 1px solid var(--border); padding: 22px 22px 28px; background: var(--rail-bg); position: relative; }
+
+.latest { position: relative; border: 1px solid var(--latest-border); background: var(--latest-bg); border-radius: 12px; padding: 14px 18px 16px; margin-bottom: 32px; }
+.latest-h { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); }
+.latest-h a { font-weight: 500; }
+.latest h3 { font-family: var(--font-read); font-size: 17px; font-weight: 600; margin: 10px 0 12px; letter-spacing: -.006em; }
+.latest-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.latest-cols h4 { margin: 0 0 4px; font-size: 11px; color: var(--text-3); font-weight: 600; letter-spacing: .02em; }
+.latest-cols p { margin: 0; font-family: var(--font-read); font-size: 13.5px; line-height: 1.55; color: var(--text); }
+
+.field { position: relative; margin-bottom: 32px; }
+.field-h { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; min-height: 24px; }
+.field-h h2 { font-size: 14px; font-weight: 600; margin: 0; color: var(--text); letter-spacing: -.003em; }
+.field-h .src { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
+.ftag { font-size: 10.5px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border-strong); color: var(--text-3); line-height: 17px; white-space: nowrap; }
+.prose { font-family: var(--font-read); font-size: 14.5px; line-height: 1.65; color: var(--text); overflow-wrap: anywhere; }
+.prose p { margin: 0 0 10px; }
+.prose code, .mono-chip { font-family: var(--font-code); font-size: 12.5px; background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+.fold { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-3); padding: 7px 10px; border: 1px dashed var(--border-strong); border-radius: 8px; margin: 0 0 12px; }
+.fold a { margin-left: auto; font-weight: 500; }
+.shots { display: flex; gap: 10px; margin: 6px 0 12px; }
+.shot { margin: 0; width: 248px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg); }
+.shot.sm { width: 180px; }
+.shot figcaption { font-size: 11.5px; color: var(--text-3); padding: 6px 9px; border-top: 1px solid var(--border); display: flex; gap: 6px; align-items: center; }
+.fake { height: 124px; background: #f6f7f9; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.shot.sm .fake { height: 92px; }
+.fake .bar { display: flex; gap: 4px; }
+.fake .bar i { height: 7px; border-radius: 2px; background: #dfe2e8; width: 30px; }
+.fake .bar i:first-child { width: 60px; background: #c9cdf6; }
+.fake .cal { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.fake .cal i { background: #fff; border: 1px solid #e3e6eb; border-radius: 2px; position: relative; }
+.fake .cal i.w::after { content: ""; position: absolute; left: 2px; right: 2px; top: 22%; height: 34%; background: #9db8f2; border-radius: 2px; }
+.fake .cal i.h::after { content: ""; position: absolute; left: 2px; right: 2px; top: 22%; height: 56%; background: #f6c58c; border-radius: 2px; }
+.fake .cal i.x { background: repeating-linear-gradient(45deg, #fff, #fff 3px, #fde9ed 3px, #fde9ed 6px); border-color: #f2b8c2; }
+.steps { margin: 4px 0 12px; padding: 0; list-style: none; counter-reset: s; font-family: var(--font-read); font-size: 14.5px; line-height: 1.55; }
+.steps li { counter-increment: s; display: flex; align-items: flex-start; gap: 12px; padding: 7px 0; border-top: 1px solid var(--border); }
+.steps li:first-child { border-top: 0; }
+.steps li::before { content: counter(s); flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--chip); color: var(--text-2); font: 600 11px/20px var(--font-ui); text-align: center; margin-top: 1px; }
+.steps li.failstep::before { background: var(--red-subtle); color: var(--red); }
+.steps li .badge { margin-left: 4px; position: relative; top: -1px; }
+.log { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.log-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--border); font-size: 13px; }
+.log-row:first-child { border-top: 0; }
+.log-row .d { font-family: var(--font-code); font-size: 11.5px; color: var(--text-3); width: 50px; flex: none; }
+.log-row .s { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-row.cur { background: var(--sunken); }
+.clamp { max-height: 128px; overflow: hidden; position: relative; }
+.clamp::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: linear-gradient(color-mix(in srgb, var(--bg) 0%, transparent), var(--bg)); }
+.more { margin-top: 4px; border: 0; background: transparent; color: var(--accent-text); font: 500 12.5px var(--font-ui); padding: 0; display: inline-flex; gap: 4px; align-items: center; }
+.linkchip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.empties { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); padding-top: 2px; position: relative; }
+.addf { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 7px; border: 1px dashed var(--border-strong); color: var(--text-2); font-size: 12px; }
+
+.rg { position: relative; padding: 0 0 16px; margin: 0 0 16px; border-bottom: 1px solid var(--border); }
+.rg.last { border-bottom: 0; margin-bottom: 8px; }
+.rg-h { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+.rg-h b { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.rg-h .ct { font-size: 9.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 4px; line-height: 14px; }
+.rg-h .em { margin-left: auto; font-size: 11.5px; color: var(--text-3); display: inline-flex; align-items: center; gap: 3px; }
+.kv { display: grid; grid-template-columns: 108px minmax(0, 1fr); row-gap: 1px; column-gap: 8px; margin: 0; }
+.kv dt { font-size: 12px; color: var(--text-3); padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 4px; align-items: center; }
+.kv dd { margin: 0 0 0 -6px; font-size: 12.5px; color: var(--text); padding: 3px 6px; border-radius: 5px; display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
+.kv dd .t { overflow: hidden; text-overflow: ellipsis; }
+.kv dd.hov { background: var(--hover); }
+.kv dd .pp { color: var(--text-3); }
+.req { width: 5px; height: 5px; border-radius: 50%; background: var(--red); display: inline-block; }
+.rlink { display: flex; align-items: center; gap: 8px; padding: 5px 8px; margin: 0 -8px; border-radius: 7px; font-size: 12.5px; min-width: 0; }
+.rlink .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rlink .k { font-size: 11.5px; color: var(--text-3); width: 50px; flex: none; }
+.rlink .idn { font-family: var(--font-code); font-size: 11.5px; color: var(--text-2); flex: none; }
+.extrow { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--sunken); border: 1px dashed var(--border-strong); font-size: 12px; color: var(--text-2); }
+.extrow { white-space: nowrap; }
+.extrow a { margin-left: auto; font-weight: 500; display: inline-flex; gap: 4px; align-items: center; }
+.rail-foot { font-size: 11.5px; color: var(--text-3); display: flex; gap: 7px; line-height: 1.5; margin-top: 4px; }
+.rail-foot .i { margin-top: 2px; }
+
+/* ---------- activity ---------- */
+.act { padding: 18px 28px 30px; max-width: 900px; }
+.act-bar { display: flex; align-items: center; gap: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; padding: 2px; gap: 2px; }
+.seg span { padding: 3px 10px; border-radius: 6px; font-size: 12.5px; color: var(--text-2); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.seg span.on { background: var(--chip-strong); color: var(--text); font-weight: 500; }
+.seg span em { font-style: normal; color: var(--text-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-2); }
+.toggle i { width: 26px; height: 15px; border-radius: 8px; background: var(--accent); position: relative; display: inline-block; }
+.toggle i::after { content: ""; position: absolute; right: 2px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; }
+.composer { display: flex; gap: 10px; align-items: center; margin: 16px 0 6px; padding: 10px 10px 10px 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--bg); }
+.composer .ph { flex: 1; color: var(--text-3); font-size: 13px; }
+.tl { position: relative; margin-top: 4px; }
+.tl::before { content: ""; position: absolute; left: 11.5px; top: 18px; bottom: 12px; width: 1px; background: var(--border-strong); }
+.day { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); margin: 20px 0 6px 36px; }
+.ev { position: relative; display: flex; gap: 12px; padding: 5px 0; }
+.ev .gut { width: 24px; flex: none; display: flex; justify-content: center; position: relative; z-index: 1; }
+.ev .gut .ico { width: 24px; height: 24px; border-radius: 50%; background: var(--bg); border: 1px solid var(--border-strong); display: grid; place-items: center; color: var(--text-3); }
+.ev .gut .ico .i { width: 12px; height: 12px; }
+.ev .body { flex: 1; min-width: 0; font-size: 13px; color: var(--text-2); padding-top: 3px; }
+.ev .body > .line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ev .body b { color: var(--text); font-weight: 500; }
+.ev .time { color: var(--text-3); font-size: 12px; }
+.bubble { margin-top: 6px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 13px; font-family: var(--font-read); font-size: 14px; line-height: 1.55; color: var(--text); background: var(--bg); }
+.agent { margin-top: 8px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); }
+.agent-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--text); min-width: 0; }
+.agent-row:first-child { border-top: 0; }
+.agent-row .sum { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.kind { font-family: var(--font-code); font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--chip); color: var(--text-2); flex: none; }
+.agent-open { padding: 4px 14px 14px 36px; background: var(--sunken); }
+.agent-open p { margin: 0 0 8px; font-family: var(--font-read); font-size: 13.5px; line-height: 1.6; color: var(--text); overflow-wrap: anywhere; }
+.agent-open .cite { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.proof { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-3); }
+.proof code { font-family: var(--font-code); font-size: 11.5px; color: var(--text-2); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
+.stepdots { display: flex; gap: 4px; align-items: center; margin-left: auto; }
+.stepdots i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: block; }
+.stepdots i.r { background: var(--yellow); }
+
+/* ---------- mapping ---------- */
+.mapboard { padding: 28px; }
+.map { display: grid; grid-template-columns: 540px minmax(0, 1fr) 380px; gap: 32px; align-items: start; }
+.colh { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); font-weight: 600; margin: 0 0 10px; display: flex; gap: 6px; align-items: center; }
+.ado { border: 1px solid var(--border-strong); border-radius: 10px; background: var(--sunken); padding: 12px; font-size: 12px; position: relative; }
+.ado-pages { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+.ado-pt { padding: 3px 8px; border-radius: 5px; border: 1px solid var(--border-strong); background: var(--bg); font-size: 11.5px; display: inline-flex; gap: 5px; align-items: center; }
+.ado-pt.on { border-color: var(--accent); color: var(--accent-text); }
+.ado-pt.sys { border-style: dashed; color: var(--text-3); background: transparent; }
+.ado-cols { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 8px; }
+.ado-sec { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; background: var(--bg); }
+.ado-sec-l { font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+.ado-grp { border: 1px solid var(--border); border-radius: 6px; padding: 6px 7px; background: var(--bg); }
+.ado-grp-l { font-weight: 600; font-size: 11.5px; margin-bottom: 3px; display: flex; gap: 5px; align-items: center; }
+.ado-ctl { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-2); padding: 2px 0; }
+.ado-ctl .ty { font-family: var(--font-code); font-size: 9.5px; color: var(--text-3); margin-left: auto; white-space: nowrap; }
+.ado-ctl.html { border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 6px; row-gap: 0; }
+.ado-ctl.html .ty { margin-left: 0; grid-column: 1; grid-row: 2; }
+.ado-ctl.html .pn { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+.ado-ctl.dim { opacity: .55; }
+.pn { width: 16px; height: 16px; border-radius: 50%; background: var(--pin); color: #fff; font: 600 9.5px/16px var(--font-ui); text-align: center; flex: none; display: inline-block; }
+.rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.rules li { display: flex; gap: 11px; }
+.rules b { display: block; font-size: 13.5px; margin-bottom: 2px; font-weight: 600; }
+.rules p { margin: 0; color: var(--text-2); font-size: 12.5px; line-height: 1.55; }
+.rules code { font-family: var(--font-code); font-size: 11.5px; background: var(--chip); border-radius: 3px; padding: 0 4px; }
+.wire { border: 1px solid var(--border-strong); border-radius: 10px; background: var(--bg); padding: 12px; display: flex; flex-direction: column; gap: 7px; }
+.wb { background: var(--chip); border-radius: 6px; font-size: 11px; color: var(--text-2); display: flex; align-items: center; gap: 6px; padding: 0 8px; min-height: 26px; position: relative; }
+.wb.t { background: transparent; padding: 0; font-size: 13px; font-weight: 600; color: var(--text); min-height: 18px; }
+.wgrid { display: grid; grid-template-columns: minmax(0, 1fr) 118px; gap: 8px; }
+.wcol { display: flex; flex-direction: column; gap: 6px; }
+.wb.tall { min-height: 54px; align-items: flex-start; padding-top: 6px; }
+.wb.acc { background: var(--accent-subtle); color: var(--accent-text); }
+.wb.dash { background: transparent; border: 1px dashed var(--border-strong); }
+.wb .pn { margin-left: auto; }
+
+.types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 34px; }
+.mini { border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+.mini-h { padding: 12px 14px 0; }
+.mini-top { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.mini-title { font-size: 15px; font-weight: 600; margin: 7px 0 10px; line-height: 1.35; letter-spacing: -.008em; }
+.mfacts { display: flex; flex-wrap: wrap; gap: 6px; }
+.mfact { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border-radius: 7px; border: 1px solid var(--border); font-size: 12px; white-space: nowrap; font-weight: 500; }
+.mfact .l { color: var(--text-3); font-size: 10.5px; font-weight: 500; }
+.mfact.hot { border-color: color-mix(in srgb, var(--red) 40%, transparent); background: var(--red-subtle); }
+.mtabs { display: flex; gap: 14px; padding: 0 14px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-2); margin-top: 12px; }
+.mtabs span { padding: 7px 0 8px; display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+.mtabs .on { color: var(--text); box-shadow: inset 0 -2px var(--accent); font-weight: 500; }
+.mbody { display: grid; grid-template-columns: minmax(0, 1fr) 156px; flex: 1; }
+.mmain { padding: 12px 14px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.mrail { padding: 12px; border-left: 1px solid var(--border); background: var(--rail-bg); display: flex; flex-direction: column; gap: 12px; font-size: 11.5px; min-width: 0; }
+.mf h5 { margin: 0 0 4px; font-size: 12px; font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.mf p { margin: 0; font-family: var(--font-read); font-size: 12.5px; line-height: 1.5; color: var(--text-2); }
+.mf ul { margin: 0; padding-left: 16px; font-family: var(--font-read); font-size: 12.5px; line-height: 1.55; color: var(--text-2); }
+.mg b { display: flex; gap: 5px; align-items: center; font-size: 11.5px; font-weight: 600; margin-bottom: 4px; }
+.mg .r { display: flex; justify-content: space-between; gap: 6px; color: var(--text-3); padding: 1.5px 0; }
+.mg .r span:last-child { color: var(--text); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mg .e { color: var(--text-3); font-size: 11px; }
+.prog { height: 5px; border-radius: 3px; background: var(--chip-strong); overflow: hidden; margin-top: 4px; }
+.prog i { display: block; height: 100%; background: var(--green); border-radius: 3px; }
+.why { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-2); background: var(--sunken); line-height: 1.5; }
+.why b { color: var(--text); font-weight: 600; }
+
+/* ---------- peek ---------- */
+.peekboard { height: 900px; position: relative; }
+.prbg { position: absolute; inset: 34px 0 0 48px; padding: 16px 28px; }
+.prbg h3 { font-size: 20px; margin: 10px 0 6px; font-weight: 600; letter-spacing: -.01em; }
+.ln { height: 9px; border-radius: 4px; background: var(--chip-strong); margin: 10px 0; }
+.scrim { position: absolute; inset: 0; background: var(--scrim); backdrop-filter: blur(1.5px); }
+.peek { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); width: 960px; background: var(--modal); border-radius: 14px; box-shadow: var(--card-shadow); overflow: hidden; display: flex; flex-direction: column; max-height: 780px; }
+.peek-h { padding: 16px 20px 0; position: relative; }
+.peek-top { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); }
+.peek-top .vsep { height: 12px; }
+.peek h2 { font-size: 19px; line-height: 1.32; margin: 8px 0 10px; font-weight: 600; letter-spacing: -.012em; padding-right: 40px; }
+.peek-link { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); padding: 7px 10px; border-radius: 8px; background: var(--sunken); border: 1px solid var(--border); }
+.peek-link b { color: var(--text); font-weight: 500; }
+.peek .wi-tabs { padding: 0 20px; margin-top: 12px; }
+.peek-body { display: grid; grid-template-columns: minmax(0, 1fr) 270px; min-height: 0; }
+.peek-main { padding: 18px 22px 22px 20px; min-width: 0; }
+.peek-rail { border-left: 1px solid var(--border); padding: 18px 18px; background: var(--rail-bg); }
+.peek .latest { padding: 12px 14px 13px; margin-bottom: 20px; }
+.peek .latest h3 { font-size: 15px; margin: 8px 0 6px; }
+.peek .latest p { margin: 0; font-family: var(--font-read); font-size: 13.5px; line-height: 1.55; }
+.acc-row { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--border); font-size: 13px; }
+.acc-row b { font-weight: 600; flex: none; }
+.acc-row .pv { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); font-family: var(--font-read); font-size: 13px; }
+.peek .prose { font-size: 14px; }
+.peek .field-h h2 { font-size: 14px; margin: 0; padding: 0; line-height: 1.3; }
+.peek-foot { font-size: 11.5px; color: var(--text-3); display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+
+/* ---------- hover cards ---------- */
+.hovboard { padding: 28px 32px 36px; }
+.hovgrid { display: grid; grid-template-columns: 470px repeat(2, minmax(0, 1fr)); gap: 28px; align-items: start; }
+.ctx { font-family: var(--font-read); font-size: 14px; line-height: 1.65; color: var(--text); position: relative; padding-bottom: 330px; }
+.ctx h4 { font-family: var(--font-ui); font-size: 15px; margin: 0 0 6px; }
+.ctx .ab { color: var(--accent-text); font-weight: 500; background: var(--accent-subtle); border-radius: 3px; box-shadow: 0 0 0 2px var(--accent-subtle); text-decoration: underline; text-underline-offset: 2px; }
+.ctx .anchor { position: relative; display: inline-block; }
+.ctx .wcard { position: absolute; top: calc(100% + 8px); left: 22px; overflow: visible; }
+.ctx .wcard::before { border-radius: 11px 0 0 11px; }
+.ctx .wcard .wc-foot { border-radius: 0 0 11px 11px; }
+.wcard { width: 384px; background: var(--modal); color: var(--text); border-radius: 11px; box-shadow: var(--card-shadow); font-family: var(--font-ui); overflow: hidden; line-height: 1.4; position: relative; z-index: 3; }
+.wcard::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--tc); }
+.wcard.static { position: relative; width: 100%; }
+.wc-body { padding: 12px 15px 12px 17px; }
+.wc-top { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-2); }
+.wc-top .idn { font-family: var(--font-code); font-size: 11.5px; color: var(--text-3); }
+.wc-top .state { margin-left: auto; }
+.wc-parent { font-size: 11.5px; color: var(--text-3); margin-top: 7px; display: flex; gap: 4px; align-items: center; white-space: nowrap; overflow: hidden; }
+.wc-title { font-size: 15px; font-weight: 600; line-height: 1.35; margin: 6px 0 8px; letter-spacing: -.008em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wc-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--text-2); align-items: center; }
+.wc-meta span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.wc-meta .due { color: var(--red); font-weight: 500; }
+.wc-meta .pin { display: block; }
+.gist { margin-top: 11px; padding: 9px 11px 10px; border-radius: 8px; background: var(--sunken); border: 1px solid var(--border); }
+.gist-l { font-size: 10.5px; color: var(--text-3); font-weight: 600; letter-spacing: .03em; display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+.gist-l .fresh { color: var(--accent-text); }
+.gist-l .how { font-weight: 500; letter-spacing: 0; }
+.wc-latest { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12px; color: var(--text-2); white-space: nowrap; min-width: 0; position: relative; }
+.wc-latest .lbl { font-size: 10.5px; font-weight: 600; color: var(--accent-text); letter-spacing: .03em; flex: none; }
+.wc-latest .t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.wc-latest .t b { color: var(--text); font-weight: 500; }
+.decided { background: var(--bg); border: 1px solid var(--latest-border); border-radius: 12px; padding: 14px 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.decided div { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+.decided b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+.gist p { margin: 0; font-family: var(--font-read); font-size: 13px; line-height: 1.5; color: var(--text); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.wc-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.wc-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 11.5px; color: var(--text-2); white-space: nowrap; }
+.wc-chip .n { font-family: var(--font-code); color: var(--text); font-size: 11px; }
+.wc-chip .d { width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.wc-prog { margin-top: 10px; font-size: 11.5px; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+.wc-prog .prog { flex: 1; margin: 0; }
+.wc-foot { display: flex; align-items: center; gap: 10px; padding: 8px 15px 8px 17px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-3); white-space: nowrap; background: var(--sunken); }
+.wc-foot .who { display: inline-flex; gap: 6px; align-items: center; overflow: hidden; text-overflow: ellipsis; }
+.wc-foot .hint { margin-left: auto; display: inline-flex; gap: 10px; }
+.wc-foot .hint b { color: var(--text-2); font-weight: 500; }
+.cardcol { display: flex; flex-direction: column; gap: 22px; }
+.cardlabel { font-size: 11.5px; color: var(--text-3); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+.skel { height: 10px; border-radius: 5px; background: var(--chip-strong); margin: 8px 0; }
+.annot { position: absolute; display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--text-2); line-height: 1.45; width: 220px; }
+
+/* ---------- reference tables ---------- */
+.refgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.ref { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.ref h3 { margin: 0; padding: 14px 16px 4px; font-size: 14px; font-weight: 600; }
+.ref > p { margin: 0; padding: 0 16px 10px; font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+.ref table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ref th { text-align: left; font-size: 11px; color: var(--text-3); font-weight: 600; padding: 8px 16px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--sunken); }
+.ref td { padding: 8px 16px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-2); line-height: 1.5; }
+.ref tr:last-child td { border-bottom: 0; }
+.ref td:first-child { color: var(--text); font-weight: 500; white-space: nowrap; }
+.ref code { font-family: var(--font-code); font-size: 11.5px; background: var(--chip); border-radius: 3px; padding: 0 4px; }
+.build { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-top: 20px; }
+.build h3 { margin: 0 0 10px; font-size: 14px; }
+.build ol { margin: 0; padding-left: 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 36px; }
+.build li { font-size: 12.5px; color: var(--text-2); line-height: 1.55; }
+.build code { font-family: var(--font-code); font-size: 11.5px; background: var(--chip); border-radius: 3px; padding: 0 4px; color: var(--text); }
+</style>
+</head>
+<body class="light">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+    <symbol id="i-pr" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" x2="6" y1="9" y2="21"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+    <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><line x1="3" x2="9" y1="12" y2="12"/><line x1="15" x2="21" y1="12" y2="12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="i-img" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></symbol>
+    <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></symbol>
+    <symbol id="i-hist" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol>
+    <symbol id="i-dash" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></symbol>
+    <symbol id="i-rocket" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></symbol>
+  </defs>
+</svg>
+
+<div class="doc">
+
+  <header class="doc-head">
+    <div style="flex:1">
+      <div class="eyebrow">BorgDock · design study · 12 Nov 2026</div>
+      <h1>Work item: full view, peek and hover card</h1>
+      <p class="lede">One model of the work item drives all three surfaces, and that model comes from the Azure DevOps form layout instead of a hard-coded list of fields. Every type keeps its own pages, groups and custom fields. BorgDock adds only what ADO can't: the gist, the pull request and agent around the item, and what to do next. Sample data is made up (AB#4127, Northwind Foods).</p>
+    </div>
+    <div class="switch" role="group" aria-label="Theme">
+      <button type="button" data-theme="light" aria-pressed="true">Light</button>
+      <button type="button" data-theme="dark" aria-pressed="false">Dark</button>
+    </div>
+  </header>
+  <nav class="toc">
+    <a href="#a"><b>A</b> Full view · Details</a>
+    <a href="#b"><b>B</b> Activity</a>
+    <a href="#c"><b>C</b> How the ADO layout maps</a>
+    <a href="#d"><b>D</b> Peek from a pull request</a>
+    <a href="#e"><b>E</b> Hover cards</a>
+    <a href="#f"><b>F</b> Rules &amp; build notes</a>
+  </nav>
+
+  <div class="sec-title">What the current screens get wrong</div>
+  <div class="findings">
+    <div class="finding"><span class="n">01 · repeated</span><b>Every fact shows up twice</b><p>State, priority, assignee and iteration sit in the header pickers and again under Properties. In the peek, the type shows three times.</p></div>
+    <div class="finding"><span class="n">02 · rigid</span><b>The rail ignores the ADO form</b><p>Properties / People / Planning are hard-coded. Custom groups and fields end up in a "Custom Fields" grid or don't show at all, and type and state colours come from a fixed map.</p></div>
+    <div class="finding"><span class="n">03 · buried</span><b>Status is below the fold</b><p>The newest Developer Notes update, the linked PR and the agent's state are a scroll away. The screen opens on an email disclaimer.</p></div>
+    <div class="finding"><span class="n">04 · noise</span><b>Email clutter fills the screen</b><p>External-sender banners, signatures, phone numbers and <code class="mono-chip">cid:</code> images that can never load show up as empty frames with lots of whitespace.</p></div>
+    <div class="finding"><span class="n">05 · cramped</span><b>A 35-comment thread in a 240 px rail</b><p>Vera's long comments, with proof hashes and file paths, overflow sideways. Meanwhile the Activity tab says "coming soon".</p></div>
+    <div class="finding"><span class="n">06 · overflow</span><b>Lines run 1,600 px wide and scroll sideways</b><p>Text has no maximum width, and long hashes and URLs force a horizontal scrollbar in both the full view and the peek.</p></div>
+    <div class="finding"><span class="n">07 · hover</span><b>The card shows the disclaimer</b><p>Its excerpt is the first text in the description ("CAUTION: This email originated…"), and its footer hints wrap onto three lines.</p></div>
+    <div class="finding"><span class="n ok">kept</span><b>What already works</b><p>Auto-save, inline pickers, AB# links, the type stripe on the card, PR and T3 chips on the card, and tabs built from custom pages.</p></div>
+  </div>
+  <div class="sec-title">Decided · 12 Nov</div>
+  <div class="decided">
+    <div><b>Header fact by rule</b>The type's own header fact is the first field it has from Severity, Effort, Story Points or a due date. No per-type setting.</div>
+    <div><b>Discussion moves to Activity</b>Only the latest message matters day to day. It surfaces in Latest, and the full thread lives in the Activity tab.</div>
+    <div><b>The card always shows what it's about</b>The hover card always shows the description, or the repro steps when a Bug has none. The latest update is one line under it.</div>
+  </div>
+
+  <!-- ===================================================== A -->
+  <section class="frame" id="a">
+    <div class="frame-h"><span class="k">A</span><h2>Full view: Details</h2></div>
+    <p class="frame-cap">The header answers "what is this, and where does it stand?". The tab answers "what does it say?". Each fact has one place, and you edit it there. The rail lists only what isn't in the header, grouped the way the team's ADO process groups it.</p>
+    <ol class="legend">
+      <li><span class="pin">1</span><span><b>Fact strip.</b> State, Assigned To, Priority and Iteration, plus the type's own key field (Severity for a Bug). You edit them here and nowhere else.</span></li>
+      <li><span class="pin">2</span><span><b>Now.</b> The linked PR with its checks and conflicts, the T3 thread, and the next step from Dispatch's verdict.</span></li>
+      <li><span class="pin">3</span><span><b>Latest.</b> The newest of: the top Developer Notes entry, a comment, or the agent's last message. It's the same rule as Dispatch's <code class="mono-chip">latestMessage</code>.</span></li>
+      <li><span class="pin">4</span><span><b>Noise folds.</b> The external-sender banner, the signature and email inline images collapse to one line each. Show brings back the original.</span></li>
+      <li><span class="pin">5</span><span><b>Rail from the layout.</b> ADO's group names and order. Fields already in the header are skipped, and empty fields fold into "2 empty".</span></li>
+      <li><span class="pin">6</span><span><b>Custom pages are tabs.</b> "Autoship" is a page in this process's Bug layout. Empty long-text fields from the layout are offered as "+ Add".</span></li>
+    </ol>
+    <div class="fitwrap"><div class="board" data-fit="1440" style="width:1440px">
+      <div class="titlebar"><span class="tb-logo"></span>Work item<span class="winctl"><span class="rec"></span><svg class="i s12"><use href="#i-dash"/></svg><svg class="i s12"><use href="#i-hist"/></svg><svg class="i s12"><use href="#i-sliders"/></svg><span>—</span><span>☐</span><span>✕</span></span></div>
+      <div class="appbody">
+        <nav class="iconrail">
+          <span class="ir"><svg class="i s16"><use href="#i-dash"/></svg><span class="bdg">9</span></span>
+          <span class="ir"><svg class="i s16"><use href="#i-send"/></svg></span>
+          <span class="ir"><svg class="i s16"><use href="#i-layers"/></svg></span>
+          <span class="ir"><svg class="i s16"><use href="#i-pr"/></svg><span class="bdg">12</span></span>
+          <span class="ir on"><svg class="i s16"><use href="#i-list"/></svg></span>
+          <span class="ir"><svg class="i s16"><use href="#i-note"/></svg></span>
+          <span class="ir"><svg class="i s16"><use href="#i-db"/></svg></span>
+        </nav>
+        <main class="wi">
+          <header class="wi-head">
+            <div class="wi-bar">
+              <span class="btn ghost sm"><svg class="i s12"><use href="#i-back"/></svg>Back</span>
+              <span class="crumb">
+                <span class="id">AB#4127</span>
+                <span class="typepill" style="--tc:var(--red)"><span class="g">●</span>Bug</span>
+                <span class="path">Acme Portal<svg class="i s12"><use href="#i-right"/></svg><b>Schedules</b></span>
+              </span>
+              <span class="sp"></span>
+              <span class="saved"><svg class="i s12"><use href="#i-check"/></svg>Saved</span>
+              <span class="vsep"></span>
+              <span class="muted" style="font-size:12px">Updated 4 h ago by Vera</span>
+              <span class="btn icon" title="Copy id"><svg class="i"><use href="#i-copy"/></svg></span>
+              <span class="btn"><svg class="i"><use href="#i-ext"/></svg>Open in ADO</span>
+              <span class="btn icon" title="More: workstream, delete"><svg class="i"><use href="#i-more"/></svg></span>
+            </div>
+            <h1 class="wi-title">Portal | Holiday timeplan not visible in technician schedule</h1>
+            <div class="factrow">
+              <span class="pin at" style="left:-12px;top:-10px">1</span>
+              <div class="facts">
+                <div class="fact"><span class="fact-l">State</span><span class="fact-v"><span class="dot" style="--c:var(--blue)"></span>Code Review<svg class="i chev"><use href="#i-down"/></svg></span></div>
+                <div class="fact hov"><span class="fact-l">Assigned to</span><span class="fact-v"><span class="av empty">?</span><span style="color:var(--text-2);font-weight:400">Unassigned</span><span class="assign">Assign me</span></span></div>
+                <div class="fact"><span class="fact-l">Priority</span><span class="fact-v"><span class="prio"><i class="on"></i><i class="on"></i><i></i></span>P2 · High<svg class="i chev"><use href="#i-down"/></svg></span></div>
+                <div class="fact"><span class="fact-l">Severity <span class="from">Bug</span></span><span class="fact-v"><span class="dot" style="--c:var(--yellow)"></span>2 · Not critical<svg class="i chev"><use href="#i-down"/></svg></span></div>
+                <div class="fact"><span class="fact-l">Iteration</span><span class="fact-v"><svg class="i s12" style="color:var(--text-3)"><use href="#i-cal"/></svg>Release 5.2.10<svg class="i chev"><use href="#i-down"/></svg></span></div>
+                <div class="fact"><span class="fact-l">Tags</span><span class="fact-v" style="gap:5px"><span class="tag">autoship</span><span class="tag">portal</span><span class="tag">northwind</span><span class="tag" style="background:transparent;border:1px dashed var(--border-strong);padding:0 6px"><svg class="i s12"><use href="#i-plus"/></svg></span></span></div>
+              </div>
+              <div class="acts">
+                <span class="btn"><svg class="i"><use href="#i-star"/></svg>Track</span>
+                <span class="btn primary"><svg class="i s12" style="fill:currentColor"><use href="#i-play"/></svg>Start in T3</span>
+              </div>
+            </div>
+            <div class="now">
+              <span class="pin at" style="left:-12px;top:-10px">2</span>
+              <span class="now-l">Now</span>
+              <span class="chip"><svg class="i s12" style="color:var(--green)"><use href="#i-pr"/></svg><b class="mono" style="font-size:11.5px;font-weight:500">#812</b><span class="t">fix(schedules): show the technician's holidays in the weekly overview</span><span class="mid"></span><span class="ok" style="display:inline-flex;gap:4px;align-items:center"><svg class="i s12"><use href="#i-check"/></svg>59/59</span><span class="mid"></span><span class="warn" style="display:inline-flex;gap:4px;align-items:center"><svg class="i s12"><use href="#i-alert"/></svg>Conflicts with main</span></span>
+              <span class="chip"><span class="badge soft" style="height:16px;padding:0 5px;font-size:10px">T3</span><span class="t" style="max-width:190px">holidays in weekly overview</span><span class="mid"></span><span style="color:var(--yellow);font-weight:500">Your turn</span></span>
+              <span class="sp"></span>
+              <span class="next"><span>Next: <b>resolve the conflicts on #812</b>, then review</span><svg class="i s12"><use href="#i-arrow"/></svg></span>
+            </div>
+          </header>
+          <nav class="wi-tabs">
+            <span class="tab on">Details</span>
+            <span class="tab">Activity <span class="c">35</span></span>
+            <span class="tab">Links <span class="c">3</span></span>
+            <span class="tab">Attachments <span class="c">5</span></span>
+            <span class="tab">Notes <span class="c">1</span></span>
+            <span class="tab" style="position:relative">Autoship <span class="pg">page</span><span class="pin at" style="right:-14px;top:-6px">6</span></span>
+            <span class="tabs-right"><svg class="i s12"><use href="#i-panel"/></svg>Layout: Acme Scrum › Bug</span>
+          </nav>
+          <div class="wi-grid">
+            <div class="wi-main">
+              <section class="latest">
+                <span class="pin at" style="left:-12px;top:-10px">3</span>
+                <div class="latest-h"><span class="badge accent">Latest</span><span>Developer Notes · update 3 of 3 · 11 Nov · Vera</span><span class="sp"></span><a href="#">All updates</a></div>
+                <h3>Holidays now show in the Schedules weekly overview</h3>
+                <div class="latest-cols">
+                  <div><h4>What was wrong</h4><p>A holiday linked to a technician in Master Data never reached the weekly overview. That day read "No schedule".</p></div>
+                  <div><h4>What changed</h4><p>The overview now returns each day's active holidays. Each one renders as a coloured block, and Current assignments lists them read-only.</p></div>
+                  <div><h4>How to test</h4><p>Link a holiday under Master Data → Holidays, open Schedules for that technician, then step to the holiday's week.</p></div>
+                </div>
+              </section>
+
+              <section class="field">
+                <span class="pin at" style="left:-34px;top:46px">4</span>
+                <header class="field-h"><h2>Description</h2><span class="src"><svg class="i s12"><use href="#i-mail"/></svg>Email from Sam Peeters, Northwind Foods · 7 Nov</span><span class="sp"></span><span class="btn ghost sm">Edit</span></header>
+                <div class="fold"><svg class="i s12"><use href="#i-shield"/></svg>External-sender warning hidden<a href="#">Show</a></div>
+                <div class="prose">
+                  <p>Hi Support Team,</p>
+                  <p>I noticed that the Holiday Timeplan is not visible in the schedule settings in the new portal. The schedule was added after the technician was created in the new portal.</p>
+                </div>
+                <div class="shots">
+                  <figure class="shot"><div class="fake"><div class="bar"><i></i><i></i><i></i></div><div class="cal"><i class="w"></i><i class="w"></i><i class="x"></i><i class="w"></i><i class="w"></i><i></i><i></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i></i><i></i></div></div><figcaption><svg class="i s12"><use href="#i-img"/></svg>image.png · 1280 × 720</figcaption></figure>
+                </div>
+                <div class="fold"><svg class="i s12"><use href="#i-eyeoff"/></svg>Signature hidden: Sam Peeters, IT Support Coordinator, plus 4 logo images<a href="#">Show</a></div>
+              </section>
+
+              <section class="field">
+                <header class="field-h"><h2>Repro Steps</h2><span class="src">5 steps</span></header>
+                <div class="prose"><p>In the legacy portal, the technician's schedule shows the configured Holiday Timeplan next to the regular schedule. In the new portal, Resource Management → Schedules doesn't show it.</p></div>
+                <ol class="steps">
+                  <li><span>Open the legacy portal → <b>Rosters</b>.</span></li>
+                  <li><span>Select the affected technician. The Holiday Timeplan is visible.</span></li>
+                  <li><span>Open the new portal → <b>Resource Management → Schedules</b>.</span></li>
+                  <li><span>Select the same technician.</span></li>
+                  <li class="failstep"><span>Only the regular working schedule shows. The Holiday Timeplan is missing. <span class="badge red">Fails</span></span></li>
+                </ol>
+              </section>
+
+              <section class="field">
+                <header class="field-h"><h2>Developer Notes</h2><span class="src">3 dated updates, newest first</span></header>
+                <div class="log">
+                  <div class="log-row cur"><span class="d">11 Nov</span><span class="s"><b style="font-weight:500">Holidays now show in the Schedules weekly overview</b></span><span class="badge soft">In Latest</span></div>
+                  <div class="log-row"><span class="d">8 Nov</span><span class="s">Plan approved: one response, no new endpoint, active holidays only</span><svg class="i s12 muted"><use href="#i-down"/></svg></div>
+                  <div class="log-row"><span class="d">7 Nov</span><span class="s">Investigation: the recalculation never writes holidays to the calendar table</span><svg class="i s12 muted"><use href="#i-down"/></svg></div>
+                </div>
+              </section>
+
+              <section class="field">
+                <header class="field-h"><h2>Autoship Plan Summary</h2><span class="ftag">custom field</span><span class="sp"></span><a class="linkchip" href="#"><svg class="i s12"><use href="#i-ext"/></svg>plans.example.com/AB4127-schedules-show-holidays</a></header>
+                <div class="prose clamp">
+                  <p><b>Root cause:</b> the weekly overview only renders <code>av_calendar</code>, and the recalculation procedure never writes holidays there. It only removes that day's working slots, so a linked holiday shows as an unexplained "No schedule".</p>
+                  <p><b>Fix:</b> <code>GetWeeklyOverviewHandler</code> adds the technician's active, linked holidays for the week to a new <code>DayOverviewDto.SpecialDays</code>. <code>SchedulesPage</code> renders each holiday as a coloured block in its day column and adds a read-only Holidays card to Current assignments.</p>
+                  <p>Approved pair SHA-256 <code>html=d30fe005e55cc452e35996576e6923b5426d16bd2714b883147adcf2ab78d44</code></p>
+                </div>
+                <button class="more" type="button">Show all · 214 words<svg class="i s12"><use href="#i-down"/></svg></button>
+              </section>
+
+              <div class="empties">
+                <span>Empty in this layout:</span>
+                <span class="addf"><svg class="i s12"><use href="#i-plus"/></svg>System Info</span>
+                <span class="addf"><svg class="i s12"><use href="#i-plus"/></svg>Resolution</span>
+                <span class="addf"><svg class="i s12"><use href="#i-plus"/></svg>Acceptance Test</span>
+              </div>
+            </div>
+
+            <aside class="wi-rail">
+              <span class="pin at" style="left:-11px;top:18px">5</span>
+              <div class="rg">
+                <div class="rg-h"><b>Planning</b><span class="em">2 empty<svg class="i s12"><use href="#i-down"/></svg></span></div>
+                <dl class="kv">
+                  <dt>Effort</dt><dd class="num">3</dd>
+                  <dt>Backlog priority</dt><dd class="num">1 999 915</dd>
+                </dl>
+              </div>
+              <div class="rg">
+                <div class="rg-h"><b>Classification</b><span class="em">1 empty<svg class="i s12"><use href="#i-down"/></svg></span></div>
+                <dl class="kv">
+                  <dt>Area</dt><dd><span class="t"><span class="pp">Acme Portal › </span>Schedules</span></dd>
+                  <dt>Found in</dt><dd class="hov"><span class="t mono" style="font-size:12px">5.2.9</span><svg class="i s12 muted" style="margin-left:auto"><use href="#i-down"/></svg></dd>
+                  <dt>Reporter</dt><dd><span class="av" style="--avc:#0e8f8a">DR</span><span class="t">Dana Reyes</span></dd>
+                </dl>
+              </div>
+              <div class="rg">
+                <div class="rg-h"><b>Customer</b><span class="ct">custom group</span></div>
+                <dl class="kv">
+                  <dt>Customer <span class="req" title="Required to leave Code Review"></span></dt><dd><span class="t">Northwind Foods</span></dd>
+                  <dt>Contact</dt><dd><span class="t">Sam Peeters</span></dd>
+                  <dt>Ticket</dt><dd><a href="#" class="t mono" style="font-size:12px">SUP-20418</a><svg class="i s12" style="color:var(--accent-text)"><use href="#i-ext"/></svg></dd>
+                  <dt>Reported via</dt><dd><span class="t">Email</span></dd>
+                </dl>
+              </div>
+              <div class="rg">
+                <div class="rg-h"><b>Development</b><span class="ct">ADO control</span></div>
+                <div class="rlink"><svg class="i s12" style="color:var(--green)"><use href="#i-pr"/></svg><span class="idn">#812</span><span class="t">fix(schedules): show the technician's…</span><span class="warn" title="Conflicts with main"><svg class="i s12"><use href="#i-alert"/></svg></span></div>
+                <div class="rlink"><svg class="i s12 muted"><use href="#i-branch"/></svg><span class="t mono" style="font-size:11.5px;color:var(--text-2)">fix/4127-schedules-show-holidays</span></div>
+                <div class="rlink"><svg class="i s12 muted"><use href="#i-commit"/></svg><span class="t" style="color:var(--text-2)">10 commits · last 09:08</span></div>
+              </div>
+              <div class="rg">
+                <div class="rg-h"><b>Related Work</b><span class="ct">ADO control</span></div>
+                <div class="rlink"><span class="k">Parent</span><span class="g" style="--tc:var(--accent)">◇</span><span class="idn">3980</span><span class="t">Schedules in the new portal</span></div>
+                <div class="rlink"><span class="k">Related</span><span class="g" style="--tc:var(--red)">●</span><span class="idn">4125</span><span class="t" style="color:var(--text-3)">Copied from · Closed</span></div>
+              </div>
+              <div class="rg last">
+                <div class="extrow"><svg class="i s12"><use href="#i-rocket"/></svg>Deployment<span class="ftag">extension</span><a href="#">Open in ADO<svg class="i s12"><use href="#i-ext"/></svg></a></div>
+              </div>
+              <div class="rail-foot"><svg class="i s12"><use href="#i-panel"/></svg><span>Groups and labels come from <b style="color:var(--text-2);font-weight:500">Acme Scrum › Bug</b>, page Details. 3 empty fields hidden. Required fields for the next state are marked <span class="req"></span>.</span></div>
+            </aside>
+          </div>
+        </main>
+      </div>
+      <div class="statusbar"><span>work item AB#4127</span><span class="sp"></span><span>E edit title · S state · A assign · Esc back</span></div>
+    </div></div>
+  </section>
+
+  <!-- ===================================================== B -->
+  <section class="frame" id="b">
+    <div class="frame-h"><span class="k">B</span><h2>Activity: one timeline replaces "coming soon"</h2></div>
+    <p class="frame-cap">Comments, field changes (from ADO's <code class="mono-chip">/updates</code>) and linked pull requests go into one list, newest first, at full reading width. Vera's comments start with <code class="mono-chip">Vera · &lt;kind&gt; —</code>, so they fold into one row per run, and long proofs wrap instead of scrolling sideways. The rail is the same as in A.</p>
+    <div class="fitwrap"><div class="board" data-fit="940" style="width:940px">
+      <nav class="wi-tabs" style="margin-top:6px">
+        <span class="tab">Details</span>
+        <span class="tab on">Activity <span class="c">35</span></span>
+        <span class="tab">Links <span class="c">3</span></span>
+        <span class="tab">Attachments <span class="c">5</span></span>
+        <span class="tab">Notes <span class="c">1</span></span>
+        <span class="tab">Autoship <span class="pg">page</span></span>
+      </nav>
+      <div class="act">
+        <div class="act-bar">
+          <div class="seg"><span class="on">All <em>52</em></span><span>Comments <em>35</em></span><span>Changes <em>14</em></span><span>Vera <em>21</em></span></div>
+          <span class="sp"></span>
+          <span class="toggle"><i></i>Fold agent runs</span>
+          <span class="btn icon"><svg class="i"><use href="#i-search"/></svg></span>
+        </div>
+        <div class="composer"><span class="av lg" style="--avc:#4f46e5">AL</span><span class="ph">Comment… <span style="opacity:.8">@ mentions someone, AB# links an item</span></span><span class="btn sm" style="opacity:.55">Comment</span></div>
+
+        <div class="tl">
+          <div class="day">Today</div>
+          <div class="ev"><div class="gut"><span class="ico"><svg class="i"><use href="#i-arrow"/></svg></span></div><div class="body"><div class="line"><b>Vera</b> moved it <span class="state sm"><span class="dot" style="--c:var(--blue)"></span>Development In Progress</span><svg class="i s12 muted"><use href="#i-arrow"/></svg><span class="state sm"><span class="dot" style="--c:var(--blue)"></span>Code Review</span><span class="time">09:12</span></div></div></div>
+          <div class="ev"><div class="gut"><span class="ico"><svg class="i"><use href="#i-pr"/></svg></span></div><div class="body"><div class="line"><b>Vera</b> linked <span class="chip" style="height:22px"><b class="mono" style="font-size:11px;font-weight:500">#812</b><span class="t" style="max-width:340px">fix(schedules): show the technician's holidays in the weekly overview</span><span class="ok" style="display:inline-flex;gap:3px;align-items:center"><svg class="i s12"><use href="#i-check"/></svg>59/59</span></span><span class="time">09:10</span></div></div></div>
+
+          <div class="day">7 – 11 Nov</div>
+          <div class="ev"><div class="gut"><span class="av bot lg" style="width:24px;height:24px"><svg class="i s12" style="stroke:#fff"><use href="#i-bot"/></svg></span></div><div class="body">
+            <div class="line"><b>Vera</b> · autoship run · 9 steps<span class="time">7 – 11 Nov</span><span class="stepdots" title="plan ✓ · plan-verify ↺ · plan-verify ✓ · dev ✓ · tests ✓ · pr ✓"><i></i><i class="r"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+            <div class="agent">
+              <div class="agent-row"><svg class="i s12 ok"><use href="#i-check"/></svg><span class="kind">pr</span><span class="sum">opened #812 and moved the item to Code Review</span><span class="time">11 Nov</span></div>
+              <div class="agent-row"><svg class="i s12 ok"><use href="#i-check"/></svg><span class="kind">tests</span><span class="sum">API integration test, page unit tests and an @AB4127 Playwright reproducer pass</span><span class="time">10 Nov</span></div>
+              <div class="agent-row" style="background:var(--sunken)"><svg class="i s12 warn"><use href="#i-hist"/></svg><span class="kind">plan-verify</span><span class="sum" style="color:var(--text)"><b>GATE-REPAIR</b>: mechanical citation repair only, no semantic gaps</span><span class="time">8 Nov</span><svg class="i s12 muted"><use href="#i-down"/></svg></div>
+              <div class="agent-open">
+                <p>The "What exists today" row cites <code class="mono-chip">GetWeeklyOverview.cs:304</code>, but that file has 171 lines at <code class="mono-chip">8ac5076b</code>. The cited reads are at :64–81 (calendar entries) and :114–119 (debug log). Change the citation to <code class="mono-chip">GetWeeklyOverview.cs:64-81</code>, republish the pair and route it back to plan verification.</p>
+                <div class="cite"><span class="linkchip"><svg class="i s12"><use href="#i-file"/></svg>GetWeeklyOverview.cs:64-81</span><span class="linkchip"><svg class="i s12"><use href="#i-file"/></svg>GetWeeklyOverview.cs:114-119</span></div>
+                <span class="proof">proof <code>481c5a2a30ba629b…5e7bbbb</code><svg class="i s12"><use href="#i-copy"/></svg></span>
+              </div>
+              <div class="agent-row"><svg class="i s12 ok"><use href="#i-check"/></svg><span class="kind">plan</span><span class="sum">plan published to plans.example.com/AB4127, decisions resolved with rationale</span><span class="time">7 Nov</span></div>
+              <div class="agent-row" style="color:var(--text-3)"><svg class="i s12"><use href="#i-more"/></svg><span class="sum">4 more steps</span></div>
+            </div>
+          </div></div>
+          <div class="ev"><div class="gut"><span class="av lg" style="--avc:#0e8f8a">DR</span></div><div class="body"><div class="line"><b>Dana Reyes</b><span class="time">7 Nov</span></div><div class="bubble">Copied with all attachments and links from <a href="#" style="font-weight:500">AB#4125</a>. Customer confirmed it also happens for technicians created before the migration.</div></div></div>
+          <div class="ev"><div class="gut"><span class="ico"><svg class="i"><use href="#i-sliders"/></svg></span></div><div class="body"><div class="line"><b>Dana Reyes</b> set Severity <span style="text-decoration:line-through;color:var(--text-3)">3 · Low</span><svg class="i s12 muted"><use href="#i-arrow"/></svg><b>2 · Not critical</b>, Tags +northwind<span class="time">7 Nov</span></div></div></div>
+          <div class="ev"><div class="gut"><span class="ico"><svg class="i"><use href="#i-mail"/></svg></span></div><div class="body"><div class="line"><b>Dana Reyes</b> created this Bug from an email by Sam Peeters<span class="time">7 Nov</span></div></div></div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ===================================================== C -->
+  <section class="frame" id="c">
+    <div class="frame-h"><span class="k">C</span><h2>The ADO form layout drives the screen</h2></div>
+    <p class="frame-cap">ADO describes every work item type as pages, then sections, then groups, then controls. BorgDock already reads that layout (<code class="mono-chip">services/ado/layout.ts</code>) but keeps only field keys per page. Keeping the sections, groups, labels and control types is enough for the rules below to place any field on any type, including custom types and fields nobody has added yet.</p>
+    <div class="fitwrap"><div class="board mapboard" data-fit="1440" style="width:1440px">
+      <div class="map">
+        <div>
+          <div class="colh"><svg class="i s12"><use href="#i-panel"/></svg>ADO: Acme Scrum › Bug › layout</div>
+          <div class="ado">
+            <div class="ado-pages">
+              <span class="ado-pt on">Details <span class="pn">2</span></span>
+              <span class="ado-pt">Autoship <span class="pn">2</span></span>
+              <span class="ado-pt sys">History</span><span class="ado-pt sys">Links</span><span class="ado-pt sys">Attachments</span>
+              <span class="muted" style="font-size:11px">dashed = system page</span>
+            </div>
+            <div class="ado-cols">
+              <div class="ado-sec">
+                <span class="ado-sec-l">Section 1 · wide</span>
+                <div class="ado-ctl html">Description<span class="ty">html</span><span class="pn">3</span></div>
+                <div class="ado-ctl html">Repro Steps<span class="ty">html</span><span class="pn">3</span></div>
+                <div class="ado-ctl html dim">System Info<span class="ty">html · empty</span><span class="pn">3</span></div>
+                <div class="ado-ctl html">Developer Notes<span class="ty">html · custom</span><span class="pn">3</span></div>
+                <div class="ado-ctl html">Autoship Plan Summary<span class="ty">html · custom</span><span class="pn">3</span></div>
+              </div>
+              <div class="ado-sec">
+                <span class="ado-sec-l">Section 2</span>
+                <div class="ado-grp"><div class="ado-grp-l">Planning <span class="pn">4</span></div>
+                  <div class="ado-ctl">Priority<span class="pn">1</span></div>
+                  <div class="ado-ctl">Severity<span class="pn">1</span></div>
+                  <div class="ado-ctl">Effort</div>
+                  <div class="ado-ctl dim">Remaining Work</div>
+                  <div class="ado-ctl">Iteration<span class="pn">1</span></div>
+                </div>
+                <div class="ado-grp"><div class="ado-grp-l">Classification <span class="pn">4</span></div>
+                  <div class="ado-ctl">Area</div>
+                  <div class="ado-ctl">Found in</div>
+                  <div class="ado-ctl dim">Integrated in</div>
+                </div>
+              </div>
+              <div class="ado-sec">
+                <span class="ado-sec-l">Section 3</span>
+                <div class="ado-grp"><div class="ado-grp-l">Development <span class="pn">5</span></div><div class="ado-ctl">links control<span class="ty">system</span></div></div>
+                <div class="ado-grp"><div class="ado-grp-l">Related Work <span class="pn">5</span></div><div class="ado-ctl">links control<span class="ty">system</span></div></div>
+                <div class="ado-grp"><div class="ado-grp-l">Customer <span class="pn">4</span></div>
+                  <div class="ado-ctl">Customer</div><div class="ado-ctl">Contact</div><div class="ado-ctl">Ticket</div>
+                </div>
+                <div class="ado-grp"><div class="ado-grp-l">Deployment <span class="pn">6</span></div><div class="ado-ctl">extension<span class="ty">contribution</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="colh">Rules</div>
+          <ol class="rules">
+            <li><span class="pin">1</span><div><b>A fixed set of header facts, plus one from the type</b><p>State, Assigned To, Priority and Iteration are always facts. On top of those comes the first field the type has from <code>Severity</code>, <code>Effort</code>, <code>Story Points</code> or a due date. The rail then skips every field that's a fact.</p></div></li>
+            <li><span class="pin">2</span><div><b>Pages become tabs</b><p>The first custom page is Details. Later ones (Autoship) follow the system tabs, and empty pages are hidden. History, Links and Attachments keep BorgDock's own tabs.</p></div></li>
+            <li><span class="pin">3</span><div><b>Long-text fields in section 1 go in the main column, in layout order</b><p>Dated, append-style fields (Developer Notes) feed Latest and show as a log. An empty field becomes "+ Add". Plain fields in section 1 show as a compact grid below the long text.</p></div></li>
+            <li><span class="pin">4</span><div><b>Groups become rail groups</b><p>ADO's label and order, including custom groups. A layout label replaces the field name. Read-only fields show a lock, fields required for the next state show a dot, and empty fields fold away.</p></div></li>
+            <li><span class="pin">5</span><div><b>Known controls are drawn natively</b><p>Development shows the PR, branch and commits with live checks. Related Work shows parent, children and related items, and children get a progress bar.</p></div></li>
+            <li><span class="pin">6</span><div><b>Every other control gets a row</b><p>An extension BorgDock can't render becomes "Open in ADO" in its group. Nothing in the layout disappears without a trace.</p></div></li>
+          </ol>
+        </div>
+
+        <div>
+          <div class="colh">BorgDock</div>
+          <div class="wire">
+            <div class="wb t">AB#4127 · Holiday timeplan not visible…</div>
+            <div class="wb acc" style="min-height:30px">State · Assigned · Priority · Severity · Iteration<span class="pn">1</span></div>
+            <div class="wb dash">Now: PR · T3 · next step</div>
+            <div class="wb" style="background:transparent;border-bottom:1px solid var(--border);border-radius:0;padding:0 0 4px">Details · Activity · Links · Attachments · Notes · Autoship<span class="pn">2</span></div>
+            <div class="wgrid">
+              <div class="wcol">
+                <div class="wb acc">Latest</div>
+                <div class="wb tall">Description<span class="pn">3</span></div>
+                <div class="wb tall">Repro Steps</div>
+                <div class="wb">Developer Notes · log</div>
+                <div class="wb">Autoship Plan Summary</div>
+                <div class="wb dash">+ System Info</div>
+              </div>
+              <div class="wcol">
+                <div class="wb">Planning<span class="pn">4</span></div>
+                <div class="wb">Classification</div>
+                <div class="wb">Customer</div>
+                <div class="wb">Development<span class="pn">5</span></div>
+                <div class="wb">Related Work</div>
+                <div class="wb dash">Deployment ↗<span class="pn">6</span></div>
+              </div>
+            </div>
+          </div>
+          <p class="muted" style="font-size:12px;line-height:1.5;margin:10px 2px 0">Type colour and icon come from <span class="mono">/workitemtypes</span>, state colours from <span class="mono">/states</span>. A state BorgDock has never seen gets its colour from its category (Proposed, In Progress, Resolved, Completed).</p>
+        </div>
+      </div>
+
+      <div class="colh" style="margin-top:36px">Same rules, three types</div>
+      <div class="types" style="margin-top:0">
+        <!-- Bug -->
+        <div class="mini">
+          <div class="mini-h">
+            <div class="mini-top"><span class="typepill" style="--tc:var(--red)"><span class="g">●</span>Bug</span><span class="id">AB#4127</span></div>
+            <div class="mini-title">Holiday timeplan not visible in technician schedule</div>
+            <div class="mfacts">
+              <span class="mfact"><span class="dot" style="--c:var(--blue)"></span>Code Review</span>
+              <span class="mfact"><span class="av empty">?</span>Unassigned</span>
+              <span class="mfact"><span class="prio"><i class="on"></i><i class="on"></i><i></i></span>P2</span>
+              <span class="mfact"><span class="l">Sev</span>2 · Not critical</span>
+              <span class="mfact"><span class="l">Iter</span>Release 5.2.10</span>
+            </div>
+          </div>
+          <div class="mtabs"><span class="on">Details</span><span>Activity</span><span>Links</span><span>Autoship</span></div>
+          <div class="mbody">
+            <div class="mmain">
+              <div class="mf"><h5>Description <span class="ftag">email</span></h5><p>I noticed that the Holiday Timeplan is not visible in the schedule settings in the new portal…</p></div>
+              <div class="mf"><h5>Repro Steps</h5><p>1. Open the legacy portal → Rosters<br>2. Select the technician…</p></div>
+              <div class="mf"><h5>Developer Notes</h5><p>3 updates · newest 11 Nov</p></div>
+            </div>
+            <div class="mrail">
+              <div class="mg"><b>Planning</b><div class="r"><span>Effort</span><span>3</span></div></div>
+              <div class="mg"><b>Classification</b><div class="r"><span>Found in</span><span>5.2.9</span></div></div>
+              <div class="mg"><b>Customer</b><div class="r"><span>Customer</span><span>Northwind</span></div></div>
+              <div class="mg"><b>Development</b><div class="r"><span>PR</span><span>#812</span></div></div>
+            </div>
+          </div>
+          <div class="why"><b>Severity</b> is a header fact because the Bug type has it. Repro Steps follows Description because that's the layout order.</div>
+        </div>
+        <!-- PBI -->
+        <div class="mini">
+          <div class="mini-h">
+            <div class="mini-top"><span class="typepill" style="--tc:var(--purple)"><span class="g">◆</span>Product Backlog Item</span><span class="id">AB#4180</span></div>
+            <div class="mini-title">Planner can drag a holiday onto a technician's week</div>
+            <div class="mfacts">
+              <span class="mfact"><span class="dot" style="--c:var(--blue)"></span>Committed</span>
+              <span class="mfact"><span class="av" style="--avc:#0e8f8a">DR</span>Dana Reyes</span>
+              <span class="mfact"><span class="prio"><i class="on"></i><i></i><i></i></span>P3</span>
+              <span class="mfact"><span class="l">Effort</span>5</span>
+              <span class="mfact"><span class="l">Iter</span>Sprint 23</span>
+            </div>
+          </div>
+          <div class="mtabs"><span class="on">Details</span><span>Activity</span><span>Links</span><span>Attachments</span></div>
+          <div class="mbody">
+            <div class="mmain">
+              <div class="mf"><h5>Description</h5><p>As a planner I want to drop a holiday onto a technician's week so the schedule and availability update together.</p></div>
+              <div class="mf"><h5>Acceptance Criteria</h5><ul><li>Dropping shows the holiday in the day column</li><li>Availability recalculates once</li><li>Undo removes the link</li></ul></div>
+            </div>
+            <div class="mrail">
+              <div class="mg"><b>Details</b><div class="r"><span>Business value</span><span>40</span></div><div class="r"><span>Value area</span><span>Business</span></div></div>
+              <div class="mg"><b>Related Work</b><div class="r"><span>Parent</span><span>◇ 3980</span></div><div class="r"><span>Tasks</span><span>3 of 5</span></div><div class="prog"><i style="width:60%"></i></div></div>
+              <div class="mg"><b>Development</b><div class="r"><span>PR</span><span class="fail">#815 · 2 failing</span></div></div>
+            </div>
+          </div>
+          <div class="why"><b>Effort</b> takes the type's slot in the header. Acceptance Criteria keeps its list. Child tasks get a progress bar from the Related Work control.</div>
+        </div>
+        <!-- custom type -->
+        <div class="mini">
+          <div class="mini-h">
+            <div class="mini-top"><span class="typepill" style="--tc:var(--teal)"><span class="g">◈</span>Customer Request</span><span class="id">AB#4191</span><span class="ftag">custom type</span></div>
+            <div class="mini-title">Northwind: export approved holidays to the payroll CSV</div>
+            <div class="mfacts">
+              <span class="mfact"><span class="dot" style="--c:var(--orange)"></span>Waiting on customer</span>
+              <span class="mfact"><span class="av empty">?</span>Unassigned</span>
+              <span class="mfact"><span class="prio"><i class="on"></i><i class="on"></i><i class="on"></i></span>P1</span>
+              <span class="mfact hot"><span class="l">Due</span>Fri 14 Nov · in 2 d</span>
+            </div>
+          </div>
+          <div class="mtabs"><span class="on">Details</span><span>SLA <span class="pg" style="font-size:9px;border:1px dashed var(--border-strong);border-radius:3px;padding:0 3px">page</span></span><span>Activity</span><span>Links</span></div>
+          <div class="mbody">
+            <div class="mmain">
+              <div class="mf"><h5>Request</h5><p>Payroll needs every approved holiday per technician as a CSV each Friday, in the column order of their import.</p></div>
+              <div class="mf"><h5 style="color:var(--text-3)">Agreed Response</h5><span class="addf" style="height:22px"><svg class="i s12"><use href="#i-plus"/></svg>Add</span></div>
+            </div>
+            <div class="mrail">
+              <div class="mg"><b>Contract</b><div class="r"><span>SLA tier</span><span>Gold</span></div><div class="r"><span>Contract</span><span>C-2291</span></div></div>
+              <div class="mg"><b>Customer</b><div class="r"><span>Account</span><span>Northwind</span></div><div class="r"><span>Contact</span><span>S. Peeters</span></div></div>
+              <div class="mg"><b>Mail thread</b><div class="e">extension · ADO ↗</div></div>
+            </div>
+          </div>
+          <div class="why"><b>No code knows this type.</b> Teal and ◈ come from ADO. The state colour comes from its "In Progress" category, the due date becomes the type's header fact, and the SLA page becomes a tab.</div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ===================================================== D -->
+  <section class="frame" id="d">
+    <div class="frame-h"><span class="k">D</span><h2>Peek from a pull request</h2></div>
+    <p class="frame-cap">Clicking an AB# opens a read-mostly peek built from the same model. Facts sit on one line, the description is cleaned and clamped, and the other long-text fields collapse to one row each with a preview. The rail shows the first three groups. There's no footer bar and no horizontal scroll.</p>
+    <div class="fitwrap"><div class="board peekboard" data-fit="1440" style="width:1440px">
+      <div class="titlebar"><span class="tb-logo"></span>Pull request<span class="winctl"><span class="rec"></span><span>—</span><span>☐</span><span>✕</span></span></div>
+      <div class="appbody" style="height:840px"><nav class="iconrail"><span class="ir"><svg class="i s16"><use href="#i-dash"/></svg></span><span class="ir on"><svg class="i s16"><use href="#i-pr"/></svg></span><span class="ir"><svg class="i s16"><use href="#i-list"/></svg></span></nav></div>
+      <div class="prbg">
+        <div class="muted" style="font-size:12px">← Back &nbsp; acme/field-portal #812</div>
+        <h3>fix(schedules): show the technician's holidays in the weekly overview (AB#4127)</h3>
+        <div class="muted" style="font-size:12px">vera wants to merge <span class="mono">fix/4127-schedules-show-holidays</span> into <span class="mono">main</span> · +3 938 −1 908 · 22 files</div>
+        <div class="ln" style="width:55%;margin-top:22px"></div><div class="ln" style="width:92%"></div><div class="ln" style="width:88%"></div><div class="ln" style="width:70%"></div>
+        <div class="ln" style="width:94%;margin-top:26px"></div><div class="ln" style="width:81%"></div><div class="ln" style="width:90%"></div><div class="ln" style="width:62%"></div>
+        <div class="ln" style="width:94%;margin-top:26px"></div><div class="ln" style="width:85%"></div><div class="ln" style="width:77%"></div>
+      </div>
+      <div class="scrim"></div>
+      <div class="peek">
+        <header class="peek-h">
+          <div class="peek-top">
+            <span class="typepill" style="--tc:var(--red)"><span class="g">●</span>Bug</span>
+            <span class="id">AB#4127</span>
+            <span class="state sm"><span class="dot" style="--c:var(--blue)"></span>Code Review</span>
+            <span class="vsep"></span><span style="display:inline-flex;gap:5px;align-items:center"><span class="prio"><i class="on"></i><i class="on"></i><i></i></span>P2</span>
+            <span class="vsep"></span><span>Sev 2</span>
+            <span class="vsep"></span><span style="display:inline-flex;gap:5px;align-items:center"><span class="av empty">?</span>Unassigned</span>
+            <span class="vsep"></span><span>Release 5.2.10</span>
+            <span class="sp"></span>
+            <span class="btn sm"><svg class="i s12"><use href="#i-expand"/></svg>Open</span>
+            <span class="btn sm"><svg class="i s12"><use href="#i-ext"/></svg>ADO</span>
+            <span class="btn sm icon ghost" title="Close (Esc)"><svg class="i"><use href="#i-x"/></svg></span>
+          </div>
+          <h2>Portal | Holiday timeplan not visible in technician schedule</h2>
+          <div class="peek-link"><svg class="i s12" style="color:var(--green)"><use href="#i-pr"/></svg><b>Linked to this pull request</b><span class="muted">·</span>Vera moved it to Code Review at 09:12<span class="sp"></span><span class="muted">1 other PR links here</span></div>
+        </header>
+        <nav class="wi-tabs">
+          <span class="tab on">Details</span>
+          <span class="tab">Activity <span class="c">35</span></span>
+          <span class="tab">Attachments <span class="c">5</span></span>
+          <span class="tabs-right">Links, Notes and Autoship are in the full view</span>
+        </nav>
+        <div class="peek-body">
+          <div class="peek-main">
+            <div class="latest">
+              <div class="latest-h"><span class="badge accent">Latest</span><span>Developer Notes · 11 Nov</span></div>
+              <h3>Holidays now show in the Schedules weekly overview</h3>
+              <p>A holiday linked to a technician now appears as a coloured block in its day column, and Current assignments lists it read-only.</p>
+            </div>
+            <div class="field" style="margin-bottom:14px">
+              <header class="field-h" style="margin-bottom:8px"><h2>Description</h2><span class="src"><svg class="i s12"><use href="#i-mail"/></svg>Email · Sam Peeters</span><span class="sp"></span><span class="muted" style="font-size:12px;display:inline-flex;gap:5px;align-items:center"><svg class="i s12"><use href="#i-eyeoff"/></svg>banner and signature hidden</span></header>
+              <div class="prose">
+                <p>Hi Support Team,</p>
+                <p>I noticed that the Holiday Timeplan is not visible in the schedule settings in the new portal. The schedule was added after the technician was created in the new portal.</p>
+              </div>
+              <div class="shots" style="margin-bottom:0"><figure class="shot sm"><div class="fake"><div class="bar"><i></i><i></i></div><div class="cal"><i class="w"></i><i class="w"></i><i class="x"></i><i class="w"></i><i class="w"></i><i></i><i></i></div></div><figcaption><svg class="i s12"><use href="#i-img"/></svg>image.png</figcaption></figure></div>
+            </div>
+            <div class="acc-row"><svg class="i s12 muted"><use href="#i-right"/></svg><b>Repro Steps</b><span class="pv">5 steps · Only the regular working schedule shows; the Holiday Timeplan is missing.</span><span class="badge red">Fails</span></div>
+            <div class="acc-row"><svg class="i s12 muted"><use href="#i-right"/></svg><b>Developer Notes</b><span class="pv">3 updates · newest is in Latest</span></div>
+            <div class="acc-row" style="border-bottom:1px solid var(--border)"><svg class="i s12 muted"><use href="#i-right"/></svg><b>Autoship Plan Summary</b><span class="pv">Root cause: the weekly overview only renders av_calendar, and the recalculation…</span></div>
+          </div>
+          <aside class="peek-rail">
+            <div class="rg">
+              <div class="rg-h"><b>Classification</b></div>
+              <dl class="kv" style="grid-template-columns:86px minmax(0,1fr)">
+                <dt>Area</dt><dd><span class="t"><span class="pp">… › </span>Schedules</span></dd>
+                <dt>Found in</dt><dd class="mono" style="font-size:12px">5.2.9</dd>
+                <dt>Reporter</dt><dd><span class="av" style="--avc:#0e8f8a">DR</span><span class="t">Dana Reyes</span></dd>
+              </dl>
+            </div>
+            <div class="rg">
+              <div class="rg-h"><b>Customer</b><span class="ct">custom</span></div>
+              <dl class="kv" style="grid-template-columns:86px minmax(0,1fr)">
+                <dt>Customer</dt><dd><span class="t">Northwind Foods</span></dd>
+                <dt>Ticket</dt><dd><a href="#" class="mono" style="font-size:12px">SUP-20418</a></dd>
+              </dl>
+            </div>
+            <div class="rg last">
+              <div class="rg-h"><b>Related Work</b></div>
+              <div class="rlink"><span class="k" style="width:44px">Parent</span><span class="g" style="--tc:var(--accent)">◇</span><span class="t">Schedules in the new portal</span></div>
+              <div class="rlink"><span class="k" style="width:44px">Related</span><span class="g" style="--tc:var(--red)">●</span><span class="t" style="color:var(--text-3)">4125 · Closed</span></div>
+            </div>
+            <div class="peek-foot"><svg class="i s12"><use href="#i-panel"/></svg>3 more groups in the full view</div>
+          </aside>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ===================================================== E -->
+  <section class="frame" id="e">
+    <div class="frame-h"><span class="k">E</span><h2>Hover cards</h2></div>
+    <p class="frame-cap">The card answers "what is it about and where does it stand?" in a glance. The description is always there, because that's where you learn what the item is. The newest update sits on one line below it. Its facts follow the same header rule as the full view, so they change by type.</p>
+    <ol class="legend">
+      <li><span class="pin">1</span><span><b>Always the description.</b> It falls back to Repro Steps when a Bug has no description, and to the first long-text field for other types. The banner, greeting and signature are removed first. Three lines at most.</span></li>
+      <li><span class="pin">2</span><span><b>Latest in one line.</b> The newest Developer Notes entry, comment or agent message, the same pick as Latest in the full view. It's left out when there's none.</span></li>
+      <li><span class="pin">3</span><span><b>Facts by type.</b> Severity on a Bug, Effort on a PBI, a due date on a custom type, with at most four.</span></li>
+      <li><span class="pin">4</span><span><b>One-line footer.</b> Who changed it last on the left and short hints on the right. It never wraps.</span></li>
+    </ol>
+    <div class="fitwrap"><div class="board hovboard" data-fit="1440" style="width:1440px">
+      <div class="hovgrid">
+        <div class="ctx">
+          <h4>Summary</h4>
+          <div style="margin:0 0 10px"><span class="anchor"><span class="ab">AB#4127</span>
+            <div class="wcard" style="--tc:var(--red)">
+              <div class="wc-body">
+                <div class="wc-top"><span class="g" style="--tc:var(--red)">●</span>Bug<span class="idn">4127</span><span class="state sm"><span class="dot" style="--c:var(--blue)"></span>Code Review</span></div>
+                <div class="wc-title">Portal | Holiday timeplan not visible in technician schedule</div>
+                <div class="wc-meta" style="position:relative">
+                  <span class="pin at" style="left:-50px;top:-2px">3</span>
+                  <span><span class="av empty">?</span>Unassigned</span>
+                  <span><svg class="i s12"><use href="#i-cal"/></svg>Release 5.2.10</span>
+                  <span><span class="prio"><i class="on"></i><i class="on"></i><i></i></span>P2</span>
+                  <span>Sev 2</span>
+                </div>
+                <div class="gist" style="position:relative">
+                  <span class="pin at" style="left:-50px;top:8px">1</span>
+                  <div class="gist-l">From the description<span class="how">· email, banner and greeting removed</span></div>
+                  <p>I noticed that the Holiday Timeplan is not visible in the schedule settings in the new portal. The schedule was added after the technician was created in the new portal.</p>
+                </div>
+                <div class="wc-latest">
+                  <span class="pin at" style="left:-50px;top:-2px">2</span>
+                  <span class="lbl">Latest</span><span class="t"><b>Vera</b> · 1 d · Holidays now show in the Schedules weekly overview</span>
+                </div>
+                <div class="wc-links">
+                  <span class="wc-chip"><span class="d" style="--c:var(--green)"></span><span class="n">#812</span>checks passing<span style="color:var(--yellow)">· conflicts</span></span>
+                  <span class="wc-chip"><span class="d" style="--c:var(--yellow)"></span><span class="n">T3</span>your turn</span>
+                </div>
+              </div>
+              <div class="wc-foot" style="position:relative">
+                <span class="pin at" style="left:-33px;top:6px">4</span>
+                <span class="who"><span class="av bot" style="width:14px;height:14px;border-radius:4px"></span>Vera · 4 h ago</span>
+                <span class="hint"><span><b>Click</b> open</span><span><b>Ctrl+click</b> ADO</span></span>
+              </div>
+            </div>
+          </span>: a holiday linked to a technician in Master Data → Holidays now shows in Resources → Resource Management → Schedules. Before this change, the day read as an unexplained "No schedule".</div>
+        </div>
+
+        <div class="cardcol">
+          <div>
+            <div class="cardlabel">PBI · parent and child progress</div>
+            <div class="wcard static" style="--tc:var(--purple)">
+              <div class="wc-body">
+                <div class="wc-top"><span class="g" style="--tc:var(--purple)">◆</span>Product Backlog Item<span class="idn">4180</span><span class="state sm"><span class="dot" style="--c:var(--blue)"></span>Committed</span></div>
+                <div class="wc-parent"><span class="g" style="--tc:var(--accent)">◇</span>Epic 3980 · Schedules in the new portal</div>
+                <div class="wc-title">Planner can drag a holiday onto a technician's week</div>
+                <div class="wc-meta">
+                  <span><span class="av" style="--avc:#0e8f8a">DR</span>Dana Reyes</span>
+                  <span><svg class="i s12"><use href="#i-cal"/></svg>Sprint 23</span>
+                  <span>Effort 5</span>
+                </div>
+                <div class="gist"><div class="gist-l">From the description</div><p>As a planner I want to drop a holiday onto a technician's week so the schedule and availability update together.</p></div>
+                <div class="wc-prog"><span>Tasks</span><span class="prog"><i style="width:60%"></i></span><span class="num">3 of 5</span></div>
+                <div class="wc-links"><span class="wc-chip"><span class="d" style="--c:var(--red)"></span><span class="n">#815</span>2 failing</span></div>
+              </div>
+              <div class="wc-foot"><span class="who">Dana Reyes · 2 d ago</span><span class="hint"><span><b>Click</b> open</span><span><b>Ctrl+click</b> ADO</span></span></div>
+            </div>
+          </div>
+          <div>
+            <div class="cardlabel">Bug without a description · repro steps instead</div>
+            <div class="wcard static" style="--tc:var(--red)">
+              <div class="wc-body">
+                <div class="wc-top"><span class="g" style="--tc:var(--red)">●</span>Bug<span class="idn">4133</span><span class="state sm"><span class="dot" style="--c:var(--grey)"></span>New</span></div>
+                <div class="wc-title">Roster export button stays disabled after login</div>
+                <div class="wc-meta"><span><span class="av empty">?</span>Unassigned</span><span><span class="prio"><i class="on"></i><i></i><i></i></span>P3</span><span>Sev 3</span></div>
+                <div class="gist"><div class="gist-l">From the repro steps</div><p>1. Log in as a planner. 2. Open Rosters → Export. The Export button stays disabled until the page is reloaded.</p></div>
+              </div>
+              <div class="wc-foot"><span class="who">Dana Reyes · 5 h ago</span><span class="hint"><span><b>Click</b> open</span><span><b>Ctrl+click</b> ADO</span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cardcol">
+          <div>
+            <div class="cardlabel">Custom type · due date as its fact</div>
+            <div class="wcard static" style="--tc:var(--teal)">
+              <div class="wc-body">
+                <div class="wc-top"><span class="g" style="--tc:var(--teal)">◈</span>Customer Request<span class="idn">4191</span><span class="state sm"><span class="dot" style="--c:var(--orange)"></span>Waiting on customer</span></div>
+                <div class="wc-title">Northwind: export approved holidays to the payroll CSV</div>
+                <div class="wc-meta">
+                  <span><span class="av empty">?</span>Unassigned</span>
+                  <span class="due"><svg class="i s12"><use href="#i-flag"/></svg>Due Fri · in 2 d</span>
+                  <span><span class="prio"><i class="on"></i><i class="on"></i><i class="on"></i></span>P1</span>
+                </div>
+                <div class="gist"><div class="gist-l">From the request</div><p>Payroll needs every approved holiday per technician as a CSV each Friday, in the column order of their import.</p></div>
+                <div class="wc-latest"><span class="lbl">Latest</span><span class="t"><b>Sam Peeters</b> · 1 d · We can send a sample import file by Thursday.</span></div>
+              </div>
+              <div class="wc-foot"><span class="who">Sam Peeters via email · 1 d ago</span><span class="hint"><span><b>Click</b> open</span><span><b>Ctrl+click</b> ADO</span></span></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <div class="cardlabel">Loading</div>
+              <div class="wcard static" style="--tc:var(--faint)"><div class="wc-body"><div class="wc-top"><span class="idn">AB#4127</span></div><div class="skel" style="width:90%;height:12px;margin-top:12px"></div><div class="skel" style="width:60%;height:12px"></div><div class="skel" style="width:100%;margin-top:14px"></div><div class="skel" style="width:80%"></div></div></div>
+            </div>
+            <div>
+              <div class="cardlabel">Can't read</div>
+              <div class="wcard static" style="--tc:var(--faint)"><div class="wc-body"><div class="wc-top"><span class="idn">AB#9999</span></div><div class="wc-title" style="font-size:13.5px;color:var(--text-2)">Not found, or in a project your account can't read.</div></div><div class="wc-foot"><span class="hint" style="margin-left:0"><span><b>Ctrl+click</b> try in ADO</span></span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ===================================================== F -->
+  <section class="frame" id="f">
+    <div class="frame-h"><span class="k">F</span><h2>Rules &amp; build notes</h2></div>
+    <p class="frame-cap">Noise rules and field renderers are pure functions, shared by the long-text blocks, the peek and the card's gist. Each rule only folds content. Show restores the original, and Edit always edits the original HTML.</p>
+    <div class="refgrid">
+      <div class="ref">
+        <h3>Noise rules</h3>
+        <p>Applied to HTML fields before rendering and before the gist is taken.</p>
+        <table>
+          <tr><th>Noise</th><th>Detected by</th><th>Shown as</th></tr>
+          <tr><td>External-sender banner</td><td>First block mentioning "originated from outside", "CAUTION:" or "[EXTERNAL]"</td><td>One-line fold</td></tr>
+          <tr><td>Signature</td><td>Blocks after a sign-off line (regards, groeten, cordialement…) with name, title, phone and address lines</td><td>Fold naming the sender</td></tr>
+          <tr><td>Email inline images</td><td><code>src="cid:…"</code>, or an image that failed to load after the auth retry</td><td>Counted in the fold, never an empty frame</td></tr>
+          <tr><td>Logos and trackers</td><td>Images ≤ 48 px, or three or more images in the signature block</td><td>Counted in the fold</td></tr>
+          <tr><td>Blank runs</td><td><code>&lt;p&gt;&amp;nbsp;&lt;/p&gt;</code> runs and stacked <code>&lt;br&gt;</code></td><td>One paragraph gap</td></tr>
+          <tr><td>Long tokens</td><td>Hashes, paths, URLs</td><td>Wrap anywhere. Bare URLs become link chips</td></tr>
+        </table>
+      </div>
+      <div class="ref">
+        <h3>Field renderers</h3>
+        <p>Chosen by the field's ADO type, so a custom field gets the same treatment as a built-in one.</p>
+        <table>
+          <tr><th>ADO type</th><th>Rendered as</th></tr>
+          <tr><td>html</td><td>Reading block (Instrument Sans 14.5 px, max 860 px wide), clamped after ~14 lines with "Show all · N words"</td></tr>
+          <tr><td>plainText</td><td>Pre-wrapped text with the same clamp</td></tr>
+          <tr><td>string / picklist</td><td>Inline value. A picklist opens a menu of the allowed values</td></tr>
+          <tr><td>identity</td><td>Avatar and name. "Assign me" when the field is empty and it's Assigned To</td></tr>
+          <tr><td>treePath</td><td>Last segment in full, parents muted, full path in a tooltip</td></tr>
+          <tr><td>dateTime</td><td>"Fri 14 Nov · in 2 d", red once overdue</td></tr>
+          <tr><td>integer / double</td><td>Tabular figures with grouped thousands</td></tr>
+          <tr><td>boolean</td><td>Toggle</td></tr>
+          <tr><td>contribution</td><td>Native when known (Development, Related Work). Otherwise "Open in ADO"</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="build">
+      <h3>Where it lands in code</h3>
+      <ol>
+        <li><code>services/ado/layout.ts</code>: <code>normalizeLayout</code> keeps sections, groups, labels, read-only flags and control types instead of only field keys per page.</li>
+        <li>New pure <code>services/ado/form-model.ts</code>: layout, fields and type metadata go in, and <code>{ facts, tabs: [{ main, rail }] }</code> comes out. The full view, the peek and the card all read it.</li>
+        <li><code>RightRail.tsx</code> (hard-coded Properties / People / Planning) becomes a <code>LayoutRail</code> driven by groups. The "Custom Fields" grid in <code>OverviewTab</code> goes away.</li>
+        <li>Type and state metadata (<code>/workitemtypes</code>, <code>/states</code>: colour, icon, category) replace the <code>WI_TYPES</code> / <code>WI_STATES</code> maps, which stay as the offline fallback.</li>
+        <li>The <code>ActivityTab.tsx</code> stub becomes a timeline built from <code>workItems/{id}/updates</code> plus comments. Vera's runs are grouped by the <code>Vera · &lt;kind&gt; —</code> prefix Dispatch already reads.</li>
+        <li><code>workItemPeekOf</code> keeps the description (Repro Steps for a Bug without one, else the layout's first long-text field), cleaned by a pure <code>html-noise.ts</code>. It gains <code>latest</code> from Dispatch's <code>latestMessage</code> (<code>verdict.ts</code>), which also feeds Latest in the full view.</li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  function fit() {
+    document.querySelectorAll('[data-fit]').forEach(function (el) {
+      var w = Number(el.getAttribute('data-fit'));
+      var avail = el.parentElement.clientWidth;
+      el.style.zoom = String(Math.min(1, avail / w));
+    });
+  }
+  function setTheme(t) {
+    document.body.className = t;
+    document.querySelectorAll('.switch button').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-theme') === t));
+    });
+    try { localStorage.setItem('wi-mockup-theme', t); } catch (e) {}
+  }
+  document.querySelectorAll('.switch button').forEach(function (b) {
+    b.addEventListener('click', function () { setTheme(b.getAttribute('data-theme')); });
+  });
+  var saved = null;
+  try { saved = localStorage.getItem('wi-mockup-theme'); } catch (e) {}
+  var param = new URLSearchParams(location.search).get('theme');
+  setTheme(param || saved || 'light');
+  window.addEventListener('resize', fit);
+  fit();
+})();
+</script>
+</body>
+</html>
