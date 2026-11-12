@@ -132,7 +132,8 @@ test('detail file navigator groups readable names and launches a single PR revie
         ? '../../design/quick-review/pr-detail-files.png'
         : test.info().outputPath('pr-detail-files.png'),
   });
-  await nav.getByRole('button', { name: /Tests, 3 files/ }).click();
+  // Everything under e2e/ counts as a test, test-mapping.json too: four files.
+  await nav.getByRole('button', { name: /Tests, 4 files/ }).click();
   await expect(longName).toHaveCount(0);
   await nav.getByRole('textbox').fill('drag-suppression');
   await expect(longName).toBeVisible();
