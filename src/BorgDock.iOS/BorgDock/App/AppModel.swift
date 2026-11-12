@@ -69,9 +69,13 @@ final class AppModel {
     }
 
     /// An agent link (Live Activity, notification, search, activity): its pull request, else its work item, else the
-    /// thread in T3 Code. BorgDock has no thread screen of its own. Waits briefly for the first overview after a cold start.
+    /// thread in T3 Code. BorgDock has no thread screen of its own. After a cold start it reads what it is missing first:
+    /// Focus's pull requests only load while Focus is on screen.
     func openThread(_ id: String) {
         Task {
+            async let threads: Void = overview == nil ? refreshOverview() : ()
+            async let pullRequests: Void = focus.focus == nil ? focus.load() : ()
+            _ = await (threads, pullRequests)
             for _ in 0..<20 where overview == nil || focus.focus == nil {
                 try? await Task.sleep(for: .milliseconds(250))
             }

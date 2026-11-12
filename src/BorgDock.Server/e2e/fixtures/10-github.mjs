@@ -365,7 +365,7 @@ const borgdockFiles = [
 
 const roundLines = {
   key: 'acme/shop#412',
-  priya: person('priya-shah', 'Priya Shah'),
+  priya: person('priyashah', 'Priya Shah'),
   tomBerg: person('tberg', 'Tom Berg'),
   headSha: '412b7e9c0d1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e',
 };
@@ -778,6 +778,108 @@ const pullRequests = [
     workItemIds: [61021],
   }),
 ];
+
+// Focus and the Pull requests tab (design/ios-flow/mockups.html, sections 02 and 03): six reviews wait for you
+// (Sam's #405 the oldest), your own failing #409, two more ready to merge (one a dependency update), five that wait on
+// others, and Priya Shah's seven pull requests for the author groups. Agents run on #412's and #398's branches
+// (ui-fixture.mjs).
+const focusPeople = {
+  sam: person('sokafor', 'Sam Okafor'),
+  priya: person('priyashah', 'Priya Shah'),
+  dependabot: person('dependabot[bot]', null),
+};
+const days = (n) => n * 24;
+pullRequests.push(
+  pr('acme', 'shop', 405, {
+    title: 'Webhook retries back off exponentially', author: focusPeople.sam, headRef: 'webhook-backoff',
+    createdAt: at(days(3) + 2), updatedAt: at(5), additions: 142, deletions: 38, changedFiles: 8, checks: checks(12),
+    bucket: 'you', reason: reason('Sam asked for your review 3 days ago.', 'warn', 'review'),
+  }),
+  pr('acme', 'storefront', 377, {
+    title: 'Show stock per warehouse on the product page', author: people.tom, headRef: 'stock-per-warehouse',
+    createdAt: at(26), updatedAt: at(3), additions: 96, deletions: 31, changedFiles: 6, checks: checks(9),
+    bucket: 'you', reason: reason('Tom asked you to look again, 2 new commits since your review.', 'warn', 'rerun'),
+    reviewedHeadSha: '377b1c3d0e8b7a6c5d4e3f2a1b0c9d8e7f6a5b40',
+  }),
+  pr('acme', 'payments', 88, {
+    title: 'Refunds for split payments', author: people.ines, headRef: 'split-refunds',
+    createdAt: at(days(2) + 4), updatedAt: at(20), additions: 618, deletions: 142, changedFiles: 21, checks: checks(14),
+    bucket: 'you', reason: reason('Ines asked for your review 2 days ago.', 'warn', 'review'),
+  }),
+  pr('acme', 'shop', 409, {
+    title: 'Cache price lists per customer group', author: people.koen, isMine: true, headRef: 'price-list-cache',
+    createdAt: at(6), updatedAt: at(2), additions: 210, deletions: 44, changedFiles: 9, checks: checks(11, 2),
+    bucket: 'you', reason: reason('Your PR, 2 checks failing.', 'bad', 'failing'),
+  }),
+  pr('acme', 'shop', 401, {
+    title: 'Price list import accepts semicolons', author: people.koen, isMine: true, headRef: 'price-list-semicolons',
+    createdAt: at(days(1) + 6), updatedAt: at(4), additions: 27, deletions: 6, checks: checks(12),
+    reviewDecision: 'approved', approvedBy: ['tompeeters'], bucket: 'ready', reason: reason('Approved by Tom, all 12 checks passed.', 'ok', 'approved'),
+  }),
+  pr('acme', 'payments', 91, {
+    title: 'Bump the payment SDK to 7.2', author: focusPeople.dependabot, headRef: 'dependabot/npm_and_yarn/payment-sdk-7.2.0',
+    createdAt: at(days(1)), updatedAt: at(6), additions: 12, deletions: 12, checks: checks(14),
+    reviewDecision: 'approved', approvedBy: ['koenvdb'], bucket: 'ready', reason: reason('Approved, all 14 checks passed.', 'ok', 'approved'),
+  }),
+  pr('acme', 'storefront', 366, {
+    title: 'Size guide opens in a sheet', author: people.sanne, headRef: 'size-guide-sheet',
+    createdAt: at(days(3) + 6), updatedAt: at(22), additions: 88, deletions: 20, checks: checks(9),
+    reviewDecision: 'changes_requested', reviewedHeadSha: '366b1c3d0e8b7a6c5d4e3f2a1b0c9d8e7f6a5b40',
+    bucket: 'wait', reason: reason('Waiting for Sanne after your review', 'mute', 'clock'),
+  }),
+  pr('acme', 'infra', 52, {
+    title: 'Nightly backups of the order database', author: people.koen, isMine: true, headRef: 'nightly-order-backups',
+    createdAt: at(days(4) + 3), updatedAt: at(30), additions: 64, deletions: 3, checks: checks(5),
+    bucket: 'wait', reason: reason('Waiting for Lars’s review', 'mute', 'clock'),
+  }),
+  pr('acme', 'payments', 86, {
+    title: 'Show the payout date on invoices', author: people.koen, isMine: true, headRef: 'payout-date',
+    createdAt: at(days(1) + 2), updatedAt: at(9), additions: 45, deletions: 10, checks: checks(14),
+    bucket: 'wait', reason: reason('Waiting for Ines’s review', 'mute', 'clock'),
+  }),
+  pr('acme', 'shop', 398, {
+    title: 'Export orders to CSV', author: people.koen, isMine: true, isDraft: true, headRef: 'orders-csv-export',
+    createdAt: at(3), updatedAt: at(0.3), additions: 120, deletions: 8, checks: checks(6, 0, 2),
+    bucket: 'wait', reason: reason('Draft · an agent asks you something', 'warn', 'clock'),
+  }),
+  pr('acme', 'shop', 352, {
+    title: 'Discount codes stack with customer prices', author: focusPeople.priya, headRef: 'stacked-discounts',
+    createdAt: at(days(9) + 2), updatedAt: at(days(1)), additions: 88, deletions: 14, checks: checks(12),
+    bucket: 'wait', reason: reason('Waiting for a review', 'mute', 'clock'),
+  }),
+  pr('acme', 'storefront', 361, {
+    title: 'Lazy-load product images below the fold', author: focusPeople.priya, headRef: 'lazy-images',
+    createdAt: at(days(6) + 3), updatedAt: at(days(2)), additions: 41, deletions: 9, checks: checks(8, 1),
+    reviewDecision: 'changes_requested', bucket: 'wait', reason: reason('Changes requested by Sanne', 'warn', 'comment'),
+  }),
+  pr('acme', 'storefront', 370, {
+    title: 'Wishlist: share a list by link', author: focusPeople.priya, headRef: 'wishlist-share',
+    createdAt: at(days(5)), updatedAt: at(days(1) + 4), additions: 230, deletions: 18, changedFiles: 11, checks: checks(9),
+    bucket: 'wait', reason: reason('Waiting for a review', 'mute', 'clock'),
+  }),
+  pr('acme', 'payments', 84, {
+    title: 'Retry failed payouts at night', author: focusPeople.priya, headRef: 'payout-retries',
+    createdAt: at(days(3) + 1), updatedAt: at(days(1) + 1), additions: 76, deletions: 22, checks: checks(14),
+    bucket: 'wait', reason: reason('Waiting for a review', 'mute', 'clock'),
+  }),
+  pr('acme', 'infra', 49, {
+    title: 'Cache the Docker layers in CI', author: focusPeople.priya, headRef: 'docker-layer-cache', isDraft: true,
+    createdAt: at(days(2) + 1), updatedAt: at(12), additions: 19, deletions: 4, checks: checks(5),
+    bucket: 'wait', reason: reason('Draft', 'mute', 'clock'),
+  }),
+  pr('acme', 'shop', 418, {
+    title: 'Coupon field remembers the last code', author: focusPeople.priya, headRef: 'coupon-memory',
+    createdAt: at(days(1) - 3), updatedAt: at(2), additions: 23, deletions: 5, checks: checks(12), mergeable: 'conflicting',
+    bucket: 'wait', reason: reason('Has merge conflicts', 'warn', 'conflict'),
+  }),
+);
+
+/** Open pull requests per repository, for the Repositories screen (15-repositories.mjs). */
+export function openByRepository() {
+  const counts = new Map();
+  for (const p of pullRequests) counts.set(`${p.owner}/${p.repo}`, (counts.get(`${p.owner}/${p.repo}`) ?? 0) + 1);
+  return counts;
+}
 
 const workItem = (id, title, type, state) => ({
   id, title, type, typeName: type, state, stateCategory: 'InProgress', workflow: ['New', 'Development In Progress', 'Code Review', 'Ready For QA', 'Done'],

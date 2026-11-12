@@ -18,15 +18,6 @@ enum ShortTime {
         return "\(seconds / 3600) h \(seconds % 3600 / 60) m"
     }
 
-    /// "12 s" since the last sync, for the pill next to the avatar.
-    static func since(_ date: Date?, now: Date = .now) -> String {
-        guard let date else { return "–" }
-        let seconds = Int(max(0, now.timeIntervalSince(date)))
-        if seconds < 60 { return "\(seconds) s" }
-        if seconds < 3600 { return "\(seconds / 60) min" }
-        return "\(seconds / 3600) h"
-    }
-
     /// "20:21" today, "Tue 20:21" this week, else "29 Oct".
     static func clock(_ iso: String?, now: Date = .now, calendar: Calendar = .current) -> String {
         guard let date = ISODate.parse(iso) else { return "" }
@@ -83,8 +74,6 @@ extension PrSummary {
 
     /// The commit title GitHub suggests for a squash.
     var squashTitle: String { "\(title) (#\(number))" }
-
-    var branchURL: URL? { URL(string: url) }
 }
 
 extension PrReason {

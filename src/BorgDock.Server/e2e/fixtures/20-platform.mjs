@@ -84,12 +84,23 @@ const items = [
 ];
 for (const id of [61100, 61101, 61102, 61103]) items.find((e) => e.item.id === id).queuedAt = at(30);
 
+// Focus's agents (design/ios-flow/mockups.html, section 02): one runs on #412's branch, one asks a question on #398's
+// (10-github.mjs). Neither has a work item, so their rows open the pull request.
+const focusAgents = [
+  { ...thread(70412, 'Fix the failing checkout e2e test', 'priya/round-lines', 'running', 4 / 60), guessItemId: null },
+  {
+    ...thread(70398, 'Export orders to CSV', 'orders-csv-export', 'question', 0.3), guessItemId: null, questionRequestId: 'sample-csv-request',
+    questions: [{ id: 'cancelled', question: 'Should the export include cancelled orders?', options: [{ label: 'Yes, marked as cancelled', value: 'yes' }, { label: 'No, leave them out', value: 'no' }], recommended: 1, allowCustomAnswer: true, multiSelect: false }],
+  },
+];
+
 const overview = () => ({
   generatedAt: at(0),
   items,
   unlinkedThreads: [
     { ...thread(70001, 'Bump the payment SDK to 7.2', 'deps/payment-sdk', 'running', 0.1), guessItemId: null },
     { ...thread(70002, 'Spike: faster price lookups', 'spike/price-cache', 'settled', 24, 'A cache in front of the price rules halves the lookups.'), guessItemId: null },
+    ...focusAgents,
   ],
   worktrees: [],
   sources: { ado: { ok: true, at: at(0), error: null }, t3: { ok: true, at: at(0), error: null } },
