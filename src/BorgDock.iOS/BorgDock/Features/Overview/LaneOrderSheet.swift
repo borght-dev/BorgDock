@@ -14,7 +14,7 @@ struct LaneOrderSheet: View {
                     ForEach(order, id: \.self) { Text($0) }
                         .onMove { order.move(fromOffsets: $0, toOffset: $1) }
                 } footer: {
-                    Text("Grouped by status, the same order sorts the items within each status.")
+                    Text("Grouped by verdict or sprint, the same order sorts the items inside each lane.")
                 }
             }
             .environment(\.editMode, .constant(.active))

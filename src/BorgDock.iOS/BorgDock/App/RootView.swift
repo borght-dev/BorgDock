@@ -75,7 +75,6 @@ struct RouteView: View {
         case .ciGroup(let id): CiGroupView(id: id)
         case .workstream(let id): WorkstreamView(id: id)
         case .note(let path): NoteView(path: path)
-        case .browse: BrowseView()
         case .activity: ActivityView()
         case .settings: SettingsView()
         case .machines: MachinesView()
@@ -114,7 +113,7 @@ struct CoverHost: View {
     }
 }
 
-/// `-BorgDockRoute item/59657 | start/59463 | start/59463/qa | tab/<today|prs|work|sprint|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<bay>` (DEBUG only).
+/// `-BorgDockRoute item/59657 | item/59657/<details|activity|…> | start/59463 | start/59463/qa | tab/<today|prs|work|sprint|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<lane|show>` (DEBUG only).
 enum DebugRoute {
     @MainActor
     static func apply(to app: AppModel) async {
@@ -124,7 +123,11 @@ enum DebugRoute {
         guard parts.count == 2 else { return }
         switch parts[0] {
         case "item":
-            if let id = Int(parts[1]) { app.router.openItem(id) }
+            let target = parts[1].split(separator: "/").map(String.init)
+            if let id = Int(target[0]) {
+                app.router.openItem(id)
+                app.router.scrollTarget = target.dropFirst().first
+            }
         case "start":
             for _ in 0..<40 where app.overview == nil {
                 try? await Task.sleep(for: .milliseconds(250))

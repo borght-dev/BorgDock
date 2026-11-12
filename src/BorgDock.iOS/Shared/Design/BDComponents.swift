@@ -111,6 +111,7 @@ struct WorkItemGlyph: View {
         case "pbi", "product backlog item", "user story", "feature": BD.pbi
         case "task": BD.task
         case "qi", "quality improvement": BD.green
+        case "epic": BD.merged
         default: BD.text3
         }
     }

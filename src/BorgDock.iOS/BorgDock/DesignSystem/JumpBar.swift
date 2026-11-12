@@ -44,6 +44,9 @@ struct JumpBar: View {
                 guard let id else { return }
                 withAnimation(.snappy) { proxy.scrollTo(id, anchor: .center) }
             }
+            .onAppear {
+                if let selection { proxy.scrollTo(selection, anchor: .center) }
+            }
         }
         .padding(.vertical, 10)
         .background(BD.bg)

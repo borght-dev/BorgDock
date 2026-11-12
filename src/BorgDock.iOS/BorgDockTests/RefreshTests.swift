@@ -79,32 +79,18 @@ final class RefreshTests: XCTestCase {
         XCTAssertEqual(detail?.qaNotes, "Check the order confirmation email on staging.")
     }
 
-    // MARK: Browse
+    // MARK: Saved queries
 
-    func testBrowsePullReloadsQueriesAndTheQueryEveryTime() async {
-        StubURLProtocol.respond(cacheable: true) { request in
-            request.path == "/api/browse/queries"
-                ? (200, #"[{"id":"sprint","name":"Current sprint, whole team","group":"Dispatch"}]"#)
-                : (200, #"{"items":[],"truncated":false}"#)
-        }
+    func testAQueryPullReadsTheQueryAgainEveryTime() async {
+        StubURLProtocol.respond(cacheable: true) { _ in (200, #"{"items":[],"truncated":false}"#) }
         let model = model()
-        let first = await model.reloadBrowse(query: "sprint", search: nil)
-        let second = await model.reloadBrowse(query: "sprint", search: nil)
+        let queries = WorkQueries()
+        await queries.load("sprint", app: model, reportErrors: true)
+        await queries.load("sprint", app: model, reportErrors: true)
 
-        XCTAssertEqual(first.queries?.count, 1)
-        XCTAssertNotNil(second.result)
-        XCTAssertEqual(calls().sorted(), [
-            "GET /api/browse/queries", "GET /api/browse/queries", "GET /api/browse?query=sprint", "GET /api/browse?query=sprint",
-        ])
+        XCTAssertEqual(queries.count("sprint"), 0)
+        XCTAssertEqual(calls(), ["GET /api/browse?query=sprint", "GET /api/browse?query=sprint"])
         XCTAssertTrue(StubURLProtocol.requests.allSatisfy { $0.cachePolicy == .reloadIgnoringLocalCacheData })
-    }
-
-    func testBrowseSearchPullRunsTheSearchAgain() async {
-        StubURLProtocol.respond { request in
-            request.path == "/api/browse/queries" ? (200, "[]") : (200, #"{"items":[],"truncated":false}"#)
-        }
-        _ = await model().reloadBrowse(query: "sprint", search: "logout")
-        XCTAssertTrue(calls().contains("GET /api/browse?search=logout"))
     }
 
     // MARK: Settings

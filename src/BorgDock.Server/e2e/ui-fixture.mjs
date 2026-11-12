@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { readdirSync } from 'node:fs';
 
 // BorgDock's fixture modules (e2e/fixtures/*.mjs): each exports `handle({ path, method, query, body, writes })`
-// and returns a result, or undefined when the route isn't its own. They run before the Dispatch routes below.
+// and returns a result (JSON, or `{ contentType, rawBody }` for a file), or undefined when the route isn't its own. They run before the Dispatch routes below.
 const fixtureDir = new URL('./fixtures/', import.meta.url);
 const fixtures = await Promise.all(readdirSync(fixtureDir).filter(f => f.endsWith('.mjs')).sort().map(f => import(new URL(f, fixtureDir))));
 
@@ -75,6 +75,7 @@ const server=createServer(async(req,res)=>{
   else if(/^\/api\/items\/\d+$/.test(url.pathname)) {const o=overview.items.find(o=>o.item.id===Number(url.pathname.split('/')[3]));result=o?{item:o.item,description:'Sample work item description for visual verification.',acceptanceCriteria:'Verify the expected behaviour on staging.',reproSteps:'',qaNotes:'',comments:[]}:null;}
   else if(req.method!=='GET') {writes.push({path:url.pathname,body});result=url.pathname.endsWith('/state')?{state:body.to}:url.pathname==='/api/threads'?{threadId:'sample-started',link:'https://example.invalid',appLink:'t3code://threads/sample/sample',adoState:null,warning:null}:{ok:true};}
   else {res.writeHead(404);res.end('Not found');return;}
+  if(result?.rawBody){res.writeHead(200,{'Content-Type':result.contentType,'Cache-Control':'no-store'});res.end(result.rawBody);return;}
   res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(result));
 });
 server.listen(Number(process.env.PORT ?? 8796),'0.0.0.0',()=>console.log(`Sample API listening on ${process.env.PORT ?? 8796}. No external requests.`));
