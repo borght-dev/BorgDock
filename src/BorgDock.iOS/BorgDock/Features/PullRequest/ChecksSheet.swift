@@ -31,7 +31,7 @@ struct ChecksSheet: View {
                 .padding(.bottom, 14)
 
                 if let detail {
-                    ChecksContent(detail: detail, cardFill: BD.card2)
+                    ChecksContent(detail: detail, files: app.focus.files[key.key]?.files ?? [], cardFill: BD.card2)
                         .padding(.horizontal, 16)
                 } else {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
@@ -92,10 +92,12 @@ struct ChecksActions: View {
     }
 }
 
-/// Failed checks as cards, then the running ones and a row for everything that passed.
+/// Failed checks as cards (the step, the error from the log tail, whether the PR changes the failing spec or main is
+/// red too), then the running ones and a row for everything that passed.
 struct ChecksContent: View {
     @Environment(AppModel.self) private var app
     let detail: PrDetail
+    var files: [PrFile] = []
     var cardFill: Color = BD.card
     @State private var showPassed = false
 
@@ -103,30 +105,31 @@ struct ChecksContent: View {
         let failed = detail.checkRuns.filter { $0.state == .failure }
         let running = detail.checkRuns.filter { $0.state == .pending }
         let passed = detail.checkRuns.filter { $0.state == .success || $0.state == .neutral || $0.state == .skipped }
-        VStack(spacing: 12) {
-            ForEach(failed) { FailedCheckCard(run: $0, baseRef: detail.baseRef, fill: cardFill) }
+        VStack(spacing: 8) {
+            ForEach(failed) { FailedCheckCard(detail: detail, run: $0, files: files, fill: cardFill) }
             if !running.isEmpty || !passed.isEmpty {
-                PrGroupCard(indent: 52, fill: cardFill) {
+                PrGroupCard(indent: 40, fill: cardFill) {
                     ForEach(running) { run in
-                        CheckRunRow(icon: "circle.dashed", color: BD.blue, title: run.name, trailing: "running " + ShortTime.age(run.startedAt).replacingOccurrences(of: " min", with: " m"))
+                        CheckRunRow(icon: "circle.dashed", color: BD.blue, title: run.name, trailing: "running " + ShortTime.age(run.startedAt))
                     }
                     if !passed.isEmpty {
                         Button { withAnimation(.snappy) { showPassed.toggle() } } label: {
-                            CheckRunRow(icon: "checkmark.circle", color: BD.green, title: "\(passed.count) passed", chevron: showPassed ? "chevron.down" : "chevron.right")
+                            CheckRunRow(icon: "checkmark.circle", color: BD.green, title: "\(passed.count) passed", secondary: true,
+                                        chevron: showPassed ? "chevron.down" : "chevron.right")
                         }
                         .buttonStyle(.plain)
                     }
                     if showPassed {
                         ForEach(passed) { run in
                             Link(destination: URL(string: run.url) ?? URL(string: detail.url)!) {
-                                CheckRunRow(icon: run.state == .success ? "checkmark" : "minus", color: BD.text3, title: run.name, trailing: ShortTime.duration(run.durationSeconds), small: true)
+                                CheckRunRow(icon: run.state == .success ? "checkmark" : "minus", color: BD.text3, title: run.name, trailing: CheckDuration.text(run.durationSeconds), small: true)
                             }
                         }
                     }
                 }
             }
             if detail.checkRuns.isEmpty {
-                Text("No checks ran on this commit.").font(.subheadline).foregroundStyle(BD.text2).padding(.top, 20)
+                Text("No checks ran on this commit.").font(.system(size: 14)).foregroundStyle(BD.text2).frame(maxWidth: .infinity).padding(.vertical, 16)
             }
         }
     }
@@ -137,90 +140,84 @@ struct CheckRunRow: View {
     let color: Color
     let title: String
     var trailing: String?
+    var secondary = false
     var chevron: String?
     var small = false
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon).font(.system(size: small ? 14 : 19, weight: .medium)).foregroundStyle(color).frame(width: 24)
-            Text(title).font(.system(size: small ? 15 : 17)).foregroundStyle(BD.text).lineLimit(1)
+        HStack(spacing: 9) {
+            Image(systemName: icon).font(.system(size: small ? 13 : 16, weight: .medium)).foregroundStyle(color).frame(width: 22)
+            Text(title).font(.system(size: small ? 14 : 14.5)).foregroundStyle(secondary ? BD.text2 : BD.text).lineLimit(1)
             Spacer(minLength: 8)
-            if let trailing { Text(trailing).font(.system(size: 14)).foregroundStyle(BD.text3) }
-            if let chevron { Image(systemName: chevron).font(.system(size: 13, weight: .semibold)).foregroundStyle(BD.text3) }
+            if let trailing { Text(trailing).font(.system(size: 12.5)).foregroundStyle(BD.text3) }
+            if let chevron { Image(systemName: chevron).font(.system(size: 12, weight: .semibold)).foregroundStyle(BD.text3) }
         }
-        .padding(.horizontal, 16)
-        .frame(minHeight: small ? 40 : 52)
+        .padding(.horizontal, 14)
+        .frame(minHeight: small ? 38 : 46)
         .contentShape(Rectangle())
     }
 }
 
+/// One failed job: its name and duration, the step that broke, the error excerpt, and why it may not be this PR's doing.
 struct FailedCheckCard: View {
     @Environment(AppModel.self) private var app
+    let detail: PrDetail
     let run: CheckRun
-    let baseRef: String
+    var files: [PrFile] = []
     var fill: Color = BD.card
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: "xmark.circle").font(.system(size: 19, weight: .medium)).foregroundStyle(BD.red)
-                Text(run.name).font(.system(size: 18, weight: .semibold)).foregroundStyle(BD.text).lineLimit(1)
+            HStack(spacing: 8) {
+                Image(systemName: "xmark.circle").font(.system(size: 17, weight: .medium)).foregroundStyle(BD.red).frame(width: 18)
+                Text(run.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(BD.text).lineLimit(1)
                 Spacer(minLength: 6)
-                Text(ShortTime.duration(run.durationSeconds)).font(.system(size: 14)).foregroundStyle(BD.text3)
+                Text(CheckDuration.text(run.durationSeconds)).font(.system(size: 12.5, weight: .medium)).foregroundStyle(BD.text3)
             }
-            if let failure = run.failure {
-                HStack(spacing: 6) {
+            Group {
+                if let failure = run.failure {
                     if let step = failure.step {
-                        (Text("Step ").foregroundStyle(BD.text2) + Text(step).foregroundStyle(BD.text).fontWeight(.medium))
-                            .lineLimit(1)
+                        Text(step).font(.system(size: 12.5)).foregroundStyle(BD.text2).lineLimit(1).padding(.top, 2)
                     }
-                    if failure.newInThisPr {
-                        Text("·").foregroundStyle(BD.text3)
-                        ToneChip(text: "New in this PR", tone: .bad, small: true)
+                    if let excerpt = FailedCheckCard.excerpt(failure) {
+                        LogSnippet(location: nil, text: excerpt).padding(.top, 8)
                     }
-                }
-                .font(.system(size: 15))
-                .padding(.top, 6)
-                .padding(.leading, 30)
-                if let snippet = failure.snippet ?? failure.summary {
-                    LogSnippet(location: failure.location, text: snippet, background: BD.fill)
-                        .padding(.top, 10)
-                        .padding(.leading, 30)
-                }
-                if let base = failure.alsoOnBase {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle").font(.system(size: 14, weight: .semibold))
-                        Text(verbatim: "Also red on \(baseRef). Not this PR.").lineLimit(2)
-                        Spacer(minLength: 4)
-                        if let person = base.claimedBy {
-                            PersonBadge(person: person, size: 22)
-                            Text(person.firstName)
+                    let changesSpec = FailureFacts.changesSpec(failure, files: files)
+                    if changesSpec || failure.alsoOnBase != nil {
+                        HStack(spacing: 6) {
+                            if changesSpec { ToneChip(text: "This PR changes the spec", small: true, accent: true) }
+                            if failure.alsoOnBase != nil { ToneChip(text: "Also red on \(detail.baseRef)", tone: .warn, small: true) }
                         }
+                        .padding(.top, 9)
                     }
-                    .font(.system(size: 14.5, weight: .medium))
-                    .foregroundStyle(BD.yellow)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(BD.yellowSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .padding(.top, 10)
-                    .padding(.leading, 30)
+                } else {
+                    Text("Reading the log…").font(.system(size: 12.5)).foregroundStyle(BD.text3).padding(.top, 2)
                 }
-                if let groupId = failure.groupId {
-                    Button { app.router.sheet = nil; app.router.push(.ciGroup(groupId)) } label: {
-                        Label("Related CI failure", systemImage: "point.3.connected.trianglepath.dotted")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(BD.accentText)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 10)
-                    .padding(.leading, 30)
-                }
-            } else {
-                Text("Reading the log…").font(.system(size: 14)).foregroundStyle(BD.text3).padding(.top, 6).padding(.leading, 30)
             }
+            .padding(.leading, 26)
         }
-        .padding(16)
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+        .padding(.bottom, 13)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .bdCard(fill: fill)
+        .bdCard(radius: 20, fill: fill)
+        .contextMenu { menu }
+    }
+
+    /// The location line, then the snippet; a snippet that already starts with the location keeps it once.
+    static func excerpt(_ failure: CheckFailure) -> String? {
+        guard let snippet = failure.snippet ?? failure.summary else { return failure.location }
+        guard let location = failure.location, !snippet.hasPrefix(location) else { return snippet }
+        return location + "\n" + snippet
+    }
+
+    @ViewBuilder
+    private var menu: some View {
+        Button { Task { await app.focus.rerunFailed(detail.summary.prKey) } } label: { Label("Rerun failed checks", systemImage: "arrow.counterclockwise") }
+        Button { app.focus.fixWithClaude(detail.summary) } label: { Label("Hand to Claude", systemImage: "sparkle") }
+        if let url = URL(string: run.url) { Link(destination: url) { Label("Open the log", systemImage: "doc.plaintext") } }
+        if let groupId = run.failure?.groupId {
+            Button { app.router.sheet = nil; app.router.push(.ciGroup(groupId)) } label: { Label("Related CI failure", systemImage: "point.3.connected.trianglepath.dotted") }
+        }
     }
 }
