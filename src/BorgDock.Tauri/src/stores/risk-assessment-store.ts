@@ -5,6 +5,7 @@ import { getClientForRepo } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
 import type { ReviewSnapshot } from '@/services/quick-review';
 import {
+  applyRiskReads,
   buildRiskPrompt,
   finishRiskAssessment,
   isRiskAssessment,
@@ -12,6 +13,7 @@ import {
   planRiskPrompt,
   type RiskAssessment,
   readRiskAnswer,
+  riskPromptSources,
 } from '@/services/risk-assessment';
 import { runSummaryAgent, summaryCheckout } from '@/services/summary-agent';
 import { usePrStore } from '@/stores/pr-store';
@@ -232,10 +234,12 @@ export async function ensureRiskAssessment(
       prompt: buildRiskPrompt(input, plan),
       cwd: checkout,
       timeoutSeconds: RISK_TIMEOUT_SECONDS,
+      sources: riskPromptSources(input, plan),
     });
     const answer = readRiskAnswer(result.text);
-    const sources = await readSources(pr, head, outsidePathsOf(answer, plan));
-    const assessment = finishRiskAssessment(answer, plan, sources, {
+    const readPlan = applyRiskReads(plan, result.reads ?? []);
+    const sources = await readSources(pr, head, outsidePathsOf(answer, readPlan));
+    const assessment = finishRiskAssessment(answer, readPlan, sources, {
       headSha: head,
       baseSha: snapshot.baseSha,
       provider: result.provider,

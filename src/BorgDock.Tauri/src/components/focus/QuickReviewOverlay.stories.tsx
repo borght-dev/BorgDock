@@ -1383,9 +1383,23 @@ function riskDecorator(
     control.githubResponses.getAllComments = [];
     control.githubResponses.getRepositoryObject = contentsOf(answers.sources);
     control.invokeResponses.run_headless_prompt = (args: unknown) => {
-      const prompt = (args as { request: { prompt: string } }).request.prompt;
+      const { prompt, sources } = (
+        args as {
+          request: {
+            prompt: string;
+            sources?: Array<{ id: string; text: string }>;
+          };
+        }
+      ).request;
       return prompt.startsWith(RISK_PROMPT_TITLE)
-        ? headlessResult(answers.risk)
+        ? {
+            ...headlessResult(answers.risk),
+            reads:
+              sources?.map((source) => ({
+                id: source.id,
+                lines: source.text.split('\n').map((_, index) => index + 1),
+              })) ?? [],
+          }
         : headlessResult(answers.guide ?? {}, 31_000);
     };
     return (

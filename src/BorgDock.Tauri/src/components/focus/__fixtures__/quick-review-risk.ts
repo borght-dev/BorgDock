@@ -1,8 +1,10 @@
 import {
+  applyRiskReads,
   finishRiskAssessment,
   planRiskPrompt,
   type RiskAssessment,
   readRiskAnswer,
+  riskPromptSources,
 } from '@/services/risk-assessment';
 import type { DiffFile, PullRequest } from '@/types';
 
@@ -340,13 +342,25 @@ const MINUTE = 60_000;
 
 /** The refunds PR's assessment, through the same plan, parse and checks as a real run. */
 export function refundAssessment(
-  options: { headSha?: string; minutesAgo?: number; answer?: unknown } = {},
+  options: {
+    headSha?: string;
+    minutesAgo?: number;
+    answer?: unknown;
+    reads?: { id: string; lines: number[] }[];
+  } = {},
 ): RiskAssessment {
   const pr = refundPr({ headSha: options.headSha ?? REFUND_HEAD });
   const input = { pr, files: REFUND_FILES, commits: [], checkout: '/repos/shop' };
+  const plan = planRiskPrompt(input);
+  const reads =
+    options.reads ??
+    riskPromptSources(input, plan).map((source) => ({
+      id: source.id,
+      lines: source.text.split('\n').map((_, index) => index + 1),
+    }));
   return finishRiskAssessment(
     readRiskAnswer(JSON.stringify(options.answer ?? REFUND_ANSWER)),
-    planRiskPrompt(input),
+    applyRiskReads(plan, reads),
     new Map(Object.entries(REFUND_SOURCES)),
     {
       headSha: pr.headSha ?? '',
@@ -370,7 +384,7 @@ export const LOW_ANSWER = {
 /** The agent judged it could not tell. */
 export const UNKNOWN_ANSWER = {
   verdict: 'unknown',
-  unknownWhy: 'The refund paths it would need are in files cut at the prompt budget.',
+  unknownWhy: 'The refund paths it would need are in files only partially read.',
   headline: 'Too little of the refund path was shown to judge it.',
   reasons: [REFUND_ANSWER.reasons[0]],
 };

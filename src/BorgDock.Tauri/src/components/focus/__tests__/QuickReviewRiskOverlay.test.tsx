@@ -63,10 +63,19 @@ const GUIDE = {
   focus: [],
 };
 
-function agentReply(text: unknown) {
+function agentReply(text: unknown, sources: Array<{ id: string; text: string }> = []) {
   return {
     status: 'ok' as const,
-    data: { text: JSON.stringify(text), provider: 'claude', model: 'sonnet', durationMs: 900 },
+    data: {
+      text: JSON.stringify(text),
+      provider: 'claude',
+      model: 'sonnet',
+      durationMs: 900,
+      reads: sources.map((source) => ({
+        id: source.id,
+        lines: source.text.split('\n').map((_, i) => i + 1),
+      })),
+    },
   };
 }
 
@@ -114,8 +123,8 @@ beforeEach(() => {
   vi.mocked(getTextFileAtRef).mockImplementation(
     async (_c, _o, _r, path) => REFUND_SOURCES[path] ?? null,
   );
-  vi.mocked(commands.runHeadlessPrompt).mockImplementation(async ({ prompt }) =>
-    agentReply(prompt.startsWith(RISK_PROMPT_TITLE) ? REFUND_ANSWER : GUIDE),
+  vi.mocked(commands.runHeadlessPrompt).mockImplementation(async ({ prompt, sources }) =>
+    agentReply(prompt.startsWith(RISK_PROMPT_TITLE) ? REFUND_ANSWER : GUIDE, sources ?? []),
   );
 });
 afterEach(() => {
@@ -214,13 +223,16 @@ describe('Regression risk in Quick Review', () => {
       changedFiles: 1,
     });
     vi.mocked(getPRFiles).mockResolvedValue([REFUND_FILES[4]!]);
-    vi.mocked(commands.runHeadlessPrompt).mockImplementation(async () =>
-      agentReply({
-        verdict: 'assessed',
-        unknownWhy: '',
-        headline: 'Adds a nullable column; nothing existing reads it.',
-        reasons: [REFUND_ANSWER.reasons[4]],
-      }),
+    vi.mocked(commands.runHeadlessPrompt).mockImplementation(async ({ sources }) =>
+      agentReply(
+        {
+          verdict: 'assessed',
+          unknownWhy: '',
+          headline: 'Adds a nullable column; nothing existing reads it.',
+          reasons: [REFUND_ANSWER.reasons[4]],
+        },
+        sources ?? [],
+      ),
     );
     await start();
     await within(card()).findByText('Adds a nullable column; nothing existing reads it.');

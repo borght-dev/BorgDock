@@ -19,6 +19,10 @@ The production main entry excludes Quick Review, Markdown, CodeMirror and Tree-s
 
 PR groups larger than 50 rows use a bounded scrolling layout sized to the list's available height, rather than a fixed pixel cap. Keyboard navigation follows every filtered row in group order, including unmounted rows, and skips collapsed groups. Selection scrolls the relevant virtualizer. Small groups retain their transitions.
 
+Risk assessment sends a file manifest to the summary agent. Complete numbered diff snapshots and the description live in a private directory per run and are removed when the run ends, including errors. Reviewer skips and oversized generated files stay excluded. Claude's streamed read-tool results and Codex's successful command output establish which snapshot lines were read; repeated ranges count once, long lines require all fragments, and oversized tool output receives no coverage credit. Citations to unread snapshot lines are rejected. Missing telemetry leaves coverage unknown. Version 2 invalidates assessments whose coverage was inferred from the old inline prompt.
+
+On Windows, snapshot paths use canonical long names so Codex's read-only sandbox recognizes them. Codex explicitly selects its Windows sandbox backend because `--ignore-user-config` removes the user's backend selection.
+
 Highlighting and file-symbol extraction share a module worker. Tree traversal visits each node once. Highlight requests take priority over background symbol requests. The worker keeps grammar/runtime caches and releases per-request parse trees and parsers. Views abort obsolete requests.
 
 The worker admits at most 16 requests, limits a source to approximately 2 MiB of string storage, and resets after a 15-second job timeout. Unsupported, oversized, cancelled or failed requests fall back to plain text or no symbols. No parsing fallback runs on the renderer thread. Packaged CSP explicitly permits the worker and WebAssembly compilation.

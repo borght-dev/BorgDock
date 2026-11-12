@@ -51,6 +51,7 @@ const ANSWER = {
     provider: 'claude',
     model: 'opus',
     durationMs: 900,
+    reads: null,
   },
 };
 const SETTLE_MS = 5_000;
