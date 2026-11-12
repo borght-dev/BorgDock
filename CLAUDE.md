@@ -372,6 +372,19 @@ Capturing from Storybook in a fresh worktree: `src/BorgDock.Tauri/public/whats-n
 - **Checks card.** `PrRow` passes `checksCard` to `PrRowCore`; the check bar then takes its own click (opens the PR on its Checks tab). The reason per failed job comes from the CI failure store (`usePrCiFailures`, signals of the job's occurrence); `checks-card-data.ts` is pure. With related CI failures off no log is read, and the card says so.
 - **e2e.** ADO reads go through the mocked `ado_fetch` command, not the network: route them there. Mock handlers are serialized into the page, so a handler function can't use variables from the spec. The first spec against a cold dev server can take 20 s+ to open a detail view (lazy chunks compile); run against a warm server before reading a timeout as a bug.
 
+## Work item detail: the ADO layout drives the form
+
+The full view (main window and pop-out), the peek from a pull request and the AB# hover card read one model. Design: `design/work-item-detail/mockups.html`.
+
+- **The layout places every field.** `services/ado/layout.ts` keeps pages, sections, groups and control kinds; `services/ado/form-model.ts` (`buildFormModel`, pure) turns item + layout + field definitions into tabs, main-column long text and rail groups with ADO's labels, with a one-tab fallback without a layout. An `HtmlFieldControl` counts as long text even before field definitions load.
+- **Each fact has one home: the header's fact strip.** `HEADER_FIELDS` plus the type's own fact, the first of `TYPE_FACT_FIELDS` the layout has (Severity, Effort, …). Koen chose a rule over a per-type setting; the rail skips these fields.
+- **The hover card always shows the description** (`gistText`: Repro Steps for a Bug without one, else the first long-text field), with email clutter removed; the latest update is one line under it, never in its place. Koen's call: the description is what tells you what an item is about.
+- **Discussion lives in the Activity tab**; its latest message reaches Latest. Latest uses Dispatch's `latestMessage` over the newest comment, the newest block of the dated log (`dated-log.ts`) and the agent, so a comment on the same day as a note wins.
+- **Email clutter only folds** (`services/ado/html-noise.ts`): Show restores the banner and signature, and Edit edits the original HTML.
+- **Unknown types and states get ADO's colours.** Known names keep BorgDock's tokens (`WI_TYPES`, `WI_STATES`); others use `/wit/workitemtypes` (`workItemTypes` in the work-items store), else the state category (`typeVisual`, `stateDot`).
+- **The peek grows with the window.** Its size lives in `components/shared/review-previews.css`, which is unlayered: unlayered CSS beats every `@layer components` rule, so a size set in `work-item-detail.css` never applies. From 1200 px of body the peek shows the full Details (`DetailsPane`) and every rail group; from 1900 px Activity gets a column beside it.
+- **Stories seed the store.** Storybook mocks only `@/services/ado/workitems`, so layout, type and field reads fail there; `Work Items/Redesign` puts `workItemTypeLayouts`, `fieldDefinitions` and `workItemTypes` in the store (`__fixtures__/redesign-data.ts`). A new function in `workitems.ts` needs the mock too.
+
 ## Pull requests list: views, query, display, board
 
 Tabs (All, Your turn, Mine, Failing, Ready to merge, Stale, saved views), filter chips, Group / Sort / Display, and the PRs as a table, list or board. Rules: `docs/superpowers/specs/2026-11-11-pr-overview.md`; design: `design/pr-overview/mockups.html`.

@@ -534,7 +534,7 @@ test('overview shows description screenshots, required-check gaps and a read-onl
   await expect(page.getByRole('tooltip')).toContainText('The questionnaire must remain on the live activity.');
   await linkedItem.click();
   const workItem = page.getByRole('dialog', { name: 'AB#59671', exact: true });
-  await expect(workItem.getByText('Read-only preview')).toBeVisible();
+  await expect(workItem.getByRole('button', { name: 'Open', exact: true })).toBeVisible();
   await expect(workItem.getByText('The questionnaire must remain on the live activity.')).toBeVisible();
   await expect(workItem.getByRole('textbox')).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath('ado-popup.png') });

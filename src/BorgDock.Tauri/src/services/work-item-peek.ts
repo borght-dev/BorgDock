@@ -1,5 +1,9 @@
-import { htmlToText } from '@/services/dispatch/item-text';
+import { typeFactKey } from '@/services/ado/form-model';
+import { gistText } from '@/services/ado/html-noise';
+import type { ProcessLayout } from '@/services/ado/layout';
+import { newestNote } from '@/services/dispatch/item-text';
 import type { WorkItem } from '@/types';
+import { formatFieldValue, friendlyLabel, looksLikeHtml } from '@/utils/work-item-fields';
 import { getField } from '@/utils/work-item-helpers';
 
 /** What the AB# hover card shows of a work item. */
@@ -14,10 +18,72 @@ export interface WorkItemPeek {
   priority: number | null;
   /** Story points or effort, whichever the process has. */
   points: number | null;
-  /** Plain text of the description, or of the repro steps for a bug without one. */
+  /**
+   * What the item is about, always: its description, or its repro steps when
+   * it has none, else its first long-text field — cleaned of email clutter
+   * and the greeting.
+   */
   description: string;
+  /** Where `description` came from: "description", "repro steps" or the field's name. */
+  descriptionSource: string;
+  /** The type's own fact (Severity on a Bug, Effort on a PBI), as the card reads it. */
+  typeFact: { key: string; text: string; due: boolean } | null;
+  /** The newest Developer Notes update, when the item keeps them. */
+  note: { text: string; date: string | null } | null;
   changedAt: string | null;
   changedBy: string | null;
+}
+
+const DESCRIPTION_FIELDS: Array<[string, string]> = [
+  ['System.Description', 'description'],
+  ['Microsoft.VSTS.TCM.ReproSteps', 'repro steps'],
+];
+
+/** The skip list for the "first long-text field" fallback. */
+const NOT_ABOUT = new Set(['System.History', 'Custom.DeveloperNotes']);
+
+function aboutOf(item: WorkItem): { text: string; source: string } {
+  for (const [key, source] of DESCRIPTION_FIELDS) {
+    const value = item.fields[key];
+    const text = typeof value === 'string' ? gistText(value) : '';
+    if (text) return { text, source };
+  }
+  for (const [key, value] of Object.entries(item.fields)) {
+    if (NOT_ABOUT.has(key) || typeof value !== 'string' || !looksLikeHtml(value)) continue;
+    const text = gistText(value);
+    if (text) return { text, source: friendlyLabel(key).toLowerCase() };
+  }
+  return { text: '', source: 'description' };
+}
+
+function factOf(item: WorkItem, layout: ProcessLayout | null): WorkItemPeek['typeFact'] {
+  const key = typeFactKey(item, layout);
+  const value = key ? item.fields[key] : undefined;
+  if (!key || value === undefined || value === null || value === '') return null;
+  if (key.endsWith('.Severity')) {
+    const rank = /^(\d)/.exec(String(value))?.[1];
+    return { key, text: rank ? `Sev ${rank}` : String(value), due: false };
+  }
+  if (key.endsWith('.Effort')) return { key, text: `Effort ${value}`, due: false };
+  if (key.endsWith('.StoryPoints')) return { key, text: `${value} pts`, due: false };
+  const date = new Date(String(value));
+  if (!Number.isNaN(date.getTime())) {
+    const days = Math.ceil((date.getTime() - Date.now()) / 86_400_000);
+    const when =
+      days < 0
+        ? `${-days} d late`
+        : days === 0
+          ? 'today'
+          : days === 1
+            ? 'tomorrow'
+            : `in ${days} d`;
+    return {
+      key,
+      text: `Due ${date.toLocaleDateString(undefined, { weekday: 'short' })} · ${when}`,
+      due: days <= 2,
+    };
+  }
+  return { key, text: formatFieldValue(value) ?? String(value), due: false };
 }
 
 function numberField(item: WorkItem, field: string): number | null {
@@ -31,10 +97,9 @@ function iterationName(path: string): string | null {
   return parts.length > 1 ? parts[parts.length - 1]! : null;
 }
 
-export function workItemPeekOf(item: WorkItem): WorkItemPeek {
-  const description =
-    htmlToText(getField(item, 'System.Description')) ||
-    htmlToText(getField(item, 'Microsoft.VSTS.TCM.ReproSteps'));
+export function workItemPeekOf(item: WorkItem, layout: ProcessLayout | null = null): WorkItemPeek {
+  const about = aboutOf(item);
+  const note = newestNote(item.fields['Custom.DeveloperNotes']);
   return {
     id: item.id,
     type: getField(item, 'System.WorkItemType'),
@@ -46,7 +111,10 @@ export function workItemPeekOf(item: WorkItem): WorkItemPeek {
     points:
       numberField(item, 'Microsoft.VSTS.Scheduling.StoryPoints') ??
       numberField(item, 'Microsoft.VSTS.Scheduling.Effort'),
-    description,
+    description: about.text,
+    descriptionSource: about.source,
+    typeFact: factOf(item, layout),
+    note: note ? { text: note.text, date: note.date } : null,
     changedAt: getField(item, 'System.ChangedDate') || null,
     changedBy: getField(item, 'System.ChangedBy') || null,
   };

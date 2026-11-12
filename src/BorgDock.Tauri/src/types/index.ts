@@ -79,6 +79,8 @@ export type {
   WorkItem,
   WorkItemAttachment,
   WorkItemComment,
+  WorkItemFieldChange,
   WorkItemRelation,
+  WorkItemUpdate,
 } from './work-item';
 export type { WorktreeInfo } from './worktree';

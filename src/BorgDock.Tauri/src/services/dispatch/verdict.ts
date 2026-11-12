@@ -305,7 +305,7 @@ function sortKey(message: LatestMessage): string {
  * of its Developer Notes, or the last message of the agent working on it.
  */
 export function latestMessage(
-  item: DispatchItem,
+  item: Pick<DispatchItem, 'lastComment' | 'notes'>,
   threads: readonly AgentThread[],
 ): LatestMessage | null {
   const said: LatestMessage[] = [];

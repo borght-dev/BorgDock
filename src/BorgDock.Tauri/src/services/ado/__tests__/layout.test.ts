@@ -3,8 +3,12 @@ import { normalizeLayout } from '../layout';
 
 describe('normalizeLayout', () => {
   it('returns no extra tabs and no detail keys for an empty layout', () => {
-    expect(normalizeLayout({})).toEqual({ extraTabs: [], detailsFieldKeys: [] });
-    expect(normalizeLayout({ pages: [] })).toEqual({ extraTabs: [], detailsFieldKeys: [] });
+    expect(normalizeLayout({})).toEqual({ pages: [], extraTabs: [], detailsFieldKeys: [] });
+    expect(normalizeLayout({ pages: [] })).toEqual({
+      pages: [],
+      extraTabs: [],
+      detailsFieldKeys: [],
+    });
   });
 
   it('treats the first custom page as Details and skips system pages', () => {
@@ -142,7 +146,9 @@ describe('normalizeLayout', () => {
           label: 'Details',
           pageType: 'custom',
           visible: true,
-          sections: [{ groups: [{ controls: [{ id: 'System.Title', controlType: 'FieldControl' }] }] }],
+          sections: [
+            { groups: [{ controls: [{ id: 'System.Title', controlType: 'FieldControl' }] }] },
+          ],
         },
         {
           id: 'p2',
@@ -154,5 +160,81 @@ describe('normalizeLayout', () => {
       ],
     });
     expect(layout.extraTabs).toEqual([]);
+  });
+
+  it('keeps sections, groups and their kinds: fields, links controls and extensions', () => {
+    const layout = normalizeLayout({
+      pages: [
+        {
+          id: 'p1',
+          label: 'Details',
+          pageType: 'custom',
+          sections: [
+            {
+              id: 'Section1',
+              groups: [
+                {
+                  label: 'Repro Steps',
+                  inherited: true,
+                  controls: [
+                    { id: 'Microsoft.VSTS.TCM.ReproSteps', controlType: 'HtmlFieldControl' },
+                  ],
+                },
+              ],
+            },
+            {
+              id: 'Section3',
+              groups: [
+                {
+                  id: 'g-dev',
+                  label: 'Development',
+                  inherited: true,
+                  controls: [{ controlType: 'LinksControl' }],
+                },
+                {
+                  id: 'g-rel',
+                  label: 'Related Work',
+                  inherited: true,
+                  controls: [{ controlType: 'LinksControl' }],
+                },
+                {
+                  id: 'g-dep',
+                  label: 'Deployment',
+                  isContribution: true,
+                  contribution: { contributionId: 'ms.vss-work-web.work-item-deployments' },
+                },
+                {
+                  id: 'g-cust',
+                  label: 'Customer',
+                  controls: [
+                    {
+                      id: 'Custom.Customer',
+                      label: 'Account',
+                      controlType: 'FieldControl',
+                      readOnly: true,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const [page] = layout.pages;
+    expect(page?.sections.map((s) => s.id)).toEqual(['Section1', 'Section3']);
+    const groups = page!.sections[1]!.groups;
+    expect(groups.map((g) => [g.label, g.kind, g.custom])).toEqual([
+      ['Development', 'development', false],
+      ['Related Work', 'related', false],
+      ['Deployment', 'extension', false],
+      ['Customer', 'fields', true],
+    ]);
+    expect(groups[3]!.controls[0]).toMatchObject({
+      id: 'Custom.Customer',
+      label: 'Account',
+      kind: 'field',
+      readOnly: true,
+    });
   });
 });

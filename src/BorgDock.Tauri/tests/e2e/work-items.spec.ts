@@ -58,8 +58,10 @@ test('a row click opens the full-screen detail and Back returns with the row sel
   const detail = page.getByRole('article', { name: 'Work item AB#9001' });
   await expect(detail).toBeVisible();
   await expect(detail.getByRole('heading', { level: 1, name: 'Bug 1' })).toBeVisible();
-  await expect(detail.locator('.bd-wi-detail__id')).toHaveText('AB#9001');
-  await expect(detail.locator('.bd-wi-type')).toHaveText('Bug');
+  await expect(detail.locator('.bd-wid-id')).toHaveText('AB#9001');
+  await expect(detail.locator('.bd-wid-typepill')).toHaveText(/Bug/);
+  // Every fact once, in the header's fact strip.
+  await expect(detail.locator('[data-wid-facts]')).toContainText('Active');
   await expect(detail.getByRole('tablist')).toBeVisible();
   await expect(detail.getByRole('button', { name: 'Open in ADO' })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('work-items-detail.png') });

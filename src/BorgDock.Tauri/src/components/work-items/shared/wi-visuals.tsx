@@ -1,5 +1,11 @@
 import clsx from 'clsx';
 import { Avatar, type AvatarTone } from '@/components/shared/primitives';
+import type {
+  AdoStateCategory,
+  WorkItemStateMeta,
+  WorkItemTypeMeta,
+} from '@/services/ado/work-item-types';
+import { useWorkItemsStore } from '@/stores/work-items-store';
 
 // ---- maps ----
 
@@ -63,6 +69,90 @@ export const DEFAULT_TYPE_META: TypeMeta = {
   short: 'Item',
 };
 
+/** A glyph for ADO's type icons, for types BorgDock has no entry for. */
+const ICON_GLYPH: Record<string, string> = {
+  icon_insect: '●',
+  icon_book: '▲',
+  icon_clipboard: '■',
+  icon_check_box: '■',
+  icon_list: '▤',
+  icon_crown: '◇',
+  icon_trophy: '◇',
+  icon_diamond: '◆',
+  icon_gift: '◈',
+  icon_chat_bubble: '◉',
+  icon_test_beaker: '▣',
+  icon_test_plan: '▣',
+  icon_test_suite: '▣',
+  icon_test_case: '▣',
+  icon_review: '◎',
+  icon_star: '★',
+  icon_traffic_cone: '▲',
+  icon_government: '◈',
+  icon_parachute: '◈',
+  icon_response: '◉',
+  icon_key: '◈',
+  icon_airplane: '◈',
+  icon_car: '◈',
+};
+
+/**
+ * The glyph and colour of a type: BorgDock's own for the types it knows
+ * (theme tokens), else ADO's colour and icon, else a neutral square.
+ */
+export function typeVisual(type: string, meta?: WorkItemTypeMeta | null): TypeMeta {
+  const known = WI_TYPES[type];
+  if (known) return known;
+  if (!meta) return { ...DEFAULT_TYPE_META, short: type || DEFAULT_TYPE_META.short };
+  return {
+    glyph: (meta.icon && ICON_GLYPH[meta.icon]) || '◈',
+    color: meta.color ?? DEFAULT_TYPE_META.color,
+    short: type,
+  };
+}
+
+const CATEGORY_DOT: Record<AdoStateCategory, string> = {
+  Proposed: STATE_DOT.new,
+  InProgress: STATE_DOT.active,
+  Resolved: STATE_DOT.done,
+  Completed: STATE_DOT.done,
+  Removed: STATE_DOT.closed,
+};
+
+/** A state's dot: BorgDock's token for states it knows, else ADO's colour, else its category's. */
+export function stateDot(state: string, meta?: WorkItemStateMeta | null): string {
+  const known = WI_STATES[state];
+  if (known) return known.dot;
+  if (meta?.color) return meta.color;
+  if (meta?.category) return CATEGORY_DOT[meta.category];
+  return DEFAULT_STATE_META.dot;
+}
+
+/** ADO's description of a type, once the project's types are read. */
+export function useTypeMeta(type: string): WorkItemTypeMeta | null {
+  return useWorkItemsStore((s) => s.workItemTypes?.get(type) ?? null);
+}
+
+function findState(
+  types: Map<string, WorkItemTypeMeta> | null,
+  state: string,
+  type?: string,
+): WorkItemStateMeta | null {
+  if (!types) return null;
+  const own = type ? types.get(type)?.states.find((s) => s.name === state) : undefined;
+  if (own) return own;
+  for (const meta of types.values()) {
+    const found = meta.states.find((s) => s.name === state);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** ADO's description of a state, on `type` when given, else on any type that has it. */
+export function useStateMeta(state: string, type?: string): WorkItemStateMeta | null {
+  return useWorkItemsStore((s) => findState(s.workItemTypes, state, type));
+}
+
 export interface PrioMeta {
   label: string;
   color: string;
@@ -108,7 +198,7 @@ export interface TypeGlyphProps {
 }
 
 export function TypeGlyph({ type, size = 11 }: TypeGlyphProps) {
-  const meta = WI_TYPES[type] ?? DEFAULT_TYPE_META;
+  const meta = typeVisual(type, useTypeMeta(type));
   return (
     <span
       title={type}
@@ -176,6 +266,7 @@ export interface StatePillProps {
 
 export function StatePill({ state, compact }: StatePillProps) {
   const meta = WI_STATES[state] ?? DEFAULT_STATE_META;
+  const dot = stateDot(state, useStateMeta(state));
   return (
     <span
       className={clsx('bd-pill', `bd-pill--${meta.tone}`)}
@@ -194,7 +285,7 @@ export function StatePill({ state, compact }: StatePillProps) {
           width: 6,
           height: 6,
           borderRadius: 999,
-          background: meta.dot,
+          background: dot,
           flexShrink: 0,
         }}
       />

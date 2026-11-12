@@ -66,3 +66,22 @@ export interface WorkItemComment {
   createdDate: string;
   modifiedDate: string;
 }
+
+/** One field's change in a work item update: the value before and after. */
+export interface WorkItemFieldChange {
+  oldValue?: unknown;
+  newValue?: unknown;
+}
+
+/** One revision of a work item, as `wit/workItems/{id}/updates` lists it. */
+export interface WorkItemUpdate {
+  id: number;
+  rev: number;
+  revisedBy: { displayName: string; uniqueName?: string };
+  revisedDate: string;
+  fields?: Record<string, WorkItemFieldChange>;
+  relations?: {
+    added?: WorkItemRelation[];
+    removed?: WorkItemRelation[];
+  };
+}

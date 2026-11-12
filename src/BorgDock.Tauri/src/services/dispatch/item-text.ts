@@ -63,6 +63,20 @@ export function newestNote(html: unknown): ItemNote | null {
 /** `Vera · plan — …`: an agent signs what it posts from someone else's account. */
 const SIGNED = /^([\p{L}][\p{L}.]*) · ([\p{L}-]+) [—-] /u;
 
+/** Who signed a comment's plain text (`Vera · plan — …`) and what it said after the signature. */
+export interface CommentSignature {
+  signer: string;
+  kind: string;
+  body: string;
+}
+
+/** The signature of a comment's plain text, or null when nobody signed it. */
+export function readSignature(text: string): CommentSignature | null {
+  const signed = SIGNED.exec(text.replace(/\n/g, ' '));
+  if (!signed) return null;
+  return { signer: signed[1]!, kind: signed[2]!, body: text.slice(signed[0].length).trim() };
+}
+
 /** A discussion comment as Dispatch shows it. `me` is my display name, when known. */
 export function toItemComment(comment: WorkItemComment, me: string | null): ItemComment {
   const text = htmlToText(comment.text).replace(/\n/g, ' ');

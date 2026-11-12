@@ -21,6 +21,19 @@ export interface ChipPickerProps {
   onChange: (next: string) => void;
   /** Visual preview of the current value (avatar+name, pill, etc). */
   children: ReactNode;
+  /**
+   * `fact`: a segment of the work item header's fact strip, its label above
+   * the value (styles/work-item-detail.css). Default `chip`.
+   */
+  variant?: 'chip' | 'fact';
+  /** Shown as plain text: no button, no menu. */
+  readOnly?: boolean;
+  /** Called when the picker opens, e.g. to load its options. */
+  onOpen?: () => void;
+  /** `fact` only: an action beside the value, outside the picker's button. */
+  trailing?: ReactNode;
+  /** `fact` only: no chevron (the value draws its own affordance). */
+  hideChevron?: boolean;
 }
 
 function normalize(opts: ChipPickerProps['options']): ChipPickerOption[] {
@@ -39,6 +52,11 @@ export function ChipPicker({
   placeholder,
   onChange,
   children,
+  variant = 'chip',
+  readOnly = false,
+  onOpen,
+  trailing,
+  hideChevron = false,
 }: ChipPickerProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -62,6 +80,78 @@ export function ChipPicker({
   function commitFreeText() {
     if (draft !== value) onChange(draft);
     setOpen(false);
+  }
+
+  if (variant === 'fact') {
+    return (
+      <div ref={ref} className="bd-wid-fact" data-open={open || undefined}>
+        {readOnly ? (
+          <div className="bd-wid-fact__btn" data-readonly="">
+            <span className="bd-wid-fact__label">{label}</span>
+            <span className="bd-wid-fact__value">{children}</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="bd-wid-fact__btn"
+            title={label}
+            aria-haspopup={useFreeText ? 'dialog' : 'menu'}
+            aria-expanded={open}
+            onClick={() => {
+              if (!open) onOpen?.();
+              setOpen((o) => !o);
+            }}
+          >
+            <span className="bd-wid-fact__label">{label}</span>
+            <span className="bd-wid-fact__value">
+              {children}
+              {!hideChevron && (
+                <ChevronDown className="bd-wid-fact__chev" size={12} strokeWidth={2} aria-hidden />
+              )}
+            </span>
+          </button>
+        )}
+        {trailing && <span className="bd-wid-fact__trailing">{trailing}</span>}
+        {open && !useFreeText && (
+          <div role="menu" className="bd-wid-fact__menu">
+            {opts.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                role="menuitem"
+                data-current={opt.value === value || undefined}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {open && useFreeText && (
+          <div role="dialog" aria-label={label} className="bd-wid-fact__menu">
+            <input
+              autoFocus
+              className="bd-wid-fact__input"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitFreeText}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitFreeText();
+                else if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  setDraft(value);
+                  setOpen(false);
+                }
+              }}
+              placeholder={placeholder}
+            />
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

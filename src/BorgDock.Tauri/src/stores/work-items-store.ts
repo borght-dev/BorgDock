@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { AdoFieldMeta } from '@/services/ado/fields';
 import type { ProcessLayout } from '@/services/ado/layout';
+import type { WorkItemTypeMeta } from '@/services/ado/work-item-types';
 import type { AdoQuery, WorkItem } from '@/types';
 
 interface WorkItemsState {
@@ -29,6 +30,10 @@ interface WorkItemsState {
    *  attempted to load the layout for this type and it isn't available
    *  (legacy process, missing perms) — don't retry. */
   workItemTypeLayouts: Map<string, ProcessLayout | null>;
+  /** Colour, icon and states of each work item type; null until read. */
+  workItemTypes: Map<string, WorkItemTypeMeta> | null;
+  /** Allowed values per `${type}|${field}`, for the header's type fact. */
+  fieldAllowedValues: Map<string, string[]>;
 
   filteredWorkItems: () => WorkItem[];
   favoriteQueries: () => AdoQuery[];
@@ -57,6 +62,8 @@ interface WorkItemsState {
   setProcessIdResolved: (resolved: boolean) => void;
   setWitTypeRefs: (refs: Map<string, string>) => void;
   setWorkItemTypeLayout: (witFriendlyName: string, layout: ProcessLayout | null) => void;
+  setWorkItemTypes: (types: Map<string, WorkItemTypeMeta> | null) => void;
+  setFieldAllowedValues: (key: string, values: string[]) => void;
 }
 
 function getField(item: WorkItem, field: string): string {
@@ -175,6 +182,8 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
   processIdResolved: false,
   witTypeRefs: new Map<string, string>(),
   workItemTypeLayouts: new Map<string, ProcessLayout | null>(),
+  workItemTypes: null,
+  fieldAllowedValues: new Map<string, string[]>(),
 
   filteredWorkItems: () => filterWorkItems(get().workItems, get()),
 
@@ -281,5 +290,12 @@ export const useWorkItemsStore = create<WorkItemsState>()((set, get) => ({
       const next = new Map(state.workItemTypeLayouts);
       next.set(witFriendlyName, layout);
       return { workItemTypeLayouts: next };
+    }),
+  setWorkItemTypes: (types) => set({ workItemTypes: types }),
+  setFieldAllowedValues: (key, values) =>
+    set((state) => {
+      const next = new Map(state.fieldAllowedValues);
+      next.set(key, values);
+      return { fieldAllowedValues: next };
     }),
 }));

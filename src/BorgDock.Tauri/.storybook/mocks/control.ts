@@ -14,7 +14,7 @@ import type {
 } from '../../src/types/pull-request';
 import type { ReviewThread } from '../../src/types/review-thread';
 import type { Release } from '../../src/types/whats-new';
-import type { WorkItem, WorkItemComment } from '../../src/types/work-item';
+import type { WorkItem, WorkItemComment, WorkItemUpdate } from '../../src/types/work-item';
 
 export interface InvokeRecord {
   command: string;
@@ -46,6 +46,8 @@ export interface WorkItemScenario {
   workItem: WorkItem | null;
   states: string[] | null;
   comments: WorkItemComment[] | null;
+  /** The item's revisions for the Activity tab; null answers an empty list. */
+  updates: WorkItemUpdate[] | null;
   loadBehavior: 'normal' | 'pending' | 'reject';
   loadError: string | null;
   statesBehavior: 'normal' | 'reject';
@@ -202,6 +204,7 @@ function defaultScenario(): WorkItemScenario {
     workItem: null,
     states: null,
     comments: null,
+    updates: null,
     loadBehavior: 'normal',
     loadError: null,
     statesBehavior: 'normal',
