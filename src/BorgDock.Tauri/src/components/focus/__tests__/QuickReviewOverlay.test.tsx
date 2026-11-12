@@ -1013,6 +1013,61 @@ describe('Quick review walk (v2)', () => {
     );
   });
 
+  /** One failing and one passing check on the PR under review. */
+  function failOneCheck() {
+    pr.failedCheckNames = ['e2e (chromium)'];
+    pr.overallStatus = 'red';
+    pr.passedCount = 1;
+    pr.totalCheckCount = 2;
+  }
+  /** Reviews `pr` alone, so it is the one on the card and above the walk. */
+  async function startAlone() {
+    useQuickReviewStore.getState().startSession([pr]);
+    render(<QuickReviewOverlay />);
+    await waitFor(() => expect(filesButton()).toBeEnabled());
+  }
+  function checksCard() {
+    return document.querySelector<HTMLElement>('[data-checks-card]');
+  }
+
+  it('shows the checks when the CI chip is hovered and opens the Checks panel on click', async () => {
+    failOneCheck();
+    await startAlone();
+    openFiles();
+    const chip = within(walk()).getByRole('button', { name: 'CI 1 failing' });
+    expect(checksCard()).toBeNull();
+    fireEvent.mouseEnter(chip);
+    await waitFor(() => expect(checksCard()).not.toBeNull());
+    expect(within(checksCard()!).getByText('e2e (chromium)')).toBeInTheDocument();
+    expect(within(checksCard()!).getByText('1 failing')).toBeInTheDocument();
+    fireEvent.click(chip);
+    expect(within(walk()).getByRole('tab', { name: /Checks/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('opens the walk on the Checks panel from the CI chip on the card', async () => {
+    failOneCheck();
+    await startAlone();
+    expect(screen.queryByRole('region', { name: 'File walk' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'CI 1 failing' }));
+    await waitFor(() => expect(walk()).toBeVisible());
+    expect(within(walk()).getByRole('tab', { name: /Checks/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('keeps the CI chip plain when the PR has no checks', async () => {
+    pr.totalCheckCount = 0;
+    await startAlone();
+    openFiles();
+    expect(within(walk()).getByText('No checks').closest('button')).toBeNull();
+    fireEvent.mouseEnter(within(walk()).getByText('No checks'));
+    expect(checksCard()).toBeNull();
+  });
+
   it('excludes legacy proof comments from the proof tab', async () => {
     onTestFinished(() => {
       vi.mocked(getAllComments).mockResolvedValue([]);

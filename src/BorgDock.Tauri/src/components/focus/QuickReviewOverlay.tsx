@@ -951,6 +951,10 @@ function QuickReviewWorkspace({
     update((d) => ({ ...d, walked: true, step: target }));
     setMode('walk');
   }
+  function openChecksInWalk() {
+    openContext('checks');
+    openWalk();
+  }
   function toCard() {
     setMode('card');
   }
@@ -1536,6 +1540,7 @@ function QuickReviewWorkspace({
               reReview={!!since}
               onOpenComments={() => setCommentsPopup(true)}
               onOpenGitHub={() => void openGitHub()}
+              onOpenChecks={ready && files.length > 0 ? openChecksInWalk : undefined}
             />
             {leaving && <GhostCard key={leaving.id} pr={leaving.pr} gone={leaving.dir} />}
           </div>
@@ -1568,6 +1573,7 @@ function QuickReviewWorkspace({
               onToggleDescription={() => setDescribing((v) => !v)}
               onOpenComments={() => openContext('comments')}
               onOpenGitHub={() => void openGitHub()}
+              onOpenChecks={() => openContext('checks')}
             >
               {since && (
                 <div className="qr-rereview">
