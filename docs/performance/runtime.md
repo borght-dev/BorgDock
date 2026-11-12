@@ -17,7 +17,7 @@ The React Compiler runs through React plugin v6's `reactCompilerPreset` and the 
 
 The production main entry excludes Quick Review, Markdown, CodeMirror and Tree-sitter from its preload graph. The React chunk has higher priority than the optional vendor groups; otherwise dependency capture can put React inside the Markdown chunk and make it eager. This follows [Rolldown's group-priority rules](https://rolldown.rs/reference/TypeAlias.CodeSplittingGroup). Keep optional screens out of eager barrel exports.
 
-PR groups larger than 50 rows use the existing bounded scrolling layout. Keyboard navigation follows every filtered row in group order, including unmounted rows, and skips collapsed groups. Selection scrolls the relevant virtualizer. Small groups retain their transitions.
+PR groups larger than 50 rows use a bounded scrolling layout sized to the list's available height, rather than a fixed pixel cap. Keyboard navigation follows every filtered row in group order, including unmounted rows, and skips collapsed groups. Selection scrolls the relevant virtualizer. Small groups retain their transitions.
 
 Highlighting and file-symbol extraction share a module worker. Tree traversal visits each node once. Highlight requests take priority over background symbol requests. The worker keeps grammar/runtime caches and releases per-request parse trees and parsers. Views abort obsolete requests.
 
