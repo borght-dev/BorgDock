@@ -114,7 +114,7 @@ struct CoverHost: View {
     }
 }
 
-/// `-BorgDockRoute item/59657 | item/59657/<details|activity|…> | start/59463 | start/59463/qa | tab/<today|prs|work|sprint|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<lane|show> | focus/ready | prs/<display|repositories|open/<group id>>` (DEBUG only).
+/// `-BorgDockRoute item/59657 | item/59657/<details|activity|…> | start/59463 | start/59463/qa | tab/<today|prs|work|sprint|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<lane|show> | focus/ready | prs/<display|repositories|open/<group id>> | review/…` (DEBUG only; review/… is ReviewDebugRoute).
 enum DebugRoute {
     @MainActor
     static func apply(to app: AppModel) async {
@@ -163,6 +163,8 @@ enum DebugRoute {
             app.router.scrollTarget = parts[1]
         case "prs":
             await PrListDebugRoute.apply(parts[1], to: app)
+        case "review":
+            await ReviewDebugRoute.apply(parts[1], to: app)
         default:
             break
         }

@@ -3,6 +3,7 @@ import { readdirSync } from 'node:fs';
 
 // BorgDock's fixture modules (e2e/fixtures/*.mjs): each exports `handle({ path, method, query, body, writes })`
 // and returns a result (JSON, or `{ contentType, rawBody }` for a file), or undefined when the route isn't its own. They run before the Dispatch routes below.
+// `{ httpStatus, error }` answers with that status and `{ error }`.
 const fixtureDir = new URL('./fixtures/', import.meta.url);
 const fixtures = await Promise.all(readdirSync(fixtureDir).filter(f => f.endsWith('.mjs')).sort().map(f => import(new URL(f, fixtureDir))));
 
@@ -43,6 +44,7 @@ const server=createServer(async(req,res)=>{
     result = await fixture.handle({ path: url.pathname, method: req.method, query: url.searchParams, body, writes });
     if (result !== undefined) break;
   }
+  if (result?.httpStatus) {res.writeHead(result.httpStatus,{'Content-Type':'application/json'});res.end(JSON.stringify({error:result.error}));return;}
   if (result !== undefined) {}
   else if(url.pathname==='/api/events') {res.writeHead(200,{'Content-Type':'text/event-stream'});res.write(': sample preview\n\n');return;}
   else if(url.pathname==='/api/auth/status')result={authenticated:true,setupRequired:false,session:null};

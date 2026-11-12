@@ -25,8 +25,12 @@ final class FocusStore {
     var reviewStartPath: [String: String] = [:]
     /// The draft and line comments of an unfinished review, by PR key; survives Undo.
     var reviewDrafts: [String: ReviewDraft] = [:]
-    /// An error to show when a refused approval brings its PR back.
-    var reviewErrors: [String: String] = [:]
+    /// What you decided in Quick Review, by PR key: held, posted, or refused with GitHub's reason.
+    var reviewDecisions: [String: ReviewDecisionRecord] = [:]
+    /// Pull requests whose files you've opened since the app started; the others start on their brief.
+    private(set) var openedReviews: Set<String> = []
+    /// The files you've opened in Quick Review, by PR key: a step's green dots.
+    var openedFiles: [String: Set<String>] = [:]
     /// A PR whose approval was undone: Quick Review opens its decision again.
     var reopenDecision: String?
     /// Where the Comments composer posts, by PR key; the conversation when unset.
@@ -46,9 +50,16 @@ final class FocusStore {
     var debugFaceID = false
     var debugPrTab: String?
     var debugReviewPosition: Int?
+    /// Where a Quick Review opens when it isn't a file, e.g. the tests step.
+    var debugReviewStart: [String: ReviewWalk.Position] = [:]
+    var debugShowReviewFiles = false
     #endif
 
     @ObservationIgnored private var loadGeneration = 0
+    /// Quick Review's reads of a pull request's detail and files, in flight or done, so the next PR in the queue is
+    /// read while you review the current one and both views share one request.
+    @ObservationIgnored private var snapshotReads: [String: Task<ReviewSnapshot, Error>] = [:]
+    @ObservationIgnored private var snapshotReadAt: [String: Date] = [:]
 
     init() {}
 
@@ -106,11 +117,8 @@ final class FocusStore {
 
     @discardableResult
     func loadDetail(_ key: PrKey) async -> PrDetail? {
-        guard let api else { return nil }
         do {
-            let detail = try await api.pullRequest(key)
-            details[key.key] = detail
-            return detail
+            return try await fetchDetail(key)
         } catch {
             app?.report(error)
             return nil
@@ -119,15 +127,86 @@ final class FocusStore {
 
     @discardableResult
     func loadFiles(_ key: PrKey) async -> PrFiles? {
-        guard let api else { return nil }
         do {
-            let fresh = try await api.pullRequestFiles(key)
-            files[key.key] = fresh
-            return fresh
+            return try await fetchFiles(key)
         } catch {
             app?.report(error)
             return nil
         }
+    }
+
+    private func fetchDetail(_ key: PrKey) async throws -> PrDetail {
+        guard let api else { throw APIError.network("Signed out.") }
+        let detail = try await api.pullRequest(key)
+        details[key.key] = detail
+        return detail
+    }
+
+    private func fetchFiles(_ key: PrKey) async throws -> PrFiles {
+        guard let api else { throw APIError.network("Signed out.") }
+        let fresh = try await api.pullRequestFiles(key)
+        files[key.key] = fresh
+        return fresh
+    }
+
+    // MARK: - Quick Review reads
+
+    /// A read this recent is still good for the walk; older ones are read again.
+    static let reviewSnapshotFreshFor: TimeInterval = 10 * 60
+
+    /// The detail and files Quick Review walks: the prefetched read when it is recent, else a new one that retries
+    /// once on its own before it fails.
+    func reviewSnapshot(_ key: PrKey) async throws -> ReviewSnapshot {
+        if let read = snapshotReads[key.key], let snapshot = try? await read.value, isFresh(key) { return snapshot }
+        return try await startSnapshotRead(key).value
+    }
+
+    /// Reads the next pull request of the queue while you review this one. Failures stay quiet: the review reads
+    /// it again when you get there.
+    func prefetchReview(_ key: PrKey) {
+        if snapshotReads[key.key] != nil, snapshotReadAt[key.key] == nil || isFresh(key) { return }
+        startSnapshotRead(key)
+    }
+
+    @discardableResult
+    private func startSnapshotRead(_ key: PrKey) -> Task<ReviewSnapshot, Error> {
+        snapshotReadAt[key.key] = nil
+        let read = Task { [weak self] () throws -> ReviewSnapshot in
+            guard let self else { throw CancellationError() }
+            return try await RetryOnce.run {
+                async let detail = self.fetchDetail(key)
+                async let files = self.fetchFiles(key)
+                let snapshot = ReviewSnapshot(detail: try await detail, files: try await files)
+                self.snapshotReadAt[key.key] = .now
+                return snapshot
+            }
+        }
+        snapshotReads[key.key] = read
+        return read
+    }
+
+    private func isFresh(_ key: PrKey) -> Bool {
+        guard let readAt = snapshotReadAt[key.key] else { return false }
+        return Date.now.timeIntervalSince(readAt) < FocusStore.reviewSnapshotFreshFor
+    }
+
+    func markReviewOpened(_ key: PrKey) {
+        openedReviews.insert(key.key)
+    }
+
+    /// The number of another pull request you approved in this review, for "Your approval of #405 isn't affected."
+    func approvalElsewhere(than key: PrKey) -> Int? {
+        if let held = hold.pending.last(where: { $0.key != key }) { return held.key.number }
+        return reviewDecisions
+            .filter { $0.key != key.key && $0.value.event == .approve && $0.value.status == .posted }
+            .max { $0.value.at < $1.value.at }
+            .flatMap { PrKey(key: $0.key)?.number }
+    }
+
+    /// After a decision posts: the pull request as GitHub has it now, and Focus.
+    private func refreshAfterReview(_ key: PrKey) async {
+        _ = try? await fetchDetail(key)
+        await load()
     }
 
     @discardableResult
@@ -203,8 +282,10 @@ final class FocusStore {
         let done = await run("review-\(key.key)") { _ = try await $0.submitReview(key, request) }
         guard done else { return false }
         reviewDrafts[key.key] = nil
+        reviewDecisions[key.key] = ReviewDecisionRecord(event: event, body: draft.body, lineComments: draft.lineComments, headSha: headSha,
+                                                        at: .now, autoMerge: false, status: .posted)
         app?.toasts.show(event == .requestChanges ? "Asked for changes on #\(key.number)" : event == .approve ? "Approved #\(key.number)" : "Commented on #\(key.number)")
-        await load()
+        await refreshAfterReview(key)
         return true
     }
 
@@ -214,18 +295,24 @@ final class FocusStore {
     func approve(_ key: PrKey, draft: ReviewDraft, headSha: String, thenMerge: MergeRequest? = nil, onUndo: @escaping @MainActor () -> Void) async -> Bool {
         guard await confirmWithFaceID("Approve #\(key.number)") else { return false }
         reviewDrafts[key.key] = draft
+        reviewDecisions[key.key] = ReviewDecisionRecord(event: .approve, body: draft.body, lineComments: draft.lineComments, headSha: headSha,
+                                                        at: .now, autoMerge: thenMerge != nil, status: .held)
         let request = SubmitReviewRequest(event: .approve, body: draft.body, headSha: headSha, comments: draft.lineComments)
         hold.hold(
             key,
-            label: "Approving #\(key.number)…",
+            label: "Approving #\(key.number)",
             title: summary(key)?.title,
             send: { [weak self] in
                 guard let api = self?.api else { throw APIError.network("Signed out.") }
                 _ = try await api.submitReview(key, request)
             },
-            onUndo: onUndo,
+            onUndo: { [weak self] in
+                self?.reviewDecisions[key.key] = nil
+                onUndo()
+            },
             onSent: { [weak self] in
                 self?.reviewDrafts[key.key] = nil
+                self?.reviewDecisions[key.key]?.status = .posted
                 self?.app?.toasts.show("Approved #\(key.number)")
                 Task {
                     if let thenMerge, let api = self?.api {
@@ -236,13 +323,13 @@ final class FocusStore {
                             self?.app?.report(error)
                         }
                     }
-                    await self?.load()
+                    await self?.refreshAfterReview(key)
                 }
             },
             onFailure: { [weak self] error in
                 guard let self else { return }
                 let message = (error as? APIError)?.message ?? error.localizedDescription
-                self.reviewErrors[key.key] = "Review not submitted: \(message)"
+                self.reviewDecisions[key.key]?.status = .failed(message)
                 self.app?.toasts.show("Approval of #\(key.number) not submitted. \(message)", isError: true)
                 self.app?.router.review([key])
             }
@@ -298,6 +385,12 @@ final class FocusStore {
             title: "#\(pr.number) \(pr.title)"
         )))
     }
+}
+
+/// A pull request's detail and files, read together for Quick Review.
+struct ReviewSnapshot: Sendable {
+    let detail: PrDetail
+    let files: PrFiles
 }
 
 /// An unfinished review: the overall comment and the line comments, as they'll be sent.

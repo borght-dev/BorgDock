@@ -1083,7 +1083,9 @@ const prRoute = /^\/api\/prs\/([^/]+)\/([^/]+)\/(\d+)(?:\/(.*))?$/;
 const snoozed = new Map();
 
 function focus() {
-  const visible = pullRequests.filter((p) => !snoozed.has(p.key));
+  // 90-review-queue.mjs adds Quick Review's queue, where this file doesn't have those pull requests itself.
+  const queue = (globalThis.borgdockReviewQueue ?? []).filter((q) => !pullRequests.some((p) => p.key === q.key));
+  const visible = [...pullRequests, ...queue].filter((p) => !snoozed.has(p.key));
   const counts = { you: 0, wait: 0, ready: 0, stale: 0 };
   for (const p of visible) counts[p.bucket] += 1;
   return { generatedAt: at(0), counts, pullRequests: visible, agentsWaiting, accounts: [{ login: 'koenvdb', via: 'account', machine: null, ok: true, error: null, polledAt: at(0) }] };
@@ -1103,8 +1105,15 @@ export function handle({ path, method, body, writes }) {
     if (method === 'GET' && rest === 'comments') return conversations[key] ?? { threads: [], comments: [] };
     if (method === 'POST') {
       writes.push({ path, body });
-      if (rest === 'merge') return { merged: !summary.checks.pending, autoMerge: summary.checks.pending > 0, message: summary.checks.pending ? `#${number} merges when its checks pass` : `Merged #${number}` };
-      if (rest === 'reviews') return { ok: true, reviewId: 'R_sample' };
+      if (rest === 'merge') {
+        if (summary.checks.pending) summary.autoMerge = true;
+        return { merged: !summary.checks.pending, autoMerge: summary.checks.pending > 0, message: summary.checks.pending ? `#${number} merges when its checks pass` : `Merged #${number}` };
+      }
+      if (rest === 'reviews') {
+        // A posted approval shows on the next read, as on GitHub: Quick Review reads the PR again after it posts.
+        if (body.event === 'APPROVE') Object.assign(summary, { reviewDecision: 'approved', approvedBy: [...new Set([...summary.approvedBy, summary.account])] });
+        return { ok: true, reviewId: 'R_sample' };
+      }
       if (rest === 'rerun-failed') return { reruns: summary.checks.failed > 0 ? 2 : 0 };
       if (rest === 'snooze') {
         if (body.until) snoozed.set(key, body.until);
