@@ -265,8 +265,51 @@ struct PrFile: Codable, Hashable, Sendable, Identifiable {
     let patch: String?
     /// Touched by a commit after your last review.
     let changedSinceReview: Bool
+    /// How Quick Review walks it; missing from older servers.
+    var category: PrFileCategory? = nil
 
     var id: String { path }
+    /// Source when the server didn't say.
+    var kind: PrFileCategory { category ?? .source }
+}
+
+/// Source files one by one, then tests and generated files as one step each; docs after the source.
+enum PrFileCategory: String, ResilientEnum, CaseIterable {
+    case source, tests, generated, docs
+    static let fallback = PrFileCategory.source
+}
+
+/// GET /api/github/repositories: where the Pull requests list comes from and how much was read.
+struct PrRepositories: Codable, Hashable, Sendable {
+    enum Source: String, ResilientEnum {
+        case desktop, config, none
+        static let fallback = Source.none
+    }
+
+    struct Repository: Codable, Hashable, Sendable, Identifiable {
+        let name: String
+        let open: Int
+        let polledAt: String?
+        let ok: Bool
+        let error: String?
+
+        var id: String { name }
+    }
+
+    let source: Source
+    let desktopName: String?
+    let updatedAt: String?
+    let repositories: [Repository]
+    let includeInvolving: Bool
+    let includeTeamRequests: Bool
+    let polledAt: String?
+    let cutOff: Bool
+}
+
+/// PUT /api/github/repositories/preferences; nil leaves a setting as it is.
+struct PrRepositoryPreferences: Codable, Hashable, Sendable {
+    var includeInvolving: Bool?
+    var includeTeamRequests: Bool?
 }
 
 /// GET /api/prs/:owner/:repo/:number/files

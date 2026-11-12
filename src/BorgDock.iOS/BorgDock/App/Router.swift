@@ -58,7 +58,6 @@ struct LaunchContext: Identifiable, Hashable {
 enum Route: Hashable {
     case pullRequest(PrKey)
     case workItem(ItemRoute)
-    case thread(String)
     case ciGroup(String)
     case workstream(String)
     /// A note by its path inside the vault, e.g. "Daily/2026-10-30.md".
@@ -189,8 +188,11 @@ final class Router {
         open(.activity, in: .today)
     }
 
+    /// An agent link: AppModel resolves it to the agent's pull request, its item, or the thread in T3 Code.
+    @ObservationIgnored var threadOpener: (@MainActor (String) -> Void)?
+
     func openThread(_ id: String) {
-        open(.thread(id), in: .work)
+        threadOpener?(id)
     }
 
     /// Notes live behind Today's notes button; a note opens on top of the vault, so Back shows the rest.

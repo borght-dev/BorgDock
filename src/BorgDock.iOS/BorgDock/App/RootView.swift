@@ -72,7 +72,6 @@ struct RouteView: View {
         switch route {
         case .pullRequest(let key): PullRequestView(key: key)
         case .workItem(let item): ItemDetailView(route: item)
-        case .thread(let id): ThreadView(id: id)
         case .ciGroup(let id): CiGroupView(id: id)
         case .workstream(let id): WorkstreamView(id: id)
         case .note(let path): NoteView(path: path)

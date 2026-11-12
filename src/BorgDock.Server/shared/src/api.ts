@@ -137,8 +137,58 @@ export type ItemDetail = {
   reproSteps: string;
   /** The team's custom "QA Notes" field (Custom.QANotes), as plain text. */
   qaNotes: string;
-  comments: { by: string; at: string; text: string }[];
+  comments: ItemComment[];
+  /** The rich-text fields as GitHub-flavoured markdown. Images point at signed /api/items/:id/attachments/… URLs. */
+  markdown?: ItemMarkdown;
+  /** Newest first, from the item's revisions. */
+  history?: ItemHistoryEvent[];
+  /** Every pull request linked to the item (ADO links and AB# mentions), its own first. */
+  pullRequests?: ItemPullRequest[];
+  parent?: { id: number; title: string; typeName: string } | null;
+  effort?: number | null;
+  areaPath?: string | null;
+  attachments?: ItemAttachment[];
 };
+
+export type ItemComment = {
+  id?: number;
+  by: string;
+  at: string;
+  /** Plain text, for older apps. */
+  text: string;
+  /** The comment as markdown. */
+  markdown?: string;
+};
+
+export type ItemMarkdown = { description: string; acceptanceCriteria: string; reproSteps: string; qaNotes: string; developerNotes: string };
+
+export type ItemHistoryEvent = {
+  at: string;
+  by: string;
+  kind: 'created' | 'state' | 'assigned' | 'pullRequest';
+  from: string | null;
+  to: string | null;
+  /** For kind 'pullRequest': the PR number linked. */
+  pullRequest?: number | null;
+};
+
+export type ItemPullRequest = PullRequest & {
+  /** owner/repo when known. */
+  repository: string | null;
+  /** Its title or branch names the item: the item's own pull request. */
+  own: boolean;
+  /** Linked on several of my items without naming any of them (an epic's plan PR). */
+  shared: boolean;
+  author: string | null;
+  updatedAt: string | null;
+};
+
+/** `url` is a signed server path (/api/items/:id/attachments/:guid?…) that loads without an Authorization header. */
+export type ItemAttachment = { name: string; url: string; size: number | null };
+
+/** POST /api/items/:id/comments */
+export type PostItemCommentRequest = { text: string };
+export type PostItemCommentResponse = { comment: ItemComment };
 
 export type BrowseQuery = { id: string; name: string; group: string };
 

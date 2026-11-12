@@ -55,21 +55,7 @@ struct PrOverviewTab: View {
             } else if !detail.threads.isEmpty {
                 PrSectionLabel(title: "Agents on this branch")
                 PrGroupCard(indent: 16) {
-                    ForEach(detail.threads) { thread in
-                        Button { app.router.push(.thread(thread.id)) } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(thread.title).font(.system(size: 16)).foregroundStyle(BD.text).lineLimit(1)
-                                    Text(verbatim: "\(thread.status.sentence) · \(ShortTime.age(thread.lastActivityAt))").font(.system(size: 13.5)).foregroundStyle(BD.text2)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right").foregroundStyle(BD.text3)
-                            }
-                            .padding(14)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    ForEach(detail.threads) { AgentRow(thread: $0) }
                 }
                 .padding(.horizontal, 16)
             }

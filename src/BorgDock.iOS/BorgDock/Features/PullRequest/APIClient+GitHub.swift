@@ -33,6 +33,13 @@ extension APIClient {
         try await post(key.apiPath + "/snooze", body: SnoozeRequest(until: until.map { $0.formatted(.iso8601) }))
     }
 
+    /// Which repositories the Pull requests list reads, and how much it read.
+    func repositories() async throws -> PrRepositories { try await get("/api/github/repositories") }
+
+    func setRepositoryPreferences(_ preferences: PrRepositoryPreferences) async throws -> PrRepositories {
+        try await put("/api/github/repositories/preferences", body: preferences)
+    }
+
     func ciGroup(_ id: String) async throws -> CiFailureGroup { try await get("/api/ci/groups/\(Self.pathComponent(id))") }
 
     func claimCiGroup(_ id: String, note: String?) async throws -> CiFailureGroup {

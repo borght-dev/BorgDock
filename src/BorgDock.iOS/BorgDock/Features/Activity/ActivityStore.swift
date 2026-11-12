@@ -108,6 +108,10 @@ final class ActivityStore {
     /// Tapping an entry: read it, then land on its pull request, item, thread or CI group.
     func open(_ entry: ActivityEntry) {
         Task { await markRead(entry) }
+        if case .thread(let id, _) = entry.target {
+            app?.openThread(id)
+            return
+        }
         guard let route = entry.target.route else { return }
         app?.router.push(route)
     }
@@ -160,7 +164,7 @@ extension ActivityTarget {
         switch self {
         case .pr(let key): PrKey(key: key).map(Route.pullRequest)
         case .item(let id): .workItem(ItemRoute(id: id))
-        case .thread(let id, _): .thread(id)
+        case .thread: nil
         case .ci(let groupId): .ciGroup(groupId)
         case .none: nil
         }

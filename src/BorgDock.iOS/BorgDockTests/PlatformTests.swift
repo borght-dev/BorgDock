@@ -290,7 +290,7 @@ final class ActivityTests: XCTestCase {
         XCTAssertEqual(targets.map(\.route), [
             .pullRequest(PrKey(owner: "acme", repo: "shop", number: 12)),
             .workItem(ItemRoute(id: 5)),
-            .thread("t"),
+            nil,
             .ciGroup("g"),
             nil,
         ])

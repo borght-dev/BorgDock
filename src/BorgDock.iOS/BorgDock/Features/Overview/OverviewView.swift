@@ -86,8 +86,7 @@ struct OverviewView: View {
             CellGroupHeader(title: "Threads without an item", trailing: String(overview.unlinkedThreads.count))
             CellGroup(indent: 16) {
                 ForEach(overview.unlinkedThreads) { unlinked in
-                    Button { app.router.push(.thread(unlinked.thread.id)) } label: { UnlinkedThreadRow(thread: unlinked.thread) }
-                        .buttonStyle(.plain)
+                    AgentRow(thread: unlinked.thread, subject: unlinked.thread.branch)
                 }
             }
         }
@@ -241,30 +240,6 @@ struct VerdictChip: View {
         .frame(height: 25)
         .background(verdict.tone.soft, in: Capsule())
         .fixedSize()
-    }
-}
-
-private struct UnlinkedThreadRow: View {
-    let thread: ThreadSummary
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "cpu").font(.system(size: 18)).foregroundStyle(BD.accent).frame(width: 24)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(thread.title).font(.system(size: 16, weight: .medium)).foregroundStyle(BD.text).lineLimit(1)
-                Text([thread.environmentLabel, thread.branch ?? thread.worktree].compactMap { $0 }.joined(separator: " · "))
-                    .font(.system(size: 13.5)).foregroundStyle(BD.text2).lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            if let label = thread.needsYouLabel {
-                ToneChip(text: label, tone: .bad, small: true)
-            } else if thread.status == .running {
-                ToneChip(text: "Running", tone: .run, small: true)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .contentShape(Rectangle())
     }
 }
 

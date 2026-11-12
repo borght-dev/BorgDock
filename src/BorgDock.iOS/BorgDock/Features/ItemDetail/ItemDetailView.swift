@@ -158,14 +158,9 @@ struct ItemDetailView: View {
                     .buttonStyle(.plain)
                 }
                 if let thread {
-                    Button { app.router.push(.thread(thread.id)) } label: {
-                        Cell(title: [thread.branch ?? thread.worktree, thread.environmentLabel].compactMap { $0 }.joined(separator: " · "),
-                             subtitle: threadLine(thread), chevron: true) {
-                            Image(systemName: "cpu").font(.system(size: 19)).foregroundStyle(BD.accent).frame(width: 24)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("item-thread")
+                    Button { app.openThread(thread.id) } label: { AgentRow(thread: thread) }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("item-thread")
                 }
             }
         }
@@ -300,12 +295,6 @@ struct ItemDetailView: View {
     private func pullRequestLine(_ pullRequest: PullRequest) -> String {
         [pullRequest.state.label, pullRequest.isDraft ? "draft" : nil, pullRequest.checks.map { "checks \($0.lowercased())" }]
             .compactMap { $0 }.joined(separator: " · ")
-    }
-
-    private func threadLine(_ thread: ThreadSummary) -> String {
-        let status = thread.needsYouLabel ?? thread.status.sentence
-        let quote = thread.lastAgentMessage.map { " · \"\(WalkDisplay.oneLine($0).prefix(60))\"" } ?? ""
-        return "\(status) \(CompactTime.ago(thread.lastActivityAt))\(quote)"
     }
 }
 

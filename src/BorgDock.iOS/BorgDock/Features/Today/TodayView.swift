@@ -128,7 +128,7 @@ struct TodayView: View {
     private func open(_ target: UpNextEntry.Target) {
         switch target {
         case .pullRequest(let pr): app.router.push(.pullRequest(pr.prKey))
-        case .thread(let id): app.router.push(.thread(id))
+        case .thread(let id): app.openThread(id)
         }
     }
 
