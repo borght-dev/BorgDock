@@ -208,50 +208,52 @@ export function PrViewTabs({ pending, counts, savedCounts, onPick }: PrViewTabsP
     pending ?? (activeId ? { kind: 'saved', id: activeId } : { kind: 'builtIn', key: filter });
 
   return (
-    <div className="bd-prl-tabs" role="tablist" aria-label="Pull request views">
-      {BUILT_IN_VIEWS.map((v) => {
-        const on = chosen.kind === 'builtIn' && chosen.key === v.key;
-        return (
-          <button
-            key={v.key}
-            type="button"
-            role="tab"
-            aria-selected={on}
-            className={clsx('bd-prl-tab', on && 'bd-prl-tab--on')}
-            data-view-key={v.key}
-            onClick={() => {
-              if (!on) onPick({ kind: 'builtIn', key: v.key });
-            }}
-          >
-            {v.label}
-            <span className="bd-prl-tab__count">{counts[v.key]}</span>
-          </button>
-        );
-      })}
-      {savedViews.map((v) => {
-        const on = chosen.kind === 'saved' && chosen.id === v.id;
-        return (
-          <span key={v.id} className="bd-prl-tab__wrap">
+    <div className="bd-prl-views">
+      <div className="bd-prl-tabs" role="tablist" aria-label="Pull request views">
+        {BUILT_IN_VIEWS.map((v) => {
+          const on = chosen.kind === 'builtIn' && chosen.key === v.key;
+          return (
             <button
+              key={v.key}
               type="button"
               role="tab"
               aria-selected={on}
               className={clsx('bd-prl-tab', on && 'bd-prl-tab--on')}
-              data-saved-view={v.id}
+              data-view-key={v.key}
               onClick={() => {
-                if (!on) onPick({ kind: 'saved', id: v.id });
+                if (!on) onPick({ kind: 'builtIn', key: v.key });
               }}
             >
-              {v.name}
-              <span className="bd-prl-tab__count">{savedCounts[v.id] ?? 0}</span>
-              {on && edited && (
-                <span className="bd-prl-tab__edited" role="img" aria-label="Unsaved changes" />
-              )}
+              {v.label}
+              <span className="bd-prl-tab__count">{counts[v.key]}</span>
             </button>
-            {on && <SavedViewMenu id={v.id} name={v.name} edited={edited} />}
-          </span>
-        );
-      })}
+          );
+        })}
+        {savedViews.map((v) => {
+          const on = chosen.kind === 'saved' && chosen.id === v.id;
+          return (
+            <span key={v.id} className="bd-prl-tab__wrap">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={on}
+                className={clsx('bd-prl-tab', on && 'bd-prl-tab--on')}
+                data-saved-view={v.id}
+                onClick={() => {
+                  if (!on) onPick({ kind: 'saved', id: v.id });
+                }}
+              >
+                {v.name}
+                <span className="bd-prl-tab__count">{savedCounts[v.id] ?? 0}</span>
+                {on && edited && (
+                  <span className="bd-prl-tab__edited" role="img" aria-label="Unsaved changes" />
+                )}
+              </button>
+              {on && <SavedViewMenu id={v.id} name={v.name} edited={edited} />}
+            </span>
+          );
+        })}
+      </div>
       <SaveViewButton />
     </div>
   );

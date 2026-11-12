@@ -241,7 +241,7 @@ export const commands = {
 	 *  Run a short, non-interactive agent task. Prompts are sent over stdin so
 	 *  secrets and large PR bodies do not appear in the process list.
 	 */
-	runHeadlessPrompt: (request: HeadlessPromptRequest_Deserialize) => typedError<HeadlessPromptResult, string>(__TAURI_INVOKE("run_headless_prompt", { request })),
+	runHeadlessPrompt: (request: HeadlessPromptRequest_Deserialize) => typedError<HeadlessPromptResult_Serialize, string>(__TAURI_INVOKE("run_headless_prompt", { request })),
 	agentProviderAvailability: (claudePath: string | null, codexPath: string | null) => __TAURI_INVOKE<AgentAvailability>("agent_provider_availability", { claudePath, codexPath }),
 	/**  Whether T3 answers, and whether it still accepts BorgDock's token. */
 	t3Probe: (host: HostRef_Deserialize | null) => __TAURI_INVOKE<T3Probe_Serialize>("t3_probe", { host }),
@@ -2105,6 +2105,7 @@ export type HeadlessPromptRequest_Deserialize = {
 	effort?: string | null,
 	/**  Codex's fast service tier. Claude has none and ignores it. */
 	fast?: boolean | null,
+	sources?: PromptSource[] | null,
 };
 
 export type HeadlessPromptRequest_Serialize = {
@@ -2118,13 +2119,25 @@ export type HeadlessPromptRequest_Serialize = {
 	effort: string | null,
 	/**  Codex's fast service tier. Claude has none and ignores it. */
 	fast: boolean | null,
+	sources: PromptSource[] | null,
 };
 
-export type HeadlessPromptResult = {
+export type HeadlessPromptResult = HeadlessPromptResult_Serialize | HeadlessPromptResult_Deserialize;
+
+export type HeadlessPromptResult_Deserialize = {
 	text: string,
 	provider: string,
 	model: string,
 	durationMs: number,
+	reads?: SourceRead[] | null,
+};
+
+export type HeadlessPromptResult_Serialize = {
+	text: string,
+	provider: string,
+	model: string,
+	durationMs: number,
+	reads: SourceRead[] | null,
 };
 
 export type HostDisks = HostDisks_Serialize | HostDisks_Deserialize;
@@ -2562,6 +2575,11 @@ export type ProjectDto_Serialize = {
 	repository: RepositoryDto_Serialize | null,
 };
 
+export type PromptSource = {
+	id: string,
+	text: string,
+};
+
 export type ProviderDto = {
 	instanceId: string,
 	driver: string,
@@ -2996,6 +3014,12 @@ export type Snapshot_Serialize = {
 	sequence: number,
 	projects: ProjectDto_Serialize[],
 	threads: ThreadDto_Serialize[],
+};
+
+export type SourceRead = {
+	id: string,
+	/**  One-based snapshot line numbers returned by successful read tools. */
+	lines: number[],
 };
 
 export type SqlColumn = {

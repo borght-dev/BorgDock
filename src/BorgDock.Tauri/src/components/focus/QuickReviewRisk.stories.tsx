@@ -108,6 +108,19 @@ export const Unknown: Story = {
   },
 };
 
+export const PartialRead: Story = {
+  args: {
+    view: {
+      kind: 'ready',
+      assessment: refundAssessment({
+        answer: UNKNOWN_ANSWER,
+        reads: [{ id: 'file-1', lines: [1, 2, 3, 4] }],
+      }),
+    },
+  },
+  globals: { theme: 'light' },
+};
+
 /** Assessing: no level until there is one. */
 export const Assessing: Story = {
   args: {

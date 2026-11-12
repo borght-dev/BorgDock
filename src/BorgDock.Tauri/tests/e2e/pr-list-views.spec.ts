@@ -92,6 +92,67 @@ async function boot(page: Page) {
 const rows = (page: Page) => page.locator('.bd-wb-list .bd-wb-row');
 const search = (page: Page) => page.getByRole('textbox', { name: 'Filter pull requests' });
 
+for (const menu of ['group', 'sort']) {
+  test(`${menu} menu rows contain their wrapped descriptions`, async ({ page }) => {
+    await boot(page);
+    await page.locator(`[data-${menu}-button]`).click();
+    const items = page.getByRole('menuitemradio');
+    await expect(items.first()).toBeVisible();
+    const overflowing = await items.evaluateAll((buttons) =>
+      buttons.flatMap((button) => {
+        const row = button.getBoundingClientRect();
+        const text = button.querySelector('.bd-prl-radio__text')!.getBoundingClientRect();
+        return text.top < row.top || text.bottom > row.bottom
+          ? [button.textContent]
+          : [];
+      }),
+    );
+    await page.screenshot({ path: `test-results/pr-${menu}-menu.png` });
+    expect(overflowing).toEqual([]);
+  });
+}
+
+test('save view stays visible when the view tabs overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 620, height: 900 });
+  await boot(page);
+  expect(
+    await page.getByRole('tablist', { name: 'Pull request views' }).evaluate(
+      (tabs) => tabs.scrollWidth > tabs.clientWidth,
+    ),
+  ).toBe(true);
+  const save = page.getByRole('button', { name: /^View$/ });
+  await expect(save).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: 'test-results/pr-save-view.png' });
+  await save.click();
+  await page.getByRole('textbox', { name: 'View name' }).fill('Narrow view');
+  await page.getByRole('button', { name: 'Save view' }).click();
+  await expect(page.getByRole('tab', { name: /^Narrow view/ })).toHaveAttribute(
+    'aria-selected', 'true',
+  );
+});
+
+test('large groups use the available list height and resize with the window', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1400 });
+  await boot(page);
+  await seedMainWindow(page, {
+    prs: Array.from({ length: 56 }, (_, index) => makePr({ number: index + 1, author: 'mira' })),
+  });
+  await page.locator('[data-group-button]').click();
+  await page.getByRole('menuitemradio', { name: /^Author/ }).click();
+  const virtual = page.locator('[data-virtual-prs="56"]');
+  await expect(virtual).toBeVisible();
+  const availableHeight = () => page.locator('.bd-wb-list').evaluate((list) => list.clientHeight);
+  await expect.poll(async () => (await virtual.boundingBox())!.height).toBeGreaterThan(
+    (await availableHeight()) - 30,
+  );
+  await page.screenshot({ path: 'test-results/pr-group-height.png' });
+  await page.setViewportSize({ width: 1440, height: 600 });
+  await expect.poll(async () => (await virtual.boundingBox())!.height).toBeLessThanOrEqual(
+    await availableHeight(),
+  );
+  expect(await virtual.locator('.bd-wb-row').count()).toBeLessThan(56);
+});
+
 test('qualifiers in the search become chips; × removes one', async ({ page }) => {
   await boot(page);
   await search(page).fill('repo:site author:jules');

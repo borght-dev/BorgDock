@@ -1,4 +1,4 @@
-import { commands } from '@/generated/commands';
+import { commands, type PromptSource } from '@/generated/commands';
 import { commandData } from '@/services/native-command';
 import type { AgentProvider, AppSettings, PullRequest } from '@/types';
 
@@ -26,6 +26,7 @@ export interface SummaryRun {
   prompt: string;
   cwd?: string | null;
   timeoutSeconds: number;
+  sources?: PromptSource[];
 }
 
 /**
@@ -48,6 +49,7 @@ export function runSummaryAgent(settings: AppSettings, run: SummaryRun) {
       timeoutSeconds: run.timeoutSeconds,
       effort: effort && SUMMARY_EFFORTS[provider].includes(effort) ? effort : null,
       fast: provider === 'codex' && !!summaries?.fast,
+      sources: run.sources ?? null,
     }),
   );
 }

@@ -122,7 +122,7 @@ const ANSWER = {
 function guideAnswer(text = JSON.stringify(ANSWER)) {
   return {
     status: 'ok' as const,
-    data: { text, provider: 'claude', model: 'sonnet', durationMs: 900 },
+    data: { text, provider: 'claude', model: 'sonnet', durationMs: 900, reads: null },
   };
 }
 

@@ -3,6 +3,9 @@ use std::process::Stdio;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 
+mod sources;
+use sources::{neutral_directory, PromptSource, SourceBundle, SourceRead};
+
 #[derive(Debug, Deserialize)]
 #[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -17,6 +20,7 @@ pub struct HeadlessPromptRequest {
     pub effort: Option<String>,
     /// Codex's fast service tier. Claude has none and ignores it.
     pub fast: Option<bool>,
+    pub sources: Option<Vec<PromptSource>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -35,6 +39,7 @@ pub struct HeadlessPromptResult {
     pub provider: String,
     pub model: String,
     pub duration_ms: u64,
+    pub reads: Option<Vec<SourceRead>>,
 }
 
 fn hidden_tokio_command(program: &str) -> tokio::process::Command {
@@ -85,6 +90,13 @@ fn effort_of<'a>(requested: Option<&'a str>, allowed: &[&str]) -> Option<&'a str
     requested.filter(|effort| allowed.contains(effort))
 }
 
+fn configure_codex_sandbox(command: &mut tokio::process::Command) {
+    command.args(["-s", "read-only"]);
+    // Ignoring user config also removes Windows' sandbox backend selection.
+    #[cfg(windows)]
+    command.args(["-c", "windows.sandbox=\"elevated\""]);
+}
+
 /// The arguments of a headless Claude run. The prompt goes in over stdin.
 ///
 /// `--bare` deliberately is not used: current Claude Code disables
@@ -130,23 +142,25 @@ fn claude_args(model: Option<&str>, effort: Option<&str>, checkout: Option<&str>
     args
 }
 
-/// An empty folder to start Claude in.
-async fn neutral_directory() -> Result<std::path::PathBuf, String> {
-    let directory = std::env::temp_dir().join("borgdock-summary-agent");
-    tokio::fs::create_dir_all(&directory)
-        .await
-        .map_err(|e| format!("Failed to create {}: {e}", directory.display()))?;
-    Ok(directory)
-}
-
 fn parse_claude_output(bytes: &[u8]) -> Result<String, String> {
-    let value: serde_json::Value =
-        serde_json::from_slice(bytes).map_err(|e| format!("Claude returned invalid JSON: {e}"))?;
+    let value =
+        claude_result(bytes).ok_or_else(|| "Claude returned no result event".to_string())?;
     value["result"]
         .as_str()
         .filter(|text| !text.trim().is_empty())
         .map(str::to_owned)
         .ok_or_else(|| "Claude returned no result".to_string())
+}
+
+fn claude_result(bytes: &[u8]) -> Option<serde_json::Value> {
+    if let Ok(value) = serde_json::from_slice::<serde_json::Value>(bytes) {
+        return Some(value);
+    }
+    String::from_utf8_lossy(bytes)
+        .lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .filter(|event| event["type"] == "result")
+        .last()
 }
 
 fn parse_codex_output(bytes: &[u8]) -> Result<String, String> {
@@ -196,7 +210,7 @@ fn codex_failure(stdout: &[u8]) -> Option<String> {
 
 /// The result text of a Claude run that reports `is_error`.
 fn claude_failure(stdout: &[u8]) -> Option<String> {
-    let value: serde_json::Value = serde_json::from_slice(stdout).ok()?;
+    let value = claude_result(stdout)?;
     if value["is_error"].as_bool() != Some(true) {
         return None;
     }
@@ -222,7 +236,7 @@ fn stderr_tail(stderr: &[u8]) -> String {
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
 pub async fn run_headless_prompt(
-    request: HeadlessPromptRequest,
+    mut request: HeadlessPromptRequest,
 ) -> Result<HeadlessPromptResult, String> {
     let started = std::time::Instant::now();
     let provider = request.provider.to_lowercase();
@@ -232,15 +246,30 @@ pub async fn run_headless_prompt(
         .filter(|v| !v.trim().is_empty())
         .unwrap_or_else(|| provider.clone());
     let checkout = request.cwd.as_deref().filter(|v| !v.is_empty());
+    let bundle = request
+        .sources
+        .as_ref()
+        .map(|sources| SourceBundle::create(sources, &mut request.prompt))
+        .transpose()?;
     let mut command = hidden_tokio_command(&executable);
     match provider.as_str() {
         "claude" => {
-            command.args(claude_args(
+            let mut args = claude_args(
                 request.model.as_deref(),
                 request.effort.as_deref(),
                 checkout,
-            ));
-            command.current_dir(neutral_directory().await?);
+            );
+            if bundle.is_some() {
+                let format = args
+                    .iter()
+                    .position(|arg| arg == "--output-format")
+                    .unwrap()
+                    + 1;
+                args[format] = "stream-json".into();
+                args.push("--verbose".into());
+            }
+            command.args(args);
+            command.current_dir(neutral_directory()?);
         }
         "codex" => {
             // A summary reads the prompt and answers. The user's config.toml
@@ -251,8 +280,7 @@ pub async fn run_headless_prompt(
                 "exec",
                 "--json",
                 "--ephemeral",
-                "-s",
-                "read-only",
+                "--skip-git-repo-check",
                 "--ignore-user-config",
                 "--disable",
                 "computer_use",
@@ -261,6 +289,7 @@ pub async fn run_headless_prompt(
                 "--disable",
                 "apps",
             ]);
+            configure_codex_sandbox(&mut command);
             if let Some(model) = request.model.as_deref().filter(|v| !v.is_empty()) {
                 command.args(["--model", model]);
             }
@@ -275,6 +304,8 @@ pub async fn run_headless_prompt(
             command.arg("-");
             if let Some(checkout) = checkout {
                 command.current_dir(checkout);
+            } else {
+                command.current_dir(neutral_directory()?);
             }
         }
         _ => {
@@ -322,17 +353,101 @@ pub async fn run_headless_prompt(
         "codex" => parse_codex_output(&output.stdout),
         _ => unreachable!(),
     }?;
+    let reads = bundle
+        .as_ref()
+        .map(|bundle| bundle.reads(&provider, &output.stdout));
     Ok(HeadlessPromptResult {
         text,
         provider,
         model: requested_model,
         duration_ms: started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64,
+        reads,
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn codex_uses_read_only_sandbox_with_a_windows_backend() {
+        let mut command = tokio::process::Command::new("codex");
+        configure_codex_sandbox(&mut command);
+        let args: Vec<_> = command.as_std().get_args().collect();
+        assert!(args.windows(2).any(|pair| pair == ["-s", "read-only"]));
+        #[cfg(windows)]
+        assert!(args
+            .windows(2)
+            .any(|pair| pair == ["-c", "windows.sandbox=\"elevated\""]));
+    }
+
+    #[tokio::test]
+    #[ignore = "uses an installed, authenticated subscription CLI"]
+    async fn installed_provider_reads_snapshot_with_auditable_tool_output() {
+        let provider = std::env::var("BORGDOCK_TEST_PROVIDER").unwrap();
+        let result = run_headless_prompt(HeadlessPromptRequest {
+            provider,
+            prompt: "Read every line of {{source:file-1}} with your read tools. Return DONE after reading it. Do not modify files or run tests.".into(),
+            cwd: None, model: None,
+            executable: std::env::var("BORGDOCK_TEST_EXECUTABLE").ok(),
+            timeout_seconds: Some(120), effort: None, fast: None,
+            sources: Some(vec![PromptSource { id: "file-1".into(), text: "Synthetic review snapshot.\nA new guard checks that the ID matches.\nExisting actions stay disabled until it does.".into() }]),
+        }).await.unwrap();
+        assert!(result.text.contains("DONE"), "{}", result.text);
+        assert_eq!(result.reads.unwrap()[0].lines, vec![1, 2, 3]);
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn snapshots_are_read_through_cli_tools_and_cleaned_for_both_providers() {
+        let root = tempfile::tempdir().unwrap();
+        let script = root.path().join("fake-agent.ps1");
+        std::fs::write(&script, r#"
+$prompt = [Console]::In.ReadToEnd()
+$path = $prompt.Substring(5) | ConvertFrom-Json
+$content = [IO.File]::ReadAllText($path)
+if ($args -contains 'claude') {
+  @{type='assistant';message=@{content=@(@{type='tool_use';id='r';name='Read'})}} | ConvertTo-Json -Depth 8 -Compress
+  @{type='user';message=@{content=@(@{type='tool_result';tool_use_id='r';content=$content})}} | ConvertTo-Json -Depth 8 -Compress
+  @{type='result';result=$path} | ConvertTo-Json -Compress
+} else {
+  @{type='item.completed';item=@{type='command_execution';status='completed';exit_code=0;aggregated_output=$content}} | ConvertTo-Json -Depth 8 -Compress
+  @{type='item.completed';item=@{type='agent_message';text=$path}} | ConvertTo-Json -Depth 8 -Compress
+}
+"#).unwrap();
+        let shim = root.path().join("fake-agent.cmd");
+        for provider in ["claude", "codex"] {
+            std::fs::write(
+                &shim,
+                format!(
+                "@powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"{}\" {provider}\r\n",
+                script.display()
+            ),
+            )
+            .unwrap();
+            let result = run_headless_prompt(HeadlessPromptRequest {
+                provider: provider.into(),
+                prompt: "Read {{source:file-1}}".into(),
+                cwd: None,
+                model: None,
+                executable: Some(shim.to_string_lossy().into()),
+                timeout_seconds: Some(30),
+                effort: None,
+                fast: None,
+                sources: Some(vec![PromptSource {
+                    id: "file-1".into(),
+                    text: "first\nlast".into(),
+                }]),
+            })
+            .await
+            .unwrap();
+            assert_eq!(result.reads.unwrap()[0].lines, vec![1, 2], "{provider}");
+            assert!(
+                !std::path::Path::new(&result.text).exists(),
+                "snapshot survived {provider} completion"
+            );
+        }
+    }
 
     #[cfg(windows)]
     #[tokio::test]
@@ -367,6 +482,13 @@ mod tests {
         assert_eq!(
             parse_claude_output(br#"{"result":"summary"}"#).unwrap(),
             "summary"
+        );
+        assert_eq!(
+            parse_claude_output(
+                b"{\"type\":\"assistant\"}\n{\"type\":\"result\",\"result\":\"streamed\"}\n"
+            )
+            .unwrap(),
+            "streamed"
         );
     }
 

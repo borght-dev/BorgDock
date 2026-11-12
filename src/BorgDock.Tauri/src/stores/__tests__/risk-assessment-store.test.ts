@@ -12,6 +12,7 @@ import { commands } from '@/generated/commands';
 import { loadTabData, saveTabData } from '@/services/cache';
 import { getTextFileAtRef } from '@/services/github/contents';
 import type { ReviewSnapshot } from '@/services/quick-review';
+import { planRiskPrompt, riskPromptSources } from '@/services/risk-assessment';
 import {
   ensureRiskAssessment,
   type RiskEntry,
@@ -44,10 +45,22 @@ vi.mock('@/stores/pr-store', () => ({
 
 type Reply = Awaited<ReturnType<typeof commands.runHeadlessPrompt>>;
 
-function reply(answer: unknown = REFUND_ANSWER): Reply {
+function reply(answer: unknown = REFUND_ANSWER, withReads = true): Reply {
+  const input = { pr: refundPr(), files: REFUND_FILES, commits: [] };
   return {
     status: 'ok',
-    data: { text: JSON.stringify(answer), provider: 'claude', model: 'sonnet', durationMs: 900 },
+    data: {
+      text: JSON.stringify(answer),
+      provider: 'claude',
+      model: 'sonnet',
+      durationMs: 900,
+      reads: withReads
+        ? riskPromptSources(input, planRiskPrompt(input)).map((source) => ({
+            id: source.id,
+            lines: source.text.split('\n').map((_, i) => i + 1),
+          }))
+        : null,
+    },
   } as Reply;
 }
 
@@ -113,6 +126,27 @@ afterEach(() => {
 });
 
 describe('ensureRiskAssessment', () => {
+  it('sends complete snapshots separately and cannot report Low without read telemetry', async () => {
+    vi.mocked(commands.runHeadlessPrompt).mockResolvedValueOnce(
+      reply(
+        {
+          verdict: 'assessed',
+          headline: 'No regressions found.',
+          reasons: [],
+        },
+        false,
+      ),
+    );
+    const pr = refundPr();
+    await ensureRiskAssessment(snapshot(pr));
+    const request = vi.mocked(commands.runHeadlessPrompt).mock.calls[0]![0];
+    expect(request.prompt).not.toContain('const remaining');
+    expect(request.sources?.[0]?.text).toContain('const remaining');
+    const ready = entry(pr);
+    expect(ready?.status === 'ready' && ready.assessment.level).toBe('unknown');
+    expect(ready?.status === 'ready' && ready.assessment.files[0]?.nameOnly).toBe('unread');
+  });
+
   it('assesses a head once, however often it is asked, and caches it by head', async () => {
     const pr = refundPr();
     await Promise.all([ensureRiskAssessment(snapshot(pr)), ensureRiskAssessment(snapshot(pr))]);
@@ -230,6 +264,19 @@ describe('ensureRiskAssessment', () => {
 });
 
 describe('heads', () => {
+  it('reassesses cached inline-prompt coverage after the snapshot protocol upgrade', async () => {
+    cache.set(4821, {
+      data: { ...refundAssessment(), version: 1 },
+      prUpdatedAt: REFUND_HEAD,
+      cachedAt: 'then',
+    });
+    const pr = refundPr();
+    await ensureRiskAssessment(snapshot(pr));
+    expect(commands.runHeadlessPrompt).toHaveBeenCalledTimes(1);
+    const ready = entry(pr);
+    expect(ready?.status === 'ready' && ready.assessment.version).toBe(2);
+  });
+
   it("recalls this head's cached assessment without a run", async () => {
     cache.set(4821, { data: refundAssessment(), prUpdatedAt: REFUND_HEAD, cachedAt: 'then' });
     const pr = refundPr();

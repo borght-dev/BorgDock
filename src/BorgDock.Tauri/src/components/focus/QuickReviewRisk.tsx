@@ -376,7 +376,7 @@ function ReasonItem({
           {!reason.citations.length && (
             <p className="qr-risk-reason__unmatched">
               {reason.unmatched
-                ? "None of the lines it cited matched the code, so there's no evidence to show."
+                ? 'None of its citations could be verified, so there is no evidence to show.'
                 : 'It cited no lines for this.'}
             </p>
           )}
@@ -422,7 +422,7 @@ function ReasonItem({
 
 const READ_LABEL: Record<FileRead | 'outside' | 'body', string> = {
   full: 'Read in full',
-  cut: 'Cut at the prompt budget',
+  cut: 'Partially read',
   name: 'By name only',
   outside: 'Outside the diff',
   body: 'PR description',
@@ -1093,7 +1093,7 @@ export function RiskFileStrip({
             </>
           ) : (
             <>
-              <b>Risk: cut at the prompt budget.</b> The assessment saw {coverage.shown} of{' '}
+              <b>Risk: only partially read.</b> The assessment saw {coverage.shown} of{' '}
               {coverage.lines} diff lines here.
             </>
           )}

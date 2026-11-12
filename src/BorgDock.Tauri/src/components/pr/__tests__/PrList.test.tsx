@@ -173,7 +173,9 @@ describe('PrList', () => {
         .getAllByRole('tab')
         .map((t) => t.getAttribute('data-view-key')),
     ).toEqual(BUILT_IN_VIEWS.map((v) => v.key));
-    expect(within(tabs()).getByRole('button', { name: 'View' })).toBeInTheDocument();
+    const saveView = screen.getByRole('button', { name: 'View' });
+    expect(saveView).toBeInTheDocument();
+    expect(tabs()).not.toContainElement(saveView);
     expect(tab(/^All/)).toHaveAttribute('aria-selected', 'true');
     expect(document.querySelector('[data-view-bar]')).not.toBeNull();
     expect(document.querySelector('[data-filter-chip]')).toBeNull();
@@ -398,7 +400,7 @@ describe('PrList', () => {
     it('saves the list as a view under a name and shows its tab', async () => {
       seed({ filter: 'failing' });
       render(<PrList />);
-      fireEvent.click(within(tabs()).getByRole('button', { name: 'View' }));
+      fireEvent.click(screen.getByRole('button', { name: 'View' }));
       const dialog = screen.getByRole('dialog', { name: 'Save view' });
       const save = within(dialog).getByRole('button', { name: 'Save view' });
       expect(save).toBeDisabled();
