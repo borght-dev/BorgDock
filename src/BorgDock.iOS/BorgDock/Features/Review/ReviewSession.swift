@@ -1,19 +1,42 @@
 import Foundation
 import Observation
 
-/// One pull request's walk: its files, which you've reviewed (kept per PR and head), and where you are.
+/// One pull request in Quick Review: its brief, its walk, which files you've reviewed (kept per PR and head) and
+/// which you've opened. Where you are is a `ReviewWalk.Position`, a file path or a step, never an index.
 @MainActor
 @Observable
 final class ReviewSession {
-    let key: PrKey
-    private(set) var detail: PrDetail?
-    private(set) var files: PrFiles?
-    private(set) var reviewed: Set<String> = []
-    var fileIndex = 0
-    private(set) var loadError: String?
+    enum Stage {
+        /// The pull request before its files: description, proof, checks, what changed.
+        case brief
+        case walk
+    }
 
+    enum LoadState: Equatable {
+        case loading
+        case loaded
+        /// After the automatic retry; the text says why.
+        case failed(String)
+    }
+
+    let key: PrKey
+    private(set) var loadState = LoadState.loading
+    private(set) var files: PrFiles?
+    private(set) var walk = ReviewWalk([])
+    private(set) var reviewed: Set<String> = []
+    /// Paths whose page you've seen in this review: a green dot on a step's rows.
+    private(set) var opened: Set<String> = []
+    private(set) var position: ReviewWalk.Position?
+    /// Whether the last move went forward, so the next page slides in from the right side.
+    private(set) var movedForward = true
+    var stage = Stage.walk
+    /// A decided pull request opened again: its files instead of the decision.
+    var revisiting = false
+
+    @ObservationIgnored private weak var store: FocusStore?
+    @ObservationIgnored private var loadedDetail: PrDetail?
     @ObservationIgnored private let storage: ReviewedFiles
-    /// Parsed diffs by path, so swiping back and forth doesn't parse again.
+    /// Parsed diffs by path, so moving back and forth doesn't parse again.
     @ObservationIgnored private var parsed: [String: [DiffLine]] = [:]
 
     init(key: PrKey, storage: ReviewedFiles = ReviewedFiles()) {
@@ -21,32 +44,38 @@ final class ReviewSession {
         self.storage = storage
     }
 
-    var isLoaded: Bool { detail != nil && files != nil }
-    var allFiles: [PrFile] { files?.files ?? [] }
-    var currentFile: PrFile? { allFiles.indices.contains(fileIndex) ? allFiles[fileIndex] : nil }
-    var left: Int { allFiles.filter { !reviewed.contains($0.path) }.count }
+    /// The newest detail: Focus reads it again after a decision posts, so the page never shows the state from before it.
+    var detail: PrDetail? { store?.details[key.key] ?? loadedDetail }
+    var isLoaded: Bool { loadState == .loaded }
+    var left: Int { walk.left(reviewed) }
     var isDone: Bool { isLoaded && left == 0 }
     var isReReview: Bool { files.map(ReviewedFiles.isReReview) ?? false }
-    var toReview: [PrFile] { allFiles.filter { !reviewed.contains($0.path) } }
-    var progress: Double { allFiles.isEmpty ? 0 : Double(allFiles.count - left) / Double(allFiles.count) }
+    var currentFile: PrFile? { position?.path.flatMap(walk.file) }
 
-    func load(using store: FocusStore, startPath: String?) async {
-        let cached = store.details[key.key]
-        async let fetchedFiles = store.loadFiles(key)
-        let loadedDetail = if let cached { cached } else { await store.loadDetail(key) }
-        let loadedFiles = await fetchedFiles
-        guard let loadedDetail, let loadedFiles else {
-            loadError = "Couldn't load #\(key.number)."
+    func load(using store: FocusStore, start: ReviewWalk.Position?) async {
+        self.store = store
+        loadState = .loading
+        do {
+            let snapshot = try await store.reviewSnapshot(key)
+            show(detail: snapshot.detail, files: snapshot.files, start: start)
+        } catch is CancellationError {
             return
+        } catch {
+            loadState = .failed(ReviewLoadFailure.message(error, attempts: 2, approvalElsewhere: store.approvalElsewhere(than: key)))
         }
-        self.detail = loadedDetail
-        self.files = loadedFiles
-        reviewed = storage.initial(prKey: key.key, files: loadedFiles)
-        if let startPath, let index = loadedFiles.files.firstIndex(where: { $0.path == startPath }) {
-            fileIndex = index
-        } else {
-            fileIndex = firstUnreviewed(after: -1) ?? 0
-        }
+    }
+
+    /// Shows a pull request already read: the walk starts on `start`, else on the first page you haven't reviewed.
+    func show(detail: PrDetail, files: PrFiles, start: ReviewWalk.Position? = nil) {
+        loadedDetail = detail
+        self.files = files
+        walk = ReviewWalk(files.files)
+        reviewed = storage.initial(prKey: key.key, files: files)
+        opened = store?.openedFiles[key.key] ?? opened
+        let first = start.flatMap { walk.contains($0) ? $0 : nil } ?? walk.start(reviewed)
+        position = nil
+        if let first { go(to: first) }
+        loadState = .loaded
     }
 
     func lines(_ file: PrFile) -> [DiffLine] {
@@ -56,29 +85,56 @@ final class ReviewSession {
         return lines
     }
 
-    func isReviewed(_ file: PrFile) -> Bool { reviewed.contains(file.path) }
+    func isReviewed(_ position: ReviewWalk.Position) -> Bool { walk.isReviewed(position, in: reviewed) }
 
-    /// Marks the current file reviewed and moves to the next one still open. Returns true when that was the last.
+    // MARK: - Moving
+
+    func go(to target: ReviewWalk.Position) {
+        guard walk.contains(target), target != position else { return }
+        movedForward = position.map { walk.isForward(from: $0, to: target) } ?? true
+        position = target
+        if let path = target.path {
+            opened.insert(path)
+            store?.openedFiles[key.key, default: []].insert(path)
+        }
+    }
+
+    func open(_ path: String) { go(to: .file(path)) }
+
+    var canGoBack: Bool { position.flatMap(walk.previous(before:)) != nil }
+    var canGoForward: Bool { position.flatMap(walk.next(after:)) != nil }
+
+    func goBack() {
+        if let previous = position.flatMap(walk.previous(before:)) { go(to: previous) }
+    }
+
+    func goForward() {
+        if let next = position.flatMap(walk.next(after:)) { go(to: next) }
+    }
+
+    /// Next file to review: the first page after this one you haven't reviewed.
+    func goToNextUnreviewed() {
+        guard let position, let next = walk.nextUnreviewed(after: position, in: reviewed) else { return }
+        go(to: next)
+    }
+
+    // MARK: - Reviewing
+
+    /// Marks this page reviewed (a step: all its files) and opens the next page still to review. True when that
+    /// was the last.
     @discardableResult
     func markCurrentReviewed() -> Bool {
-        guard let file = currentFile else { return false }
-        reviewed.insert(file.path)
+        guard let position else { return false }
+        reviewed.formUnion(walk.paths(markedBy: position))
         save()
-        if let next = firstUnreviewed(after: fileIndex) ?? firstUnreviewed(after: -1) { fileIndex = next }
+        if let next = walk.nextUnreviewed(after: position, in: reviewed) { go(to: next) }
         return left == 0
     }
 
-    func unmark(_ file: PrFile) {
-        reviewed.remove(file.path)
+    func unmarkCurrent() {
+        guard let position else { return }
+        reviewed.subtract(walk.paths(markedBy: position))
         save()
-    }
-
-    func jump(to path: String) {
-        if let index = allFiles.firstIndex(where: { $0.path == path }) { fileIndex = index }
-    }
-
-    func firstUnreviewed(after index: Int) -> Int? {
-        allFiles.indices.first { $0 > index && !reviewed.contains(allFiles[$0].path) }
     }
 
     private func save() {
