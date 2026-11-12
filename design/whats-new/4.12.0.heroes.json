@@ -1,0 +1,26 @@
+[
+  {
+    "slug": "work-item-detail",
+    "storyId": "work-items-redesign--full-view-dark",
+    "viewport": { "width": 1440, "height": 900 },
+    "delay": 3000
+  },
+  {
+    "slug": "work-item-activity",
+    "storyId": "work-items-activity-tab--timeline",
+    "viewport": { "width": 1000, "height": 700 },
+    "delay": 2500
+  },
+  {
+    "slug": "work-item-peek",
+    "storyId": "work-items-redesign--peek-dark",
+    "viewport": { "width": 1600, "height": 1000 },
+    "delay": 3000
+  },
+  {
+    "slug": "work-item-hover-cards",
+    "storyId": "work-items-redesign--hover-cards-dark",
+    "viewport": { "width": 900, "height": 760 },
+    "delay": 2500
+  }
+]
