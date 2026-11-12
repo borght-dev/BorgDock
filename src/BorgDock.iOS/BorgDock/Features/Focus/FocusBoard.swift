@@ -9,7 +9,8 @@ struct FocusBoard {
     let yourTurn: [PrSummary]
     let readyToMerge: [PrSummary]
     let waitingOnOthers: [PrSummary]
-    /// Agents that run or ask you something, the latest active first. What else agents need from you is on the Work tab.
+    /// Agents that run or ask you something: the ones asking first, then the latest active. What else agents need from
+    /// you is on the Work tab.
     let agents: [ThreadSummary]
 
     init(pullRequests: [PrSummary], threads: [ThreadSummary], myLogins: Set<String>) {
@@ -20,7 +21,22 @@ struct FocusBoard {
         waitingOnOthers = pullRequests.filter { $0.isWaitingOnOthers(myLogins: myLogins) }
         agents = threads
             .filter { $0.status == .running || Self.asksYou($0) }
-            .sorted { $0.lastActivityAt.sortDate > $1.lastActivityAt.sortDate }
+            .sorted { a, b in
+                if Self.asksYou(a) != Self.asksYou(b) { return Self.asksYou(a) }
+                return a.lastActivityAt.sortDate > b.lastActivityAt.sortDate
+            }
+    }
+
+    /// Focus shows this many agents and folds the rest behind "N more running", so the reviews stay in view.
+    static let agentsShown = 3
+
+    var shownAgents: [ThreadSummary] { Array(agents.prefix(Self.agentsShown)) }
+
+    /// "4 more running", or nil when every agent shows.
+    var moreAgents: String? {
+        let hidden = agents.dropFirst(Self.agentsShown)
+        guard !hidden.isEmpty else { return nil }
+        return hidden.allSatisfy { $0.status == .running } ? "\(hidden.count) more running" : "\(hidden.count) more"
     }
 
     static func asksYou(_ thread: ThreadSummary) -> Bool {

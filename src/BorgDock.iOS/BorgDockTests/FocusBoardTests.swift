@@ -56,7 +56,7 @@ final class FocusBoardTests: XCTestCase {
         XCTAssertEqual(none.reviewsDetail(now: samplePRNow), "")
     }
 
-    func testAgentsAreTheOnesRunningOrAskingYouLatestFirst() {
+    func testAgentsAreTheOnesRunningOrAskingYouAskingFirst() {
         let threads = [
             thread("run-old", .running, minutesAgo: 30),
             thread("question", .question, minutesAgo: 18),
@@ -67,8 +67,10 @@ final class FocusBoardTests: XCTestCase {
             thread("plan", .plan, minutesAgo: 60),
         ]
         let board = FocusBoard(pullRequests: [], threads: threads, myLogins: me)
-        XCTAssertEqual(board.agents.map(\.id), ["run-new", "question", "run-old", "plan"])
+        XCTAssertEqual(board.agents.map(\.id), ["question", "plan", "run-new", "run-old"])
         XCTAssertEqual(board.agentsSummary, "2 running · 2 ask you")
+        XCTAssertEqual(board.shownAgents.map(\.id), ["question", "plan", "run-new"])
+        XCTAssertEqual(board.moreAgents, "1 more running")
         XCTAssertEqual(FocusBoard(pullRequests: [], threads: [thread("q", .question)], myLogins: me).agentsSummary, "1 asks you")
     }
 

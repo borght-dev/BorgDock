@@ -155,13 +155,26 @@ final class PrListTests: XCTestCase {
         XCTAssertTrue(AuthorRun.queue(prs, author: "koen", myLogins: me).isEmpty, "never your own")
     }
 
-    func testFoldedGroupsSurviveAsOneLineEach() {
-        var folded = FoldedGroups(rawValue: "author:tom\nrepo:acme/shop")
-        XCTAssertTrue(folded.contains("repo:acme/shop"))
-        folded.toggle("author:tom")
-        folded.toggle("status:you")
-        XCTAssertEqual(folded.rawValue, "repo:acme/shop\nstatus:you")
-        XCTAssertEqual(FoldedGroups(rawValue: "").ids, [])
+    func testGroupsFoldByDefaultUntilYouOpenThemAndSurviveAsOneLineEach() {
+        var folds = GroupFolds(rawValue: "author:tom\nrepo:acme/shop")
+        XCTAssertTrue(folds.isFolded("repo:acme/shop", byDefault: false), "older builds stored folded groups only")
+        XCTAssertTrue(folds.isFolded("author:sam", byDefault: true), "untouched groups follow the default")
+        XCTAssertFalse(folds.isFolded("author:sam", byDefault: false))
+        folds.toggle("author:sam", byDefault: true)
+        XCTAssertFalse(folds.isFolded("author:sam", byDefault: true), "opened stays open in the folded-by-default view")
+        folds.toggle("author:tom", byDefault: false)
+        XCTAssertEqual(folds.rawValue, "+author:sam\n+author:tom\n-repo:acme/shop")
+        XCTAssertEqual(GroupFolds(rawValue: folds.rawValue), folds)
+        folds.fold(["author:sam", "author:tom"])
+        XCTAssertEqual(folds.rawValue, "-author:sam\n-author:tom\n-repo:acme/shop")
+        XCTAssertEqual(GroupFolds(rawValue: ""), GroupFolds())
+    }
+
+    func testFoldedGroupsNextToEachOtherShareACard() {
+        let groups = ["a", "b", "c", "d", "e"].map { PrListGroup(id: $0, title: $0, kind: .all, pullRequests: []) }
+        let runs = GroupRun.runs(groups) { $0.id != "c" }
+        XCTAssertEqual(runs.map(\.id), ["folded:a,b", "c", "folded:d,e"])
+        XCTAssertEqual(GroupRun.runs(groups) { _ in false }.count, 5)
     }
 
     func testTheTrackShowsWhereAPullRequestIsStuck() throws {

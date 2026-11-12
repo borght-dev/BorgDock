@@ -6,6 +6,7 @@ struct FocusView: View {
     @Environment(AppModel.self) private var app
     @AppStorage(PrListFilter.storageKey) private var pullRequestFilter: PrListFilter = .all
     @State private var now = Date.now
+    @State private var showsEveryAgent = false
 
     var body: some View {
         let store = app.focus
@@ -67,13 +68,25 @@ struct FocusView: View {
         if !board.agents.isEmpty {
             FocusHeader(title: "Agents", trailing: board.agentsSummary)
             CellGroup(indent: 37) {
-                ForEach(board.agents) { thread in
+                ForEach(showsEveryAgent ? board.agents : board.shownAgents) { thread in
                     let pullRequest = app.pullRequest(for: thread)
                     let item = app.overview?.items.first { $0.threads.contains { $0.id == thread.id } }?.item
                     AgentRow(thread: thread, subject: FocusBoard.subject(of: thread, pullRequest: pullRequest, item: item))
                         .onTapGesture { open(thread, pullRequest: pullRequest, itemId: item?.id) }
                         .accessibilityAddTraits(.isButton)
                         .accessibilityIdentifier("focus-agent-\(thread.id)")
+                }
+                if let more = board.moreAgents, !showsEveryAgent {
+                    Button { withAnimation(.snappy) { showsEveryAgent = true } } label: {
+                        Text(more)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(BD.accentText)
+                            .frame(maxWidth: .infinity, minHeight: 46, alignment: .leading)
+                            .padding(.leading, 37)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("focus-more-agents")
                 }
             }
         }

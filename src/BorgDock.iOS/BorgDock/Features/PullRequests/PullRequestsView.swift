@@ -11,7 +11,7 @@ struct PullRequestsView: View {
     @AppStorage(PrListDisplayKeys.mineFirst) private var mineFirst = true
     @AppStorage(PrListDisplayKeys.showDrafts) private var showDrafts = true
     @AppStorage(PrListDisplayKeys.dependenciesTogether) private var dependenciesTogether = true
-    @AppStorage(PrListDisplayKeys.folded) private var folded = FoldedGroups()
+    @AppStorage(PrListDisplayKeys.folded) private var folds = GroupFolds()
     @AppStorage(PrSwipeHint.key) private var swipeHintSeen = false
     @State private var search = ""
     @State private var showingDisplay = false
@@ -40,8 +40,11 @@ struct PullRequestsView: View {
                     .padding(.horizontal, -36)
                     .padding(.top, -20)
                 }
-                ForEach(groups) { group in
-                    section(group, all: focus.pullRequests)
+                ForEach(GroupRun.runs(groups) { grouping != .flat && folds.isFolded($0.id, byDefault: foldsByDefault) }) { run in
+                    switch run {
+                    case .folded(let folded): foldedSection(folded)
+                    case .open(let group): section(group, all: focus.pullRequests)
+                    }
                 }
                 if !groups.isEmpty, !swipeHintSeen {
                     Text(PrSwipeHint.text)
@@ -89,28 +92,38 @@ struct PullRequestsView: View {
 
     // MARK: - Groups
 
+    /// Folded groups next to each other share one card, a row each.
+    private func foldedSection(_ groups: [PrListGroup]) -> some View {
+        Section {
+            ForEach(groups) { group in
+                Button { withAnimation(.snappy) { folds.toggle(group.id, byDefault: foldsByDefault) } } label: { FoldedGroupRow(group: group) }
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(BD.card)
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in 66 }
+                    .accessibilityIdentifier("prs-group-\(group.id)")
+            }
+        }
+    }
+
     @ViewBuilder
     private func section(_ group: PrListGroup, all: [PrSummary]) -> some View {
         if grouping == .flat {
             Section { rows(group) }
-        } else if folded.contains(group.id) {
-            Section {
-                Button { withAnimation(.snappy) { folded.toggle(group.id) } } label: { FoldedGroupRow(group: group) }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(BD.card)
-                    .accessibilityIdentifier("prs-group-\(group.id)")
-            }
         } else {
             Section {
                 rows(group)
             } header: {
                 OpenGroupHeader(group: group, reviewAll: reviewAll(group, all: all)) {
-                    withAnimation(.snappy) { folded.toggle(group.id) }
+                    withAnimation(.snappy) { folds.toggle(group.id, byDefault: foldsByDefault) }
                 }
             }
         }
     }
+
+    /// Everything at once (All, no search) opens on the groups alone, so the grouping is the first thing you see; a
+    /// pill or a search opens its groups.
+    private var foldsByDefault: Bool { filter == .all && search.trimmingCharacters(in: .whitespaces).isEmpty }
 
     private func rows(_ group: PrListGroup) -> some View {
         ForEach(group.pullRequests) { pr in
@@ -161,7 +174,7 @@ struct PullRequestsView: View {
     /// "≡ By author · waiting longest" (opens Display) and Fold all.
     private func listBar(_ groups: [PrListGroup]) -> some View {
         let ids = groups.map(\.id)
-        let allFolded = !ids.isEmpty && ids.allSatisfy(folded.contains)
+        let allFolded = !ids.isEmpty && ids.allSatisfy { folds.isFolded($0, byDefault: foldsByDefault) }
         return HStack(spacing: 6) {
             Button { showingDisplay = true } label: {
                 Label {
@@ -177,7 +190,7 @@ struct PullRequestsView: View {
             Spacer(minLength: 8)
             if grouping != .flat, !ids.isEmpty {
                 Button(allFolded ? "Unfold all" : "Fold all") {
-                    withAnimation(.snappy) { folded = allFolded ? FoldedGroups() : FoldedGroups(ids: folded.ids.union(ids)) }
+                    withAnimation(.snappy) { allFolded ? folds.open(ids) : folds.fold(ids) }
                 }
                 .fontWeight(.semibold)
                 .foregroundStyle(BD.accentText)
@@ -243,18 +256,46 @@ enum PrListDisplayKeys {
     static let folded = "prs.folded"
 }
 
-/// The ids of the groups you folded, kept as one line each.
-struct FoldedGroups: RawRepresentable, Equatable {
-    var ids: Set<String>
+/// The groups you folded or opened yourself, kept as one line each ("-id" folded, "+id" opened); a group you never
+/// touched follows the view's default.
+struct GroupFolds: RawRepresentable, Equatable {
+    private(set) var folded: Set<String>
+    private(set) var opened: Set<String>
 
-    init(ids: Set<String> = []) { self.ids = ids }
-    init(rawValue: String) { ids = Set(rawValue.split(separator: "\n").map(String.init)) }
-    var rawValue: String { ids.sorted().joined(separator: "\n") }
+    init(folded: Set<String> = [], opened: Set<String> = []) {
+        self.folded = folded
+        self.opened = opened
+    }
 
-    func contains(_ id: String) -> Bool { ids.contains(id) }
+    /// Lines without a sign come from builds that only stored folded groups.
+    init(rawValue: String) {
+        var folded: Set<String> = [], opened: Set<String> = []
+        for line in rawValue.split(separator: "\n").map(String.init) {
+            if line.hasPrefix("+") { opened.insert(String(line.dropFirst())) }
+            else if line.hasPrefix("-") { folded.insert(String(line.dropFirst())) }
+            else { folded.insert(line) }
+        }
+        self.init(folded: folded, opened: opened)
+    }
 
-    mutating func toggle(_ id: String) {
-        if ids.remove(id) == nil { ids.insert(id) }
+    var rawValue: String { (folded.map { "-\($0)" } + opened.map { "+\($0)" }).sorted().joined(separator: "\n") }
+
+    func isFolded(_ id: String, byDefault: Bool) -> Bool {
+        folded.contains(id) || (byDefault && !opened.contains(id))
+    }
+
+    mutating func toggle(_ id: String, byDefault: Bool) {
+        isFolded(id, byDefault: byDefault) ? open([id]) : fold([id])
+    }
+
+    mutating func fold(_ ids: [String]) {
+        folded.formUnion(ids)
+        opened.subtract(ids)
+    }
+
+    mutating func open(_ ids: [String]) {
+        opened.formUnion(ids)
+        folded.subtract(ids)
     }
 }
 
@@ -519,7 +560,8 @@ enum PrListDebugRoute {
             var query = PrListQuery(myLogins: app.focus.myLogins)
             query.grouping = defaults.string(forKey: PrListDisplayKeys.grouping).flatMap(PrListGrouping.init) ?? .author
             let ids = query.groups(app.focus.focus?.pullRequests ?? []).map(\.id)
-            defaults.set(FoldedGroups(ids: Set(ids).subtracting([String(value.dropFirst(5))])).rawValue, forKey: PrListDisplayKeys.folded)
+            let open = String(value.dropFirst(5))
+            defaults.set(GroupFolds(folded: Set(ids).subtracting([open]), opened: [open]).rawValue, forKey: PrListDisplayKeys.folded)
             app.router.tab = .pullRequests
         default:
             break

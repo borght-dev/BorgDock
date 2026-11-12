@@ -329,3 +329,30 @@ extension String {
     /// ISO 8601 from the server; unparsable dates sort last.
     var sortDate: Date { ISODate.parse(self) ?? .distantPast }
 }
+
+/// The list in runs: an open group on its own, folded groups next to each other together in one card.
+enum GroupRun: Identifiable, Equatable {
+    case open(PrListGroup)
+    case folded([PrListGroup])
+
+    var id: String {
+        switch self {
+        case .open(let group): group.id
+        case .folded(let groups): "folded:" + groups.map(\.id).joined(separator: ",")
+        }
+    }
+
+    static func runs(_ groups: [PrListGroup], isFolded: (PrListGroup) -> Bool) -> [GroupRun] {
+        var runs: [GroupRun] = []
+        for group in groups {
+            if !isFolded(group) {
+                runs.append(.open(group))
+            } else if case .folded(let earlier)? = runs.last {
+                runs[runs.count - 1] = .folded(earlier + [group])
+            } else {
+                runs.append(.folded([group]))
+            }
+        }
+        return runs
+    }
+}
