@@ -76,24 +76,4 @@ final class TodayUITests: XCTestCase {
         capture("sprint-light")
         XCUIDevice.shared.appearance = .dark
     }
-
-    @MainActor
-    func testWorkSortsByStatusAndByYourLaneOrder() {
-        XCUIDevice.shared.appearance = .dark
-        let app = launch("tab/work")
-        let sort = app.buttons["work-sort"]
-        XCTAssertTrue(sort.waitForExistence(timeout: 15))
-        sort.tap()
-        app.buttons["By status"].tap()
-        sleep(2)
-        capture("work-by-status")
-        sort.tap()
-        app.buttons["Lane order…"].tap()
-        XCTAssertTrue(app.buttons["lane-order-done"].waitForExistence(timeout: 5))
-        sleep(1)
-        capture("work-lane-order")
-        app.buttons["lane-order-done"].tap()
-        sort.tap()
-        app.buttons["By state"].tap()
-    }
 }

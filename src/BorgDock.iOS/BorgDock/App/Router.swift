@@ -30,7 +30,7 @@ struct PrKey: Hashable, Codable, Sendable, Identifiable {
 
 struct ItemRoute: Hashable {
     let id: Int
-    /// Shown while GET /api/items/:id loads, e.g. a Browse result that isn't in the overview.
+    /// Shown while GET /api/items/:id loads, e.g. a sprint item or search result that isn't in the overview.
     var prefill: WorkItemSummary?
 }
 
@@ -62,7 +62,6 @@ enum Route: Hashable {
     case workstream(String)
     /// A note by its path inside the vault, e.g. "Daily/2026-10-30.md".
     case note(String)
-    case browse
     case activity
     case settings
     case machines
@@ -135,7 +134,7 @@ final class Router {
     var searchPath: [Route] = []
     var sheet: SheetRoute?
     var cover: CoverRoute?
-    /// A bay or lane to scroll Dispatch to (DEBUG screenshots).
+    /// A lane to open on the Work tab, or an item section to scroll to (DEBUG screenshots).
     var scrollTarget: String?
 
     /// Pushes onto the current tab's stack.

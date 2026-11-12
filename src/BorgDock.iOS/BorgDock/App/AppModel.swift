@@ -231,16 +231,6 @@ final class AppModel {
         }
     }
 
-    /// Pull to refresh in Browse: the saved queries and the current query or search, fetched in parallel.
-    func reloadBrowse(query: String, search: String?) async -> (queries: [BrowseQuery]?, result: BrowseResult?) {
-        let api = self.api
-        async let queries = Result { try await api.browseQueries() }
-        async let result = Result { try await api.browse(query: query, search: search) }
-        let (freshQueries, freshResult) = await (queries, result)
-        if case .failure(let error) = freshResult { report(error) } else if case .failure(let error) = freshQueries { report(error) }
-        return (try? freshQueries.get(), try? freshResult.get())
-    }
-
     /// Pull to refresh in Settings: sessions, notification preferences and config, in parallel.
     func reloadSettings() async -> (preferences: NotificationPreferences?, sessions: [SessionInfo]?) {
         let api = self.api

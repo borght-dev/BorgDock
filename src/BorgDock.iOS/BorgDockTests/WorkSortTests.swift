@@ -1,7 +1,7 @@
 import XCTest
 @testable import BorgDock
 
-/// The Work tab's sort: states in your order, or grouped by status.
+/// The Work tab's lanes: states in your order, or grouped by verdict or sprint.
 final class WorkSortTests: XCTestCase {
     private func entry(_ id: Int, state: String, tone: Tone) -> ItemOverview {
         let item = WorkItemSummary(id: id, type: .pbi, typeName: "Product Backlog Item", title: "Item \(id)", state: state, stateCategory: .inProgress,
@@ -31,20 +31,38 @@ final class WorkSortTests: XCTestCase {
                         sources: OverviewSources(ado: SourceStatus(ok: true, at: nil, error: nil), t3: SourceStatus(ok: true, at: nil, error: nil)), walk: walk)
     }
 
+    private func lanes(_ grouping: WorkGrouping, order: [String], currentSprint: String? = nil, overview: Overview? = nil) -> [WorkLane] {
+        let overview = overview ?? self.overview
+        let entries = WorkEntries.of(.mine, overview: overview, sprint: nil, queryItems: nil) ?? []
+        return WorkLanes.build(entries, walk: overview.walk, grouping: grouping, order: order, currentSprint: currentSprint)
+    }
+
     func testWithoutAnOrderTheWalkOrderHolds() {
-        XCTAssertEqual(WalkDisplay.lanes(overview, grouping: .state, order: []).map(\.title), ["Testing Failed", "Code Review", "Development In Progress", "New"])
+        XCTAssertEqual(lanes(.state, order: []).map(\.title), ["Testing Failed", "Code Review", "Development In Progress", "New"])
+        XCTAssertEqual(lanes(.state, order: [])[1].entries.map(\.id), [3, 2], "the walk's order inside a lane")
     }
 
     func testYourStatesComeFirstAndTheRestKeepTheirWalkOrder() {
-        let lanes = WalkDisplay.lanes(overview, grouping: .state, order: ["New", "Code Review", "Gone"])
-        XCTAssertEqual(lanes.map(\.title), ["New", "Code Review", "Testing Failed", "Development In Progress"])
+        XCTAssertEqual(lanes(.state, order: ["New", "Code Review", "Gone"]).map(\.title), ["New", "Code Review", "Testing Failed", "Development In Progress"])
     }
 
-    func testByStatusGroupsMostUrgentFirstAndKeepsYourStateOrderInside() {
-        let lanes = WalkDisplay.lanes(overview, grouping: .status, order: ["Code Review"])
+    func testByVerdictGroupsMostUrgentFirstAndKeepsYourStateOrderInside() {
+        let lanes = lanes(.verdict, order: ["Code Review"])
         XCTAssertEqual(lanes.map(\.title), ["Needs you", "Ready", "Running", "Quiet"])
         XCTAssertEqual(lanes[0].entries.map(\.item.id), [3, 1], "Code Review placed first, then Testing Failed")
-        XCTAssertEqual(lanes.map(\.tone), [.bad, .ok, .run, .mute])
+        XCTAssertEqual(lanes.map(\.kind), [.verdict(.bad), .verdict(.ok), .verdict(.run), .verdict(.mute)])
+    }
+
+    func testBySprintPutsTheCurrentSprintFirstThenTheNewestAndNoSprintLast() {
+        let sprints = ["22", "23", "", "21", "23"]
+        let items = sprints.enumerated().map { index, sprint in
+            WorkItemSummary(id: index + 1, type: .pbi, typeName: "PBI", title: "Item", state: "New", stateCategory: .proposed, workflow: [],
+                            sprint: sprint, dueDate: nil, priority: nil, tags: [], assignedTo: nil, assignedToMe: false, url: "u")
+        }
+        let entries = items.map { WorkEntry(item: $0, overview: nil) }
+        let lanes = WorkLanes.build(entries, walk: nil, grouping: .sprint, order: [], currentSprint: "22")
+        XCTAssertEqual(lanes.map(\.title), ["Sprint 22", "Sprint 23", "Sprint 21", "No sprint"])
+        XCTAssertEqual(lanes[1].entries.map(\.id), [2, 5])
     }
 
     func testTheSavedOrderSurvivesAndTheSheetListsEveryState() {

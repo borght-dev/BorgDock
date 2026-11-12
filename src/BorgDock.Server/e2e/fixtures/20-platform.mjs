@@ -1,12 +1,14 @@
 // BorgDock platform sample data: machines and sources, the states walk on the overview, thread detail, launch
 // targets and branches, activity pages and preferences. Mirrors the iPhone mockups (design/ios-app/mockups.html,
 // sections 4, 5 and 8). Writes stay in memory and show up in /preview/writes.
+import { deflateSync } from 'node:zlib';
+
 const at = (hours) => new Date(Date.now() - hours * 3600000).toISOString();
 
-const workflow = ['New', 'Development In Progress', 'Code Review', 'Testing Failed', 'Needs Human', 'Ready For QA', 'Done'];
-const category = (state) => (state === 'New' ? 'Proposed' : state === 'Done' ? 'Completed' : 'InProgress');
+const workflow = ['New', 'In Progress', 'Plan Review', 'Code Review', 'Testing', 'Testing Failed', 'Needs Human', 'Done'];
+const category = (state) => ({ New: 'Proposed', Done: 'Completed', 'Code Review': 'Resolved', Testing: 'Resolved' })[state] ?? 'InProgress';
 const item = (id, title, type, state, extra = {}) => ({
-  id, title, type, typeName: type, state, stateCategory: category(state), workflow, sprint: '2026.22', dueDate: null,
+  id, title, type, typeName: type, state, stateCategory: category(state), workflow, sprint: '23', dueDate: null,
   priority: 2, tags: [], assignedTo: 'Koen van der Borght', assignedToMe: true,
   url: `https://dev.azure.com/acme/Shop/_workitems/edit/${id}`, ...extra,
 });
@@ -31,54 +33,79 @@ const planMessage = `**Plan**
 
 Touches \`basket-store.ts\` and 2 new files.`;
 
+// The Work tab of design/ios-flow/mockups.html, section 07: 52 items, two back from QA, two that ask you something,
+// nine in review, four agents running, the rest quiet. Lanes come in the server's walk order.
+const latest = (by, text, hours, source = 'comment') => ({ by, text, at: at(hours), source });
+const walked = (label, tone, evidenceList = [], message = null) => ({ verdict: verdict(label, tone), evidence: evidenceList, latest: message });
+const quiet = (ids, titles, type, state, label, hours) => ids.map((id, i) => entry(item(id, titles[i % titles.length], type, state), 'idle', [], null,
+  walked(label, 'mute', [], latest('Koen van der Borght', 'Moved it along.', hours + i * 3))));
+const askingThread = { ...thread(61040, 'Webhook deliveries after a restart', 'webhook-retry', 'question', 0.5, 'Keep the old retry table, or migrate it?'),
+  questionRequestId: 'r-61040',
+  questions: [{ id: 'retry', question: 'Keep the old retry table, or migrate it?', options: [{ label: 'Keep it', value: 'keep' }, { label: 'Migrate it', value: 'migrate' }], recommended: 1, allowCustomAnswer: true, multiSelect: false }] };
 const items = [
-  entry(item(61021, 'Basket empties after a payment timeout', 'Bug', 'Code Review'), 'waiting',
-    [thread(61021, 'Basket timeout', 'basket-timeout', 'settled', 1, 'Pushed the banner and a spec')],
-    pr(3712, 'open', 'Checkout: keep the basket on a payment timeout', 'basket-timeout', 'failure'),
-    { verdict: verdict('CI red', 'bad'), evidence: [evidence('#3712 open', null, 'pr'), evidence('basket-timeout', null, 'agent')],
-      latest: { by: 'Vera · qa-check', text: 'e2e fails on the timeout path, the banner never renders. Back to you.', at: at(0.67), source: 'comment' } }),
+  entry(item(61021, 'Totals off by a cent on invoices with three or more lines', 'Bug', 'Testing Failed', { tags: ['invoice', 'rounding'] }), 'waiting',
+    [thread(61021, 'Fix the invoice export rounding', 'invoice-rounding', 'running', 0.2)],
+    pr(412, 'open', 'Round totals per line instead of per order', 'invoice-rounding', 'failure'),
+    walked('Failed QA', 'bad', [evidence('#412 · checks failing', 'bad', 'pr')], latest('Lena (QA)', 'still € 0,01 off on the export', 23))),
+  entry(item(61034, 'Customer price lists per group', 'PBI', 'Testing Failed'), 'waiting', [], pr(409, 'merged', 'Price lists per customer group', 'price-lists'),
+    walked('Failed QA', 'bad', [evidence('#409 merged 3 d', 'ok', 'merged')], latest('Vera', '2 of 9 acceptance checks fail', 20))),
+  entry(item(61050, 'Price import rejects semicolons', 'Bug', 'Code Review'), 'waiting', [], pr(401, 'open', 'Accept semicolons in the price import', 'price-import-csv', 'failure'),
+    walked('CI red', 'bad', [evidence('#401 e2e red', 'bad', 'pr'), evidence('1 of 2 reviews', null, 'other')], latest('Tom', 'The e2e import spec times out.', 5))),
+  entry(item(61051, 'Coupon codes per customer group', 'PBI', 'Code Review'), 'waiting', [], pr(404, 'open', 'Coupons per customer group', 'group-coupons', 'failure'),
+    walked('CI red', 'bad', [evidence('#404 unit red', 'bad', 'pr')], null)),
+  entry(item(61055, 'Show stock per warehouse', 'PBI', 'Code Review'), 'idle', [], pr(377, 'open', 'Stock per warehouse on the product page', 'stock-per-warehouse', 'success'),
+    walked('Review', 'ok', [evidence('#377 checks pass', 'ok', 'pr')], null)),
+  entry(item(61056, 'Refunds for split payments', 'PBI', 'Code Review'), 'idle', [], pr(395, 'open', 'Refund split payments', 'split-refunds'),
+    walked('Waiting on review', 'mute', [], latest('Koen van der Borght', 'Ready for review.', 50))),
+  entry(item(61057, 'Log the webhook payload size', 'Task', 'Code Review'), 'idle', [], pr(396, 'open', 'Log webhook payload sizes', 'webhook-size'),
+    walked('Waiting', 'mute', [], latest('Koen van der Borght', 'Small one.', 26))),
   entry(item(61002, 'Export orders to CSV', 'PBI', 'Code Review'), 'drift', [], pr(3701, 'open', 'Export orders to CSV', 'export-csv', 'success'),
-    { verdict: verdict('Ready to merge', 'ok'), evidence: [evidence('#3701 approved', 'ok', 'pr')], latest: null },
-    { id: 's-61002', to: 'Ready For QA', reason: '#3701 is approved and green. ADO still says Code Review.' }),
-  entry(item(61044, 'Offline basket for the mobile app', 'PBI', 'Development In Progress'), 'waiting',
-    [thread(61044, 'Offline basket for the mobile app', 'offline-basket', 'your-turn', 48, planMessage)], null,
-    { verdict: verdict('Waiting on you · 2 d', 'bad'), evidence: [],
-      latest: { by: 'Agent', text: 'Plan ready: 5 steps, IndexedDB store per device, replay on reconnect.', at: at(48), source: 'agent' } }),
-  entry(item(60988, 'Refund email sent twice', 'Bug', 'Development In Progress'), 'working',
+    walked('Waiting on review', 'mute', [], latest('Koen van der Borght', 'Ready for review.', 72)),
+    { id: 's-61002', to: 'Testing', reason: '#3701 is approved and green. ADO still says Code Review.' }),
+  ...quiet([61058, 61059, 61060], ['Paginate the order export', 'Search orders by phone number', 'Show the VAT number on receipts'], 'PBI', 'Code Review', 'Waiting on review', 75),
+  entry(item(61040, 'Webhook deliveries stop after a restart', 'Bug', 'Needs Human'), 'waiting', [askingThread], null,
+    walked('Answer', 'warn', [], latest('Agent', 'keep the old retry table, or migrate it?', 0.5, 'agent'))),
+  entry(item(61044, 'Offline basket for the mobile app', 'PBI', 'Needs Human'), 'waiting',
+    [thread(61044, 'Offline basket for the mobile app', 'offline-basket', 'plan', 48, planMessage)], null,
+    walked('Plan to review', 'warn', [], latest('Agent', 'Plan ready: 5 steps, IndexedDB store per device, replay on reconnect.', 48, 'agent'))),
+  entry(item(60988, 'Refund email sent twice', 'Bug', 'In Progress'), 'working',
     [thread(60988, 'Refund email sent twice', 'refund-email', 'running', 0.2, null, 'workstation')], null,
-    { verdict: verdict('Agent on it', 'run'), evidence: [], latest: null }),
-  entry(item(60950, 'Coupon codes rejected after midnight', 'Bug', 'Testing Failed'), 'drift', [],
-    pr(3690, 'merged', 'Coupon field accepts lowercase codes', 'coupon-case'),
-    { verdict: verdict('Back from QA', 'warn'), evidence: [evidence('#3690 merged', 'ok', 'merged'), evidence('Due Fri', 'warn', 'due')],
-      latest: { by: 'Sanne', text: 'Still fails for codes entered between 00:00 and 00:05.', at: at(20), source: 'comment' } },
-    { id: 's-60950', to: 'Development In Progress', reason: 'QA sent it back. ADO says Testing Failed.' }),
-  entry(item(61063, 'Address form loses focus on rotate', 'Bug', 'New'), 'idle', [], null,
-    { verdict: verdict('Not started', 'mute'), evidence: [evidence('P1', 'warn', 'priority')], latest: null }),
-  entry(item(61070, 'Saved addresses on the checkout page', 'PBI', 'New'), 'drift', [], null,
-    { verdict: verdict('Not started', 'mute'), evidence: [], latest: null },
+    walked('Agent on it', 'run', [evidence('refund-email', null, 'agent')])),
+  ...[[61061, 'Delivery slots on the order page', 'delivery-slots'], [61062, 'Gift card balance in the app', 'gift-card-balance'], [61064, 'Faster product search on a cold cache', 'search-cache']]
+    .map(([id, title, branch]) => entry(item(id, title, 'PBI', 'In Progress'), 'working', [thread(id, title, branch, 'running', 0.4)], null,
+      walked('Agent on it', 'run', [evidence(branch, null, 'agent')]))),
+  entry(item(61063, 'Address form loses focus on rotate', 'Bug', 'New'), 'drift', [], null, walked('Not started', 'mute'),
+    { id: 's-61063', to: null, reason: 'A branch exists but ADO says New.' }),
+  entry(item(61070, 'Saved addresses on the checkout page', 'PBI', 'New'), 'drift', [], null, walked('Not started', 'mute'),
     { id: 's-61070', to: null, reason: 'A branch exists but ADO says New.' }),
+  ...quiet(Array.from({ length: 20 }, (_, i) => 61100 + i), ['Newsletter sign-up in the footer', 'Track and trace on the order page', 'Print a return label at home', 'Wishlist on the app', 'Sort reviews by date'], 'PBI', 'New', 'Not started', 100),
+  ...quiet([61130, 61131, 61132, 61133, 61134], ['Plan: one checkout for B2B', 'Plan: stock reservations', 'Plan: price rules engine'], 'PBI', 'Plan Review', 'Plan review', 30),
+  ...quiet([61140, 61141, 61142, 61143, 61144, 61145, 61146, 61147], ['Invoice PDF shows the old address', 'Delivery note on app orders', 'Order history in the app', 'Coupon field accepts lowercase codes'], 'Bug', 'Testing', 'With QA', 20),
 ];
+for (const id of [61100, 61101, 61102, 61103]) items.find((e) => e.item.id === id).queuedAt = at(30);
 
 const overview = () => ({
   generatedAt: at(0),
   items,
-  unlinkedThreads: [{ ...thread(70001, 'Spike: faster product search', 'search-spike', 'your-turn', 5, 'The trigram index halves the query time.'), guessItemId: null }],
+  unlinkedThreads: [
+    { ...thread(70001, 'Bump the payment SDK to 7.2', 'deps/payment-sdk', 'running', 0.1), guessItemId: null },
+    { ...thread(70002, 'Spike: faster price lookups', 'spike/price-cache', 'settled', 24, 'A cache in front of the price rules halves the lookups.'), guessItemId: null },
+  ],
   worktrees: [],
   sources: { ado: { ok: true, at: at(0), error: null }, t3: { ok: true, at: at(0), error: null } },
   walk: {
-    lanes: [
-      { state: 'Code Review', itemIds: [61021, 61002], tone: 'bad', summary: '1 needs you' },
-      { state: 'Development In Progress', itemIds: [61044, 60988], tone: 'bad', summary: '1 needs you' },
-      { state: 'Testing Failed', itemIds: [60950], tone: 'warn', summary: '1 back from QA' },
-      { state: 'New', itemIds: [61063, 61070], tone: null, summary: '' },
-    ],
-    briefing: { needYou: 2, outOfSync: 3, running: 4 },
+    lanes: ['Testing Failed', 'Code Review', 'In Progress', 'Needs Human', 'New', 'Plan Review', 'Testing'].map((state) => {
+      const rank = { bad: 0, warn: 1, ok: 2, run: 3, mute: 4 };
+      const lane = items.filter((e) => e.item.state === state).sort((a, b) => rank[a.walk.verdict.tone] - rank[b.walk.verdict.tone]);
+      return { state, itemIds: lane.map((e) => e.item.id), tone: lane[0]?.walk.verdict.tone ?? null, summary: '' };
+    }),
+    briefing: { needYou: 4, outOfSync: 3, running: 5 },
   },
 });
 
 const threadDetails = {
   'sample-61044': {
-    thread: items[2].threads[0], itemId: 61044, place: 'offline-basket', machine: 'mac-mini',
+    thread: items.find((e) => e.item.id === 61044).threads[0], itemId: 61044, place: 'offline-basket', machine: 'mac-mini',
     messages: [
       { id: 'm1', role: 'user', text: 'Implement AB#61044: keep the basket on the phone while offline and replay it when the connection is back. Plan first.', at: at(50) },
       { id: 'm2', role: 'assistant', text: planMessage, at: at(48) },
@@ -114,7 +141,7 @@ threadDetails['sample-sync'] = {
 const threadDetail = (id) => {
   if (threadDetails[id]) return threadDetails[id];
   const found = items.flatMap((e) => e.threads.map((t) => ({ t, itemId: e.item.id }))).find(({ t }) => t.id === id);
-  const t = found?.t ?? { ...thread(70001, 'Spike: faster product search', 'search-spike', 'your-turn', 5, 'The trigram index halves the query time.'), id };
+  const t = found?.t ?? overview().unlinkedThreads.find((u) => u.id === id) ?? { ...thread(70001, 'Bump the payment SDK to 7.2', 'deps/payment-sdk', 'running', 0.1), id };
   return {
     thread: t, itemId: found?.itemId ?? null, place: t.branch, machine: t.environmentLabel,
     messages: [
@@ -198,20 +225,103 @@ const preferences = {
   faceIdForActions: true,
 };
 
+// AB#61021 as design/ios-flow/mockups.html section 08 draws it: QA notes with a screenshot, repro steps with a table,
+// two returns from QA, its own PR and an epic's shared one, and a Vera report among the comments.
+const invoiceShot = `/api/items/61021/attachments/4b1d2c3e-0f6a-4e8b-9a77-1c2d3e4f5a6b?name=invoice-export.png&exp=${Date.now() + 86400000}&sig=sample`;
+const itemComments = {
+  61021: [
+    { id: 1, by: 'Koen van der Borght', at: at(96), text: 'Fix is in #412; it rounds per line everywhere.', markdown: 'Fix is in #412; it rounds per line everywhere.' },
+    { id: 2, by: 'Vera', at: at(26), text: 'Vera · test report — 14 checks passed, 1 failed: invoice totals round per line.', markdown: 'Vera · test report — 14 checks passed, 1 failed: `invoice totals round per line`.' },
+    { id: 3, by: 'Lena (QA)', at: at(23), text: "Basket is fine now, the invoice export isn't. Steps are in QA notes.", markdown: "Basket is fine now, the **invoice export** isn't. Steps are in QA notes." },
+  ],
+};
+const richDetails = {
+  61021: {
+    markdown: {
+      qaNotes: `Basket totals are right now. The **invoice export** still rounds per order:\n\n1. Three lines of € 4,133\n2. Export the invoice as PDF\n3. Total says € 12,39, basket says € 12,40\n\n![invoice-export.png](${invoiceShot})`,
+      description: '',
+      reproSteps: '1. Add three lines of € 4,133 to a basket\n2. Check out and pay\n3. Open **Orders → Invoice**\n\n| | Expected | Actual |\n|---|---|---|\n| Basket | € 12,40 | € 12,40 |\n| Invoice | € 12,40 | € 12,39 |',
+      acceptanceCriteria: '- Every total rounds per line: basket, receipt, invoice\n- Existing invoices keep their totals',
+      developerNotes: '**12 Nov** Rounding moved to `LineTotal`; the PDF export still calls `OrderTotal.round()`.\n\n**8 Nov** Basket and receipt round per line (#412).',
+    },
+    description: '',
+    reproSteps: 'Add three lines of € 4,133 to a basket. Check out and pay. Open Orders → Invoice.',
+    qaNotes: 'Basket totals are right now. The invoice export still rounds per order.',
+    acceptanceCriteria: 'Every total rounds per line: basket, receipt, invoice. Existing invoices keep their totals.',
+    history: [
+      { at: at(24), by: 'Lena (QA)', kind: 'state', from: 'Testing', to: 'Testing Failed' },
+      { at: at(72), by: 'Koen van der Borght', kind: 'state', from: 'Code Review', to: 'Testing' },
+      { at: at(97), by: 'Priya', kind: 'pullRequest', from: null, to: null, pullRequest: 412 },
+      { at: at(150), by: 'Lena (QA)', kind: 'state', from: 'Testing', to: 'Testing Failed' },
+      { at: at(170), by: 'Koen van der Borght', kind: 'state', from: 'Code Review', to: 'Testing' },
+      { at: at(220), by: 'Mara Visser', kind: 'assigned', from: null, to: 'Koen van der Borght' },
+      { at: at(240), by: 'Mara Visser', kind: 'created', from: null, to: 'New' },
+    ],
+    pullRequests: [
+      { ...pr(412, 'open', 'Round totals per line instead of per order', 'invoice-rounding', 'failure'), repository: 'acme/shop', own: true, shared: false, author: 'Priya', updatedAt: at(96) },
+      { ...pr(398, 'open', 'epic plan', 'checkout-totals-plan'), repository: 'acme/shop', own: false, shared: true, author: 'Mara Visser', updatedAt: at(300) },
+    ],
+    parent: { id: 60990, title: 'Checkout totals', typeName: 'Epic' },
+    effort: 3,
+    areaPath: null,
+    attachments: [{ name: 'invoice-export.png', url: invoiceShot, size: 245760 }],
+  },
+};
+
 const itemDetail = (id) => {
   const found = items.find((e) => e.item.id === id);
   if (!found) return undefined;
-  const descriptions = {
-    61021: 'Pay with the test provider set to a 35 s delay. After the timeout the header shows <b>Basket (0)</b> and the lines are gone; refreshing doesn\'t bring them back.',
-  };
+  const description = `${found.item.title}. Sample description for the screenshots.`;
   return {
     item: found.item,
-    description: descriptions[id] ?? `${found.item.title}. Sample description for the screenshots.`,
-    acceptanceCriteria: 'The basket keeps its lines after a payment timeout.',
+    description,
+    acceptanceCriteria: 'The change works on staging.',
     reproSteps: '',
     qaNotes: '',
-    comments: [{ by: 'Vera', at: at(0.67), text: 'e2e fails on the timeout path, the banner never renders. Back to you.' }],
+    comments: itemComments[id] ?? [],
+    markdown: { description, acceptanceCriteria: '- The change works on staging', reproSteps: '', qaNotes: '', developerNotes: '' },
+    history: [{ at: at(200), by: 'Mara Visser', kind: 'created', from: null, to: 'New' }],
+    pullRequests: found.pullRequest ? [{ ...found.pullRequest, repository: 'acme/shop', own: true, shared: false, author: 'Koen van der Borght', updatedAt: at(30) }] : [],
+    parent: null,
+    effort: null,
+    areaPath: 'Shop\\Checkout',
+    attachments: [],
+    ...richDetails[id],
   };
+};
+
+// The screenshot behind invoiceShot: an invoice with its total row in red.
+const invoicePng = (() => {
+  const [width, height] = [360, 200];
+  const raw = Buffer.alloc((width * 3 + 1) * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const line = y > 40 && y < 140 && (y - 40) % 24 < 10 && x > 20 && x < (y < 100 ? 340 : 220);
+      const color = y < 26 ? [79, 70, 229] : y > 150 && y < 180 && x > 20 && x < 340 ? [251, 233, 236] : line ? [227, 228, 232] : [255, 255, 255];
+      raw.set(color, y * (width * 3 + 1) + 1 + x * 3);
+    }
+  }
+  const table = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = (buf) => { let c = 0xffffffff; for (const b of buf) c = table[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const chunk = (type, data) => {
+    const body = Buffer.concat([Buffer.from(type), data]);
+    const length = Buffer.alloc(4); length.writeUInt32BE(data.length);
+    const sum = Buffer.alloc(4); sum.writeUInt32BE(crc(body));
+    return Buffer.concat([length, body, sum]);
+  };
+  const header = Buffer.alloc(13); header.writeUInt32BE(width, 0); header.writeUInt32BE(height, 4); header[8] = 8; header[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+})();
+
+const browseQueries = [
+  { id: 'team-bugs', name: 'Team bugs', group: 'Shared Queries' },
+  { id: 'qa-board', name: 'QA board', group: 'Shared Queries' },
+];
+const browse = (query) => {
+  const search = query.get('search')?.toLowerCase();
+  if (search) return { items: items.map((e) => e.item).filter((i) => i.title.toLowerCase().includes(search)), truncated: false };
+  const picked = query.get('query') === 'team-bugs' ? items.filter((e) => e.item.type === 'Bug') : items.filter((e) => ['Testing', 'Testing Failed'].includes(e.item.state));
+  return { items: picked.map((e) => e.item), truncated: false };
 };
 
 // BorgDock's Clerk development app (the key is public), so the simulator shows the real Clerk sign-in;
@@ -270,5 +380,15 @@ export function handle({ path, method, query, body, writes }) {
   }
   const itemMatch = path.match(/^\/api\/items\/(\d+)$/);
   if (itemMatch && method === 'GET') return itemDetail(Number(itemMatch[1]));
+  const commentMatch = path.match(/^\/api\/items\/(\d+)\/comments$/);
+  if (commentMatch && method === 'POST') {
+    writes.push({ path, body });
+    const comment = { id: Date.now(), by: 'Koen van der Borght', at: new Date().toISOString(), text: body.text, markdown: body.text };
+    (itemComments[commentMatch[1]] ??= []).push(comment);
+    return { comment };
+  }
+  if (/^\/api\/items\/\d+\/attachments\//.test(path)) return { contentType: 'image/png', rawBody: invoicePng };
+  if (path === '/api/browse/queries') return browseQueries;
+  if (path === '/api/browse') return browse(query);
   return undefined;
 }
