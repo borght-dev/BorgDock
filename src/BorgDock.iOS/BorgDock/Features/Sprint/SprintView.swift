@@ -43,12 +43,6 @@ struct SprintView: View {
         .background(BD.bg)
         .navigationTitle(store.sprint.map { "Sprint \($0.name)" } ?? "Sprint")
         .navigationSubtitle(subtitle(store.sprint))
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { app.router.push(.browse) } label: { Image(systemName: "square.3.layers.3d") }
-                    .accessibilityLabel("Browse the sprint's work items")
-            }
-        }
         .tint(BD.text)
         .refreshable { await store.load(reportErrors: true) }
         .task { await store.poll() }

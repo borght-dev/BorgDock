@@ -21,6 +21,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 0) {
                 accountSection
                 sourcesSection
+                pullRequestsSection
                 machinesSection
                 DesktopsGroup(title: "Desktop", desktops: account.desktops) { linkingDesktop = true }
                 notificationsSection
@@ -112,6 +113,20 @@ struct SettingsView: View {
         guard let ado = account.sources?.ado else { return "None" }
         if !ado.ok { return "Not working" }
         return ado.via == .machine ? "via \(ado.machine ?? "machine")" : "Connected"
+    }
+
+    @ViewBuilder
+    private var pullRequestsSection: some View {
+        CellGroupHeader(title: "Pull requests")
+        CellGroup(indent: 66) {
+            NavigationLink(value: Route.repositories) {
+                Cell(title: "Repositories", chevron: true) {
+                    IconTile(systemImage: "folder", background: BD.fill2, foreground: BD.text)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("settings-repositories")
+        }
     }
 
     @ViewBuilder

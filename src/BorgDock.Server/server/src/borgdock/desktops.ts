@@ -21,6 +21,7 @@ export const DESKTOP_ROUTES = new Set([
   'POST /api/activity/read-targets',
   'GET /api/activity/reads',
   'POST /api/presence',
+  'PUT /api/desktop/repositories',
   'POST /api/auth/logout',
 ]);
 
@@ -66,7 +67,13 @@ export class Desktops {
   }
 
   isDesktop(sessionId: string): boolean {
-    return Boolean(this.db.prepare('SELECT 1 FROM bd_desktops WHERE session_id = ?').get(sessionId));
+    return this.nameOf(sessionId) !== null;
+  }
+
+  /** The linked desktop's name, or null when the session isn't a desktop's. */
+  nameOf(sessionId: string): string | null {
+    const row = this.db.prepare('SELECT name FROM bd_desktops WHERE session_id = ?').get(sessionId) as { name: string } | undefined;
+    return row?.name ?? null;
   }
 
   /** Desktops whose session is still signed in; revoking the session unlinks the desktop. */
@@ -83,7 +90,7 @@ export function desktopScope(desktops: Desktops): MiddlewareHandler<Env> {
     const session = c.get('session');
     if (!session || session.kind !== 'app' || !desktops.isDesktop(session.id)) return next();
     if (DESKTOP_ROUTES.has(`${c.req.method} ${new URL(c.req.url).pathname}`)) return next();
-    return c.json({ error: 'A linked desktop can only read activity, sync what you read and report presence. Use the phone for this.' }, 403);
+    return c.json({ error: 'A linked desktop can only read activity, sync what you read, report presence and share its repositories. Use the phone for this.' }, 403);
   };
 }
 

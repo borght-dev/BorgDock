@@ -1,15 +1,16 @@
 import Foundation
 
-/// How the Work tab groups items: one lane per ADO state, or one per status.
+/// How the Work tab groups items into lanes: per ADO state, per verdict, or per sprint.
 enum WorkGrouping: String, CaseIterable, Identifiable {
-    case state, status
+    case state, verdict, sprint
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .state: "By state"
-        case .status: "By status"
+        case .state: "State"
+        case .verdict: "Verdict"
+        case .sprint: "Sprint"
         }
     }
 }
@@ -25,7 +26,7 @@ enum LaneOrder {
     }
 
     /// Lanes you placed come first, in your order; the others keep their walk order after them.
-    static func apply(_ order: [String], to lanes: [WalkDisplay.Lane]) -> [WalkDisplay.Lane] {
+    static func apply(_ order: [String], to lanes: [WorkLane]) -> [WorkLane] {
         let position = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
         return lanes.enumerated()
             .sorted { a, b in

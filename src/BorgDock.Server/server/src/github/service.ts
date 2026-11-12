@@ -1,21 +1,24 @@
 import { EventEmitter } from 'node:events';
 import type {
   AgentWaiting, CheckRun, CiFailureGroup, Focus, FocusBucket, GithubAccountStatus, MergeMethod, MergeRequest, MergeResponse, Person, PostCommentRequest,
-  PrConversation, PrDetail, PrFile, PrFiles, PrRef, PrSummary, RerunResponse, SubmitReviewRequest, ThreadSummary, WidgetSnapshot,
+  PrConversation, PrDetail, PrFile, PrFiles, PrRef, PrRepositories, PrRepositoryPreferences, PrSummary, RerunResponse, SubmitReviewRequest, ThreadSummary,
+  WidgetSnapshot,
 } from '../../../shared/src/api.ts';
 import type { Config } from '../config.ts';
 import { now, type Db } from '../db.ts';
 import { UserError, type DispatchService } from '../service.ts';
 import { buildGroups, checkFailureOf, readFailure } from './ci/groups.ts';
+import { fileCategory } from './file-category.ts';
 import { GhTokens, GithubClient, GithubError, type TokenSource } from './client.ts';
 import {
   bucketFor, checkSummary, compareFocus, FOCUS_BUCKETS, isMine, isNeedsYou, isWaitingOnMe, myReview, prKey, reasonFor, scoreOf,
   workItemIdsOf, type CheckContext, type FocusContext, type PrRecord,
 } from './focus.ts';
 import {
-  AUTO_MERGE_MUTATION, CONVERSATION_QUERY, DETAIL_QUERY, FOCUS_MAX_PAGES, FOCUS_QUERY, FOCUS_SEARCHES, HEAD_QUERY, mapContexts, mapConversation, mapPr,
-  mapReviews, REPLY_MUTATION, RESOLVE_MUTATION, TEAMS_QUERY, type FocusPage, type RawConversation, type RawDetail, type RawPr,
+  AUTO_MERGE_MUTATION, CONVERSATION_QUERY, DETAIL_QUERY, FOCUS_MAX_PAGES, FOCUS_QUERY, HEAD_QUERY, mapContexts, mapConversation, mapPr, mapReviews,
+  REPLY_MUTATION, REPOSITORY_MAX_PAGES, RESOLVE_MUTATION, TEAMS_QUERY, type FocusPage, type RawConversation, type RawDetail, type RawPr,
 } from './queries.ts';
+import { cleanRepositories, involvementSearches, repositorySearch, RepositorySettings, watchedRepositories } from './repositories.ts';
 import { GithubStore, type JobFailure } from './store.ts';
 
 export type GithubOptions = { tokens?: TokenSource; fetch?: typeof fetch; now?: () => number };
@@ -26,7 +29,23 @@ const DETAIL_TTL_MS = 10_000;
 const LOG_READS_PER_POLL = 6;
 const LOG_RETRY_MS = 10 * 60_000;
 const BASE_REPOS = 6;
+/** Repository searches running at once; GitHub's secondary rate limit punishes bursts. */
+const REPOSITORY_SEARCHES_AT_ONCE = 4;
+/**
+ * A repository read this recently waits for a later poll: a search per repository every minute would spend the
+ * GraphQL budget the desktop shares on the same accounts. Pull to refresh and changed settings read every one.
+ */
+const REPOSITORY_FRESH_MS = 3 * 60_000;
 const FAILED = new Set(['failure', 'timed_out', 'startup_failure']);
+
+type SearchResult = { found: RawPr[]; cutOff: boolean };
+
+/** The last read of one watched repository. A failed read keeps the pull requests of the one before. */
+type RepositoryRead = {
+  name: string; account: string | null; records: PrRecord[]; cutOff: boolean; polledAt: string | null; ok: boolean; error: string | null;
+  /** When the last good read was, on the service's clock. */
+  readAt: number | null;
+};
 
 type BaseStatus = {
   repo: string;
@@ -66,12 +85,22 @@ export class GithubService extends EventEmitter {
   private readonly accountStatus = new Map<string, GithubAccountStatus>();
   private readonly teams = new Map<string, { slugs: string[]; at: number }>();
   private readonly detailCache = new Map<string, { at: number; raw: RawDetail; account: string }>();
+  /** Detail reads in flight per PR, so a detail and its files read at once ask GitHub once. */
+  private readonly detailReads = new Map<string, Promise<{ raw: RawDetail; account: string }>>();
+  /** Log reads in flight per job, shared by the poll and detail reads. */
+  private readonly jobReads = new Map<number, Promise<void>>();
   private readonly bases = new Map<string, BaseStatus>();
   private readonly jobsRead = new Set<number>();
   /** Open pull requests from the last poll of each account. */
   private readonly byAccount = new Map<string, PrRecord[]>();
   /** What each account's searches last found; a search that fails keeps its previous answer. */
-  private readonly bySearch = new Map<string, Map<string, RawPr[]>>();
+  private readonly bySearch = new Map<string, Map<string, SearchResult>>();
+  /** Watched repositories by lower-cased name, each read by the account that could read it last time. */
+  private readonly byRepository = new Map<string, RepositoryRead>();
+  private readonly repositorySettings: RepositorySettings;
+  private polledAt: string | null = null;
+  /** The next poll reads every watched repository, fresh or not. */
+  private repositoriesDue = true;
   private records = new Map<string, PrRecord>();
   private reviewRequests = new Map<string, string>();
   private current: Focus | null = null;
@@ -87,6 +116,7 @@ export class GithubService extends EventEmitter {
     this.db = db;
     this.dispatch = dispatch;
     this.store = new GithubStore(db);
+    this.repositorySettings = new RepositorySettings(db);
     this.tokens = options.tokens ?? new GhTokens();
     this.fetchImpl = options.fetch;
     this.clock = options.now ?? Date.now;
@@ -116,8 +146,9 @@ export class GithubService extends EventEmitter {
     return this.focus?.pullRequests ?? [];
   }
 
-  /** Polls now; concurrent callers share one poll. */
-  async refresh(): Promise<Focus | null> {
+  /** Polls now; concurrent callers share one poll. `repositories` reads every watched repository (pull to refresh). */
+  async refresh(options: { repositories?: boolean } = {}): Promise<Focus | null> {
+    if (options.repositories) this.repositoriesDue = true;
     this.polling ??= this.poll().finally(() => {
       this.polling = null;
     });
@@ -141,24 +172,9 @@ export class GithubService extends EventEmitter {
 
   private async poll(): Promise<Focus | null> {
     const accounts = await this.accounts();
-    const repos = this.config.github.repos.filter((r) => /^[\w.-]+\/[\w.-]+$/.test(r));
-    await Promise.all(accounts.map(async (login, index) => {
-      const polledAt = now();
-      try {
-        const searches: string[] = [...FOCUS_SEARCHES];
-        if (index === 0 && repos.length > 0) searches.push(`is:open is:pr archived:false ${repos.map((r) => `repo:${r}`).join(' ')}`);
-        const failure = await this.runSearches(login, searches);
-        const found = [...(this.bySearch.get(login)?.values() ?? [])].flat();
-        const unique = [...new Map(found.map((n) => [n.id, n])).values()];
-        this.byAccount.set(login, unique.map((n) => mapPr(n, login)));
-        await this.refreshTeams(login);
-        this.accountStatus.set(login, { login, via: 'account', machine: null, ok: failure === null, error: failure, polledAt });
-      } catch (error) {
-        // A failed account keeps its last pull requests; its status says why they are old.
-        const previous = this.accountStatus.get(login);
-        this.accountStatus.set(login, { login, via: 'account', machine: null, ok: false, error: (error as Error).message, polledAt: previous?.polledAt ?? null });
-      }
-    }));
+    const searches = involvementSearches(this.repositorySettings.preferences());
+    await Promise.all([...accounts.map((login) => this.pollAccount(login, searches)), this.pollRepositories(accounts)]);
+    this.polledAt = now();
     for (const login of [...this.byAccount.keys()]) if (!accounts.includes(login)) this.byAccount.delete(login);
     for (const login of [...this.bySearch.keys()]) if (!accounts.includes(login)) this.bySearch.delete(login);
     for (const login of [...this.accountStatus.keys()]) if (!accounts.includes(login)) this.accountStatus.delete(login);
@@ -177,9 +193,69 @@ export class GithubService extends EventEmitter {
     return this.current;
   }
 
+  /** The searches for pull requests that involve this account, in any repository. */
+  private async pollAccount(login: string, searches: readonly string[]) {
+    const polledAt = now();
+    try {
+      const failure = await this.runSearches(login, searches);
+      const found = [...(this.bySearch.get(login)?.values() ?? [])].flatMap((result) => result.found);
+      const unique = [...new Map(found.map((n) => [n.id, n])).values()];
+      this.byAccount.set(login, unique.map((n) => mapPr(n, login)));
+      await this.refreshTeams(login);
+      this.accountStatus.set(login, { login, via: 'account', machine: null, ok: failure === null, error: failure, polledAt });
+    } catch (error) {
+      // A failed account keeps its last pull requests; its status says why they are old.
+      const previous = this.accountStatus.get(login);
+      this.accountStatus.set(login, { login, via: 'account', machine: null, ok: false, error: (error as Error).message, polledAt: previous?.polledAt ?? null });
+    }
+  }
+
+  private watched(): string[] {
+    return watchedRepositories(this.repositorySettings.desktop()?.repositories ?? [], this.config.github.repos);
+  }
+
+  /** Every watched repository on its own search, a few at a time. */
+  private async pollRepositories(accounts: readonly string[]) {
+    const watched = this.watched();
+    const keep = new Set(watched.map((name) => name.toLowerCase()));
+    for (const key of [...this.byRepository.keys()]) if (!keep.has(key)) this.byRepository.delete(key);
+    const due = this.repositoriesDue;
+    this.repositoriesDue = false;
+    const queue = watched.filter((name) => {
+      const read = this.byRepository.get(name.toLowerCase());
+      return due || !read?.ok || read.readAt === null || this.clock() - read.readAt >= REPOSITORY_FRESH_MS;
+    });
+    const worker = async () => {
+      for (let name = queue.shift(); name !== undefined; name = queue.shift()) await this.pollRepository(name, accounts);
+    };
+    await Promise.all(Array.from({ length: Math.min(REPOSITORY_SEARCHES_AT_ONCE, queue.length) }, worker));
+  }
+
+  /** Reads with the account that read it last, else each account in turn; when none can, the last answer stays. */
+  private async pollRepository(name: string, accounts: readonly string[]) {
+    const key = name.toLowerCase();
+    const previous = this.byRepository.get(key);
+    const remembered = previous?.account && accounts.includes(previous.account) ? previous.account : null;
+    const readers = remembered ? [remembered, ...accounts.filter((a) => a !== remembered)] : accounts;
+    const errors: string[] = [];
+    for (const login of readers) {
+      try {
+        const { found, cutOff } = await this.searchAll(login, repositorySearch(name), REPOSITORY_MAX_PAGES);
+        this.byRepository.set(key, { name, account: login, records: found.map((n) => mapPr(n, login)), cutOff, polledAt: now(), ok: true, error: null, readAt: this.clock() });
+        return;
+      } catch (error) {
+        errors.push(`${login}: ${(error as Error).message}`);
+      }
+    }
+    this.byRepository.set(key, {
+      name, account: previous?.account ?? null, records: previous?.records ?? [], cutOff: previous?.cutOff ?? false, polledAt: previous?.polledAt ?? null,
+      ok: false, error: errors.length ? errors.join('; ') : 'No GitHub account to read it with.', readAt: previous?.readAt ?? null,
+    });
+  }
+
   /** Runs every search at once. A search that fails keeps its last answer and is named in the result; all failing throws. */
   private async runSearches(login: string, searches: readonly string[]): Promise<string | null> {
-    const known = this.bySearch.get(login) ?? new Map<string, RawPr[]>();
+    const known = this.bySearch.get(login) ?? new Map<string, SearchResult>();
     this.bySearch.set(login, known);
     for (const query of [...known.keys()]) if (!searches.includes(query)) known.delete(query);
     const results = await Promise.allSettled(searches.map((query) => this.searchAll(login, query)));
@@ -193,21 +269,23 @@ export class GithubService extends EventEmitter {
     return failures.length ? `Showing older results for ${failures.join('; ')}` : null;
   }
 
-  private async searchAll(login: string, query: string): Promise<RawPr[]> {
+  /** Pages through a search; `cutOff` when pages were left after `maxPages`. */
+  private async searchAll(login: string, query: string, maxPages = FOCUS_MAX_PAGES): Promise<SearchResult> {
     const found: RawPr[] = [];
     let after: string | null = null;
-    for (let page = 0; page < FOCUS_MAX_PAGES; page++) {
+    for (let page = 0; page < maxPages; page++) {
       const { found: result }: FocusPage = await this.client(login).graphql<FocusPage>(FOCUS_QUERY, { query, after });
       found.push(...result.nodes.filter((n): n is RawPr => 'id' in n && typeof n.id === 'string'));
-      if (!result.pageInfo.hasNextPage || !result.pageInfo.endCursor) break;
+      if (!result.pageInfo.hasNextPage || !result.pageInfo.endCursor) return { found, cutOff: false };
       after = result.pageInfo.endCursor;
     }
-    return found;
+    return { found, cutOff: true };
   }
 
-  /** Resolves once the CI failure reads the last poll started are done. */
+  /** Resolves once the CI failure reads the last poll or detail read started are done. */
   async ciSettled(): Promise<void> {
     await this.reading;
+    await Promise.all(this.jobReads.values());
   }
 
   private async refreshTeams(login: string) {
@@ -222,15 +300,17 @@ export class GithubService extends EventEmitter {
     }
   }
 
+  /** Your teams count for review requests unless the preferences say only yours do. */
   private teamsOf(login: string): string[] {
+    if (!this.repositorySettings.preferences().includeTeamRequests) return [];
     return this.teams.get(login)?.slugs ?? [];
   }
 
-  /** One record per pull request; one read by an account it involves wins over a read through `github.repos`. */
+  /** One record per pull request; one read by an account it involves wins over a read through a watched repository. */
   private mergeAccounts(): Map<string, PrRecord> {
     const merged = new Map<string, PrRecord>();
     const involves = (pr: PrRecord) => isMine(pr, pr.account) || isNeedsYou(pr, pr.account, this.teamsOf(pr.account)) || myReview(pr, pr.account) !== null;
-    for (const list of this.byAccount.values()) {
+    for (const list of [...this.byAccount.values(), ...[...this.byRepository.values()].map((read) => read.records)]) {
       for (const pr of list) {
         const key = prKey(pr);
         const known = merged.get(key);
@@ -330,6 +410,46 @@ export class GithubService extends EventEmitter {
     if (changed) this.emit('focus', next);
   }
 
+  /* ---------- repositories ---------- */
+
+  /** Where the pull request list comes from and how much of it the last poll read. */
+  repositories(): PrRepositories {
+    const desktop = this.repositorySettings.desktop();
+    const fromDesktop = Boolean(desktop?.repositories.length);
+    const searchesCut = [...this.bySearch.values()].some((searches) => [...searches.values()].some((result) => result.cutOff));
+    return {
+      source: fromDesktop ? 'desktop' : cleanRepositories(this.config.github.repos).length ? 'config' : 'none',
+      desktopName: fromDesktop ? desktop!.desktopName : null,
+      updatedAt: fromDesktop ? desktop!.updatedAt : null,
+      repositories: this.watched().map((name) => {
+        const read = this.byRepository.get(name.toLowerCase());
+        return { name, open: read?.records.length ?? 0, polledAt: read?.polledAt ?? null, ok: read?.ok ?? true, error: read?.error ?? null };
+      }),
+      ...this.repositorySettings.preferences(),
+      polledAt: this.polledAt,
+      cutOff: searchesCut || [...this.byRepository.values()].some((read) => read.cutOff),
+    };
+  }
+
+  /** The linked desktop's watched repositories; a changed list is searched right away. */
+  setDesktopRepositories(names: unknown, desktop: { sessionId: string; name: string }): PrRepositories {
+    if (this.repositorySettings.setDesktop(cleanRepositories(names), desktop)) this.refreshAfterChange();
+    return this.repositories();
+  }
+
+  setRepositoryPreferences(input: PrRepositoryPreferences): PrRepositories {
+    this.repositorySettings.setPreferences(input ?? {});
+    this.refreshAfterChange();
+    return this.repositories();
+  }
+
+  /** Polls with the new settings once a poll that read with the old ones is done. Before start() the first poll will. */
+  private refreshAfterChange() {
+    this.repositoriesDue = true;
+    if (!this.timer) return;
+    void (this.polling ?? Promise.resolve(null)).catch(() => null).then(() => this.refresh());
+  }
+
   /* ---------- CI failures ---------- */
 
   private async readFailures() {
@@ -350,11 +470,23 @@ export class GithubService extends EventEmitter {
     return !known || (known.status === 'failed' && this.clock() - Date.parse(known.readAt) > LOG_RETRY_MS);
   }
 
-  private async readPrJob(pr: PrRecord, check: CheckContext) {
-    const repo = `${pr.owner}/${pr.repo}`;
-    await this.readJob(this.client(pr.account), repo, check.id, {
+  private readPrJob(pr: PrRecord, check: CheckContext): Promise<void> {
+    const inFlight = this.jobReads.get(check.id);
+    if (inFlight) return inFlight;
+    const read = this.readJob(this.client(pr.account), `${pr.owner}/${pr.repo}`, check.id, {
       runId: check.runId, headSha: pr.headSha, branch: pr.headRef, prKey: prKey(pr), checkName: check.name, workflow: check.workflow, failedAt: check.completedAt,
-    });
+    }).finally(() => this.jobReads.delete(check.id));
+    this.jobReads.set(check.id, read);
+    return read;
+  }
+
+  /** Failure reasons for checks nobody has read yet; the next detail read or poll carries them. */
+  private readUnreadLogs(record: PrRecord) {
+    const unread = record.checks.filter((c) => this.wantsLog(c) && !this.jobReads.has(c.id)).slice(0, 4);
+    if (!unread.length) return;
+    Promise.all(unread.map((c) => this.readPrJob(record, c)))
+      .then(() => this.rebuildGroups())
+      .catch((error) => console.error('GitHub: reading CI failures failed', error));
   }
 
   private async readJob(client: GithubClient, repo: string, jobId: number, meta: { runId: number | null; headSha: string; branch: string; prKey: string | null; checkName: string; workflow: string | null; failedAt: string | null }, steps?: RawJob['steps']) {
@@ -511,10 +643,25 @@ export class GithubService extends EventEmitter {
     return account;
   }
 
-  private async detailRaw(ref: PrRef, fresh = false): Promise<{ raw: RawDetail; account: string }> {
+  private async detailRaw(ref: PrRef): Promise<{ raw: RawDetail; account: string }> {
     const key = prKey(ref);
     const cached = this.detailCache.get(key);
-    if (!fresh && cached && this.clock() - cached.at < DETAIL_TTL_MS) return cached;
+    if (cached && this.clock() - cached.at < DETAIL_TTL_MS) return cached;
+    const inFlight = this.detailReads.get(key);
+    if (inFlight) return inFlight;
+    const read = this.readDetail(ref);
+    this.detailReads.set(key, read);
+    try {
+      const entry = await read;
+      if (this.detailReads.get(key) === read) this.detailCache.set(key, { at: this.clock(), ...entry });
+      return entry;
+    } finally {
+      if (this.detailReads.get(key) === read) this.detailReads.delete(key);
+    }
+  }
+
+  private async readDetail(ref: PrRef): Promise<{ raw: RawDetail; account: string }> {
+    const key = prKey(ref);
     // A repository no poll has shown may belong to another account: the first one that can see it reads it from now on.
     const first = this.accountFor(ref);
     const readers = [first, ...[...this.accountStatus.values()].filter((a) => a.ok && a.login !== first).map((a) => a.login)];
@@ -523,16 +670,13 @@ export class GithubService extends EventEmitter {
         if (error instanceof GithubError && [401, 403, 404].includes(error.githubStatus)) return null;
         throw error;
       });
-      if (!raw?.repository?.pullRequest) continue;
-      const entry = { at: this.clock(), raw, account };
-      this.detailCache.set(key, entry);
-      return entry;
+      if (raw?.repository?.pullRequest) return { raw, account };
     }
     throw new UserError(`${key} doesn't exist or ${readers.join(' and ')} can't see it.`, 404);
   }
 
-  private async recordOf(ref: PrRef, fresh = false): Promise<{ record: PrRecord; raw: RawDetail; account: string }> {
-    const { raw, account } = await this.detailRaw(ref, fresh);
+  private async recordOf(ref: PrRef): Promise<{ record: PrRecord; raw: RawDetail; account: string }> {
+    const { raw, account } = await this.detailRaw(ref);
     const record = mapPr(raw.repository!.pullRequest!, account);
     if (this.records.has(prKey(record))) this.records.set(prKey(record), record);
     return { record, raw, account };
@@ -542,12 +686,7 @@ export class GithubService extends EventEmitter {
     const { record, raw, account } = await this.recordOf(ref);
     const repository = raw.repository!;
     const pr = repository.pullRequest!;
-    // Failure reasons for checks nobody has read yet, so the Checks tab shows them on first open.
-    const unread = record.checks.filter((c) => this.wantsLog(c)).slice(0, 4);
-    if (unread.length) {
-      await Promise.all(unread.map((c) => this.readPrJob(record, c)));
-      this.rebuildGroups();
-    }
+    this.readUnreadLogs(record);
     const methods: MergeMethod[] = [
       ...(repository.squashMergeAllowed ? ['squash' as const] : []),
       ...(repository.mergeCommitAllowed ? ['merge' as const] : []),
@@ -600,6 +739,12 @@ export class GithubService extends EventEmitter {
       .sort((a, b) => order[a.state] - order[b.state] || a.name.localeCompare(b.name));
   }
 
+  /** One pull request in any state, read from GitHub (shared with detail reads and their cache). */
+  async pullRequest(ref: PrRef): Promise<PrSummary> {
+    const { record } = await this.recordOf(ref);
+    return this.summaryOf(record);
+  }
+
   async files(ref: PrRef): Promise<PrFiles> {
     const { record, account } = await this.recordOf(ref);
     const client = this.client(account);
@@ -635,6 +780,7 @@ export class GithubService extends EventEmitter {
         deletions: f.deletions,
         patch: f.patch ?? null,
         changedSinceReview: changed === 'all' || changed.has(f.filename),
+        category: fileCategory(f.filename, f.patch !== undefined),
       })),
     };
   }
@@ -683,6 +829,7 @@ export class GithubService extends EventEmitter {
   /** After a write: forget the cached detail and read again soon. */
   private changed(ref: PrRef) {
     this.detailCache.delete(prKey(ref));
+    this.detailReads.delete(prKey(ref));
     setTimeout(() => void this.refresh(), 1500).unref?.();
   }
 

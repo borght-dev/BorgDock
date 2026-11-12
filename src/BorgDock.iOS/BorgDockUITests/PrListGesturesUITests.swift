@@ -30,8 +30,11 @@ final class PrListGesturesUITests: XCTestCase {
     @MainActor
     func testTouchAndHoldShowsTheRowActions() {
         let app = launch("tab/prs")
+        app.unfoldEveryPullRequestGroup()
         let card = app.buttons["pr-row-acme/shop#3712"]
-        XCTAssertTrue(card.waitForExistence(timeout: 15))
+        for _ in 0..<8 where !card.waitForExistence(timeout: 1) || !card.isHittable { app.swipeUp() }
+        XCTAssertTrue(card.isHittable)
+        sleep(1)
         card.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Fix with Claude"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Rerun failed checks"].exists)
@@ -43,6 +46,7 @@ final class PrListGesturesUITests: XCTestCase {
     @MainActor
     func testSwipesRevealSnoozeMergeAndReview() {
         let app = launch("tab/prs")
+        app.unfoldEveryPullRequestGroup()
         let ready = app.buttons["pr-row-acme/shop#3698"]
         XCTAssertTrue(ready.waitForExistence(timeout: 15))
         for _ in 0..<4 where !ready.isHittable { app.swipeUp() }

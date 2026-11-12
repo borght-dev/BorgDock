@@ -1,82 +1,18 @@
 import Foundation
 
-/// What the states walk shows, from `Overview.walk` and `ItemOverview.walk` (the server ports the desktop's
-/// `verdict.ts` and `walk.ts`). Older servers send no walk; the bays stand in for it then. Pure, for tests.
+/// What the states walk says about an item, from `ItemOverview.walk` (the server ports the desktop's `verdict.ts`).
+/// Older servers send no walk; the bays stand in for it then. Pure, for tests.
 enum WalkDisplay {
-    /// A section of the Work tab: an ADO state, or a status when grouped by status.
-    struct Lane: Identifiable, Equatable {
-        let title: String
-        let entries: [ItemOverview]
-        let tone: Tone?
-        let summary: String
-        var id: String { title }
-    }
-
+    /// A piece of a sentence in its tone: "2 failed QA" in red.
     struct BriefingPart: Equatable {
         let text: String
         let tone: Tone?
-    }
-
-    /// One lane per ADO state in walk order. Items the overview doesn't hold are skipped, empty lanes dropped.
-    static func lanes(_ overview: Overview) -> [Lane] {
-        let byId = Dictionary(overview.items.map { ($0.item.id, $0) }, uniquingKeysWith: { first, _ in first })
-        if let walk = overview.walk {
-            return walk.lanes.compactMap { lane in
-                let entries = lane.itemIds.compactMap { byId[$0] }
-                return entries.isEmpty ? nil : Lane(title: lane.state, entries: entries, tone: lane.tone, summary: lane.summary)
-            }
-        }
-        var order: [String] = []
-        var groups: [String: [ItemOverview]] = [:]
-        for entry in overview.items where entry.item.stateCategory != .completed && entry.item.stateCategory != .removed {
-            if groups[entry.item.state] == nil { order.append(entry.item.state) }
-            groups[entry.item.state, default: []].append(entry)
-        }
-        return order.map { state in
-            let entries = groups[state, default: []].sorted { verdict(for: $0).tone.rank < verdict(for: $1).tone.rank }
-            return Lane(title: state, entries: entries, tone: entries.map { verdict(for: $0).tone }.min { $0.rank < $1.rank }, summary: "")
-        }
-    }
-
-    /// The Work tab's lanes as you sorted them: states in your order (the rest in walk order after them), or one lane
-    /// per status, most urgent first, each holding its items in that same state order.
-    static func lanes(_ overview: Overview, grouping: WorkGrouping, order: [String]) -> [Lane] {
-        let byState = LaneOrder.apply(order, to: lanes(overview))
-        guard grouping == .status else { return byState }
-        let ordered = byState.flatMap(\.entries)
-        return Tone.allCases.sorted { $0.rank < $1.rank }.compactMap { tone in
-            let entries = ordered.filter { verdict(for: $0).tone == tone }
-            return entries.isEmpty ? nil : Lane(title: statusTitle(tone), entries: entries, tone: tone, summary: "")
-        }
-    }
-
-    /// A status lane's header.
-    static func statusTitle(_ tone: Tone) -> String {
-        switch tone {
-        case .bad: "Needs you"
-        case .warn: "Needs a look"
-        case .ok: "Ready"
-        case .run: "Running"
-        case .mute: "Quiet"
-        }
     }
 
     static func briefing(_ overview: Overview) -> Walk.Briefing {
         if let briefing = overview.walk?.briefing { return briefing }
         let summary = OverviewSummary(overview)
         return Walk.Briefing(needYou: summary.waiting, outOfSync: summary.drift, running: summary.running)
-    }
-
-    /// "2 need you · 3 out of sync · 4 agents running"; the first in red when anything needs you.
-    static func briefingParts(_ briefing: Walk.Briefing) -> [BriefingPart] {
-        if briefing.needYou == 0 && briefing.outOfSync == 0 && briefing.running == 0 {
-            return [BriefingPart(text: "Nothing needs you", tone: nil)]
-        }
-        return [
-            BriefingPart(text: "\(briefing.needYou) need\(briefing.needYou == 1 ? "s" : "") you", tone: briefing.needYou > 0 ? .bad : nil),
-            BriefingPart(text: "\(briefing.outOfSync) out of sync", tone: nil),
-            BriefingPart(text: "\(briefing.running) \(briefing.running == 1 ? "agent" : "agents") running", tone: nil),
-        ]
     }
 
     static func verdict(for entry: ItemOverview) -> Verdict {

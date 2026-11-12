@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { Focus } from '../../shared/src/api.ts';
 import { UserError } from '../src/service.ts';
 import { checkRun, rawPr, searchAnswer, type Seen } from './github-fixtures/fake.ts';
-import { githubWorld } from './github-fixtures/world.ts';
+import { githubWorld, VITEST_LOG } from './github-fixtures/world.ts';
 
 const ONE = { owner: 'acme', repo: 'shop', number: 1 };
 const TWO = { owner: 'acme', repo: 'shop', number: 2 };
@@ -139,6 +139,33 @@ test('detail: merge options, proof images, reviews, the linked work item and thr
   assert.equal(detail.commits, 3);
 });
 
+test('detail answers before the failed job\'s log is read; the next read carries the reason', async () => {
+  const { service, gh } = githubWorld();
+  let release = () => {};
+  const storage = new Promise<void>((resolve) => { release = resolve; });
+  gh.onRest('GET', /^https:\/\/storage\.example\/logs\//, async () => {
+    await storage;
+    return { status: 206, text: VITEST_LOG, headers: { 'content-range': 'bytes 0-1/2' } };
+  });
+  const first = await service.detail(ONE);
+  assert.equal(first.checkRuns[0].name, 'e2e');
+  assert.equal(first.checkRuns[0].failure, null, 'answered while the log is still on its way');
+  await service.detail(ONE);
+  assert.equal(gh.requests('GET', /actions\/jobs\/501$/).length, 1, 'a second read joins the one in flight');
+
+  release();
+  await service.ciSettled();
+  assert.equal((await service.detail(ONE)).checkRuns[0].failure?.step, 'Run bun run test');
+});
+
+test('a detail and its files read at once ask GitHub for the pull request once', async () => {
+  const { service, gh } = githubWorld();
+  gh.onRest('GET', /\/pulls\/1\/files\?/, [{ filename: 'src/cart.ts', status: 'modified', additions: 1, deletions: 0, patch: '@@ -1 +1 @@\n+a' }]);
+  await service.refresh();
+  await Promise.all([service.detail(ONE), service.files(ONE), service.detail(ONE)]);
+  assert.equal(gh.operations('PrDetail').length, 1);
+});
+
 test('merge: a moved head is a 409 and nothing merges', async () => {
   const { service, gh } = githubWorld();
   await service.refresh();
@@ -212,12 +239,16 @@ test('files: changed since your review comes from comparing your review\'s commi
   gh.onRest('GET', /\/pulls\/1\/files\?/, [
     { filename: 'src/cart.ts', status: 'modified', additions: 3, deletions: 1, patch: '@@ -1 +1 @@\n-a\n+b' },
     { filename: 'src/new.ts', previous_filename: 'src/old.ts', status: 'renamed', additions: 0, deletions: 0 },
+    { filename: 'e2e/cart.spec.ts', status: 'added', additions: 9, deletions: 0, patch: '@@ -0,0 +1 @@\n+test' },
+    { filename: 'public/logo.png', status: 'added', additions: 0, deletions: 0 },
   ]);
   gh.onRest('GET', /\/compare\/r1\.\.\.h1$/, { files: [{ filename: 'src/cart.ts' }] });
   await service.refresh();
   const files = await service.files(ONE);
   assert.equal(files.reviewedHeadSha, 'r1');
-  assert.deepEqual(files.files.map((f) => [f.path, f.status, f.changedSinceReview]), [['src/cart.ts', 'modified', true], ['src/new.ts', 'renamed', false]]);
+  assert.deepEqual(files.files.map((f) => [f.path, f.status, f.changedSinceReview, f.category]), [
+    ['src/cart.ts', 'modified', true, 'source'], ['src/new.ts', 'renamed', false, 'source'], ['e2e/cart.spec.ts', 'added', false, 'tests'], ['public/logo.png', 'added', false, 'generated'],
+  ]);
   assert.equal(files.files[1].patch, null);
   assert.equal(files.files[1].previousPath, 'src/old.ts');
 

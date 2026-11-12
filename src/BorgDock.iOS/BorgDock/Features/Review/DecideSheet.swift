@@ -21,7 +21,7 @@ struct DecideSheet: View {
                         .font(.system(size: 30))
                         .foregroundStyle(locked ? BD.text3 : BD.green)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(locked ? "\(session.left) of \(session.allFiles.count) files left" : "All \(session.allFiles.count) files reviewed")
+                        Text(locked ? "\(session.left) left to review" : "All \(session.walk.total) files reviewed")
                             .font(.system(size: 21, weight: .bold))
                             .foregroundStyle(BD.text)
                         Text(verbatim: "Your decision on #\(key.number)").font(.system(size: 15)).foregroundStyle(BD.text2)
@@ -105,10 +105,7 @@ struct DecideSheet: View {
         let key = session.key
         let snapshot = draft
         Task {
-            if await app.focus.submitReview(key, event: event, draft: snapshot, headSha: headSha) {
-                app.focus.reviewErrors[key.key] = nil
-                onDecided()
-            }
+            if await app.focus.submitReview(key, event: event, draft: snapshot, headSha: headSha) { onDecided() }
         }
     }
 
@@ -125,7 +122,6 @@ struct DecideSheet: View {
                 if app.router.cover == nil { app.router.review([key]) }
             }
             if held {
-                app.focus.reviewErrors[key.key] = nil
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 onDecided()
             }

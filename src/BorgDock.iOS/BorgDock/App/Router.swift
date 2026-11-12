@@ -30,7 +30,7 @@ struct PrKey: Hashable, Codable, Sendable, Identifiable {
 
 struct ItemRoute: Hashable {
     let id: Int
-    /// Shown while GET /api/items/:id loads, e.g. a Browse result that isn't in the overview.
+    /// Shown while GET /api/items/:id loads, e.g. a sprint item or search result that isn't in the overview.
     var prefill: WorkItemSummary?
 }
 
@@ -58,18 +58,18 @@ struct LaunchContext: Identifiable, Hashable {
 enum Route: Hashable {
     case pullRequest(PrKey)
     case workItem(ItemRoute)
-    case thread(String)
     case ciGroup(String)
     case workstream(String)
     /// A note by its path inside the vault, e.g. "Daily/2026-10-30.md".
     case note(String)
-    case browse
     case activity
     case settings
     case machines
-    /// The vault; Today's notes button and note links open it.
+    /// The vault; Focus's notes button and note links open it.
     case notes
     case sprintItems(SprintList)
+    /// Which repositories the Pull requests list reads (Settings → Pull requests).
+    case repositories
 }
 
 /// Sheets, presented over whatever tab is showing.
@@ -115,7 +115,7 @@ final class Router {
     enum Tab: Hashable {
         case today, pullRequests, work, sprint, search
 
-        /// borgdock://tab/<name>, from the widgets. Builds before Today keep sending "focus" and "dispatch".
+        /// borgdock://tab/<name>, from the widgets, which send "focus" and "dispatch"; links from before keep "today".
         init?(link: String) {
             switch link {
             case "today", "focus": self = .today
@@ -136,7 +136,7 @@ final class Router {
     var searchPath: [Route] = []
     var sheet: SheetRoute?
     var cover: CoverRoute?
-    /// A bay or lane to scroll Dispatch to (DEBUG screenshots).
+    /// A lane to open on the Work tab, or an item section to scroll to (DEBUG screenshots).
     var scrollTarget: String?
 
     /// Pushes onto the current tab's stack.
@@ -184,16 +184,19 @@ final class Router {
         open(.pullRequest(key), in: .pullRequests)
     }
 
-    /// Activity lives behind the bell on Today, not in the tab bar.
+    /// Activity lives behind the bell on Focus, not in the tab bar.
     func openActivity() {
         open(.activity, in: .today)
     }
 
+    /// An agent link: AppModel resolves it to the agent's pull request, its item, or the thread in T3 Code.
+    @ObservationIgnored var threadOpener: (@MainActor (String) -> Void)?
+
     func openThread(_ id: String) {
-        open(.thread(id), in: .work)
+        threadOpener?(id)
     }
 
-    /// Notes live behind Today's notes button; a note opens on top of the vault, so Back shows the rest.
+    /// Notes live behind Focus's notes button; a note opens on top of the vault, so Back shows the rest.
     func openNote(_ path: String) {
         open([.notes, .note(path)], in: .today)
     }
@@ -220,7 +223,7 @@ final class Router {
 
     /// borgdock://pr/owner/repo/12, borgdock://item/123, borgdock://thread/<id>, borgdock://ci/<id>,
     /// borgdock://note/<path>, borgdock://capture, borgdock://review/owner/repo/12, borgdock://workstream/<id>,
-    /// borgdock://tab/<today|prs|work|sprint|activity|notes|search> (activity and notes open on Today).
+    /// borgdock://tab/<focus|prs|work|sprint|activity|notes|search> (activity and notes open on Focus).
     /// Pairing and desktop links (borgdock://pair?…, borgdock://link-desktop?…) are handled by the account flow and
     /// the island's Undo (borgdock://approval/<id>/undo) by the approval hold, not here. Returns false if unknown.
     @discardableResult

@@ -289,9 +289,78 @@ struct Overview: Codable, Hashable, Sendable {
 // MARK: - Item detail and browse
 
 struct ItemComment: Codable, Hashable, Sendable {
+    var id: Int? = nil
     let by: String
     let at: String
+    /// Plain text.
     let text: String
+    /// The comment as markdown; nil from older servers.
+    var markdown: String? = nil
+}
+
+/// The rich-text fields as GitHub-flavoured markdown. Images point at signed /api/items/:id/attachments/… paths.
+struct ItemMarkdown: Codable, Hashable, Sendable {
+    var description = ""
+    var acceptanceCriteria = ""
+    var reproSteps = ""
+    var qaNotes = ""
+    var developerNotes = ""
+}
+
+/// One change from the item's revisions, newest first.
+struct ItemHistoryEvent: Codable, Hashable, Sendable {
+    enum Kind: String, ResilientEnum {
+        case created, state, assigned, pullRequest
+        static let fallback = Kind.state
+    }
+
+    let at: String
+    let by: String
+    let kind: Kind
+    let from: String?
+    let to: String?
+    var pullRequest: Int? = nil
+}
+
+/// A pull request linked to an item: the item's own first, an epic's plan PR marked shared.
+struct ItemPullRequest: Codable, Hashable, Sendable, Identifiable {
+    let number: Int
+    let url: String
+    let branch: String?
+    let state: PullRequestState
+    let title: String
+    let isDraft: Bool
+    let checks: String?
+    let repository: String?
+    let own: Bool
+    let shared: Bool
+    let author: String?
+    let updatedAt: String?
+
+    var id: String { url }
+}
+
+struct ItemParent: Codable, Hashable, Sendable {
+    let id: Int
+    let title: String
+    let typeName: String
+}
+
+/// `url` is a signed server path that loads without an Authorization header.
+struct ItemAttachment: Codable, Hashable, Sendable, Identifiable {
+    let name: String
+    let url: String
+    let size: Int?
+
+    var id: String { url }
+}
+
+struct PostItemCommentRequest: Encodable, Sendable {
+    let text: String
+}
+
+struct PostItemCommentResponse: Decodable, Sendable {
+    let comment: ItemComment
 }
 
 struct ItemDetail: Codable, Hashable, Sendable {
@@ -302,8 +371,20 @@ struct ItemDetail: Codable, Hashable, Sendable {
     /// The team's custom "QA Notes" field, as plain text. Older servers don't send it: decodes as "".
     let qaNotes: String
     let comments: [ItemComment]
+    /// Nil from older servers: fall back to the plain-text fields.
+    var markdown: ItemMarkdown? = nil
+    /// Newest first.
+    var history: [ItemHistoryEvent] = []
+    /// Every linked pull request, the item's own first.
+    var pullRequests: [ItemPullRequest] = []
+    var parent: ItemParent? = nil
+    var effort: Double? = nil
+    var areaPath: String? = nil
+    var attachments: [ItemAttachment] = []
 
-    private enum CodingKeys: String, CodingKey { case item, description, acceptanceCriteria, reproSteps, qaNotes, comments }
+    private enum CodingKeys: String, CodingKey {
+        case item, description, acceptanceCriteria, reproSteps, qaNotes, comments, markdown, history, pullRequests, parent, effort, areaPath, attachments
+    }
 
     init(item: WorkItemSummary, description: String, acceptanceCriteria: String, reproSteps: String, qaNotes: String, comments: [ItemComment]) {
         self.item = item
@@ -322,6 +403,30 @@ struct ItemDetail: Codable, Hashable, Sendable {
         reproSteps = try container.decodeIfPresent(String.self, forKey: .reproSteps) ?? ""
         qaNotes = try container.decodeIfPresent(String.self, forKey: .qaNotes) ?? ""
         comments = try container.decodeIfPresent([ItemComment].self, forKey: .comments) ?? []
+        markdown = try container.decodeIfPresent(ItemMarkdown.self, forKey: .markdown)
+        history = try container.decodeIfPresent([ItemHistoryEvent].self, forKey: .history) ?? []
+        pullRequests = try container.decodeIfPresent([ItemPullRequest].self, forKey: .pullRequests) ?? []
+        parent = try container.decodeIfPresent(ItemParent.self, forKey: .parent)
+        effort = try container.decodeIfPresent(Double.self, forKey: .effort)
+        areaPath = try container.decodeIfPresent(String.self, forKey: .areaPath)
+        attachments = try container.decodeIfPresent([ItemAttachment].self, forKey: .attachments) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(item, forKey: .item)
+        try container.encode(description, forKey: .description)
+        try container.encode(acceptanceCriteria, forKey: .acceptanceCriteria)
+        try container.encode(reproSteps, forKey: .reproSteps)
+        try container.encode(qaNotes, forKey: .qaNotes)
+        try container.encode(comments, forKey: .comments)
+        try container.encodeIfPresent(markdown, forKey: .markdown)
+        try container.encode(history, forKey: .history)
+        try container.encode(pullRequests, forKey: .pullRequests)
+        try container.encodeIfPresent(parent, forKey: .parent)
+        try container.encodeIfPresent(effort, forKey: .effort)
+        try container.encodeIfPresent(areaPath, forKey: .areaPath)
+        try container.encode(attachments, forKey: .attachments)
     }
 }
 

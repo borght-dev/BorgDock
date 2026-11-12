@@ -49,13 +49,13 @@ function sprint() {
     const stateChangedAt = state === 'Done' ? dayOf(finishedDays[index]) : inReview >= 0 && inReview < 3 ? new Date(Date.now() - (3 + inReview) * DAY).toISOString() : dayOf(1, 10);
     return {
       id, type, typeName: typeNames[type], title: titles[index % titles.length], state, stateCategory: category[state], workflow,
-      sprint: '5.2.8', dueDate: null, priority: 2, tags: index === 30 ? ['Blocked'] : [],
+      sprint: '23', dueDate: null, priority: 2, tags: index === 30 ? ['Blocked'] : [],
       assignedTo, assignedToMe: assignedTo === 'Koen van der Borght',
       url: `https://dev.azure.com/acme/Shop/_workitems/edit/${id}`,
       stateChangedAt, finishedAt: state === 'Done' ? stateChangedAt : null,
     };
   });
-  return { name: '5.2.8', path: 'Shop\\5.2.8', startDate: start.toISOString(), finishDate: finish.toISOString(), items, generatedAt: new Date().toISOString() };
+  return { name: '23', path: 'Shop\\Sprint 23', startDate: start.toISOString(), finishDate: finish.toISOString(), items, generatedAt: new Date().toISOString() };
 }
 
 export function handle({ path }) {

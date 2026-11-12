@@ -2,12 +2,12 @@
 
 SwiftUI, iOS 26, XcodeGen (`project.yml` is the source). Three targets:
 
-- `BorgDock`: the app (Today, Pull requests, Work, Sprint, Search; Activity and Notes sit behind the bell and the notes button on Today). Clerk's `ClerkKit` is its only package.
+- `BorgDock`: the app (Focus, Pull requests, Work, Sprint, Search; Activity and Notes sit behind the bell and the notes button on Focus). Clerk's `ClerkKit` is its only package.
 - `BorgDockWidgets`: widgets, lock-screen accessories, the Quick note control, and the agent and checks Live Activities.
 - `BorgDockNotificationContent`: the expanded agent question with its options.
 
 `Shared/` compiles into all three (BorgDock's design tokens `BD`, components, Live Activity attributes, question
-actions). They share the App Group `group.dev.borght.borgdock`. The screens follow `design/ios-app/mockups.html` at the
+actions). They share the App Group `group.dev.borght.borgdock`. The screens follow `design/ios-flow/mockups.html` (and `design/ios-app/mockups.html` for the rest) at the
 repository root; `src/BorgDock.Server/docs/borgdock-plan.md` explains how the code is split. The server it talks to is
 `src/BorgDock.Server`.
 

@@ -157,7 +157,7 @@ struct NoteInlineText: View {
                let pr = Self.prKey(fromGitHub: url) {
                 app.router.push(.pullRequest(pr))
             }
-        case .thread(_, let threadId, _): app.router.push(.thread(threadId))
+        case .thread(_, let threadId, _): app.openThread(threadId)
         case .workstream(let id, _): app.router.push(.workstream(id))
         }
     }

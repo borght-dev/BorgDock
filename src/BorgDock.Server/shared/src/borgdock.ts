@@ -246,7 +246,34 @@ export type PrFile = {
   patch: string | null;
   /** Touched by a commit after your last review. */
   changedSinceReview: boolean;
+  /** How Quick Review walks it: source files one by one, tests and generated files as one step each, docs last. */
+  category?: PrFileCategory;
 };
+
+export type PrFileCategory = 'source' | 'tests' | 'generated' | 'docs';
+
+/** GET /api/github/repositories: where the Pull requests list comes from and how much was read. */
+export type PrRepositories = {
+  /** Where the list comes from: the linked desktop, the server's config, or nothing yet. */
+  source: 'desktop' | 'config' | 'none';
+  /** The desktop that sent it, and when. */
+  desktopName: string | null;
+  updatedAt: string | null;
+  repositories: { name: string; open: number; polledAt: string | null; ok: boolean; error: string | null }[];
+  /** Also read PRs that involve you in any repository (involves:@me, review-requested:@me, reviewed-by:@me). */
+  includeInvolving: boolean;
+  /** Count your teams' review requests (review-requested:@me), not only yours (user-review-requested:@me). */
+  includeTeamRequests: boolean;
+  /** The last full read, and whether any search hit GitHub's cap. */
+  polledAt: string | null;
+  cutOff: boolean;
+};
+
+/** PUT /api/github/repositories/preferences */
+export type PrRepositoryPreferences = { includeInvolving?: boolean; includeTeamRequests?: boolean };
+
+/** PUT /api/desktop/repositories, sent by the linked desktop with its session token. */
+export type DesktopRepositoriesRequest = { repositories: string[] };
 
 /** GET /api/prs/:owner/:repo/:number/files */
 export type PrFiles = { headSha: string; reviewedHeadSha: string | null; files: PrFile[] };
@@ -546,8 +573,9 @@ export type OwnerAllowlist = { emails: string[]; githubLogins: string[] };
  *    `borgdock://link-desktop?server=<url>&code=<code>`.
  * 2. The phone calls `POST /api/desktop/links/approve` (signed) with the code; the server answers with the desktop's name.
  * 3. The desktop polls `GET /api/desktop/links/:linkId?secret=<pollSecret>` (no session) until it gets its token, once.
- * A desktop session may only read the server info and activity, mark read, sync reads, send presence and sign out;
- * everything else answers 403. Links expire after 10 minutes; a code works once.
+ * A desktop session may only read the server info and activity, mark read, sync reads, send presence, share its
+ * watched repositories (`PUT /api/desktop/repositories`) and sign out; everything else answers 403. Links expire after
+ * 10 minutes; a code works once.
  */
 export type DesktopLinkRequest = { deviceName: string };
 export type DesktopLinkStart = { linkId: string; code: string; pollSecret: string; expiresAt: string; link: string };

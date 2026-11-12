@@ -299,3 +299,11 @@ final class NotificationActionTests: XCTestCase {
 private extension Array {
     var only: Element? { count == 1 ? first : nil }
 }
+
+final class ResolveURLTests: XCTestCase {
+    func testServerPathsKeepTheServersPrefix() {
+        let api = APIClient(baseURL: URL(string: "https://example.com/borgdock")!, token: nil)
+        XCTAssertEqual(api.resolve("/api/items/1/attachments/a?name=x.png&sig=s")?.absoluteString, "https://example.com/borgdock/api/items/1/attachments/a?name=x.png&sig=s")
+        XCTAssertEqual(api.resolve("https://cdn.example.com/a.png")?.absoluteString, "https://cdn.example.com/a.png")
+    }
+}

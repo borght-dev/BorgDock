@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import type { ClaimRequest, MergeRequest, PostCommentRequest, PrRef, SnoozeRequest, SubmitReviewRequest } from '../../../../shared/src/api.ts';
+import type { ClaimRequest, MergeRequest, PostCommentRequest, PrRef, PrRepositoryPreferences, SnoozeRequest, SubmitReviewRequest } from '../../../../shared/src/api.ts';
 import { UserError } from '../../service.ts';
 import { readBody, type Api, type Env, type RouteDeps } from '../context.ts';
 
@@ -18,14 +18,15 @@ const keyOf = (ref: PrRef) => `${ref.owner}/${ref.repo}#${ref.number}`;
 /**
  * GitHub routes (all need a session): GET /focus, /prs/:owner/:repo/:number (+ /files, /comments),
  * POST /prs/.../comments, /threads/:threadId/resolve, /reviews (signed), /merge (signed), /rerun-failed, /snooze,
- * GET /ci/groups, /ci/groups/:id, POST/DELETE /ci/groups/:id/claim. Types: shared/src/borgdock.ts.
- * GET /focus?refresh=1 polls GitHub first (pull to refresh).
+ * GET /ci/groups, /ci/groups/:id, POST/DELETE /ci/groups/:id/claim, GET /github/repositories,
+ * PUT /github/repositories/preferences. Types: shared/src/borgdock.ts.
+ * GET /focus?refresh=1 polls GitHub first, every watched repository included (pull to refresh).
  */
 export function registerGithubRoutes(api: Api, { github, record, requireSignature }: RouteDeps) {
   const PR = '/prs/:owner/:repo/:number';
 
   api.get('/focus', async (c) => {
-    const focus = c.req.query('refresh') ? await github.refresh() : github.focus;
+    const focus = c.req.query('refresh') ? await github.refresh({ repositories: true }) : github.focus;
     return focus ? c.json(focus) : c.json({ error: 'Still loading GitHub. Try again in a moment.' }, 503);
   });
 
@@ -78,6 +79,14 @@ export function registerGithubRoutes(api: Api, { github, record, requireSignatur
     const { until } = await readBody<SnoozeRequest>(c);
     github.snooze(ref, until ?? null);
     return c.json({ ok: true });
+  });
+
+  api.get('/github/repositories', (c) => c.json(github.repositories()));
+
+  api.put('/github/repositories/preferences', async (c) => {
+    const result = github.setRepositoryPreferences(await readBody<PrRepositoryPreferences>(c));
+    record(c, 'github.repositories.preferences', { includeInvolving: result.includeInvolving, includeTeamRequests: result.includeTeamRequests });
+    return c.json(result);
   });
 
   api.get('/ci/groups', (c) => c.json(github.ciGroups()));

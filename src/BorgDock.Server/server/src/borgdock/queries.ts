@@ -47,7 +47,7 @@ export async function search(platform: Platform, query: string): Promise<SearchR
     ? known.filter((i) => String(i.id) === number)
     : known.filter((i) => i.title.toLowerCase().includes(needle));
   if (number && !items.length) {
-    const found = await service.itemDetail(Number(number)).then((d) => d.item).catch(() => null);
+    const found = await service.itemSummary(Number(number)).catch(() => null);
     if (found) items.push(found);
   } else if (!number && q.length >= 3) {
     const more = await service.browse(null, q).then((r) => r.items).catch(() => []);

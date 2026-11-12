@@ -30,9 +30,10 @@ struct PrContextMenu: View {
 }
 
 extension FocusStore {
-    /// Review this PR, then the others in Needs you that aren't yours.
+    /// Review this PR, then the rest of Focus's review queue, the longest waiting first.
     func reviewQueue(startingAt pr: PrSummary) -> [PrKey] {
-        let others = pullRequests(in: .you).filter { !$0.isMine && $0.key != pr.key }.map(\.prKey)
+        let queue = FocusBoard(pullRequests: focus?.pullRequests ?? [], threads: [], myLogins: myLogins).reviews
+        let others = queue.filter { $0.key != pr.key }.map(\.prKey)
         return [pr.prKey] + (pr.bucket == .you ? others : [])
     }
 }

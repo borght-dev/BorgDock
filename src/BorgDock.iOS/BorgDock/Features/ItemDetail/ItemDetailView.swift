@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// One work item: the verdict leads, then its fields, the description, its pull request and agent, and the newest
-/// message from ADO comments, Developer Notes or the agent. "Move to…" and "Ask an agent" both start a run:
-/// BorgDock never changes an ADO state on a button.
+/// One work item on one page: where it is in its workflow, then the section that decides the next step (QA's notes,
+/// the pull requests, the agent's question or the description), the rest of its rich text, every linked pull request
+/// and agent, its fields, and Activity with a reply box. "Move to…" and "Fix with agent" both start a run: BorgDock
+/// never changes an ADO state on a button. Mockup: design/ios-flow, section 08.
 struct ItemDetailView: View {
     let route: ItemRoute
 
@@ -10,28 +11,47 @@ struct ItemDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var detail: ItemDetail?
     @State private var loadError: String?
+    /// Comments posted from this page since the last read.
+    @State private var posted: [ItemComment] = []
+    @State private var activityFilter: ItemActivity.Filter = .all
+    @State private var draft = ""
+    @State private var posting = false
+    @State private var position = ScrollPosition(edge: .top)
+    @State private var sectionTops: [String: CGFloat] = [:]
+    @State private var titleBottom: CGFloat = 120
+    @State private var scroll = ScrollSpot(top: 0, atBottom: false, visibleHeight: 600)
+    @State private var selection: String?
+    @State private var jumpedAt = Date.distantPast
+    /// The section a chip jumped to stays under the bar for a few seconds while images above it load.
+    @State private var pinned: String?
+
+    private static let space = "item-page"
+    private static let jumpBarHeight: CGFloat = 50
 
     private var entry: ItemOverview? { app.itemOverview(route.id) }
     private var item: WorkItemSummary? { entry?.item ?? detail?.item ?? route.prefill }
-    private var thread: ThreadSummary? { entry?.currentThread }
+    private var me: String? { app.config?.user.name }
+    private var openThreads: [ThreadSummary] { entry?.threads.filter { $0.status.isOpen } ?? [] }
+    private var comments: [ItemComment] { (detail?.comments ?? []) + posted }
+    private var headerGone: Bool { scroll.top > titleBottom - 6 }
 
     var body: some View {
-        ScrollView {
+        Group {
             if let item {
-                content(item)
-                    .padding(.bottom, 110)
+                page(item)
             } else if let loadError {
-                StatusCard(icon: "exclamationmark.triangle", text: loadError, tone: .warn)
+                ScrollView { StatusCard(icon: "exclamationmark.triangle", text: loadError, tone: .warn) }
             } else {
-                ProgressView().frame(maxWidth: .infinity).padding(.top, 80)
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .background(BD.bg)
-        .safeAreaInset(edge: .bottom) { if let item { bottomBar(item) } }
+        .navigationTitle(headerGone ? item?.title ?? "" : "")
+        .navigationSubtitle(headerGone ? item.map { "AB#\(String($0.id)) · \($0.state)" } ?? "" : "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
-            if let item, let url = URL(string: item.url) {
+            if !headerGone, let url = item.flatMap({ URL(string: $0.url) }) {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { openURL(url) } label: { Image(systemName: "arrow.up.right.square") }
                         .accessibilityLabel("Open in Azure DevOps")
@@ -44,6 +64,7 @@ struct ItemDetailView: View {
         .refreshable {
             if let fresh = await app.refreshItem(route.id) {
                 detail = fresh
+                posted = []
                 loadError = nil
             }
         }
@@ -52,6 +73,7 @@ struct ItemDetailView: View {
     private func load() async {
         do {
             detail = try await app.api.item(route.id)
+            posted = []
             loadError = nil
         } catch is CancellationError {
         } catch {
@@ -60,181 +82,234 @@ struct ItemDetailView: View {
         }
     }
 
-    // MARK: Content
+    // MARK: Page
 
-    @ViewBuilder
-    private func content(_ item: WorkItemSummary) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 7) {
-                    WorkItemGlyph(typeName: item.typeName, size: 12)
-                    Text("\(item.type.label(typeName: item.typeName)) · AB#\(String(item.id))")
-                    Spacer(minLength: 8)
-                    ToneChip(text: item.state, tone: item.stateCategory == .inProgress ? .run : item.stateCategory == .completed ? .ok : .mute)
-                }
-                .font(.system(size: 14))
-                .foregroundStyle(BD.text2)
-                Text(item.title)
-                    .font(.system(size: 25, weight: .bold))
-                    .tracking(-0.4)
-                    .foregroundStyle(BD.text)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                if let entry, let banner = ItemBanner(entry: entry) {
-                    VerdictBanner(banner: banner).padding(.top, 8)
+    private func page(_ item: WorkItemSummary) -> some View {
+        let sections = ItemLayout.sections(state: item.state, agentAsks: agentAsks(item), available: available())
+        let jumps = ItemLayout.jumps(sections, activityCount: comments.count + (detail?.history.count ?? 0))
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                header(item)
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).maxY } action: { titleBottom = $0 }
+                WorkflowTrackView(track: WorkflowTrack.of(item, history: detail?.history ?? []))
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+                ForEach(sections) { section in
+                    self.section(section, item: item, isLead: section == sections.first)
+                        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.space)).minY } action: { sectionTops[section.id] = $0 }
                 }
             }
-            .padding(.horizontal, 16)
-            fields(item)
-            if let detail {
-                let description = PlainText.clean(detail.description.isEmpty ? detail.reproSteps : detail.description)
-                if !description.isEmpty {
-                    Text(ChatMarkdown.inline(description, size: 16))
-                        .font(.system(size: 16))
-                        .lineSpacing(3)
-                        .foregroundStyle(BD.text)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                        .textSelection(.enabled)
-                }
-            }
-            linkedWork(item)
-            latest
-            moreText
+            .padding(.bottom, 24)
+            .coordinateSpace(.named(Self.space))
         }
+        .scrollPosition($position)
+        .onScrollGeometryChange(for: ScrollSpot.self) { geometry in
+            let top = geometry.contentOffset.y + geometry.contentInsets.top
+            return ScrollSpot(top: top, atBottom: top >= geometry.contentSize.height - geometry.containerSize.height - 4,
+                              visibleHeight: geometry.containerSize.height)
+        } action: { _, spot in
+            scroll = spot
+            follow(jumps, sections: sections)
+        }
+        .overlay(alignment: .top) {
+            if headerGone {
+                JumpBar(items: jumps, selection: $selection) { jump(to: $0, sections: sections, jumps: jumps) }
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: headerGone)
+        .onChange(of: pinned.flatMap { sectionTops[$0] }) { _, top in
+            guard let top, Date.now.timeIntervalSince(jumpedAt) < 3 else { return }
+            position.scrollTo(y: max(0, top - Self.jumpBarHeight))
+        }
+        .safeAreaInset(edge: .bottom) {
+            if selection == ItemSection.activity.id { composer(item) } else { bottomBar(item) }
+        }
+        .task(id: DebugJump(target: app.router.scrollTarget, ready: detail != nil && sectionTops[app.router.scrollTarget ?? ""] != nil)) {
+            guard let target = app.router.scrollTarget, detail != nil, sectionTops[target] != nil else { return }
+            app.router.scrollTarget = nil
+            try? await Task.sleep(for: .seconds(1))
+            jump(to: target, sections: sections, jumps: jumps)
+        }
+    }
+
+    private func header(_ item: WorkItemSummary) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 7) {
+                WorkItemGlyph(typeName: item.typeName, size: 11)
+                Text(verbatim: "\(item.type.label(typeName: item.typeName)) · AB#\(item.id)")
+                Spacer(minLength: 8)
+                ToneChip(text: item.state, tone: stateTone(item))
+            }
+            .font(.system(size: 13.5))
+            .foregroundStyle(BD.text2)
+            Text(item.title)
+                .font(.system(size: 23, weight: .bold))
+                .tracking(-0.55)
+                .foregroundStyle(BD.text)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+                .padding(.top, 7)
+        }
+        .padding(.horizontal, 16)
         .padding(.top, 4)
     }
 
-    private func fields(_ item: WorkItemSummary) -> some View {
-        let due = DueDate(item)
-        let cells: [(String, String, Bool)] = [
-            ("Assigned to", item.assignedToMe ? "You" : item.assignedTo ?? "Nobody", true),
-            ("Sprint", item.sprint.isEmpty ? "None" : item.sprint, false),
-            ("Priority", item.priority.map(String.init) ?? "None", false),
-            due.map { ("Due", $0.label.replacingOccurrences(of: "Due ", with: ""), false) } ?? ("Type", item.type.longName(typeName: item.typeName), false),
-        ]
-        return Grid(horizontalSpacing: 0.5, verticalSpacing: 0.5) {
-            ForEach(0..<2) { row in
-                GridRow {
-                    ForEach(0..<2) { column in
-                        let cell = cells[row * 2 + column]
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(cell.0).font(.system(size: 13)).foregroundStyle(BD.text3)
-                            HStack(spacing: 6) {
-                                if cell.2, let name = item.assignedTo { PersonAvatar(name: name, size: 22) }
-                                Text(cell.1).font(.system(size: 16, weight: .medium)).foregroundStyle(BD.text).lineLimit(1)
-                            }
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(BD.card)
-                    }
-                }
-            }
+    private func stateTone(_ item: WorkItemSummary) -> Tone {
+        if item.state.lowercased().contains("failed") { return .bad }
+        switch item.stateCategory {
+        case .inProgress, .resolved: return .run
+        case .completed: return .ok
+        default: return .mute
         }
-        .background(BD.separator)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
     }
+
+    // MARK: Sections
 
     @ViewBuilder
-    private func linkedWork(_ item: WorkItemSummary) -> some View {
-        let pullRequest = entry?.pullRequest
-        let thread = self.thread
-        if pullRequest != nil || thread != nil {
-            CellGroupHeader(title: [pullRequest != nil ? "Pull request" : nil, thread != nil ? "agent" : nil].compactMap { $0 }.joined(separator: " · ").capitalizedFirst)
-            CellGroup(indent: 52) {
-                if let pullRequest {
-                    Button { openPullRequest(pullRequest) } label: {
-                        Cell(title: "#\(pullRequest.number) \(pullRequest.title)", subtitle: pullRequestLine(pullRequest), chevron: true) {
-                            Image(systemName: pullRequest.state == .merged ? "arrow.triangle.merge" : "arrow.triangle.pull")
-                                .font(.system(size: 19))
-                                .foregroundStyle(pullRequest.state == .merged ? BD.merged : BD.green)
-                                .frame(width: 24)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-                if let thread {
-                    Button { app.router.push(.thread(thread.id)) } label: {
-                        Cell(title: [thread.branch ?? thread.worktree, thread.environmentLabel].compactMap { $0 }.joined(separator: " · "),
-                             subtitle: threadLine(thread), chevron: true) {
-                            Image(systemName: "cpu").font(.system(size: 19)).foregroundStyle(BD.accent).frame(width: 24)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("item-thread")
+    private func section(_ section: ItemSection, item: WorkItemSummary, isLead: Bool) -> some View {
+        switch section {
+        case .qaNotes:
+            ItemSectionLabel(title: section.title, trailing: qaNotesByline)
+            RichTextCard(markdown: richText(section), attachments: detail?.attachments ?? [])
+        case .description, .reproSteps, .acceptance, .developerNotes:
+            ItemSectionLabel(title: section.title)
+            RichTextCard(markdown: richText(section), attachments: detail?.attachments ?? [])
+        case .pullRequests:
+            let pullRequests = self.pullRequests
+            ItemSectionLabel(title: section.title, trailing: String(pullRequests.count))
+            CellGroup(indent: 14) {
+                ForEach(pullRequests) { pr in
+                    Button { open(pr) } label: { ItemPullRequestRow(pr: pr) }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("item-pr-\(pr.number)")
                 }
             }
+        case .agents:
+            ItemSectionLabel(title: openThreads.count == 1 ? "Agent" : "Agents", trailing: openThreads.count > 1 ? String(openThreads.count) : nil)
+            CellGroup(indent: 37) {
+                ForEach(openThreads) { thread in
+                    Button { openAgent(thread) } label: { AgentRow(thread: thread) }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("item-thread")
+                }
+            }
+        case .details:
+            ItemSectionLabel(title: section.title)
+            ItemDetailsGrid(cells: ItemDetailCell.cells(item, detail: detail, sprint: app.sprint.sprint)) { parent in
+                app.router.push(ItemRoute(id: parent.id))
+            }
+        case .activity:
+            activity.frame(minHeight: scroll.visibleHeight - Self.jumpBarHeight, alignment: .top)
         }
     }
 
-    @ViewBuilder
-    private var latest: some View {
-        if let entry, let message = WalkDisplay.latest(for: entry) {
-            CellGroupHeader(title: "Latest")
-            CellGroup {
-                HStack(alignment: .top, spacing: 12) {
-                    PersonAvatar(name: message.by.components(separatedBy: " · ").first ?? message.by, size: 36)
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(message.by).font(.system(size: 16, weight: .medium)).foregroundStyle(BD.text)
-                            Spacer(minLength: 8)
-                            Text(CompactTime.ago(message.at)).font(.system(size: 14)).foregroundStyle(BD.text3)
-                        }
-                        Text(WalkDisplay.oneLine(message.text))
-                            .font(.system(size: 15))
-                            .foregroundStyle(BD.text2)
-                            .lineLimit(6)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+    private var activity: some View {
+        let entries = ItemActivity.entries(comments: comments, history: detail?.history ?? [], filter: activityFilter, me: me)
+        return VStack(alignment: .leading, spacing: 0) {
+            ItemSectionLabel(title: "Activity", trailing: String(comments.count + (detail?.history.count ?? 0)))
+            Picker("Show", selection: $activityFilter) {
+                ForEach(ItemActivity.Filter.allCases) { Text($0.title).tag($0) }
             }
+            .pickerStyle(.segmented)
+            .controlSize(.large)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 10)
+            .accessibilityIdentifier("activity-filter")
+            if entries.isEmpty {
+                Text(detail == nil ? "Loading…" : "Nothing yet. Comments and state changes show here.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(BD.text3)
+                    .padding(.horizontal, 20)
+            }
+            ForEach(entries) { ActivityEntryView(entry: $0, me: me) }
         }
     }
 
-    @ViewBuilder
-    private var moreText: some View {
-        if let detail {
-            let sections = [("Acceptance criteria", detail.acceptanceCriteria), ("Repro steps", detail.description.isEmpty ? "" : detail.reproSteps), ("QA notes", detail.qaNotes)]
-                .map { ($0.0, PlainText.clean($0.1)) }
-                .filter { !$0.1.isEmpty }
-            ForEach(sections, id: \.0) { title, text in
-                CellGroupHeader(title: title)
-                Text(text)
-                    .font(.system(size: 15))
-                    .foregroundStyle(BD.text)
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .bdCard(radius: 20)
-                    .padding(.horizontal, 16)
-                    .textSelection(.enabled)
+    /// Who sent it back and when, over QA's notes: "Lena · 1 d".
+    private var qaNotesByline: String? {
+        guard let failed = detail?.history.first(where: { $0.kind == .state && ($0.to ?? "").lowercased().contains("failed") }) else { return nil }
+        return "\(CommentAuthor.displayName(failed.by).name) · \(CompactTime.ago(failed.at))"
+    }
+
+    /// The markdown field, or the plain-text field from a server that sends no markdown.
+    private func richText(_ section: ItemSection) -> String {
+        guard let detail else { return "" }
+        if let markdown = detail.markdown {
+            switch section {
+            case .qaNotes: return markdown.qaNotes
+            case .description: return markdown.description
+            case .reproSteps: return markdown.reproSteps
+            case .acceptance: return markdown.acceptanceCriteria
+            case .developerNotes: return markdown.developerNotes
+            default: return ""
             }
-            if detail.comments.count > 1 {
-                CellGroupHeader(title: "Comments", trailing: String(detail.comments.count))
-                CellGroup {
-                    ForEach(Array(detail.comments.enumerated()), id: \.offset) { _, comment in
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack {
-                                Text(comment.by).font(.system(size: 15, weight: .medium))
-                                Spacer()
-                                Text(CompactTime.ago(comment.at)).font(.system(size: 13.5)).foregroundStyle(BD.text3)
-                            }
-                            Text(PlainText.clean(comment.text)).font(.system(size: 15)).foregroundStyle(BD.text2)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                }
-            }
+        }
+        switch section {
+        case .qaNotes: return PlainText.clean(detail.qaNotes)
+        case .description: return PlainText.clean(detail.description)
+        case .reproSteps: return PlainText.clean(detail.reproSteps)
+        case .acceptance: return PlainText.clean(detail.acceptanceCriteria)
+        default: return ""
         }
     }
 
-    // MARK: Bottom bar and menu
+    private func available() -> Set<ItemSection> {
+        var sections: Set<ItemSection> = [.details, .activity]
+        for section in [ItemSection.qaNotes, .description, .reproSteps, .acceptance, .developerNotes] where !richText(section).isEmpty {
+            sections.insert(section)
+        }
+        if !pullRequests.isEmpty { sections.insert(.pullRequests) }
+        if !openThreads.isEmpty { sections.insert(.agents) }
+        return sections
+    }
+
+    private func agentAsks(_ item: WorkItemSummary) -> Bool {
+        openThreads.contains { [.question, .plan, .approval].contains($0.status) }
+    }
+
+    /// Every linked pull request, its own first; an older server sends only the overview's one.
+    private var pullRequests: [ItemPullRequest] {
+        if let linked = detail?.pullRequests, !linked.isEmpty { return linked }
+        guard let pr = entry?.pullRequest else { return [] }
+        return [ItemPullRequest(number: pr.number, url: pr.url, branch: pr.branch, state: pr.state, title: pr.title, isDraft: pr.isDraft,
+                                checks: pr.checks, repository: nil, own: true, shared: false, author: nil, updatedAt: nil)]
+    }
+
+    // MARK: Jumping
+
+    private func jump(to id: String, sections: [ItemSection], jumps: [JumpBar.Item]) {
+        guard let top = sectionTops[id] else { return }
+        jumpedAt = .now
+        selection = Self.chip(for: sections.firstIndex { $0.id == id }, sections: sections, jumps: jumps)
+        pinned = id
+        withAnimation(.snappy) { position.scrollTo(y: max(0, top - Self.jumpBarHeight)) }
+    }
+
+    /// The chip follows the section under the jump bar; past a section without a chip (pull requests, agents) the next
+    /// chip is selected, and the last one at the bottom of the page.
+    private func follow(_ jumps: [JumpBar.Item], sections: [ItemSection]) {
+        guard Date.now.timeIntervalSince(jumpedAt) > 0.6 else { return }
+        guard headerGone else {
+            selection = nil
+            return
+        }
+        let line = scroll.top + Self.jumpBarHeight + 8
+        let onScreen = sections.indices.first { index in
+            index + 1 == sections.count || (sectionTops[sections[index + 1].id] ?? .infinity) > line
+        }
+        let current = scroll.atBottom ? jumps.last?.id : Self.chip(for: onScreen, sections: sections, jumps: jumps)
+        if selection != current { selection = current }
+    }
+
+    /// The chip for a section: its own, or the next one for a section without a chip.
+    private static func chip(for index: Int?, sections: [ItemSection], jumps: [JumpBar.Item]) -> String? {
+        guard let index else { return nil }
+        let chips = Set(jumps.map(\.id))
+        return sections[index...].first { chips.contains($0.id) }?.id
+    }
+
+    // MARK: Bottom bar, composer and menu
 
     private func bottomBar(_ item: WorkItemSummary) -> some View {
         HStack(spacing: 10) {
@@ -246,15 +321,15 @@ struct ItemDetailView: View {
                 Text("Move to…")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(BD.text)
-                    .padding(.horizontal, 22)
+                    .padding(.horizontal, 20)
                     .frame(height: 52)
             }
             .glassEffect(.regular.interactive(), in: Capsule())
             .accessibilityIdentifier("item-move")
             Button {
-                app.router.present(.launch(LaunchContext(itemId: item.id, threadId: thread?.status.isOpen == true ? thread?.id : nil, title: item.title)))
+                app.router.present(.launch(LaunchContext(itemId: item.id, threadId: openThreads.first?.id, title: item.title)))
             } label: {
-                Label("Ask an agent", systemImage: "cpu")
+                Label("Fix with agent", systemImage: "sparkle")
             }
             .buttonStyle(.bd(.primary, height: 52))
             .accessibilityIdentifier("item-ask-agent")
@@ -268,10 +343,60 @@ struct ItemDetailView: View {
         }
     }
 
+    /// "Comment on AB#61021…": posts a markdown comment as you. It never changes a state.
+    private func composer(_ item: WorkItemSummary) -> some View {
+        let canSend = !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !posting
+        return HStack(alignment: .bottom, spacing: 10) {
+            TextField("Comment on AB#\(String(item.id))…", text: $draft, axis: .vertical)
+                .font(.system(size: 16))
+                .lineLimit(1...5)
+                .padding(.vertical, 15)
+                .accessibilityIdentifier("item-comment")
+            Button { Task { await post(item) } } label: {
+                Group {
+                    if posting { ProgressView().tint(.white) } else { Image(systemName: "arrow.up").font(.system(size: 17, weight: .bold)) }
+                }
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .background(canSend ? BD.accent : BD.text3, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSend)
+            .padding(.bottom, 6)
+            .accessibilityLabel("Send comment")
+        }
+        .padding(.leading, 20)
+        .padding(.trailing, 6)
+        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 27, style: .continuous))
+        .padding(.horizontal, 16)
+        .padding(.top, 28)
+        .padding(.bottom, 6)
+        .background {
+            LinearGradient(colors: [BD.bg.opacity(0), BD.bg.opacity(0.92), BD.bg], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+        }
+    }
+
+    private func post(_ item: WorkItemSummary) async {
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !posting else { return }
+        posting = true
+        defer { posting = false }
+        do {
+            posted.append(try await app.api.postItemComment(itemId: item.id, text: text))
+            draft = ""
+        } catch {
+            app.report(error)
+        }
+    }
+
     private var moreMenu: some View {
         Menu {
             if let item {
                 Button { UIPasteboard.general.string = "AB#\(item.id)" } label: { Label("Copy AB#\(String(item.id))", systemImage: "doc.on.doc") }
+                if let url = URL(string: item.url) {
+                    Button { openURL(url) } label: { Label("Open in Azure DevOps", systemImage: "arrow.up.right.square") }
+                }
                 if let entry {
                     if entry.queuedAt == nil {
                         Button { Task { await app.queue(itemId: item.id) } } label: { Label("Add to Up next", systemImage: "star") }
@@ -279,68 +404,44 @@ struct ItemDetailView: View {
                         Button { Task { await app.unqueue(itemId: item.id) } } label: { Label("Remove from Up next", systemImage: "star.slash") }
                     }
                 }
-                if let thread, thread.status.isOpen {
+                ForEach(openThreads) { thread in
                     Button(role: .destructive) {
                         Task { if await app.account.authorize("Settle the thread") { await app.settle(thread) } }
-                    } label: { Label("Settle thread", systemImage: "checkmark.circle") }
+                    } label: { Label(openThreads.count == 1 ? "Settle thread" : "Settle \(thread.title)", systemImage: "checkmark.circle") }
                 }
             }
         } label: { Image(systemName: "ellipsis") }
         .accessibilityLabel("More")
     }
 
-    private func openPullRequest(_ pullRequest: PullRequest) {
-        if let key = PrKey(pullRequestURL: pullRequest.url) {
+    // MARK: Navigation
+
+    private func open(_ pr: ItemPullRequest) {
+        if let key = PrKey(pullRequestURL: pr.url) {
             app.router.push(.pullRequest(key))
-        } else if let url = URL(string: pullRequest.url) {
+        } else if let url = URL(string: pr.url) {
             openURL(url)
         }
     }
 
-    private func pullRequestLine(_ pullRequest: PullRequest) -> String {
-        [pullRequest.state.label, pullRequest.isDraft ? "draft" : nil, pullRequest.checks.map { "checks \($0.lowercased())" }]
-            .compactMap { $0 }.joined(separator: " · ")
-    }
-
-    private func threadLine(_ thread: ThreadSummary) -> String {
-        let status = thread.needsYouLabel ?? thread.status.sentence
-        let quote = thread.lastAgentMessage.map { " · \"\(WalkDisplay.oneLine($0).prefix(60))\"" } ?? ""
-        return "\(status) \(CompactTime.ago(thread.lastActivityAt))\(quote)"
+    /// An agent row opens its pull request; on its own item there is nowhere else to go, so it stays.
+    private func openAgent(_ thread: ThreadSummary) {
+        if let pr = app.pullRequest(for: thread) { app.router.push(.pullRequest(pr.prKey)) }
     }
 }
 
-/// The verdict as a sentence over the fields when it's bad or a warning: "CI red. #3712 fails …".
-struct ItemBanner: Equatable {
-    let title: String
-    let text: String
-    let tone: Tone
-
-    init?(entry: ItemOverview) {
-        let verdict = WalkDisplay.verdict(for: entry)
-        guard verdict.tone == .bad || verdict.tone == .warn else { return nil }
-        title = verdict.label
-        tone = verdict.tone
-        text = entry.suggestion?.reason ?? entry.waitingFor ?? WalkDisplay.latest(for: entry).map { WalkDisplay.oneLine($0.text) } ?? ""
-    }
+/// Where the page is scrolled: the top of what shows under the bars, and whether it reached the end.
+private struct ScrollSpot: Equatable {
+    let top: CGFloat
+    let atBottom: Bool
+    /// The height between the bars, so Activity can always scroll up to the jump bar.
+    let visibleHeight: CGFloat
 }
 
-private struct VerdictBanner: View {
-    let banner: ItemBanner
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 9) {
-            Image(systemName: banner.tone == .bad ? "xmark.circle" : "exclamationmark.triangle")
-                .foregroundStyle(banner.tone.color)
-                .padding(.top, 1)
-            Text("\(Text("\(banner.title).").fontWeight(.semibold).foregroundStyle(banner.tone.color)) \(Text(banner.text).foregroundStyle(BD.text))")
-                .lineLimit(4)
-        }
-        .font(.system(size: 15))
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(banner.tone.soft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
+/// `-BorgDockRoute item/<id>/<section>` (DEBUG screenshots): jumps once the section is laid out.
+private struct DebugJump: Equatable {
+    let target: String?
+    let ready: Bool
 }
 
 extension PrKey {
@@ -353,11 +454,7 @@ extension PrKey {
     }
 }
 
-private extension String {
-    var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
-}
-
-/// ADO rich text arrives mostly as plain text; bold survives as markdown, other HTML is stripped.
+/// ADO rich text from a server that sends no markdown: bold survives as markdown, list items as bullets, other HTML goes.
 enum PlainText {
     static func clean(_ text: String) -> String {
         var result = text

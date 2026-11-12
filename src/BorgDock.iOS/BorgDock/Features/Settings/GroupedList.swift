@@ -123,6 +123,76 @@ extension Cell where Trailing == EmptyView {
     }
 }
 
+/// The flow mockups' smaller cell (`.cell` in design/ios-flow/mockups.html): an optional leading view, a 15.5 pt title
+/// with a one-line subtitle, and a trailing view.
+struct CompactCell<Leading: View, Trailing: View>: View {
+    let title: String
+    var subtitle: String?
+    var subtitleColor: Color = BD.text2
+    var subtitleLines = 1
+    var minHeight: CGFloat = 50
+    @ViewBuilder var leading: Leading
+    @ViewBuilder var trailing: Trailing
+
+    var body: some View {
+        HStack(spacing: 12) {
+            leading
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 15.5, weight: .medium))
+                    .foregroundStyle(BD.text)
+                    .lineLimit(1)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 13))
+                        .foregroundStyle(subtitleColor)
+                        .lineLimit(subtitleLines)
+                }
+            }
+            Spacer(minLength: 8)
+            trailing
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 11)
+        .frame(minHeight: minHeight)
+        .contentShape(Rectangle())
+    }
+}
+
+extension CompactCell where Leading == EmptyView {
+    init(title: String, subtitle: String? = nil, minHeight: CGFloat = 50, @ViewBuilder trailing: () -> Trailing) {
+        self.init(title: title, subtitle: subtitle, minHeight: minHeight, leading: { EmptyView() }, trailing: trailing)
+    }
+}
+
+/// The trailing chevron of a cell that opens something.
+struct CellChevron: View {
+    var body: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(BD.text3)
+    }
+}
+
+/// The mockups' `.ico`: a 30 pt symbol in white on a coloured rounded square, or in its colour on a soft tint of it.
+struct CellIcon: View {
+    let systemImage: String
+    var color: Color = BD.accent
+    /// The symbol in `color` on an 18 % tint instead of white on `color`.
+    var soft = false
+    /// A circle instead of a rounded square.
+    var round = false
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(soft ? color : .white)
+            .frame(width: 30, height: 30)
+            .background(soft ? color.opacity(0.18) : color, in: RoundedRectangle(cornerRadius: round ? 15 : 9, style: .continuous))
+            .accessibilityHidden(true)
+    }
+}
+
 /// A toggle cell with a subtitle, the system switch tinted green like the mockups.
 struct ToggleCell: View {
     let title: String

@@ -52,6 +52,45 @@ final class AppModel {
         notes.app = self
         search.app = self
         sprint.app = self
+        router.threadOpener = { [weak self] id in self?.openThread(id) }
+    }
+
+    // MARK: - Agents
+
+    /// Every thread the overview knows: on items and without one.
+    var allThreads: [ThreadSummary] {
+        (overview?.items.flatMap(\.threads) ?? []) + (overview?.unlinkedThreads.map(\.thread) ?? [])
+    }
+
+    /// The open pull request an agent works on: the one whose branch it is on.
+    func pullRequest(for thread: ThreadSummary) -> PrSummary? {
+        guard let branch = thread.branch, !branch.isEmpty else { return nil }
+        return focus.focus?.pullRequests.first { $0.headRef == branch }
+    }
+
+    /// An agent link (Live Activity, notification, search, activity): its pull request, else its work item, else the
+    /// thread in T3 Code. BorgDock has no thread screen of its own. After a cold start it reads what it is missing first:
+    /// Focus's pull requests only load while Focus is on screen.
+    func openThread(_ id: String) {
+        Task {
+            async let threads: Void = overview == nil ? refreshOverview() : ()
+            async let pullRequests: Void = focus.focus == nil ? focus.load() : ()
+            _ = await (threads, pullRequests)
+            for _ in 0..<20 where overview == nil || focus.focus == nil {
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+            guard let thread = allThreads.first(where: { $0.id == id }) else {
+                toasts.show("That agent isn't on this server any more")
+                return
+            }
+            if let pr = pullRequest(for: thread) {
+                router.openPullRequest(pr.prKey)
+            } else if let entry = overview?.items.first(where: { $0.threads.contains { $0.id == id } }) {
+                router.openItem(entry.item.id)
+            } else {
+                T3Link.open(thread)
+            }
+        }
     }
 
     var isSignedIn: Bool { token != nil }
@@ -194,16 +233,6 @@ final class AppModel {
             report(error)
             return nil
         }
-    }
-
-    /// Pull to refresh in Browse: the saved queries and the current query or search, fetched in parallel.
-    func reloadBrowse(query: String, search: String?) async -> (queries: [BrowseQuery]?, result: BrowseResult?) {
-        let api = self.api
-        async let queries = Result { try await api.browseQueries() }
-        async let result = Result { try await api.browse(query: query, search: search) }
-        let (freshQueries, freshResult) = await (queries, result)
-        if case .failure(let error) = freshResult { report(error) } else if case .failure(let error) = freshQueries { report(error) }
-        return (try? freshQueries.get(), try? freshResult.get())
     }
 
     /// Pull to refresh in Settings: sessions, notification preferences and config, in parallel.

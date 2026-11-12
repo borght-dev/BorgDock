@@ -1,5 +1,5 @@
-// The GraphQL BorgDock sends and how its answers become records. One search per account per poll carries
-// everything Focus needs: reviews, requests, the head commit's checks and the newest commit ids.
+// The GraphQL BorgDock sends and how its answers become records. Every search answer carries everything Focus needs:
+// reviews, requests, the head commit's checks and the newest commit ids.
 
 import type { CheckState, Person, PrComment, PrReview, ReviewThread } from '../../../shared/src/api.ts';
 import type { CheckContext, PrRecord, ReviewRecord } from './focus.ts';
@@ -27,21 +27,14 @@ export const PR_FIELDS = /* GraphQL */ `
   recent: commits(last: 20) { nodes { commit { oid } } }`;
 
 /**
- * The searches behind Focus, one per alias. GitHub's `involves` is author, assignee, mentions and commenter only:
- * a review request (yours or your team's) never matches it, and neither does a review without a comment.
- */
-export const FOCUS_SEARCHES = [
-  'is:open is:pr involves:@me archived:false',
-  'is:open is:pr review-requested:@me archived:false',
-  'is:open is:pr reviewed-by:@me archived:false',
-] as const;
-
-/**
  * Each search is its own request, a page at a time: with every check of every head commit, 40 pull requests in one
- * answer took GitHub longer than its 10 s limit (a 504), and 25 took 8 s.
+ * answer took GitHub longer than its 10 s limit (a 504), and 25 took 8 s. The searches themselves are in
+ * repositories.ts.
  */
 export const FOCUS_PAGE_SIZE = 20;
 export const FOCUS_MAX_PAGES = 5;
+/** A repository's search reads to the end, up to this many pages; past it the list says it was cut off. */
+export const REPOSITORY_MAX_PAGES = 20;
 
 export const FOCUS_QUERY = /* GraphQL */ `
   query FocusSearch($query: String!, $after: String) {
