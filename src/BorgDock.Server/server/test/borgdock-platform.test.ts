@@ -387,6 +387,35 @@ test('a desktop links with a code the phone approves, polls its token once, and 
   }
 });
 
+test('a linked desktop shares its watched repositories; the phone sees where its pull requests come from', async () => {
+  const { call, close, phone, phoneAuth } = await ownedServer();
+  try {
+    const start = (await (await call('/api/desktop/links', { method: 'POST', json: { deviceName: 'Work laptop' } })).json()) as any;
+    const body = JSON.stringify({ code: start.code });
+    assert.equal((await call('/api/desktop/links/approve', { method: 'POST', headers: { ...phoneAuth, ...signedHeaders(phone.privateKey, 'POST', '/api/desktop/links/approve', body) }, body })).status, 200);
+    const desk = { authorization: `Bearer ${((await (await call(`/api/desktop/links/${start.linkId}?secret=${start.pollSecret}`)).json()) as any).token}` };
+
+    const before = (await (await call('/api/github/repositories', { headers: phoneAuth })).json()) as any;
+    assert.deepEqual([before.source, before.repositories, before.includeInvolving, before.includeTeamRequests], ['none', [], true, true]);
+
+    const shared = await call('/api/desktop/repositories', { method: 'PUT', headers: desk, json: { repositories: ['acme/shop', 'globex/portal', 'not a repo'] } });
+    assert.equal(shared.status, 200, await shared.clone().text());
+    assert.equal((await call('/api/desktop/repositories', { method: 'PUT', headers: desk, json: { repositories: 'acme/shop' } })).status, 400);
+    assert.equal((await call('/api/desktop/repositories', { method: 'PUT', headers: phoneAuth, json: { repositories: ['acme/shop'] } })).status, 403, 'only a desktop sends its list');
+    assert.equal((await call('/api/github/repositories', { headers: desk })).status, 403, 'a desktop reads nothing back');
+
+    const after = (await (await call('/api/github/repositories', { headers: phoneAuth })).json()) as any;
+    assert.equal(after.source, 'desktop');
+    assert.equal(after.desktopName, 'Work laptop');
+    assert.deepEqual(after.repositories.map((r: any) => r.name), ['acme/shop', 'globex/portal']);
+
+    const preferences = await call('/api/github/repositories/preferences', { method: 'PUT', headers: phoneAuth, json: { includeTeamRequests: false } });
+    assert.deepEqual([((await preferences.json()) as any).includeInvolving, ((await (await call('/api/github/repositories', { headers: phoneAuth })).json()) as any).includeTeamRequests], [true, false]);
+  } finally {
+    close();
+  }
+});
+
 test('desktop links expire after ten minutes, and an approved token nobody picked up revokes its session', () => {
   const revoked: string[] = [];
   const links = new DesktopLinks((sessionId) => revoked.push(sessionId));

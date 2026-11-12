@@ -6,7 +6,7 @@ import type { RawPr } from '../../src/github/queries.ts';
 
 export type Seen = { method: string; url: string; headers: Record<string, string>; body: any; operation: string | null };
 type Answer = { status?: number; body?: unknown; headers?: Record<string, string>; text?: string };
-type Handler = (request: Seen) => Answer | undefined;
+type Handler = (request: Seen) => Answer | undefined | Promise<Answer | undefined>;
 
 export class FakeGithub {
   readonly seen: Seen[] = [];
@@ -39,8 +39,8 @@ export class FakeGithub {
     const request: Seen = { method, url, headers, body, operation };
     this.seen.push(request);
     let answer: Answer | undefined;
-    if (operation) answer = this.graphql.get(operation)?.(request);
-    else answer = this.rest.find((r) => r.method === method && r.pattern.test(url))?.handler(request);
+    if (operation) answer = await this.graphql.get(operation)?.(request);
+    else answer = await this.rest.find((r) => r.method === method && r.pattern.test(url))?.handler(request);
     if (!answer) return new Response(JSON.stringify({ message: `Not Found (${method} ${url})` }), { status: 404 });
     const text = answer.text ?? (answer.body === undefined ? '' : JSON.stringify(answer.body));
     return new Response(answer.status === 304 ? null : text, { status: answer.status ?? 200, headers: answer.headers });

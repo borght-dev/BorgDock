@@ -28,7 +28,38 @@ describe('Review path', () => {
     'src/__tests__/foo.ts',
     'tests/foo.cs',
     'foo.spec.ts',
+    'BorgDockTests/Foo.swift',
+    'src/BorgDock.iOS/BorgDockUITests/X.swift',
+    'FSP/FSP.Core.Api.Tests/A.cs',
+    'Common.UI.Testing/x.cs',
+    'e2e/pages/login.ts',
+    'test-fixtures/a.json',
+    'src/__fixtures__/pr.ts',
+    'src/__mocks__/fs.ts',
+    '.storybook/mocks/x.ts',
+    'src/components/Button.stories.tsx',
+    'loadtests/run.js',
   ])('places %s last', (path) => expect(reviewFileCategory(path)).toBe('tests'));
+  it.each([
+    'loadtests/reports/r.html',
+    'e2e/visual.spec.ts-snapshots/a.png',
+    'src/__tests__/__snapshots__/a.snap',
+    'toolchain.lock.json',
+    'Package.resolved',
+    'ios/Podfile.lock',
+    'src-tauri/gen/schemas/x.json',
+    'Forms/Foo.Designer.cs',
+    'BorgDock.xcodeproj/project.pbxproj',
+  ])('%s is generated, even in a test folder', (path) =>
+    expect(reviewFileCategory(path)).toBe('generated'));
+  it.each(['docs/plan.md', 'README.md'])('%s is documentation', (path) =>
+    expect(reviewFileCategory(path)).toBe('docs'));
+  it.each([
+    'src/obj/x.ts',
+    'GetActivityTypesForDesigner.cs',
+    'src/requests/order.ts',
+    'src/Contests/x.ts',
+  ])('%s is source', (path) => expect(reviewFileCategory(path)).toBe('source'));
   it('groups source directories and puts test files after documentation and generated files', () => {
     const names = [
       'A.Tests/test.cs',
@@ -176,6 +207,15 @@ describe('Generated files', () => {
     'obj/Debug/App.dll',
     'App.Api/obj/Debug/App.dll',
     'site/dist/index.html',
+    'toolchain.lock.json',
+    'packages.lock.json',
+    'Package.resolved',
+    'ios/Podfile.lock',
+    'e2e/visual.spec.ts-snapshots/a.png',
+    'loadtests/reports/r.html',
+    'src-tauri/gen/schemas/x.json',
+    'Forms/Foo.Designer.cs',
+    'BorgDock.xcodeproj/project.pbxproj',
   ])('%s is generated', (path) => expect(isGeneratedPath(path)).toBe(true));
 
   it.each([
@@ -196,13 +236,17 @@ describe('Generated files', () => {
     'src/app/dist/index.ts',
     'packages/web/src/dist/x.ts',
     'CHANGELOG.md',
+    'GetActivityTypesForDesigner.cs',
+    'loadtests/run.js',
+    'logo.png',
   ])('%s is not generated', (path) => expect(isGeneratedPath(path)).toBe(false));
 
   it('groups generated files with the lockfiles', () => {
     expect(reviewFileCategory('src/generated/changelog.ts')).toBe('generated');
     expect(reviewFileCategory('public/lib.min.js')).toBe('generated');
-    // Tests stay tests, even when a snapshot is also skippable.
-    expect(reviewFileCategory('src/__tests__/__snapshots__/a.snap')).toBe('tests');
+    // A snapshot is generated even inside a test folder; the tests around it stay tests.
+    expect(reviewFileCategory('src/__tests__/__snapshots__/a.snap')).toBe('generated');
+    expect(reviewFileCategory('src/__tests__/a.test.ts')).toBe('tests');
     expect(isGeneratedPath('src/__tests__/__snapshots__/a.snap')).toBe(true);
   });
 });

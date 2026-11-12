@@ -1,7 +1,8 @@
 import type { Context, Hono } from 'hono';
 import { upgradeWebSocket } from '@hono/node-server';
 import type {
-  ApproveDesktopRequest, BorgDockPreferences, ClerkExchangeRequest, ClerkExchangeResponse, DesktopLinkApproval, DesktopLinkRequest, LaunchRequest, LiveActivityRegistration, MarkReadRequest, PairMachineRequest,
+  ApproveDesktopRequest, BorgDockPreferences, ClerkExchangeRequest, ClerkExchangeResponse, DesktopLinkApproval, DesktopLinkRequest, DesktopRepositoriesRequest, LaunchRequest,
+  LiveActivityRegistration, MarkReadRequest, PairMachineRequest,
   Presence, PushToStartRegistration, ReadTargetsRequest, ResolveRefsRequest, ServerInfo,
 } from '../../../../shared/src/api.ts';
 import { API_VERSION } from '../../../../shared/src/api.ts';
@@ -291,6 +292,18 @@ export function registerPlatformRoutes(api: Api, deps: RouteDeps) {
   api.post('/presence', async (c) => {
     const id = sessionId(c);
     platform.presence.report(await readBody<Presence>(c), Date.now(), platform.desktops.isDesktop(id) ? id : null);
+    return c.json({ ok: true });
+  });
+
+  // The linked desktop's watched repositories become the server's: the Pull requests list searches each of them.
+  api.put('/desktop/repositories', async (c) => {
+    const id = sessionId(c);
+    const name = platform.desktops.nameOf(id);
+    if (name === null) throw new UserError('Only a linked BorgDock desktop sends its repositories.', 403);
+    const { repositories } = await readBody<DesktopRepositoriesRequest>(c);
+    if (!Array.isArray(repositories)) throw new UserError('Send `repositories` as a list of owner/repo names.');
+    const result = deps.github.setDesktopRepositories(repositories, { sessionId: id, name });
+    deps.record(c, 'desktop.repositories', { desktop: id, repositories: result.repositories.length });
     return c.json({ ok: true });
   });
 

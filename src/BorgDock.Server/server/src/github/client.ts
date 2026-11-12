@@ -82,12 +82,16 @@ export class GithubClient {
 
   async graphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
     const response = await this.sendAuthorized(`${API}/graphql`, { method: 'POST', body: JSON.stringify({ query, variables }) }, { 'content-type': 'application/json' });
-    const body = (await response.json().catch(() => null)) as { data?: T; errors?: { message: string; type?: string }[] } | null;
+    const body = (await response.json().catch(() => null)) as { data?: T; errors?: { message: string; type?: string; path?: unknown[] }[] } | null;
     if (!response.ok) throw new GithubError(response.status, failure(response.status, body));
     if (body?.errors?.length && !body.data) throw new GithubError(body.errors[0].type === 'NOT_FOUND' ? 404 : 502, `GitHub: ${body.errors[0].message}`);
     if (body?.errors?.length) {
       const notFound = body.errors.find((e) => e.type === 'NOT_FOUND');
       if (notFound) throw new GithubError(404, `GitHub: ${notFound.message}`);
+      // A root field that failed answered nothing worth keeping: a search GitHub refuses (`repo:` a repository this
+      // account can't see) comes back as an empty result next to the error.
+      const rootFailure = body.errors.find((e) => e.path?.length === 1);
+      if (rootFailure) throw new GithubError(rootFailure.type === 'FORBIDDEN' ? 403 : 422, `GitHub: ${rootFailure.message}`);
     }
     return body!.data as T;
   }

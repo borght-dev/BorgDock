@@ -1,6 +1,6 @@
 //! The link to BorgDock for iPhone's server. The desktop asks the server for
 //! a code, the phone approves it, and the desktop gets a session that may only
-//! send presence, share reads and sign out. Contract:
+//! send presence, share reads, share its watched repositories and sign out. Contract:
 //! `src/BorgDock.Server/shared/src/borgdock.ts`, "Owners, desktop link and read sync".
 //!
 //! Every request goes through here: the webview's CSP can't reach a server
@@ -13,11 +13,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
+
+use crate::settings::models::RepoSettings;
 
 pub const LINK_SERVICE: &str = "borgdock:phone-link";
 const PRESENCE_EVERY: Duration = Duration::from_secs(60);
+/// A list the server refused (an older server) is offered again after this long.
+const REPOSITORIES_RETRY: Duration = Duration::from_secs(10 * 60);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 const UNLINKED: &str = "Your iPhone unlinked this desktop. Link it again in Settings.";
 const CANCELED: &str = "This link was canceled. Start again.";
@@ -29,6 +33,18 @@ static APP: OnceLock<AppHandle> = OnceLock::new();
 /// Links waiting for the phone, by link id.
 static PENDING: LazyLock<Mutex<HashMap<String, Pending>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// The watched repositories last offered to the server, and whether it took them.
+static SENT_REPOSITORIES: LazyLock<Mutex<Option<SentRepositories>>> =
+    LazyLock::new(|| Mutex::new(None));
+
+#[derive(Debug, Clone)]
+struct SentRepositories {
+    session_id: String,
+    repositories: Vec<String>,
+    at: Instant,
+    accepted: bool,
+}
 
 #[derive(Debug, Clone)]
 struct Pending {
@@ -227,6 +243,42 @@ fn authed(session: &Session, method: Method, path: &str) -> RequestBuilder {
     request(method, format!("{}{path}", session.server)).bearer_auth(&session.token)
 }
 
+fn repositories_request(session: &Session, repositories: &[String]) -> RequestBuilder {
+    authed(session, Method::PUT, "/api/desktop/repositories")
+        .json(&json!({ "repositories": repositories }))
+}
+
+/// The repositories this desktop watches, as the server names them: the
+/// enabled ones, `owner/name`, each once whatever its case, sorted.
+fn watched_repositories(repos: &[RepoSettings]) -> Vec<String> {
+    let mut names: Vec<String> = repos
+        .iter()
+        .filter(|repo| repo.enabled)
+        .map(|repo| (repo.owner.trim(), repo.name.trim()))
+        .filter(|(owner, name)| !owner.is_empty() && !name.is_empty())
+        .map(|(owner, name)| format!("{owner}/{name}"))
+        .collect();
+    names.sort_by_key(|name| name.to_lowercase());
+    names.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+    names
+}
+
+/// A new link, a restart or a changed list goes out at once; a list the
+/// server refused is offered again after `REPOSITORIES_RETRY`.
+fn should_send_repositories(
+    last: Option<&SentRepositories>,
+    session_id: &str,
+    repositories: &[String],
+    now: Instant,
+) -> bool {
+    match last {
+        Some(sent) if sent.session_id == session_id && sent.repositories == repositories => {
+            !sent.accepted && now.duration_since(sent.at) >= REPOSITORIES_RETRY
+        }
+        _ => true,
+    }
+}
+
 fn reads_path(since: &str) -> String {
     format!("/api/activity/reads?since={}", urlencoding::encode(since))
 }
@@ -344,34 +396,67 @@ async fn call(builder: RequestBuilder) -> Result<String, String> {
     }
 }
 
-async fn send_presence() -> Result<(), String> {
-    let (share, session) = blocking(|| {
-        let settings = crate::settings::load_settings_internal()?;
-        Ok((
-            settings.notifications.activity.phone_link.share_desk,
-            read_session_blocking()?,
-        ))
-    })
-    .await?;
-    let Some(session) = session.filter(|_| share) else {
-        return Ok(());
-    };
+async fn send_presence(session: &Session) -> Result<(), String> {
     let Some(idle) = crate::platform::idle::seconds_since_input() else {
         return Ok(());
     };
     let body = json!({ "device": device_name(), "idleSeconds": idle });
-    call(authed(&session, Method::POST, "/api/presence").json(&body))
+    call(authed(session, Method::POST, "/api/presence").json(&body))
         .await
         .map(|_| ())
 }
 
-/// Presence every minute while linked and sharing; right away after a link.
+/// The server searches the repositories this desktop watches, so the phone
+/// lists the same pull requests.
+async fn send_repositories(session: &Session, repos: &[RepoSettings]) -> Result<(), String> {
+    let repositories = watched_repositories(repos);
+    let wanted = should_send_repositories(
+        SENT_REPOSITORIES
+            .lock()
+            .map_err(|e| e.to_string())?
+            .as_ref(),
+        &session.session_id,
+        &repositories,
+        Instant::now(),
+    );
+    if !wanted {
+        return Ok(());
+    }
+    let result = call(repositories_request(session, &repositories)).await;
+    *SENT_REPOSITORIES.lock().map_err(|e| e.to_string())? = Some(SentRepositories {
+        session_id: session.session_id.clone(),
+        repositories,
+        at: Instant::now(),
+        accepted: result.is_ok(),
+    });
+    result.map(|_| ())
+}
+
+/// Presence (while sharing) and the watched repositories (when they changed).
+async fn sync_with_server() -> Result<(), String> {
+    let (settings, session) = blocking(|| {
+        Ok((
+            crate::settings::load_settings_internal()?,
+            read_session_blocking()?,
+        ))
+    })
+    .await?;
+    let Some(session) = session else {
+        return Ok(());
+    };
+    if settings.notifications.activity.phone_link.share_desk {
+        send_presence(&session).await?;
+    }
+    send_repositories(&session, &settings.repos).await
+}
+
+/// Every minute while linked; right away after a link.
 pub fn start(app: AppHandle) {
     let _ = APP.set(app);
     tauri::async_runtime::spawn(async move {
         loop {
-            if let Err(error) = send_presence().await {
-                log::warn!("phone link presence failed: {error}");
+            if let Err(error) = sync_with_server().await {
+                log::warn!("phone link sync failed: {error}");
             }
             tokio::select! {
                 _ = WAKE.notified() => {}
@@ -688,6 +773,84 @@ mod tests {
         tauri::async_runtime::block_on(phone_link_cancel("cancel-me".into())).unwrap();
         assert!(take_pending("cancel-me").unwrap().is_none());
         assert!(take_pending("keep-me").unwrap().is_some());
+    }
+
+    fn repo(owner: &str, name: &str, enabled: bool) -> RepoSettings {
+        serde_json::from_value(json!({ "owner": owner, "name": name, "enabled": enabled })).unwrap()
+    }
+
+    #[test]
+    fn watched_repositories_are_the_enabled_ones_each_once_sorted() {
+        let repos = vec![
+            repo("globex", "portal", true),
+            repo("acme", "shop", true),
+            repo("Acme", "Shop", true),
+            repo("acme", "archive", false),
+            repo("", "orphan", true),
+        ];
+        assert_eq!(
+            watched_repositories(&repos),
+            vec!["acme/shop", "globex/portal"]
+        );
+    }
+
+    #[test]
+    fn repositories_go_out_on_a_new_link_or_a_change_and_a_refused_list_waits() {
+        let list = vec!["acme/shop".to_string()];
+        let t0 = Instant::now();
+        let sent = |accepted: bool| SentRepositories {
+            session_id: "s1".into(),
+            repositories: list.clone(),
+            at: t0,
+            accepted,
+        };
+        assert!(
+            should_send_repositories(None, "s1", &list, t0),
+            "after a restart"
+        );
+        assert!(!should_send_repositories(
+            Some(&sent(true)),
+            "s1",
+            &list,
+            t0 + REPOSITORIES_RETRY
+        ));
+        assert!(
+            should_send_repositories(Some(&sent(true)), "s2", &list, t0),
+            "a new link"
+        );
+        let changed = vec!["acme/shop".to_string(), "globex/portal".to_string()];
+        assert!(should_send_repositories(
+            Some(&sent(true)),
+            "s1",
+            &changed,
+            t0
+        ));
+        assert!(!should_send_repositories(
+            Some(&sent(false)),
+            "s1",
+            &list,
+            t0 + Duration::from_secs(60)
+        ));
+        assert!(should_send_repositories(
+            Some(&sent(false)),
+            "s1",
+            &list,
+            t0 + REPOSITORIES_RETRY
+        ));
+    }
+
+    #[test]
+    fn repositories_are_put_with_the_session() {
+        let request = repositories_request(&session(), &["acme/shop".to_string()])
+            .build()
+            .unwrap();
+        assert_eq!(request.method(), Method::PUT);
+        assert_eq!(
+            request.url().as_str(),
+            "https://mini.example.ts.net/borgdock/api/desktop/repositories"
+        );
+        assert_eq!(request.headers()["authorization"], "Bearer tok");
+        assert_eq!(body_of(&request), json!({ "repositories": ["acme/shop"] }));
     }
 
     #[test]
