@@ -31,12 +31,21 @@ const LOG_RETRY_MS = 10 * 60_000;
 const BASE_REPOS = 6;
 /** Repository searches running at once; GitHub's secondary rate limit punishes bursts. */
 const REPOSITORY_SEARCHES_AT_ONCE = 4;
+/**
+ * A repository read this recently waits for a later poll: a search per repository every minute would spend the
+ * GraphQL budget the desktop shares on the same accounts. Pull to refresh and changed settings read every one.
+ */
+const REPOSITORY_FRESH_MS = 3 * 60_000;
 const FAILED = new Set(['failure', 'timed_out', 'startup_failure']);
 
 type SearchResult = { found: RawPr[]; cutOff: boolean };
 
 /** The last read of one watched repository. A failed read keeps the pull requests of the one before. */
-type RepositoryRead = { name: string; account: string | null; records: PrRecord[]; cutOff: boolean; polledAt: string | null; ok: boolean; error: string | null };
+type RepositoryRead = {
+  name: string; account: string | null; records: PrRecord[]; cutOff: boolean; polledAt: string | null; ok: boolean; error: string | null;
+  /** When the last good read was, on the service's clock. */
+  readAt: number | null;
+};
 
 type BaseStatus = {
   repo: string;
@@ -90,6 +99,8 @@ export class GithubService extends EventEmitter {
   private readonly byRepository = new Map<string, RepositoryRead>();
   private readonly repositorySettings: RepositorySettings;
   private polledAt: string | null = null;
+  /** The next poll reads every watched repository, fresh or not. */
+  private repositoriesDue = true;
   private records = new Map<string, PrRecord>();
   private reviewRequests = new Map<string, string>();
   private current: Focus | null = null;
@@ -135,8 +146,9 @@ export class GithubService extends EventEmitter {
     return this.focus?.pullRequests ?? [];
   }
 
-  /** Polls now; concurrent callers share one poll. */
-  async refresh(): Promise<Focus | null> {
+  /** Polls now; concurrent callers share one poll. `repositories` reads every watched repository (pull to refresh). */
+  async refresh(options: { repositories?: boolean } = {}): Promise<Focus | null> {
+    if (options.repositories) this.repositoriesDue = true;
     this.polling ??= this.poll().finally(() => {
       this.polling = null;
     });
@@ -207,7 +219,12 @@ export class GithubService extends EventEmitter {
     const watched = this.watched();
     const keep = new Set(watched.map((name) => name.toLowerCase()));
     for (const key of [...this.byRepository.keys()]) if (!keep.has(key)) this.byRepository.delete(key);
-    const queue = [...watched];
+    const due = this.repositoriesDue;
+    this.repositoriesDue = false;
+    const queue = watched.filter((name) => {
+      const read = this.byRepository.get(name.toLowerCase());
+      return due || !read?.ok || read.readAt === null || this.clock() - read.readAt >= REPOSITORY_FRESH_MS;
+    });
     const worker = async () => {
       for (let name = queue.shift(); name !== undefined; name = queue.shift()) await this.pollRepository(name, accounts);
     };
@@ -224,7 +241,7 @@ export class GithubService extends EventEmitter {
     for (const login of readers) {
       try {
         const { found, cutOff } = await this.searchAll(login, repositorySearch(name), REPOSITORY_MAX_PAGES);
-        this.byRepository.set(key, { name, account: login, records: found.map((n) => mapPr(n, login)), cutOff, polledAt: now(), ok: true, error: null });
+        this.byRepository.set(key, { name, account: login, records: found.map((n) => mapPr(n, login)), cutOff, polledAt: now(), ok: true, error: null, readAt: this.clock() });
         return;
       } catch (error) {
         errors.push(`${login}: ${(error as Error).message}`);
@@ -232,7 +249,7 @@ export class GithubService extends EventEmitter {
     }
     this.byRepository.set(key, {
       name, account: previous?.account ?? null, records: previous?.records ?? [], cutOff: previous?.cutOff ?? false, polledAt: previous?.polledAt ?? null,
-      ok: false, error: errors.length ? errors.join('; ') : 'No GitHub account to read it with.',
+      ok: false, error: errors.length ? errors.join('; ') : 'No GitHub account to read it with.', readAt: previous?.readAt ?? null,
     });
   }
 
@@ -428,6 +445,7 @@ export class GithubService extends EventEmitter {
 
   /** Polls with the new settings once a poll that read with the old ones is done. Before start() the first poll will. */
   private refreshAfterChange() {
+    this.repositoriesDue = true;
     if (!this.timer) return;
     void (this.polling ?? Promise.resolve(null)).catch(() => null).then(() => this.refresh());
   }

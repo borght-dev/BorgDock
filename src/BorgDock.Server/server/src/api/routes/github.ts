@@ -20,13 +20,13 @@ const keyOf = (ref: PrRef) => `${ref.owner}/${ref.repo}#${ref.number}`;
  * POST /prs/.../comments, /threads/:threadId/resolve, /reviews (signed), /merge (signed), /rerun-failed, /snooze,
  * GET /ci/groups, /ci/groups/:id, POST/DELETE /ci/groups/:id/claim, GET /github/repositories,
  * PUT /github/repositories/preferences. Types: shared/src/borgdock.ts.
- * GET /focus?refresh=1 polls GitHub first (pull to refresh).
+ * GET /focus?refresh=1 polls GitHub first, every watched repository included (pull to refresh).
  */
 export function registerGithubRoutes(api: Api, { github, record, requireSignature }: RouteDeps) {
   const PR = '/prs/:owner/:repo/:number';
 
   api.get('/focus', async (c) => {
-    const focus = c.req.query('refresh') ? await github.refresh() : github.focus;
+    const focus = c.req.query('refresh') ? await github.refresh({ repositories: true }) : github.focus;
     return focus ? c.json(focus) : c.json({ error: 'Still loading GitHub. Try again in a moment.' }, 503);
   });
 

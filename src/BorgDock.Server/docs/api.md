@@ -151,6 +151,8 @@ The BorgDock desktop app links to the server so it shares read state and reports
 - Watched repositories are the linked desktop's list, then `github.repos` from `config.json`. Each is its own search
   (`is:open is:pr archived:false repo:<owner/repo>`), read to the end (20 pages of 20 at most; past that `cutOff`), by
   the account that read it last, else each account in turn. A search that fails keeps its last answer, with the error.
+  A repository read in the last three minutes waits for a later poll, so the server doesn't spend the GraphQL budget
+  the desktop shares; pull to refresh (`GET /api/focus?refresh=1`), a new list and changed preferences read every one.
 - `includeInvolving` (default on) adds the searches for pull requests that involve you anywhere: `involves:@me`,
   `review-requested:@me`, `reviewed-by:@me`. `includeTeamRequests` off searches `user-review-requested:@me` instead,
   and a request to one of your teams no longer counts as yours.

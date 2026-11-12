@@ -67,6 +67,8 @@ test('each watched repository is searched on its own, paged past 100, by the acc
 
   const before = gh.operations('FocusSearch').filter((r) => repoOf(r) === 'globex/portal').length;
   await service.refresh();
+  assert.equal(gh.operations('FocusSearch').filter((r) => repoOf(r) === 'globex/portal').length, before, 'read a moment ago: it waits');
+  await service.refresh({ repositories: true });
   const later = gh.operations('FocusSearch').filter((r) => repoOf(r) === 'globex/portal').slice(before);
   assert.deepEqual(later.map(readerOf), ['work'], 'the account that read it last reads it first');
 });
@@ -86,7 +88,7 @@ test('a repository search that fails keeps its last answer and says why; past tw
   });
   await service.refresh();
   shopDown = true;
-  const focus = (await service.refresh())!;
+  const focus = (await service.refresh({ repositories: true }))!;
   assert.ok(focus.pullRequests.some((p) => p.key === 'acme/shop#40'), 'still listed from the read before');
   const repositories = service.repositories();
   assert.equal(repositories.source, 'config');
