@@ -1,3 +1,5 @@
+import { forceParsing } from '@codemirror/language';
+import { EditorView } from '@codemirror/view';
 import { render } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { SqlEditor } from '../SqlEditor';
@@ -28,6 +30,10 @@ describe('SqlEditor', () => {
         height={200}
       />,
     );
+    // The first parse stops after 20 ms; a slow CI runner then leaves the end
+    // of the line unhighlighted until an idle callback finishes it.
+    const view = EditorView.findFromDOM(container.querySelector('.cm-editor') as HTMLElement);
+    if (view) forceParsing(view, view.state.doc.length, 5000);
 
     const keyword = tokenClass(container, 'SELECT');
     const string = tokenClass(container, "'%Mail%'");
