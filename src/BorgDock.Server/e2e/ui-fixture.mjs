@@ -32,7 +32,6 @@ questionThread.questions=[{id:'validation',question:'Which validation approach s
 const questionItem=overviewItem(item(60000,'Choose the stock sync validation approach'),'waiting',[questionThread]);
 const overview = {generatedAt:at(0),items,unlinkedThreads:[{...thread(60300,'M1','An unlinked investigation','your-turn',2),guessItemId:56908}],worktrees:Array.from({length:10},(_,i)=>({name:`M${i}`,state:[7,9].includes(i)?'free':'mine',itemId:({2:59463,5:56908,8:59403})[i]??null,running:![2,5,7,8,9].includes(i),needsYou:[2,5,8].includes(i)})),sources:{ado:{ok:true,at:at(0),error:null},t3:{ok:true,at:at(0),error:null}}};
 // The agent on acme/shop #412's branch (10-github.mjs): Focus and the PR page show it running.
-overview.unlinkedThreads.push({...thread('round-lines','mac-mini','Fix the failing checkout e2e test','running',.07),id:'t-round-lines',branch:'priya/round-lines',guessItemId:61021});
 const config={apiVersion:1,user:{name:'Koen van der Borght',email:'koen@example.com'},models:[{id:'codex/gpt-6.1-sol',label:'GPT-6.1 Sol',provider:'Codex',recent:true,efforts:[{id:'high',label:'High'}],defaultEffort:'high'}],defaultModel:'codex/gpt-6.1-sol',agents:[],defaultAgent:'codex',worktrees:overview.worktrees.map(w=>w.name),promptTemplate:'Pick up AB#{id}: {title}',vapidPublicKey:null};
 const writes=[];
 const server=createServer(async(req,res)=>{
