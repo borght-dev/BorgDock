@@ -19,7 +19,7 @@ struct RootView: View {
     }
 }
 
-/// Four tabs and Search (Activity sits behind the bell on Today, Notes behind its notes button), iOS 26 style: the tab
+/// Four tabs and Search (Activity sits behind the bell on Focus, Notes behind its notes button), iOS 26 style: the tab
 /// bar floats in glass and folds into a search field on the Search tab.
 struct MainTabView: View {
     @Environment(AppModel.self) private var app
@@ -28,8 +28,8 @@ struct MainTabView: View {
     var body: some View {
         @Bindable var router = app.router
         TabView(selection: $router.tab) {
-            Tab("Today", systemImage: "scope", value: Router.Tab.today) {
-                NavigationStack(path: $router.todayPath) { TodayView().routeDestinations() }
+            Tab("Focus", systemImage: "scope", value: Router.Tab.today) {
+                NavigationStack(path: $router.todayPath) { FocusView().routeDestinations() }
             }
             Tab("Pull requests", systemImage: "arrow.triangle.pull", value: Router.Tab.pullRequests) {
                 NavigationStack(path: $router.pullRequestsPath) { PullRequestsView().routeDestinations() }
@@ -72,16 +72,15 @@ struct RouteView: View {
         switch route {
         case .pullRequest(let key): PullRequestView(key: key)
         case .workItem(let item): ItemDetailView(route: item)
-        case .thread(let id): ThreadView(id: id)
         case .ciGroup(let id): CiGroupView(id: id)
         case .workstream(let id): WorkstreamView(id: id)
         case .note(let path): NoteView(path: path)
-        case .browse: BrowseView()
         case .activity: ActivityView()
         case .settings: SettingsView()
         case .machines: MachinesView()
         case .notes: NotesView()
         case .sprintItems(let list): SprintItemsView(list: list)
+        case .repositories: RepositoriesView()
         }
     }
 }
@@ -115,7 +114,7 @@ struct CoverHost: View {
     }
 }
 
-/// `-BorgDockRoute item/59657 | start/59463 | start/59463/qa | tab/<today|prs|work|sprint|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<bay>` (DEBUG only).
+/// `-BorgDockRoute item/59657 | item/59657/<details|activity|…> | start/59463 | start/59463/qa | tab/<today|prs|work|sprint|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<lane|show> | focus/ready | prs/<display|repositories|open/<group id>> | review/…` (DEBUG only; review/… is ReviewDebugRoute).
 enum DebugRoute {
     @MainActor
     static func apply(to app: AppModel) async {
@@ -125,7 +124,11 @@ enum DebugRoute {
         guard parts.count == 2 else { return }
         switch parts[0] {
         case "item":
-            if let id = Int(parts[1]) { app.router.openItem(id) }
+            let target = parts[1].split(separator: "/").map(String.init)
+            if let id = Int(target[0]) {
+                app.router.openItem(id)
+                app.router.scrollTarget = target.dropFirst().first
+            }
         case "start":
             for _ in 0..<40 where app.overview == nil {
                 try? await Task.sleep(for: .milliseconds(250))
@@ -154,6 +157,14 @@ enum DebugRoute {
         case "scroll":
             app.router.tab = .work
             app.router.scrollTarget = parts[1]
+        case "focus":
+            for _ in 0..<40 where app.focus.focus == nil { try? await Task.sleep(for: .milliseconds(250)) }
+            try? await Task.sleep(for: .milliseconds(500))
+            app.router.scrollTarget = parts[1]
+        case "prs":
+            await PrListDebugRoute.apply(parts[1], to: app)
+        case "review":
+            await ReviewDebugRoute.apply(parts[1], to: app)
         default:
             break
         }

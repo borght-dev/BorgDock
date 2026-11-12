@@ -2,7 +2,8 @@ import { createServer } from 'node:http';
 import { readdirSync } from 'node:fs';
 
 // BorgDock's fixture modules (e2e/fixtures/*.mjs): each exports `handle({ path, method, query, body, writes })`
-// and returns a result, or undefined when the route isn't its own. They run before the Dispatch routes below.
+// and returns a result (JSON, or `{ contentType, rawBody }` for a file), or undefined when the route isn't its own. They run before the Dispatch routes below.
+// `{ httpStatus, error }` answers with that status and `{ error }`.
 const fixtureDir = new URL('./fixtures/', import.meta.url);
 const fixtures = await Promise.all(readdirSync(fixtureDir).filter(f => f.endsWith('.mjs')).sort().map(f => import(new URL(f, fixtureDir))));
 
@@ -31,6 +32,7 @@ questionThread.questionRequestId='sample-request';
 questionThread.questions=[{id:'validation',question:'Which validation approach should I use?',options:[{label:'Run the staging replay',value:'staging'},{label:'Use the local test database',value:'local'}],recommended:0,allowCustomAnswer:true,multiSelect:false}];
 const questionItem=overviewItem(item(60000,'Choose the stock sync validation approach'),'waiting',[questionThread]);
 const overview = {generatedAt:at(0),items,unlinkedThreads:[{...thread(60300,'M1','An unlinked investigation','your-turn',2),guessItemId:56908}],worktrees:Array.from({length:10},(_,i)=>({name:`M${i}`,state:[7,9].includes(i)?'free':'mine',itemId:({2:59463,5:56908,8:59403})[i]??null,running:![2,5,7,8,9].includes(i),needsYou:[2,5,8].includes(i)})),sources:{ado:{ok:true,at:at(0),error:null},t3:{ok:true,at:at(0),error:null}}};
+// The agent on acme/shop #412's branch (10-github.mjs): Focus and the PR page show it running.
 const config={apiVersion:1,user:{name:'Koen van der Borght',email:'koen@example.com'},models:[{id:'codex/gpt-6.1-sol',label:'GPT-6.1 Sol',provider:'Codex',recent:true,efforts:[{id:'high',label:'High'}],defaultEffort:'high'}],defaultModel:'codex/gpt-6.1-sol',agents:[],defaultAgent:'codex',worktrees:overview.worktrees.map(w=>w.name),promptTemplate:'Pick up AB#{id}: {title}',vapidPublicKey:null};
 const writes=[];
 const server=createServer(async(req,res)=>{
@@ -42,6 +44,7 @@ const server=createServer(async(req,res)=>{
     result = await fixture.handle({ path: url.pathname, method: req.method, query: url.searchParams, body, writes });
     if (result !== undefined) break;
   }
+  if (result?.httpStatus) {res.writeHead(result.httpStatus,{'Content-Type':'application/json'});res.end(JSON.stringify({error:result.error}));return;}
   if (result !== undefined) {}
   else if(url.pathname==='/api/events') {res.writeHead(200,{'Content-Type':'text/event-stream'});res.write(': sample preview\n\n');return;}
   else if(url.pathname==='/api/auth/status')result={authenticated:true,setupRequired:false,session:null};
@@ -75,6 +78,7 @@ const server=createServer(async(req,res)=>{
   else if(/^\/api\/items\/\d+$/.test(url.pathname)) {const o=overview.items.find(o=>o.item.id===Number(url.pathname.split('/')[3]));result=o?{item:o.item,description:'Sample work item description for visual verification.',acceptanceCriteria:'Verify the expected behaviour on staging.',reproSteps:'',qaNotes:'',comments:[]}:null;}
   else if(req.method!=='GET') {writes.push({path:url.pathname,body});result=url.pathname.endsWith('/state')?{state:body.to}:url.pathname==='/api/threads'?{threadId:'sample-started',link:'https://example.invalid',appLink:'t3code://threads/sample/sample',adoState:null,warning:null}:{ok:true};}
   else {res.writeHead(404);res.end('Not found');return;}
+  if(result?.rawBody){res.writeHead(200,{'Content-Type':result.contentType,'Cache-Control':'no-store'});res.end(result.rawBody);return;}
   res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(result));
 });
 server.listen(Number(process.env.PORT ?? 8796),'0.0.0.0',()=>console.log(`Sample API listening on ${process.env.PORT ?? 8796}. No external requests.`));

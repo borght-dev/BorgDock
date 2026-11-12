@@ -6,9 +6,10 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
-  AnswerRequest, ApnsRegistration, AppTokenRequest, AuthStatus, LinkThreadRequest, MoveStateRequest, NotificationPreferences,
-  StartThreadRequest, WebPushRegistration,
+  AnswerRequest, ApnsRegistration, AppTokenRequest, AuthStatus, LinkThreadRequest, MoveStateRequest, NotificationPreferences, PostItemCommentRequest,
+  PostItemCommentResponse, StartThreadRequest, WebPushRegistration,
 } from '../../../shared/src/api.ts';
+import { AttachmentSigner } from '../ado/attachments.ts';
 import { AdoError } from '../ado/client.ts';
 import { allowedOrigins, type Config } from '../config.ts';
 import { audit, type Db, type Via } from '../db.ts';
@@ -21,6 +22,7 @@ import { clientOf, FailureLimiter, RateLimiter } from '../auth/request.ts';
 import { Sessions } from '../auth/sessions.ts';
 import { publicKeyFromX963, signatureCheck } from '../auth/signatures.ts';
 import { DeviceKeys } from '../borgdock/devices.ts';
+import { ItemDetails } from '../borgdock/item-detail.ts';
 import type { GithubService } from '../github/service.ts';
 import type { Env, RouteDeps } from './context.ts';
 import { registerGithubRoutes } from './routes/github.ts';
@@ -61,6 +63,20 @@ export function createApp({ config, db, service, notifier, github }: AppDeps) {
   const record = (c: Context<Env>, action: string, detail?: unknown) =>
     audit(db, { sessionId: c.get('session')?.id ?? null, via: c.get('via'), ip: c.get('ip'), action, detail });
   const deps: RouteDeps = { config, db, service, notifier, github, record, requireSignature: signatureCheck(db) };
+  const items = new ItemDetails({
+    ado: service.ado,
+    signer: AttachmentSigner.inDataDir(config.dataDir),
+    db,
+    openPullRequests: () => github.pullRequests,
+    pullRequest: (ref) => github.pullRequest(ref),
+    threadPullRequests: (itemId) => service.threadPullRequests(itemId),
+    myItems: () => service.adoItems,
+  });
+  const itemIdOf = (c: Context<Env>) => {
+    const id = Number(c.req.param('id'));
+    if (!Number.isInteger(id) || id <= 0) throw new UserError('Not a work item', 404);
+    return id;
+  };
 
   const cookieOptions = { path: '/', secure: true, httpOnly: true, sameSite: 'Strict' as const, maxAge: 30 * 86_400 };
 
@@ -134,6 +150,10 @@ export function createApp({ config, db, service, notifier, github }: AppDeps) {
 
   app.get('/api/health', (c) => c.json({ ok: true }));
   registerPublicRoutes(app, deps);
+
+  // Signed URLs from the item page, so the phone's images load without the session's header. The signature is the check.
+  app.get('/api/items/:id/attachments/:guid', async (c) =>
+    items.attachment(itemIdOf(c), c.req.param('guid'), { name: c.req.query('name'), exp: c.req.query('exp'), sig: c.req.query('sig') }));
 
   app.get('/api/auth/status', (c) => {
     const session = c.get('session');
@@ -300,7 +320,16 @@ export function createApp({ config, db, service, notifier, github }: AppDeps) {
       service.off('overview', send);
     }));
 
-  api.get('/items/:id', async (c) => c.json(await service.itemDetail(Number(c.req.param('id')))));
+  api.get('/items/:id', async (c) => c.json(await items.read(itemIdOf(c))));
+
+  // Posts to ADO as you, in markdown. Not signed, like pull request comments; it never moves the item's state.
+  api.post('/items/:id/comments', async (c) => {
+    const id = itemIdOf(c);
+    const { text } = await body<PostItemCommentRequest>(c);
+    const response: PostItemCommentResponse = { comment: await items.postComment(id, text) };
+    record(c, 'ado.comment', { itemId: id, commentId: response.comment.id ?? null });
+    return c.json(response);
+  });
 
   api.get('/items/:id/start', async (c) => c.json(await service.startOptions(Number(c.req.param('id')))));
 

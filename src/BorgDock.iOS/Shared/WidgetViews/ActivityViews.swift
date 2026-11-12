@@ -184,7 +184,7 @@ struct IslandTitle: View {
     }
 }
 
-/// Expanded, bottom: the step, the steps bar, Open thread and Stop.
+/// Expanded, bottom: the step, the steps bar, Open (the agent's pull request, else its item, else T3 Code) and Stop.
 struct AgentIslandBottom: View {
     let threadId: String
     let state: AgentActivityState
@@ -201,7 +201,7 @@ struct AgentIslandBottom: View {
             StepBar(state: state, track: .white.opacity(0.18))
             HStack(spacing: 12) {
                 Link(destination: BorgDockLink.thread(threadId)) {
-                    Text("Open thread")
+                    Text("Open")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)

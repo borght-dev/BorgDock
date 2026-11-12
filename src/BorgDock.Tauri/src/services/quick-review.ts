@@ -92,7 +92,40 @@ const LOCKFILES = new Set([
   'pnpm-lock.yaml',
   'yarn.lock',
   'cargo.lock',
+  'package.resolved',
+  'podfile.lock',
 ]);
+
+/** Snapshots and load-test reports sit inside test folders, yet nobody reads them line by line. */
+const SNAPSHOTS = /\.snap$|(^|\/)__snapshots__\/|-snapshots\/|(^|\/)loadtests\/reports\//i;
+
+const TESTS = [
+  /(^|\/)[^/]*\.Tests(\/|$)/i,
+  /(^|\/)(tests?|__tests__)(\/|$)/i,
+  /\.(test|spec)\./i,
+  /(^|\/)[^/]*(Tests|Testing)\//,
+  /(^|\/)e2e\//i,
+  /(^|\/)(fixtures|__fixtures__|test-fixtures|__mocks__)\//i,
+  /(^|\/)\.storybook\/mocks\//i,
+  /\.stories\./i,
+  /(^|\/)loadtests\//i,
+];
+
+const GENERATED_NAMES = [
+  /\.lock\.json$/,
+  /\.generated\./,
+  /\.g\.(cs|ts|dart)$/,
+  /\.min\.js$/,
+  /\.(js|css)\.map$/,
+  /\.designer\.cs$/,
+  /\.pbxproj$/,
+];
+
+const GENERATED_FOLDERS = [
+  /(^|\/)generated\//i,
+  /^(?:(?!src\/)[^/]+\/)?(dist|obj)\//i,
+  /(^|\/)src-tauri\/gen\//i,
+];
 
 /**
  * Files nobody reads line by line: lockfiles, generated code, snapshots,
@@ -100,28 +133,34 @@ const LOCKFILES = new Set([
  * all reviewed in one go ("Skip generated") and does not wait for them before
  * Approve is enabled.
  *
- * Matches `bun.lock(b)`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`,
- * `Cargo.lock`, `*.generated.*`, source-generator output (`*.g.cs`,
- * `*.g.ts`, `*.g.dart`), anything under a `generated/` folder
- * (`src/generated/**` included), `*.snap`, `*.min.js`, `*.js.map` and
- * `*.css.map`, and build output: `dist/` or `obj/` at the repository root or
- * directly inside a top-level project folder (`App.Api/obj/`), but not
- * inside `src/` (`src/obj/` is somebody's code).
+ * Matches lockfiles (`bun.lock(b)`, `package-lock.json`, `pnpm-lock.yaml`,
+ * `yarn.lock`, `Cargo.lock`, `*.lock.json`, `Package.resolved`,
+ * `Podfile.lock`), `*.generated.*`, source-generator output (`*.g.cs`,
+ * `*.g.ts`, `*.g.dart`), anything under a `generated/` folder, `*.min.js`,
+ * `*.js.map`, `*.css.map`, snapshots (`*.snap`, `__snapshots__/`,
+ * Playwright's `*-snapshots/`), `src-tauri/gen/`, `*.Designer.cs`,
+ * `*.pbxproj`, `loadtests/reports/`, and build output: `dist/` or `obj/` at
+ * the repository root or directly inside a top-level project folder
+ * (`App.Api/obj/`), but not inside `src/` (`src/obj/` is somebody's code).
+ * The server's `file-category.ts` (src/BorgDock.Server) has the same rules.
  */
 export function isGeneratedPath(path: string): boolean {
   const normalized = path.replaceAll('\\', '/');
   const name = normalized.split('/').pop()?.toLowerCase() ?? '';
-  if (LOCKFILES.has(name)) return true;
-  if (/\.generated\./.test(name) || /\.g\.(cs|ts|dart)$/.test(name)) return true;
-  if (/\.snap$|\.min\.js$|\.(js|css)\.map$/.test(name)) return true;
-  if (/(^|\/)generated\//i.test(normalized)) return true;
-  return /^(?:(?!src\/)[^/]+\/)?(dist|obj)\//i.test(normalized);
+  if (LOCKFILES.has(name) || GENERATED_NAMES.some((pattern) => pattern.test(name))) return true;
+  if (SNAPSHOTS.test(normalized)) return true;
+  return GENERATED_FOLDERS.some((pattern) => pattern.test(normalized));
 }
 
+/**
+ * Tests are test folders and targets (`BorgDockTests/`, `Common.UI.Testing/`),
+ * `*.test.*`, `*.spec.*`, everything under `e2e/`, fixtures, mocks, stories
+ * and `loadtests/`. Snapshots are generated even inside a test folder.
+ */
 export function reviewFileCategory(path: string): 'source' | 'docs' | 'generated' | 'tests' {
   const normalized = path.replaceAll('\\', '/');
-  if (/(^|\/)[^/]*\.Tests(\/|$)|(^|\/)(tests?|__tests__)(\/|$)|\.(test|spec)\./i.test(normalized))
-    return 'tests';
+  if (SNAPSHOTS.test(normalized)) return 'generated';
+  if (TESTS.some((pattern) => pattern.test(normalized))) return 'tests';
   if (isGeneratedPath(normalized)) return 'generated';
   if (/(^|\/)(docs?|documentation)(\/|$)|\.(md|mdx|rst)$/i.test(normalized)) return 'docs';
   return 'source';

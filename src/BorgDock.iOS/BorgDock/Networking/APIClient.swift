@@ -111,6 +111,20 @@ extension APIClient {
 
     func item(_ id: Int) async throws -> ItemDetail { try await get("/api/items/\(id)") }
 
+    /// Posts a comment on the item as you. Markdown; it never changes a state.
+    func postItemComment(itemId: Int, text: String) async throws -> ItemComment {
+        let response: PostItemCommentResponse = try await post("/api/items/\(itemId)/comments", body: PostItemCommentRequest(text: text))
+        return response.comment
+    }
+
+    /// A server path such as a signed attachment ("/api/items/1/attachments/…?sig=…") as a full URL under the server's
+    /// own path prefix (https://host/borgdock + /api/… → https://host/borgdock/api/…); absolute URLs pass through.
+    func resolve(_ pathOrURL: String) -> URL? {
+        if let url = URL(string: pathOrURL), url.scheme != nil { return url }
+        let base = baseURL.absoluteString.hasSuffix("/") ? String(baseURL.absoluteString.dropLast()) : baseURL.absoluteString
+        return URL(string: base + (pathOrURL.hasPrefix("/") ? pathOrURL : "/" + pathOrURL))
+    }
+
     func startOptions(itemId: Int) async throws -> StartOptions { try await get("/api/items/\(itemId)/start") }
 
     func browseQueries() async throws -> [BrowseQuery] { try await get("/api/browse/queries") }

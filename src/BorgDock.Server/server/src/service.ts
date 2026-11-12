@@ -2,11 +2,11 @@ import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import type {
-  AgentId, AppConfig, BrowseQuery, BrowseResult, ItemDetail, ModelOption, Overview, PrSummary, SourceStatus, Sprint, StartOptions, StartThreadRequest,
+  AgentId, AppConfig, BrowseQuery, BrowseResult, ModelOption, Overview, PrSummary, SourceStatus, Sprint, StartOptions, StartThreadRequest,
   StartThreadResponse, ThreadSummary, WorkItemSummary,
 } from '../../shared/src/api.ts';
 import { API_VERSION } from '../../shared/src/api.ts';
-import { AdoClient, AdoError, type AdoItem } from './ado/client.ts';
+import { AdoClient, AdoError, summaryOf, type AdoItem } from './ado/client.ts';
 import type { Config } from './config.ts';
 import { now, type Db } from './db.ts';
 import { buildOverview } from './engine/overview.ts';
@@ -14,6 +14,7 @@ import { ItemFacts } from './borgdock/item-facts.ts';
 import { applyWalk } from './borgdock/walk.ts';
 import type { Notifier } from './push/notifier.ts';
 import type { T3Transport } from './t3/client.ts';
+import type { T3PullRequest } from './t3/source.ts';
 import { modelCatalogue, type ModelCatalogue } from './t3/models.ts';
 import { T3Fleet, type T3Host } from './t3/fleet.ts';
 
@@ -67,8 +68,6 @@ export function donePrompt(item: { id: number; title: string }, branch: string |
     'Report the notes, the comment and the state change.',
   ].join('\n\n');
 }
-
-const toSummary = ({ states: _s, linkedPullRequests: _l, changedAt: _c, ...summary }: AdoItem): WorkItemSummary => summary;
 
 /** The Sprint tab and Today read the sprint on every visit; ADO is asked at most this often. */
 const SPRINT_CACHE_MS = 60_000;
@@ -306,7 +305,7 @@ export class DispatchService extends EventEmitter {
     if (worktree && worktree.state !== 'free') throw new UserError(`${request.worktree} already has an open thread. Settle it or pick another worktree.`, 409);
 
     const known = this.items.find((i) => i.id === request.itemId);
-    const title = known?.title ?? (await this.ado.item(request.itemId)).item.title;
+    const title = known?.title ?? (await this.ado.workItem(request.itemId)).title;
     const threadId = randomUUID();
     const createdAt = now();
     const thread = {
@@ -382,7 +381,7 @@ export class DispatchService extends EventEmitter {
 
   async startOptions(itemId: number): Promise<StartOptions> {
     const entry = this.overview?.items.find((o) => o.item.id === itemId);
-    const item = entry?.item ?? (await this.ado.item(itemId)).item;
+    const item = entry?.item ?? summaryOf(await this.ado.workItem(itemId));
     // A thread's branch is whatever its worktree had checked out; only the PR's branch, or a branch naming the item, is the item's.
     const namesItem = (b: string | null | undefined) => (b && new RegExp(`(^|/)(AB)?${itemId}(\\b|[-_])`, 'i').test(b) ? b : null);
     const branch = entry?.pullRequest?.branch ?? entry?.threads.map((t) => namesItem(t.branch)).find(Boolean) ?? null;
@@ -436,8 +435,20 @@ export class DispatchService extends EventEmitter {
 
   /* ---------- ADO reads ---------- */
 
-  async itemDetail(id: number): Promise<ItemDetail> {
-    return this.ado.item(id).then((detail) => ({ ...detail, item: toSummary(detail.item as AdoItem) }));
+  /** My items as ADO last answered, for the item page's shared pull requests. */
+  get adoItems(): readonly AdoItem[] {
+    return this.items;
+  }
+
+  async itemSummary(id: number): Promise<WorkItemSummary> {
+    return summaryOf(await this.ado.workItem(id));
+  }
+
+  /** The pull requests T3 knows on the item's threads, any state. */
+  threadPullRequests(itemId: number): T3PullRequest[] {
+    const threads = this.overview?.items.find((o) => o.item.id === itemId)?.threads ?? [];
+    const known = this.source.threads;
+    return threads.flatMap((t) => known.get(t.id)?.pullRequests ?? []);
   }
 
   queries(): Promise<BrowseQuery[]> {
@@ -445,9 +456,9 @@ export class DispatchService extends EventEmitter {
   }
 
   async browse(query: string | null, search: string | null): Promise<BrowseResult> {
-    if (search?.trim()) return { items: (await this.ado.search(search)).map(toSummary), truncated: false };
+    if (search?.trim()) return { items: (await this.ado.search(search)).map(summaryOf), truncated: false };
     const result = await this.ado.runQuery(query ?? 'sprint');
-    return { items: result.items.map(toSummary), truncated: result.truncated };
+    return { items: result.items.map(summaryOf), truncated: result.truncated };
   }
 
   /** The current sprint, read again once the last read is a minute old. A failed read is never kept. */
@@ -455,7 +466,7 @@ export class DispatchService extends EventEmitter {
     if (this.sprintRead && Date.now() - this.sprintRead.at < SPRINT_CACHE_MS) return this.sprintRead.sprint;
     const sprint = this.ado.currentSprint().then(({ items, ...iteration }) => ({
       ...iteration,
-      items: items.map(({ stateChangedAt, finishedAt, ...item }) => ({ ...toSummary(item), stateChangedAt, finishedAt })),
+      items: items.map(({ stateChangedAt, finishedAt, ...item }) => ({ ...summaryOf(item), stateChangedAt, finishedAt })),
       generatedAt: now(),
     }));
     const read = { at: Date.now(), sprint };

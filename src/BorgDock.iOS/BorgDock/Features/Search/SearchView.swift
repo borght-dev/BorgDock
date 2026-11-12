@@ -99,7 +99,7 @@ struct SearchView: View {
         if let results = store.results, showAll || store.scope == .threads, !results.threads.isEmpty {
             Section {
                 ForEach(results.threads) { thread in
-                    row { app.router.push(.thread(thread.id)) } label: { ThreadHit(thread: thread, words: words) }
+                    row { app.openThread(thread.id) } label: { ThreadHit(thread: thread, words: words) }
                 }
             } header: { header("Threads") }
         }

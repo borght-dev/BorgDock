@@ -67,7 +67,6 @@ struct LaunchSheet: View {
                                                   title: request.title.isEmpty ? "Agent" : request.title, machine: model.machine?.label ?? "")
             app.refreshAfterWrite()
             dismiss()
-            app.router.openThread(response.threadId)
         } catch let error as APIError where error.isUnauthorized {
             app.report(error)
         } catch {

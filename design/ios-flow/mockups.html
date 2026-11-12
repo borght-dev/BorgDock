@@ -1,0 +1,1653 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BorgDock iPhone review flow</title>
+<!-- Concept mockups. Shares the phone kit (tokens, phone frame, chips, cells) with design/ios-app/mockups.html and design/ios-overview/mockups.html. -->
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0c0d0f; color: #ededef; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono, code { font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace; }
+  code { font-size: .9em; }
+
+  /* ---------- page ---------- */
+  .wrap { max-width: 1820px; margin: 0 auto; padding: 72px 48px 140px; }
+  .hero { display: grid; grid-template-columns: auto 1fr; gap: 32px; align-items: center; }
+  .hero-icon { width: 112px; height: 112px; border-radius: 26px; background: #151618; border: 1px solid #2f3036; display: grid; place-items: center; box-shadow: 0 20px 50px -10px rgba(127, 126, 255, .35); }
+  .hero-icon svg { width: 72px; height: 72px; fill: #7f7eff; }
+  .hero h1 { margin: 0; font-size: 48px; letter-spacing: -.025em; font-weight: 700; }
+  .hero h1 span { color: #7f7eff; }
+  .hero p { margin: 10px 0 0; color: #9c9da4; font-size: 18px; max-width: 860px; line-height: 1.5; }
+  .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 44px; }
+  .principle { padding: 20px 22px; border-radius: 18px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); }
+  .principle b { display: block; font-size: 16px; margin-bottom: 6px; }
+  .principle span { color: #9c9da4; font-size: 14px; line-height: 1.55; }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+  .toc a { color: #c9c8ff; text-decoration: none; font-size: 13.5px; padding: 7px 13px; border-radius: 18px; background: rgba(127, 126, 255, .1); border: 1px solid rgba(127, 126, 255, .2); }
+  .sec { margin-top: 110px; }
+  .sec-h { display: flex; align-items: baseline; gap: 14px; border-top: 1px solid rgba(255, 255, 255, .08); padding-top: 30px; }
+  .sec-h .n { font: 600 13px/1 "SF Mono", ui-monospace, monospace; color: #7f7eff; }
+  .sec-h h2 { margin: 0; font-size: 30px; letter-spacing: -.02em; }
+  .sec-lead { margin: 12px 0 44px; color: #9c9da4; font-size: 16px; line-height: 1.6; max-width: 940px; }
+  .row { display: flex; flex-wrap: wrap; gap: 72px 44px; align-items: flex-start; }
+  figure.shot { margin: 0; width: 393px; }
+  figure.shot figcaption { margin-top: 34px; font-size: 14px; color: #9c9da4; line-height: 1.55; }
+  figure.shot figcaption b { display: block; color: #ededef; font-size: 16px; margin-bottom: 4px; }
+  figure.shot figcaption ul { margin: 8px 0 0; padding-left: 18px; }
+  figure.shot figcaption li { margin: 4px 0; }
+
+  /* ---------- the phone ---------- */
+  .phone {
+    --bg: #111214; --card: #1b1c1f; --card2: #232428; --sheet: #1b1c1f; --menu: rgba(44, 45, 50, .82);
+    --fill: rgba(255, 255, 255, .07); --fill2: rgba(255, 255, 255, .11); --sep: rgba(255, 255, 255, .08);
+    --tx: #ededef; --tx2: #9c9da4; --tx3: #6c6d74;
+    --ac: #7f7eff; --ac-soft: rgba(127, 126, 255, .16); --ac-tx: #b4b3ff; --onac: #12121a;
+    --gr: #5cc98f; --gr-soft: rgba(92, 201, 143, .14); --ongr: #0b2416;
+    --rd: #f0616d; --rd-soft: rgba(240, 97, 109, .15);
+    --yl: #e5b454; --yl-soft: rgba(229, 180, 84, .15);
+    --bl: #6fa8ff; --bl-soft: rgba(111, 168, 255, .15);
+    --mg: #a371f7; --mg-soft: rgba(163, 113, 247, .16);
+    --glass: rgba(52, 53, 58, .58); --glass-brd: rgba(255, 255, 255, .13);
+    --syk: #c4a7ff; --sys: #9ecbff; --syf: #dcbdfb; --syt: #7ee787; --sycm: #8b949e;
+    position: relative; width: 393px; height: 852px; border-radius: 55px; overflow: hidden; isolation: isolate;
+    background: var(--bg); color: var(--tx); font-size: 15px; line-height: 1.35; letter-spacing: -.01em;
+    box-shadow: 0 0 0 9px #050506, 0 0 0 10.5px #3a3b40, 0 46px 90px -24px rgba(0, 0, 0, .75);
+  }
+  .phone.light {
+    --bg: #f2f2f7; --card: #fff; --card2: #f7f7f9; --sheet: #f2f2f7; --menu: rgba(250, 250, 252, .86);
+    --fill: rgba(23, 24, 28, .055); --fill2: rgba(23, 24, 28, .09); --sep: #e3e4e8;
+    --tx: #17181c; --tx2: #5d606a; --tx3: #8f929c;
+    --ac: #4f46e5; --ac-soft: rgba(79, 70, 229, .1); --ac-tx: #4338ca; --onac: #fff;
+    --gr: #1f9d6b; --gr-soft: #e3f5ec; --ongr: #fff;
+    --rd: #d64560; --rd-soft: #fbe9ec;
+    --yl: #b07a0e; --yl-soft: #fbf1dc;
+    --bl: #2d6be4; --bl-soft: #e6eefc;
+    --mg: #8250df; --mg-soft: #f0e8fc;
+    --glass: rgba(255, 255, 255, .72); --glass-brd: rgba(0, 0, 0, .07);
+    --syk: #8250df; --sys: #0a3069; --syf: #6639ba; --syt: #116329; --sycm: #6e7781;
+  }
+  .sb { position: absolute; top: 0; left: 0; right: 0; height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 32px 0 54px; z-index: 90; font-weight: 600; font-size: 17px; letter-spacing: -.02em; color: var(--tx); pointer-events: none; }
+  .sb.w { color: #fff; }
+  .sb-r { display: flex; gap: 6px; align-items: center; }
+  .sb-r svg { height: 12px; width: auto; fill: currentColor; }
+  .sb-r svg.bat { height: 13px; }
+  .di { position: absolute; top: 11px; left: 50%; width: 125px; height: 37px; margin-left: -62.5px; border-radius: 19px; background: #000; z-index: 95; }
+  .hi { position: absolute; bottom: 8px; left: 50%; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: var(--tx); z-index: 99; }
+  .hi.w { background: #fff; }
+  .view { position: absolute; inset: 0; padding-top: 54px; overflow: hidden; }
+  .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 150px; background: linear-gradient(to bottom, transparent, var(--bg) 72%); z-index: 34; pointer-events: none; }
+
+  /* icons */
+  .ic { display: inline-grid; width: var(--s, 16px); height: var(--s, 16px); flex: none; }
+  .ic svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: var(--sw, 2); stroke-linecap: round; stroke-linejoin: round; }
+  .ic.fill svg { fill: currentColor; stroke: none; }
+
+  /* nav + titles */
+  .nav { height: 54px; display: flex; align-items: center; gap: 8px; padding: 0 16px; position: relative; z-index: 30; }
+  .sp { flex: 1; }
+  .gb, .gp { flex: none; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: var(--glass); border: .5px solid var(--glass-brd); backdrop-filter: blur(18px) saturate(1.7); -webkit-backdrop-filter: blur(18px) saturate(1.7); box-shadow: 0 2px 12px rgba(0, 0, 0, .1), inset 0 1px 0 rgba(255, 255, 255, .07); color: var(--tx); }
+  .gb { width: 44px; border-radius: 50%; }
+  .gb .ic { --s: 19px; }
+  .gp { border-radius: 22px; padding: 0 15px; gap: 6px; font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .gp .ic { --s: 16px; }
+  .gp.pri { background: var(--ac); color: var(--onac); border-color: transparent; }
+  .gp.dimmed { color: var(--tx3); }
+  .me { font-size: 14px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #7f7eff, #4f46e5); border-color: transparent; }
+  .nav-t { flex: 1; text-align: center; min-width: 0; }
+  .nav-t b { display: block; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-t span { display: block; font-size: 12px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lt { padding: 0 16px; font-size: 34px; font-weight: 700; letter-spacing: .005em; line-height: 41px; }
+  .sub { padding: 2px 16px 0; color: var(--tx2); font-size: 15px; }
+  .eyebrow { padding: 0 16px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+
+  /* pills, chips, dots */
+  .pills { display: flex; gap: 8px; padding: 14px 16px 4px; overflow: hidden; }
+  .pill { flex: none; height: 34px; padding: 0 13px; border-radius: 17px; display: inline-flex; align-items: center; gap: 6px; background: var(--fill); font-size: 14px; font-weight: 600; color: var(--tx); white-space: nowrap; }
+  .pill .c { color: var(--tx2); font-variant-numeric: tabular-nums; }
+  .pill.on { background: var(--tx); color: var(--bg); }
+  .pill.on .c { color: inherit; opacity: .6; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border-radius: 12px; font-size: 12.5px; font-weight: 600; background: var(--fill); color: var(--tx2); white-space: nowrap; flex: none; }
+  .chip .ic { --s: 13px; --sw: 2.4; }
+  .chip.bad { background: var(--rd-soft); color: var(--rd); }
+  .chip.ok { background: var(--gr-soft); color: var(--gr); }
+  .chip.warn { background: var(--yl-soft); color: var(--yl); }
+  .chip.run { background: var(--bl-soft); color: var(--bl); }
+  .chip.ac { background: var(--ac-soft); color: var(--ac-tx); }
+  .chip.mg { background: var(--mg-soft); color: var(--mg); }
+  .chip.sm { height: 21px; padding: 0 7px; font-size: 11.5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; display: inline-block; }
+  .pulse { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent); }
+  .unread { width: 9px; height: 9px; border-radius: 50%; background: var(--ac); flex: none; }
+  .av { width: 20px; height: 20px; border-radius: 50%; flex: none; display: inline-grid; place-items: center; font-size: 8.5px; font-weight: 700; color: #fff; background: hsl(var(--h, 245) 52% 50%); letter-spacing: 0; }
+  .av.lg { width: 30px; height: 30px; font-size: 11px; }
+  .lbl { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 11px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--c) 20%, transparent); color: color-mix(in srgb, var(--c) 60%, var(--tx)); border: .5px solid color-mix(in srgb, var(--c) 45%, transparent); }
+  .ty { width: 11px; height: 11px; border-radius: 3px; flex: none; display: inline-block; }
+  .ty.bug { background: #e5484d; } .ty.pbi { background: #3e7bfa; } .ty.task { background: #e5a33d; }
+  .br { font-family: "SF Mono", ui-monospace, monospace; font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--fill); color: var(--tx2); }
+
+  /* cards and lists */
+  .list { padding: 10px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .card { background: var(--card); border-radius: 22px; padding: 13px 16px 14px; border: .5px solid var(--sep); position: relative; }
+  .light .card { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .pr-h { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tx2); }
+  .pr-h b { color: var(--tx); font-weight: 600; }
+  .card h4 { margin: 5px 0 0; font-size: 16px; font-weight: 600; line-height: 1.3; letter-spacing: -.015em; }
+  .why { margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--tx2); }
+  .why .ic { --s: 14px; }
+  .why.ac { color: var(--ac-tx); } .why.bad { color: var(--rd); } .why.ok { color: var(--gr); } .why.warn { color: var(--yl); }
+  .pr-f { margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+  .cbar { display: flex; gap: 2px; width: 64px; height: 5px; flex: none; margin-right: 4px; }
+  .cbar i { flex: 1; border-radius: 2px; background: var(--gr); }
+  .cbar i.r { background: var(--rd); } .cbar i.y { background: var(--yl); } .cbar i.g { background: var(--tx3); opacity: .5; }
+  .ds { margin-left: auto; font: 500 12px "SF Mono", ui-monospace, monospace; color: var(--tx3); white-space: nowrap; }
+  .ds .a { color: var(--gr); } .ds .d { color: var(--rd); }
+  .grp-h { padding: 18px 32px 7px; font-size: 13px; color: var(--tx2); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .grp-h a { color: var(--ac-tx); font-weight: 500; text-decoration: none; }
+  .grp { margin: 0 16px; background: var(--card); border-radius: 22px; overflow: hidden; }
+  .dark .grp { border: .5px solid var(--sep); }
+  .cell { display: flex; align-items: center; gap: 12px; padding: 11px 16px; min-height: 50px; position: relative; }
+  .cell + .cell::before { content: ""; position: absolute; top: 0; left: var(--indent, 58px); right: 0; height: .5px; background: var(--sep); }
+  .cell .t { flex: 1; min-width: 0; }
+  .cell .t b { display: block; font-weight: 500; font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell .t > span { display: block; font-size: 13px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .cell .v { color: var(--tx2); font-size: 15px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+  .cell .chev { color: var(--tx3); --s: 15px; --sw: 2.4; }
+  .cell .when { font-size: 12.5px; color: var(--tx3); align-self: flex-start; margin-top: 2px; white-space: nowrap; }
+  .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; color: #fff; background: var(--ac); }
+  .ico .ic { --s: 17px; }
+  .ico.r { border-radius: 50%; }
+  .ico.soft { color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+
+  /* buttons, toggles, segmented */
+  .btn { height: 52px; border-radius: 26px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 17px; font-weight: 600; background: var(--fill2); color: var(--tx); flex: 1; white-space: nowrap; }
+  .btn .ic { --s: 18px; }
+  .btn.pri { background: var(--ac); color: var(--onac); }
+  .btn.go { background: var(--gr); color: var(--ongr); }
+  .btn.bad { background: var(--rd-soft); color: var(--rd); }
+  .btn.sm { height: 44px; font-size: 15.5px; }
+  .btns { display: flex; gap: 10px; padding: 0 16px; }
+  .tg { width: 52px; height: 31px; border-radius: 16px; background: var(--gr); position: relative; flex: none; }
+  .tg::after { content: ""; position: absolute; top: 2px; right: 2px; width: 35px; height: 27px; border-radius: 14px; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .18); }
+  .tg.off { background: var(--fill2); }
+  .tg.off::after { right: auto; left: 2px; }
+  .segc { display: flex; padding: 3px; border-radius: 13px; background: var(--fill); }
+  .segc span { flex: 1; text-align: center; padding: 7px 0; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: var(--tx2); }
+  .segc span.on { background: var(--card); color: var(--tx); box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
+  .dark .segc span.on { background: #3b3c42; }
+
+  /* tab bar (iOS 26 floating glass) */
+  .tabbar { position: absolute; left: 20px; right: 20px; bottom: 24px; display: flex; gap: 10px; z-index: 40; }
+  .tb-tabs { flex: 1; display: flex; height: 62px; padding: 4px; border-radius: 31px; }
+  .tb-tabs, .tb-search, .glass { background: var(--glass); border: .5px solid var(--glass-brd); backdrop-filter: blur(22px) saturate(1.8); -webkit-backdrop-filter: blur(22px) saturate(1.8); box-shadow: 0 10px 32px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .07); }
+  .tb-tab { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 27px; font-size: 10.5px; font-weight: 600; color: var(--tx); }
+  .tb-tab .ic { --s: 23px; --sw: 1.9; }
+  .tb-tab.on { background: var(--fill2); color: var(--ac); }
+  .tb-badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--rd); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  .tb-search { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .tb-search .ic { --s: 23px; }
+  .actbar { position: absolute; left: 16px; right: 16px; bottom: 30px; display: flex; gap: 10px; z-index: 40; align-items: center; }
+
+  /* sheets, menus, dim */
+  .dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); z-index: 45; }
+  .blurred { filter: blur(14px) saturate(1.2); transform: scale(1.04); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--sheet); border-radius: 40px 40px 0 0; padding-top: 7px; box-shadow: 0 -10px 40px rgba(0, 0, 0, .25); }
+  .sheet.float { left: 8px; right: 8px; bottom: 8px; border-radius: 46px; }
+  .grab { width: 38px; height: 5px; border-radius: 3px; background: var(--tx3); opacity: .45; margin: 0 auto 4px; }
+  .sh-h { display: flex; align-items: center; gap: 10px; padding: 6px 16px 8px; }
+  .sh-h h3 { flex: 1; margin: 0; text-align: center; font-size: 17px; font-weight: 600; }
+  .menu { position: absolute; z-index: 60; width: 262px; border-radius: 22px; overflow: hidden; background: var(--menu); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); box-shadow: 0 20px 60px rgba(0, 0, 0, .45); }
+  .mi { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 16px; position: relative; }
+  .mi + .mi::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: .5px; background: var(--sep); }
+  .mi span { flex: 1; }
+  .mi .ic { --s: 18px; }
+  .mi.gap { border-top: 7px solid rgba(0, 0, 0, .18); }
+  .mi.gap::before { display: none; }
+  .mi.bad { color: var(--rd); }
+
+  /* code */
+  .code { font: 11.5px/18px "SF Mono", ui-monospace, Menlo, monospace; background: var(--fill); border-radius: 12px; padding: 9px 11px; color: var(--tx); white-space: pre; overflow: hidden; }
+  .diff { font: 11px/19px "SF Mono", ui-monospace, Menlo, monospace; }
+  .dl { display: grid; grid-template-columns: 34px 16px 1fr; white-space: pre; overflow: hidden; }
+  .dl .n { color: var(--tx3); text-align: right; padding-right: 6px; }
+  .dl .m { color: var(--tx3); }
+  .dl.a { background: var(--gr-soft); }
+  .dl.a .n, .dl.a .m { color: var(--gr); }
+  .dl.d { background: var(--rd-soft); }
+  .dl.d .n, .dl.d .m { color: var(--rd); }
+  .hk { padding: 3px 12px; background: var(--fill); color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .diff .k { color: var(--syk); } .diff .s { color: var(--sys); } .diff .f { color: var(--syf); } .diff .ty2 { color: var(--syt); } .diff .cm { color: var(--sycm); }
+
+  /* reference chips inside prose (notes, comments) */
+  .rc { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 7px; background: var(--fill); font-size: 13px; font-weight: 600; vertical-align: 1px; white-space: nowrap; color: var(--tx); }
+  .rc .ic { --s: 12px; --sw: 2.4; }
+  .ud { position: absolute; left: 6px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--ac); }
+
+  /* wallpaper, lock screen, widgets, live activities */
+  .wall { background: radial-gradient(110% 70% at 15% 8%, #4a47b8 0%, transparent 55%), radial-gradient(90% 60% at 95% 85%, #1c6170 0%, transparent 60%), linear-gradient(165deg, #1b1a46, #0a0b12 72%); }
+  .wall-blur { position: absolute; inset: -30px; filter: blur(26px); }
+  .lk-date { text-align: center; color: rgba(255, 255, 255, .86); font-size: 20px; font-weight: 600; margin-top: 52px; }
+  .lk-time { text-align: center; color: rgba(255, 255, 255, .93); font-size: 104px; font-weight: 700; letter-spacing: -3px; line-height: 1; margin-top: 2px; text-shadow: 0 2px 30px rgba(127, 126, 255, .35); }
+  .lk-w { display: flex; justify-content: center; gap: 10px; margin-top: 14px; color: #fff; }
+  .lw-c { width: 70px; height: 70px; border-radius: 50%; background: rgba(255, 255, 255, .14); backdrop-filter: blur(10px); display: grid; place-items: center; text-align: center; position: relative; }
+  .lw-r { width: 156px; height: 70px; border-radius: 20px; background: rgba(255, 255, 255, .14); backdrop-filter: blur(10px); padding: 10px 12px; font-size: 13px; line-height: 1.3; }
+  .nt { border-radius: 26px; background: rgba(28, 29, 36, .62); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); color: #fff; padding: 12px 14px; display: flex; gap: 11px; border: .5px solid rgba(255, 255, 255, .1); }
+  .nt .app { width: 38px; height: 38px; border-radius: 10px; background: #151618; display: grid; place-items: center; flex: none; border: .5px solid rgba(255, 255, 255, .14); }
+  .nt .app svg { width: 24px; height: 24px; fill: #7f7eff; }
+  .nt .bd { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.33; }
+  .nt .bd b { font-weight: 600; }
+  .nt .hd { display: flex; justify-content: space-between; font-size: 14.5px; }
+  .nt .hd span { color: rgba(255, 255, 255, .55); font-size: 13px; }
+  .nt .tx { color: rgba(255, 255, 255, .82); }
+  .app-ic { width: 62px; height: 62px; border-radius: 15px; display: grid; place-items: center; color: #fff; margin: 0 auto; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+  .app-ic .ic { --s: 30px; --sw: 1.8; }
+  .app-lbl { text-align: center; color: #fff; font-size: 12px; margin-top: 5px; }
+  .wg { border-radius: 26px; background: rgba(24, 25, 30, .58); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); border: .5px solid rgba(255, 255, 255, .1); color: #fff; padding: 14px 15px; }
+  .crop { height: 270px; border-radius: 55px 55px 26px 26px; }
+  .crop .sb { padding: 6px 20px 0 40px; }
+  .key { width: 33px; height: 42px; border-radius: 8px; background: #6b6b70; display: grid; place-items: center; box-shadow: 0 1px 0 rgba(0, 0, 0, .35); font-weight: 400; }
+  .key.fn { background: #46464b; }
+  .crop.nosb .sb { display: none; }
+  .crop .sb-r { visibility: hidden; }
+  .wl { color: var(--ac-tx); font-weight: 500; }
+
+  /* how it works */
+  .arch { display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr; gap: 0; align-items: stretch; }
+  .arch-col { padding: 22px; border-radius: 22px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); display: grid; gap: 10px; align-content: start; }
+  .arch-col.accent { border-color: rgba(127, 126, 255, .4); background: linear-gradient(#18182a, #151618); }
+  .arch-col h4, .plan-col h4, .open h4 { margin: 0 0 4px; font-size: 17px; }
+  .arch-box { padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .06); font-size: 13.5px; line-height: 1.5; }
+  .arch-box b { display: block; font-size: 14.5px; margin-bottom: 2px; }
+  .arch-box span { color: #9c9da4; }
+  .arch-box code { color: #c9c8ff; }
+  .arch-arrow { display: grid; place-items: center; color: #7f7eff; font-size: 24px; }
+  .plan { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .plan-col { padding: 22px; border-radius: 22px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .plan-col h4 span, .open h4 span { display: block; font: 600 12px/1.4 "SF Mono", ui-monospace, monospace; color: #7f7eff; margin-bottom: 4px; }
+  .plan-col p { margin: 8px 0 0; }
+  .plan-col p.muted { color: #8e8f96; }
+  .plan-col ul, .open ul { margin: 8px 0 0; padding-left: 18px; }
+  .plan-col li, .open li { margin: 4px 0; }
+  .open { margin-top: 16px; padding: 22px 26px; border-radius: 22px; border: 1px dashed rgba(255, 255, 255, .14); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .open b { color: #ededef; }
+
+
+  /* ---------- this page ---------- */
+  .mk { position: absolute; z-index: 120; width: 26px; height: 26px; border-radius: 50%; background: #ff4d5e; color: #fff; font: 700 13px/26px -apple-system, system-ui, sans-serif; text-align: center; letter-spacing: 0; box-shadow: 0 0 0 4px rgba(255, 77, 94, .25); }
+  .principles { grid-template-columns: repeat(3, 1fr); }
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; margin-top: 8px; }
+  .flow .st { width: 210px; padding: 14px 16px; border-radius: 16px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 13.5px; line-height: 1.5; color: #9c9da4; }
+  .flow .st b { display: block; color: #ededef; font-size: 15px; margin-bottom: 2px; }
+  .flow .st.loop { border-color: rgba(127, 126, 255, .4); background: linear-gradient(#18182a, #151618); }
+  .flow .ar { display: grid; place-items: center; color: #7f7eff; font-size: 20px; }
+
+  /* agent rows: the row opens the PR, the pill opens T3 */
+  .ag { display: flex; align-items: center; gap: 11px; padding: 10px 10px 10px 16px; min-height: 62px; position: relative; }
+  .ag + .ag::before { content: ""; position: absolute; top: 0; left: 37px; right: 0; height: .5px; background: var(--sep); }
+  .ag .dot { margin-top: -16px; }
+  .ag .t { flex: 1; min-width: 0; }
+  .ag .t b { display: block; font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ag .t span { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--tx2); margin-top: 3px; white-space: nowrap; overflow: hidden; }
+  .ag .t span .ic { --s: 13px; flex: none; }
+  .ag .t span em { font-style: normal; color: var(--tx); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+  .t3 { flex: none; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill2); display: inline-flex; align-items: center; gap: 5px; font-size: 13.5px; font-weight: 600; color: var(--tx); }
+  .t3 .ic { --s: 14px; --sw: 2.2; }
+  .t3.ask { background: var(--yl-soft); color: var(--yl); }
+
+  /* review queue card on Focus */
+  .q { margin: 14px 16px 0; padding: 16px; border-radius: 24px; background: var(--card); border: .5px solid var(--sep); }
+  .light .q { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .q h3 { margin: 0; font-size: 21px; letter-spacing: -.02em; }
+  .q p { margin: 3px 0 12px; color: var(--tx2); font-size: 14px; }
+  .q .avs { display: flex; margin-left: auto; }
+  .q .avs .av { box-shadow: 0 0 0 2px var(--card); margin-left: -5px; }
+  .q .btn { height: 48px; }
+
+  /* compact PR rows */
+  .pl { display: flex; gap: 11px; padding: 11px 14px 12px; position: relative; }
+  .pl + .pl::before { content: ""; position: absolute; top: 0; left: var(--indent, 55px); right: 0; height: .5px; background: var(--sep); }
+  .pl .t { flex: 1; min-width: 0; }
+  .pl h4 { margin: 3px 0 0; font-size: 15.5px; font-weight: 600; line-height: 1.28; letter-spacing: -.015em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pl .why { margin-top: 4px; font-size: 13px; }
+  .trk { display: flex; align-items: center; gap: 4px; margin-top: 7px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .trk .s { display: inline-flex; align-items: center; gap: 4px; color: var(--c); }
+  .trk .tm { width: 15px; height: 15px; border-radius: 50%; background: var(--c); display: inline-grid; place-items: center; color: var(--card); flex: none; }
+  .trk .tm .ic { --s: 9px; --sw: 4; }
+  .trk .tm.ring { background: none; box-shadow: inset 0 0 0 2px var(--c); }
+  .trk .tm.ring::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--c); }
+  .trk .tm.hollow { background: none; box-shadow: inset 0 0 0 1.5px var(--c); }
+  .trk .ln { width: 9px; height: 2px; border-radius: 1px; background: var(--fill2); }
+  .trk .ln.on { background: var(--gr); }
+  .trk .ds { margin-left: auto; }
+
+  /* collapsible groups */
+  .gx { display: flex; align-items: center; gap: 10px; padding: 0 14px 0 16px; min-height: 54px; position: relative; }
+  .gx + .gx::before { content: ""; position: absolute; top: 0; left: 56px; right: 0; height: .5px; background: var(--sep); }
+  .gx .t { flex: 1; min-width: 0; }
+  .gx .t b { display: block; font-weight: 600; font-size: 15.5px; }
+  .gx .t > span { display: block; font-size: 12.5px; color: var(--tx2); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gx .t span .r { color: var(--rd); }
+  .gx .n { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--tx2); }
+  .gx .chev { --s: 15px; --sw: 2.4; color: var(--tx3); }
+  .gh { display: flex; align-items: center; gap: 8px; padding: 16px 20px 7px 22px; font-size: 13.5px; font-weight: 600; color: var(--tx2); }
+  .gh .chev { --s: 14px; --sw: 2.6; color: var(--tx3); }
+  .gh .n { color: var(--tx3); font-variant-numeric: tabular-nums; }
+  .gh a { margin-left: auto; color: var(--ac-tx); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .gh a .ic { --s: 13px; }
+  .listbar { display: flex; align-items: center; gap: 6px; padding: 10px 20px 0; font-size: 13px; color: var(--tx2); }
+  .listbar b { color: var(--tx); font-weight: 600; }
+  .listbar .ic { --s: 14px; }
+  .listbar a { margin-left: auto; color: var(--ac-tx); font-weight: 600; }
+  .foot { padding: 14px 24px 0; font-size: 12.5px; color: var(--tx3); line-height: 1.45; }
+  .foot b { color: var(--tx2); font-weight: 600; }
+
+  /* option sheet */
+  .opt-h { padding: 18px 28px 7px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+  .ck { color: var(--ac); --s: 18px; --sw: 2.6; }
+
+  /* PR detail */
+  .ph { padding: 4px 16px 0; }
+  .ph .rp { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--tx2); }
+  .ph .rp b { color: var(--tx); font-weight: 600; }
+  .ph .rp .ic { --s: 15px; color: var(--gr); }
+  .ph h1 { margin: 7px 0 0; font-size: 23px; line-height: 1.2; letter-spacing: -.025em; }
+  .ph .by { display: flex; align-items: center; gap: 7px; margin-top: 9px; font-size: 14px; color: var(--tx2); white-space: nowrap; overflow: hidden; }
+  .ph .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+  .jump { display: flex; gap: 6px; padding: 2px 16px 8px; overflow: hidden; position: relative; z-index: 30; }
+  .jump span { flex: none; display: inline-flex; align-items: center; height: 30px; padding: 0 11px; border-radius: 15px; background: var(--fill); font-size: 13px; font-weight: 600; color: var(--tx2); white-space: nowrap; }
+  .jump span.on { background: var(--tx); color: var(--bg); }
+  .jump.sticky { position: relative; padding-top: 12px; padding-bottom: 10px; border-bottom: .5px solid var(--sep); background: var(--bg); }
+  .sl { display: flex; align-items: baseline; padding: 20px 20px 8px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+  .sl .sp + span { font-weight: 500; color: var(--tx3); }
+  .sl a { color: var(--ac-tx); font-weight: 600; }
+  .fc { margin: 0 16px 8px; background: var(--card); border-radius: 20px; border: .5px solid var(--sep); padding: 12px 14px 13px; }
+  .light .fc { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .fc .h { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+  .fc .h .ic { --s: 18px; color: var(--rd); }
+  .fc .h .sp + span { font-size: 12.5px; font-weight: 500; color: var(--tx3); }
+  .fc .stp { font-size: 12.5px; color: var(--tx2); margin: 2px 0 8px 26px; }
+  .fc .code { margin-left: 26px; font-size: 10.8px; line-height: 16px; white-space: pre-wrap; padding: 8px 10px; }
+  .fc .code .r { color: var(--rd); } .fc .code .g { color: var(--gr); } .fc .code .m { color: var(--tx3); }
+  .fc .f { display: flex; gap: 6px; margin: 9px 0 0 26px; }
+  .pass { margin: 0 16px; display: flex; align-items: center; gap: 9px; padding: 12px 14px; border-radius: 16px; background: var(--card); font-size: 14px; color: var(--tx2); }
+  .pass .ic { --s: 17px; color: var(--gr); }
+  .pass .chev { margin-left: auto; color: var(--tx3); --s: 14px; }
+  .pfs { display: flex; gap: 10px; padding: 0 16px; overflow: hidden; }
+  .pf { flex: none; width: 108px; }
+  .pf .img { height: 186px; border-radius: 14px; border: .5px solid var(--sep); background: var(--card); overflow: hidden; padding: 12px 8px; display: flex; flex-direction: column; gap: 6px; }
+  .pf .img i { display: block; height: 7px; border-radius: 3px; background: var(--fill2); }
+  .pf .img i.w { width: 60%; } .pf .img i.ac { background: var(--ac); height: 16px; border-radius: 8px; margin-top: auto; } .pf .img i.gr { background: var(--gr-soft); height: 22px; }
+  .pf .img i.hd { height: 11px; width: 70%; background: var(--tx3); opacity: .5; }
+  .pf span { display: block; margin-top: 6px; font-size: 12px; color: var(--tx2); line-height: 1.3; }
+
+  /* rendered GitHub markdown */
+  .md { font-size: 14.5px; line-height: 1.45; color: var(--tx); }
+  .md h5 { margin: 14px 0 3px; font-size: 15.5px; font-weight: 700; letter-spacing: -.01em; }
+  .md h5:first-child { margin-top: 0; }
+  .md p { margin: 5px 0; }
+  .md ul { margin: 5px 0; padding-left: 19px; }
+  .md li { margin: 3px 0; }
+  .md ul.task { list-style: none; padding-left: 0; }
+  .md ul.task li { display: flex; gap: 8px; align-items: flex-start; }
+  .cb { width: 17px; height: 17px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--tx3); flex: none; margin-top: 2px; display: grid; place-items: center; color: var(--onac); }
+  .cb .ic { --s: 11px; --sw: 3.4; }
+  .cb.on { background: var(--ac); box-shadow: none; }
+  .md code { font: 12px "SF Mono", ui-monospace, monospace; padding: 1px 5px; border-radius: 5px; background: var(--fill); color: var(--ac-tx); }
+  .md table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 4px; }
+  .md th, .md td { text-align: left; padding: 6px 7px; border-bottom: .5px solid var(--sep); vertical-align: top; }
+  .md th { color: var(--tx2); font-weight: 600; }
+  .md td.mono { font: 11px/1.4 "SF Mono", ui-monospace, monospace; }
+  .md blockquote { margin: 6px 0; padding-left: 11px; border-left: 3px solid var(--fill2); color: var(--tx2); }
+  .md .det { margin: 8px 0 0; padding: 9px 12px; border-radius: 12px; background: var(--fill); display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--tx2); }
+  .md .det .ic { --s: 13px; --sw: 2.6; }
+  .md .rc { font-size: 12px; height: 21px; }
+  .desc { margin: 0 16px; padding: 14px 16px; border-radius: 20px; background: var(--card); }
+  .fade { position: relative; max-height: var(--h, 999px); overflow: hidden; }
+  .fade::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 44px; background: linear-gradient(transparent, var(--card)); }
+  .more { display: block; margin-top: 6px; font-size: 14.5px; font-weight: 600; color: var(--ac-tx); }
+
+  /* comments */
+  .cm { margin: 0 16px 10px; background: var(--card); border-radius: 20px; overflow: hidden; border: .5px solid var(--sep); }
+  .light .cm { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .cm .fp { display: flex; gap: 8px; align-items: center; padding: 10px 14px; font: 12px "SF Mono", ui-monospace, monospace; color: var(--tx2); border-bottom: .5px solid var(--sep); }
+  .cm .fp .ic { --s: 13px; }
+  .cm .bd { padding: 11px 14px 12px; display: flex; gap: 10px; }
+  .cm .bd .av { margin-top: 1px; }
+  .cm .who { display: flex; align-items: baseline; gap: 6px; font-size: 14.5px; font-weight: 600; }
+  .cm .who span { font-size: 12.5px; font-weight: 400; color: var(--tx3); }
+  .cm .who .chip { align-self: center; }
+  .cm .bd .md { margin-top: 2px; font-size: 14px; }
+  .cm .acts { display: flex; border-top: .5px solid var(--sep); }
+  .cm .acts span { flex: 1; text-align: center; padding: 11px 0; font-size: 15px; font-weight: 600; color: var(--ac-tx); }
+  .cm .acts span + span { border-left: .5px solid var(--sep); }
+  .cm.bot .bd { align-items: center; padding: 11px 14px; }
+  .cm.bot .ic.b { --s: 18px; color: var(--tx2); }
+  .cm.bot .t { flex: 1; min-width: 0; font-size: 14px; }
+  .cm.bot .t b { font-weight: 600; }
+  .cm.bot .t span { display: block; color: var(--tx2); font-size: 12.5px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .compose { position: absolute; left: 16px; right: 16px; bottom: 30px; z-index: 40; height: 54px; border-radius: 27px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 20px; color: var(--tx3); font-size: 16px; }
+  .compose .snd { margin-left: auto; width: 42px; height: 42px; border-radius: 50%; background: var(--tx3); display: grid; place-items: center; color: #fff; }
+  .compose .snd .ic { --s: 18px; --sw: 2.6; }
+
+  /* the walk */
+  .wn { flex: 1; text-align: center; min-width: 0; }
+  .wn small { display: block; font: 500 11.5px/1.3 "SF Mono", ui-monospace, monospace; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wn b { display: inline-flex; align-items: center; gap: 4px; font-size: 16.5px; font-weight: 650; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wn b .ic { --s: 13px; --sw: 2.6; color: var(--tx3); }
+  .pb { width: 128px; height: 4px; border-radius: 2px; background: var(--fill2); margin: 5px auto 0; overflow: hidden; display: flex; gap: 1px; }
+  .pb i { display: block; height: 100%; background: var(--gr); flex: var(--n) 0 0; }
+  .pb i.t { background: var(--fill2); } .pb i.o { background: transparent; }
+  .meta { display: flex; align-items: center; gap: 8px; padding: 6px 16px 10px; font-size: 13px; color: var(--tx2); border-bottom: .5px solid var(--sep); }
+  .meta .ds { margin-left: auto; font-size: 12.5px; }
+  .wb { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 16px 26px; background: linear-gradient(to bottom, transparent, var(--bg) 38%); z-index: 40; }
+  .wb .r3 { display: flex; gap: 12px; align-items: center; }
+  .wb .gb { width: 52px; height: 52px; }
+  .wb .cap { text-align: center; font-size: 13px; color: var(--tx2); margin-top: 11px; font-variant-numeric: tabular-nums; }
+  .wb .cap b { color: var(--tx); font-weight: 600; }
+  .wb .cap span { color: var(--tx3); }
+  .lock { height: 44px; padding: 0 13px; border-radius: 22px; display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; color: var(--tx3); flex: none; }
+  .lock .ic { --s: 16px; }
+  .kind { margin: 14px 16px 0; padding: 14px 16px; border-radius: 20px; background: var(--card); font-size: 14px; line-height: 1.45; color: var(--tx2); display: flex; gap: 12px; }
+  .kind .ico { --c: var(--bl); }
+  .kind b { color: var(--tx); display: block; font-size: 15px; }
+  .fr { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 46px; position: relative; font: 12.5px "SF Mono", ui-monospace, monospace; }
+  .fr + .fr::before { content: ""; position: absolute; top: 0; left: 40px; right: 0; height: .5px; background: var(--sep); }
+  .fr .p { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fr .p span { color: var(--tx3); }
+  .fr .ds { margin-left: 0; font-size: 11.5px; }
+  .fr .ck2 { width: 16px; display: grid; place-items: center; flex: none; }
+  .fr .ck2 .ic { --s: 16px; --sw: 2.2; }
+  .fr .ck2 .dot { width: 7px; height: 7px; }
+  .fr.done .p { color: var(--tx3); }
+  .kbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; margin: 10px 0 8px; }
+  .kbar i { flex: var(--n) 0 0; background: var(--c); }
+  .klg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--tx2); }
+  .klg span { display: inline-flex; align-items: center; gap: 5px; }
+  .klg span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+  .toast { position: absolute; top: 60px; left: 14px; right: 14px; z-index: 80; height: 54px; border-radius: 27px; display: flex; align-items: center; gap: 11px; padding: 0 7px 0 14px; font-size: 14.5px; font-weight: 600; }
+  .toast .rg { width: 26px; height: 26px; border-radius: 50%; background: conic-gradient(var(--gr) 0 72%, var(--fill2) 0); display: grid; place-items: center; flex: none; }
+  .toast .rg::after { content: "4"; width: 20px; height: 20px; border-radius: 50%; background: var(--card); display: grid; place-items: center; font-size: 11px; color: var(--tx); }
+  .toast .t { flex: 1; min-width: 0; }
+  .toast .t span { display: block; font-size: 12px; font-weight: 500; color: var(--tx2); }
+  .toast .u { height: 40px; padding: 0 15px; border-radius: 20px; background: var(--fill2); display: inline-flex; align-items: center; gap: 6px; }
+  .toast .u .ic { --s: 15px; }
+  .bn { margin: 12px 16px 0; padding: 12px 14px; border-radius: 16px; background: var(--gr-soft); display: flex; gap: 10px; font-size: 14px; line-height: 1.42; color: var(--tx); }
+  .bn > .ic { --s: 18px; color: var(--gr); margin-top: 1px; }
+  .bn.bad { background: var(--rd-soft); } .bn.bad > .ic { color: var(--rd); }
+  .bn.warn { background: var(--yl-soft); } .bn.warn > .ic { color: var(--yl); }
+  .bn b { font-weight: 600; }
+  .bn span { color: var(--tx2); }
+  .center { position: absolute; left: 24px; right: 24px; top: 280px; text-align: center; }
+  .center .big { width: 64px; height: 64px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; margin: 0 auto 16px; color: var(--tx2); }
+  .center .big .ic { --s: 30px; --sw: 1.8; }
+  .center h3 { margin: 0; font-size: 21px; }
+  .center p { margin: 6px 0 0; color: var(--tx2); font-size: 14.5px; line-height: 1.45; }
+
+  /* what's broken and why */
+  .fixes { display: grid; gap: 10px; }
+  .fix { display: grid; grid-template-columns: 34px 1fr 1.25fr 1.25fr; gap: 0 22px; padding: 18px 22px; border-radius: 18px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 14px; line-height: 1.55; color: #c9cad0; }
+  .fix .k { font: 600 13px/22px "SF Mono", ui-monospace, monospace; color: #7f7eff; }
+  .fix b { display: block; color: #ededef; font-size: 15px; margin-bottom: 3px; line-height: 1.4; }
+  .fix h6 { margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #6c6d74; }
+  .fix code { color: #c9c8ff; font-size: 12.5px; }
+  .fix .conf { display: inline-block; margin-top: 6px; font-size: 12px; padding: 1px 8px; border-radius: 9px; background: rgba(92, 201, 143, .14); color: #5cc98f; font-weight: 600; }
+  .fix .conf.likely { background: rgba(229, 180, 84, .15); color: #e5b454; }
+  .plan { grid-template-columns: repeat(5, 1fr); }
+  @media (max-width: 1100px) {
+    .fix { grid-template-columns: 1fr; gap: 10px; }
+    .principles, .plan { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .wrap { padding: 40px 16px 80px; }
+    .hero { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 34px; }
+    figure.shot { width: 100%; overflow-x: auto; }
+  }
+
+  /* work: compact rows, lanes, swipe */
+  .wi { display: flex; gap: 11px; padding: 10px 14px 11px 16px; position: relative; align-items: flex-start; background: var(--card); }
+  .wi + .wi::before, .swp + .wi::before, .wi + .swp::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: .5px; background: var(--sep); z-index: 2; }
+  .wi .t { flex: 1; min-width: 0; }
+  .wi .h { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--tx2); white-space: nowrap; }
+  .wi .h .chip { margin-left: auto; }
+  .wi .ti { display: block; margin-top: 3px; font-size: 15.5px; font-weight: 600; letter-spacing: -.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wi .l1 { margin-top: 3px; font-size: 13px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wi .l1 b { color: var(--tx); font-weight: 500; }
+  .wi .evs { display: flex; gap: 5px; margin-top: 6px; overflow: hidden; }
+  .wi.one { align-items: center; padding-top: 12px; padding-bottom: 12px; }
+  .wi.one .ti { margin-top: 0; font-weight: 500; font-size: 15px; }
+  .wi.one .st { font-size: 12.5px; color: var(--tx3); white-space: nowrap; }
+  .swp { position: relative; overflow: hidden; }
+  .swp .wi { margin-right: 150px; box-shadow: 6px 0 12px -6px rgba(0, 0, 0, .18); }
+  .swa { position: absolute; top: 0; right: 0; bottom: 0; display: flex; }
+  .swa span { width: 75px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #fff; font-size: 12px; font-weight: 600; }
+  .swa span .ic { --s: 19px; }
+  .act-pills { display: flex; gap: 8px; padding: 12px 16px 0; }
+  .act-pills .pill.warn { background: var(--yl-soft); color: var(--yl); }
+  .act-pills .pill .ic { --s: 15px; }
+  .lane-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+  .grp.flat { border-radius: 22px; }
+
+  /* item detail */
+  .ih { padding: 4px 16px 0; }
+  .ih .tp { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--tx2); }
+  .ih .tp .chip { margin-left: auto; }
+  .ih h1 { margin: 7px 0 0; font-size: 23px; line-height: 1.2; letter-spacing: -.025em; }
+  .wf { margin: 14px 16px 0; }
+  .wf .bar { display: flex; gap: 3px; }
+  .wf .bar i { flex: 1; height: 5px; border-radius: 3px; background: var(--fill2); }
+  .wf .bar i.d { background: var(--ac); }
+  .wf .bar i.x { background: var(--rd); }
+  .wf .lb { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; color: var(--tx3); }
+  .wf .lb b { color: var(--rd); font-weight: 600; }
+  .wf .note { margin-top: 5px; font-size: 13px; color: var(--tx2); }
+  .md ol { margin: 5px 0; padding-left: 21px; }
+  .md ol li { margin: 4px 0; }
+  .simg { margin: 8px 0 2px; border-radius: 12px; border: .5px solid var(--sep); background: var(--card2); padding: 10px; display: grid; gap: 6px; }
+  .simg i { display: block; height: 7px; border-radius: 3px; background: var(--fill2); }
+  .simg i.w { width: 55%; } .simg i.r { background: var(--rd-soft); height: 16px; } .simg i.hd { height: 10px; width: 40%; background: var(--tx3); opacity: .45; }
+  .simg span { font-size: 11.5px; color: var(--tx3); display: flex; justify-content: space-between; }
+  .dg { margin: 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: .5px; background: var(--sep); border-radius: 20px; overflow: hidden; }
+  .dg > div { background: var(--card); padding: 9px 14px 10px; min-width: 0; }
+  .dg small { display: block; font-size: 12px; color: var(--tx3); }
+  .dg b { display: flex; align-items: center; gap: 6px; font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .dg .wide { grid-column: span 2; }
+  .tl-ev { display: flex; gap: 10px; align-items: center; margin: 0 16px; padding: 8px 4px 8px 14px; font-size: 13px; color: var(--tx2); }
+  .tl-ev .dot { width: 7px; height: 7px; }
+  .tl-ev b { color: var(--tx); font-weight: 500; }
+  .tl-ev .sp + span { color: var(--tx3); font-size: 12px; }
+  .cm .bd .att { margin-top: 8px; }
+  .vera { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: var(--mg-soft); color: var(--mg); }
+
+  /* the file rules */
+  .rules { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 56px; }
+  .rule { padding: 20px 22px; border-radius: 20px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .rule h4 { margin: 0 0 8px; font-size: 16px; color: #ededef; }
+  .rule h4 span { display: block; font: 600 12px/1.4 "SF Mono", ui-monospace, monospace; color: #7f7eff; margin-bottom: 4px; }
+  .rule ul { margin: 6px 0 0; padding-left: 18px; }
+  .rule li { margin: 4px 0; }
+  .rule code { color: #c9c8ff; font-size: 12.5px; }
+  .rule .new { display: inline-block; font: 700 10.5px/1 system-ui; padding: 3px 6px; border-radius: 6px; background: rgba(92, 201, 143, .14); color: #5cc98f; margin-left: 4px; vertical-align: 1px; }
+  .decided { margin-top: 16px; padding: 22px 26px; border-radius: 22px; background: #151618; border: 1px solid rgba(92, 201, 143, .3); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .decided h4 { margin: 0 0 4px; font-size: 17px; color: #ededef; }
+  .decided h4 span { display: block; font: 600 12px/1.4 "SF Mono", ui-monospace, monospace; color: #5cc98f; margin-bottom: 4px; }
+  .decided ul { margin: 8px 0 0; padding-left: 18px; }
+  .decided li { margin: 4px 0; }
+  .decided b { color: #ededef; }
+  @media (max-width: 1100px) { .rules { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="mark" viewBox="0 0 32 32"><rect x="4" y="4" width="6" height="24" rx="1.5"/><path d="M14.5 4H22a6 6 0 0 1 6 6v1a4 4 0 0 1-4 4H14.5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 14.5 4ZM14.5 17H24a4 4 0 0 1 4 4v1a6 6 0 0 1-6 6h-7.5a1.5 1.5 0 0 1-1.5-1.5v-8a1.5 1.5 0 0 1 1.5-1.5Z"/></symbol>
+    <symbol id="sb-sig" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></symbol>
+    <symbol id="sb-wifi" viewBox="0 0 16 12"><path d="M8 2.4c2.3 0 4.4.9 6 2.4l1.2-1.2A10.3 10.3 0 0 0 8 .7C5.2.7 2.7 1.8.8 3.6L2 4.8a8.6 8.6 0 0 1 6-2.4Zm0 3.3c1.4 0 2.7.5 3.7 1.4l1.2-1.2A7 7 0 0 0 8 4c-1.9 0-3.6.7-4.9 1.9l1.2 1.2c1-.9 2.3-1.4 3.7-1.4Zm0 3.3c.6 0 1.2.2 1.6.6L8 11.3 6.4 9.6c.4-.4 1-.6 1.6-.6Z"/></symbol>
+    <symbol id="sb-bat" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.6" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2.2"/><path d="M25 4.5v4c.8-.3 1.4-1.1 1.4-2s-.6-1.7-1.4-2Z" opacity=".45"/></symbol>
+
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-pr" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7M6 9v12"/></symbol>
+    <symbol id="i-merge" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M16 13H8M16 17H8M10 9H8"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-rerun" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.13 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+    <symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-fail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></symbol>
+    <symbol id="i-pending" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-dasharray="3 3.3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 13l-2 2 2 2M14 17l2-2-2-2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+    <symbol id="i-hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4M12 2v13"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+    <symbol id="i-torch" viewBox="0 0 24 24"><path d="M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z"/><path d="M6 6h12M12 12v1"/></symbol>
+    <symbol id="i-face" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4M21 2l-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-git" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+    <symbol id="i-board" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7M12 7v4M16 7v9"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+    <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+    <symbol id="i-del" viewBox="0 0 24 24"><path d="M10 5a2 2 0 0 0-1.34.52l-6.33 5.9a.8.8 0 0 0 0 1.16l6.33 5.9A2 2 0 0 0 10 19h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6M18 9l-6 6"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/></symbol>
+    <symbol id="i-shift" viewBox="0 0 24 24"><path d="M9 18v-6H5l7-7 7 7h-4v6H9z"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 6 4.5Z"/></symbol>
+    <symbol id="i-queue" viewBox="0 0 24 24"><path d="M11 12H3M16 6H3M16 18H3M18 9v6M21 12h-6"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 6h18M7 12h10M10 18h4"/></symbol>
+    <symbol id="i-flask" viewBox="0 0 24 24"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2M6.453 15h11.094M8.5 2h7"/></symbol>
+    <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></symbol>
+    <symbol id="i-chev-u" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="hero-icon"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></div>
+  <div>
+    <h1>BorgDock for iPhone, <span>one review flow</span></h1>
+    <p>Concept mockups for the path you walk every morning: Focus, a pull request, its files, the next pull request, and your work items. They follow the desktop: context before code, tests as one step, and agents that point at T3 instead of copying its conversation. Sample data is the made-up acme shop.</p>
+  </div>
+</header>
+
+<div class="principles">
+  <div class="principle"><b>Context before code</b><span>A pull request you haven't opened yet starts on its brief: description, proof and checks. One you just read starts on its first file.</span></div>
+  <div class="principle"><b>Read the source, step past the rest</b><span>Source files one at a time. Tests are one step and generated files another, so 52 files become 12 plus two steps.</span></div>
+  <div class="principle"><b>The header says where you are</b><span>The navigation bar names the file you're reading. The count sits under Mark reviewed, where your thumb is.</span></div>
+  <div class="principle"><b>Every PR the desktop sees</b><span>The server reads the 16 repositories the desktop watches, not only the pull requests that involve you.</span></div>
+  <div class="principle"><b>Groups you can fold</b><span>No Needs you block pinned on top. Your turn is a pill, and every group folds and stays folded.</span></div>
+  <div class="principle"><b>T3 opens T3</b><span>A running agent is a row on its pull request. The row opens the PR, and Open in T3 opens the thread in the T3 Code app.</span></div>
+</div>
+
+<nav class="toc">
+  <a href="#flow">1 · The flow</a><a href="#focus">2 · Focus</a><a href="#prs">3 · Pull requests</a><a href="#pr">4 · A pull request</a><a href="#walk">5 · Review</a><a href="#after">6 · After Approve</a><a href="#work">7 · Work</a><a href="#item">8 · A work item</a><a href="#why">9 · What's broken and why</a><a href="#build">10 · Build order</a>
+</nav>
+
+<!-- ============================== 1 · FLOW ============================== -->
+<section class="sec" id="flow">
+  <div class="sec-h"><span class="n">01</span><h2>The flow</h2></div>
+  <p class="sec-lead">Today the walk starts on a file list, Approve moves on to another file list, and comments show as plain text. In the new flow you see what you need to judge a pull request before its files, every time you reach one you haven't read yet.</p>
+  <div class="flow">
+    <div class="st"><b>Focus</b>6 reviews wait for you. 2 agents running, each on its PR.</div><div class="ar">→</div>
+    <div class="st"><b>Pull request</b>Checks with the failing step, proof, description and comments, on one page.</div><div class="ar">→</div>
+    <div class="st"><b>Walk</b>Source files one by one, then tests and generated files as one step each.</div><div class="ar">→</div>
+    <div class="st"><b>Decide</b>Approve, request changes or comment. Approve waits out its Undo.</div><div class="ar">→</div>
+    <div class="st loop"><b>Next pull request</b>Its brief first, then its first file. Repeat until the queue is empty.</div><div class="ar">→</div>
+    <div class="st"><b>Done</b>Back to Focus, with what you approved still in Activity.</div>
+  </div>
+</section>
+
+<!-- ============================== 2 · FOCUS ============================== -->
+<section class="sec" id="focus">
+  <div class="sec-h"><span class="n">02</span><h2>Focus: what waits on you, and what your agents are doing</h2></div>
+  <p class="sec-lead">Today becomes Focus, like the desktop. It leads with the review queue and the agents. Each agent is a row on its pull request: tapping the row opens the PR in BorgDock, the pill opens the thread in T3 Code. The sprint and work counts move below the pull requests.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light" data-tab="focus">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="bell"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="note"></i></span><span class="gb me">KV</span></div>
+          <div class="lt">Focus</div>
+          <div class="sub">Thursday 12 November · synced just now</div>
+          <div class="q">
+            <div style="display:flex;align-items:center;gap:10px"><h3>6 reviews wait for you</h3><span class="avs"><span class="av" style="--h:150">SO</span><span class="av" style="--h:20">PS</span><span class="av" style="--h:200">TB</span></span></div>
+            <p>Oldest 3 days · 94 source files, 4 small PRs</p>
+            <span class="btn pri"><i class="ic" data-i="eye"></i>Start review</span>
+          </div>
+          <div class="grp-h">Agents<span>2 running · 1 asks you</span></div>
+          <div class="grp">
+            <div class="ag"><span class="dot pulse" style="color:var(--bl)"></span><div class="t"><b>Fix the failing checkout e2e test</b><span><i class="ic" data-i="pr"></i><em>#412 Round totals per line</em>· 4 min</span></div><span class="t3"><i class="ic" data-i="ext"></i>T3</span></div>
+            <div class="ag"><span class="dot" style="color:var(--yl)"></span><div class="t"><b>Export orders to CSV</b><span><i class="ic" data-i="help"></i>Asks 1 question ·<em>#398</em></span></div><span class="t3 ask"><i class="ic" data-i="ext"></i>Answer</span></div>
+          </div>
+          <div class="grp-h">Your turn<span>4</span></div>
+          <div class="grp">
+            <div class="pl"><span class="av lg" style="--h:150">SO</span><div class="t"><div class="pr-h"><b>shop</b>#405<span class="sp"></span>3 d</div><h4>Webhook retries back off exponentially</h4><div class="why ac"><i class="ic" data-i="eye"></i>Review requested · 8 files</div></div></div>
+            <div class="pl"><span class="av lg" style="--h:200">TB</span><div class="t"><div class="pr-h"><b>storefront</b>#377<span class="sp"></span>1 d</div><h4>Show stock per warehouse on the product page</h4><div class="why warn"><i class="ic" data-i="rerun"></i>Re-review · 3 files changed since yours</div></div></div>
+          </div>
+        </div>
+        <span class="mk" style="top:256px;left:336px">1</span>
+        <span class="mk" style="top:376px;left:4px">2</span>
+        <span class="mk" style="top:389px;left:354px">3</span>
+      </div>
+      <figcaption><b>Focus</b>
+        <ul>
+          <li>1 · Start review runs the six reviews, oldest first: the desktop's queue.</li>
+          <li>2 · An agent row opens its pull request.</li>
+          <li>3 · The pill opens the thread in T3 Code through the <code>appLink</code> the server already sends (<code>t3code://threads/…</code>). Today the only way in is the Live Activity.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light" data-tab="focus">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="bell"></i></span><div class="nav-t"><b>Focus</b></div><span class="gb"><i class="ic" data-i="note"></i></span></div>
+          <div class="grp" style="margin-top:6px">
+            <div class="pl"><span class="av lg" style="--h:300">ID</span><div class="t"><div class="pr-h"><b>payments</b>#88<span class="sp"></span>2 d</div><h4>Refunds for split payments</h4><div class="why ac"><i class="ic" data-i="eye"></i>Review requested · 21 files</div></div></div>
+            <div class="pl"><span class="av lg" style="background:linear-gradient(135deg,#7f7eff,#4f46e5)">KV</span><div class="t"><div class="pr-h"><b>shop</b>#409 · yours<span class="sp"></span>2 h</div><h4>Cache price lists per customer group</h4><div class="why bad"><i class="ic" data-i="fail"></i>e2e and lint fail</div></div></div>
+          </div>
+          <div class="grp-h">Ready to merge<span>2</span></div>
+          <div class="grp">
+            <div class="cell" style="--indent:16px"><div class="t"><b>Price list import accepts semicolons</b><span>shop #401 · approved by Tom · checks pass</span></div><span class="gp pri" style="height:34px;padding:0 13px;font-size:14px"><i class="ic" data-i="merge"></i>Merge</span></div>
+            <div class="cell" style="--indent:16px"><div class="t"><b>Bump the payment SDK to 7.2</b><span>payments #91 · approved · checks pass</span></div><span class="gp pri" style="height:34px;padding:0 13px;font-size:14px"><i class="ic" data-i="merge"></i>Merge</span></div>
+          </div>
+          <div class="grp" style="margin-top:12px">
+            <div class="gx"><span class="ico soft r" style="--c:var(--tx2)"><i class="ic" data-i="clock"></i></span><div class="t"><b>Waiting on others</b><span>5 pull requests · oldest 4 days</span></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="grp-h">Work</div>
+          <div class="grp">
+            <div class="cell"><span class="ico" style="background:var(--ac)"><i class="ic" data-i="cal"></i></span><div class="t"><b>Sprint 42</b><span>6 days left · 31 of 48 points done</span></div><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell"><span class="ico" style="background:var(--yl)"><i class="ic" data-i="tasks"></i></span><div class="t"><b>My work</b><span>7 open · 2 need you</span></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Further down</b>Your own pull requests that need you, then Ready to merge with Merge on the row. Waiting on others folds to one line. The sprint and work tiles from Today move here: they're counts, not work, so they come after it.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 3 · PRS ============================== -->
+<section class="sec" id="prs">
+  <div class="sec-h"><span class="n">03</span><h2>Pull requests: every PR, grouped the way you want</h2></div>
+  <p class="sec-lead">The list drops the Needs you block that is pinned above every grouping. Your turn becomes a pill next to All, Mine, Failing and Ready. Groups fold, and BorgDock remembers which. Sorting gains Waiting longest and Smallest first. The server reads every repository the desktop watches, so a teammate's pull requests show up even when they don't involve you.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light" data-tab="prs">
+        <div class="view">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">143 open in 16 repositories</div>
+          <div class="pills"><span class="pill on">All <span class="c">143</span></span><span class="pill">Your turn <span class="c">6</span></span><span class="pill">Mine <span class="c">9</span></span><span class="pill">Failing <span class="c">11</span></span></div>
+          <div class="listbar"><i class="ic" data-i="layers"></i>By <b>author</b> · <b>waiting longest</b><a>Fold all</a></div>
+          <div class="grp" style="margin-top:10px">
+            <div class="gx"><span class="av lg" style="background:linear-gradient(135deg,#7f7eff,#4f46e5)">KV</span><div class="t"><b>You</b><span><span class="r">2 failing</span> · 1 ready to merge</span></div><span class="n">9</span><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="gh"><i class="ic chev" data-i="chev-d"></i><span class="av" style="--h:20">PS</span>Priya Shah <span class="n">7</span><a><i class="ic" data-i="eye"></i>Review all 7</a></div>
+          <div class="grp" style="--indent:14px">
+            <div class="pl"><div class="t"><div class="pr-h"><b>shop</b>#352<span class="sp"></span>9 d</div><h4>Discount codes stack with customer prices</h4>
+              <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Review</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Merge</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div></div>
+            <div class="pl"><div class="t"><div class="pr-h"><b>storefront</b>#361<span class="sp"></span>6 d</div><h4>Lazy-load product images below the fold</h4>
+              <div class="trk"><span class="s" style="--c:var(--rd)"><i class="tm"><i class="ic" data-i="x"></i></i>1 failing</span><i class="ln"></i><span class="s" style="--c:var(--yl)"><i class="tm" style="font:800 10px/1 system-ui">!</i>Changes</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Merge</span><span class="ds"><span class="a">+41</span> <span class="d">−9</span></span></div></div></div>
+            <div class="pl"><div class="t"><div class="pr-h"><b>shop</b>#412<span class="sp"></span>4 d</div><h4>Checkout: round totals per line instead of per order</h4>
+              <div class="trk"><span class="s" style="--c:var(--rd)"><i class="tm"><i class="ic" data-i="x"></i></i>2 failing</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Merge</span></div></div></div>
+          </div>
+          <div class="grp" style="margin-top:12px">
+            <div class="gx"><span class="av lg" style="--h:200">TB</span><div class="t"><b>Tom Berg</b><span>1 asks you · oldest 2 d</span></div><span class="n">5</span><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+        </div>
+        <span class="mk" style="top:212px;left:148px">1</span>
+        <span class="mk" style="top:332px;left:12px">2</span>
+        <span class="mk" style="top:368px;left:250px">3</span>
+        <span class="mk" style="top:150px;left:218px">4</span>
+      </div>
+      <figcaption><b>Grouped by author, waiting longest first</b>
+        <ul>
+          <li>1 · Your turn is a pill, not a block pinned above every grouping.</li>
+          <li>2 · Every group folds. A folded group shows its count and what needs attention.</li>
+          <li>3 · Review all runs Quick Review over one author's pull requests, oldest first: the desktop's author run.</li>
+          <li>4 · 143 open: the desktop's 16 repositories, not only the PRs that involve you.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view blurred">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">143 open in 16 repositories</div>
+          <div class="pills"><span class="pill on">All <span class="c">143</span></span><span class="pill">Your turn <span class="c">6</span></span><span class="pill">Mine <span class="c">9</span></span></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:690px">
+          <div class="grab"></div>
+          <div class="sh-h"><span class="gb" style="visibility:hidden"></span><h3>Display</h3><span class="gb"><i class="ic" data-i="x"></i></span></div>
+          <div class="opt-h">Group by</div>
+          <div style="padding:0 16px"><div class="segc"><span class="on">Author</span><span>Repository</span><span>Status</span><span>None</span></div></div>
+          <div class="opt-h">Sort</div>
+          <div class="grp">
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Waiting longest</b></div><i class="ic ck" data-i="check"></i></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Recently updated</b></div></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Newest</b></div></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Smallest first</b></div></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Title</b></div></div>
+          </div>
+          <div class="opt-h">Show</div>
+          <div class="grp">
+            <div class="cell" style="--indent:16px"><div class="t"><b>Your pull requests first</b></div><span class="tg"></span></div>
+            <div class="cell" style="--indent:16px"><div class="t"><b>Drafts</b></div><span class="tg off"></span></div>
+            <div class="cell" style="--indent:16px"><div class="t"><b>Dependency updates as one group</b></div><span class="tg"></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Display</b>Group, sort and what to show, on one sheet instead of nested menus. The choice is kept per device. Waiting longest sorts by when the PR last asked for a review, so the oldest ask comes first in every group.</figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Repositories</b></div><span class="gb" style="visibility:hidden"></span></div>
+          <div class="bn" style="background:var(--ac-soft);margin-top:8px"><i class="ic" data-i="monitor" style="color:var(--ac-tx)"></i><div><b>From your desktop.</b> <span>BorgDock on your desktop shares the repositories it watches. Add or remove them there.</span></div></div>
+          <div class="grp-h">16 repositories<span>143 open</span></div>
+          <div class="grp">
+            <div class="cell" style="--indent:58px"><span class="ico soft" style="--c:var(--tx2)"><i class="ic" data-i="folder"></i></span><div class="t"><b>acme/shop</b><span>41 open · read 20 s ago</span></div></div>
+            <div class="cell" style="--indent:58px"><span class="ico soft" style="--c:var(--tx2)"><i class="ic" data-i="folder"></i></span><div class="t"><b>acme/storefront</b><span>28 open · read 20 s ago</span></div></div>
+            <div class="cell" style="--indent:58px"><span class="ico soft" style="--c:var(--tx2)"><i class="ic" data-i="folder"></i></span><div class="t"><b>acme/payments</b><span>17 open · read 20 s ago</span></div></div>
+            <div class="cell" style="--indent:58px"><span class="ico soft" style="--c:var(--tx2)"><i class="ic" data-i="folder"></i></span><div class="t"><b>acme/infra</b><span>9 open · read 20 s ago</span></div></div>
+            <div class="cell" style="--indent:58px"><div class="t" style="padding-left:46px"><b style="color:var(--ac-tx)">12 more</b></div></div>
+          </div>
+          <div class="grp-h">Also read</div>
+          <div class="grp">
+            <div class="cell" style="--indent:16px"><div class="t"><b>PRs that involve you anywhere</b><span>Author, mention, review request</span></div><span class="tg"></span></div>
+            <div class="cell" style="--indent:16px"><div class="t"><b>Your teams' review requests</b></div><span class="tg"></span></div>
+          </div>
+          <div class="foot"><b>Read 30 s ago, nothing cut off.</b> GitHub's search returns at most 100 results per query, so each repository is its own search, paged to the end.</div>
+        </div>
+        <span class="mk" style="top:96px;left:350px">1</span>
+        <span class="mk" style="top:716px;left:356px">2</span>
+      </div>
+      <figcaption><b>Settings → Pull requests → Repositories</b>
+        <ul>
+          <li>1 · The server read only PRs that involve you, plus a repository list that is empty on your server. The desktop watches 16. A teammate's pull requests in those repositories never showed.</li>
+          <li>2 · The footer says how much was read, so missing PRs are visible instead of silent.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 4 · PR ============================== -->
+<section class="sec" id="pr">
+  <div class="sec-h"><span class="n">04</span><h2>A pull request: checks, proof, description and comments on one page</h2></div>
+  <p class="sec-lead">The five tabs become one page with jump chips, so the description is a scroll away from the checks. A failing check shows the step and the error from its log, which the server already reads. The description and comments render as GitHub renders them: headings, lists, task lists, tables, code and folded <code>&lt;details&gt;</code>.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="share"></i></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="ph">
+            <div class="rp"><i class="ic" data-i="pr"></i><b>acme/shop</b>#412 · Open</div>
+            <h1>Checkout: round totals per line instead of per order</h1>
+            <div class="by"><span class="av" style="--h:20">PS</span>Priya Shah · 6 commits · <span class="br">priya/round-lines</span></div>
+            <div class="chips"><span class="chip bad"><i class="ic" data-i="x"></i>2 failing</span><span class="chip ok"><i class="ic" data-i="check"></i>No conflicts</span><span class="chip ac">AB#61021</span></div>
+          </div>
+          <div class="jump sticky" style="margin-top:12px"><span class="on">Checks</span><span>Proof 3</span><span>Description</span><span>Comments 8</span><span>Files 52</span></div>
+          <div class="grp" style="margin-top:12px">
+            <div class="ag"><span class="dot pulse" style="color:var(--bl)"></span><div class="t"><b>Fix the failing checkout e2e test</b><span>Agent running 4 min · mac-mini</span></div><span class="t3"><i class="ic" data-i="ext"></i>T3</span></div>
+          </div>
+          <div class="sl">Checks<span class="sp"></span><span>2 of 24 failing</span></div>
+          <div class="fc">
+            <div class="h"><i class="ic" data-i="fail"></i>e2e · chromium 2/4<span class="sp"></span><span>4 min</span></div>
+            <div class="stp">Run Playwright tests</div>
+            <div class="code">checkout.spec.ts:88 › totals round per line
+<span class="r">Expected: "€ 12,40"</span>
+<span class="g">Received: "€ 12,39"</span></div>
+            <div class="f"><span class="chip ac sm">This PR changes the spec</span></div>
+          </div>
+          <div class="fc">
+            <div class="h"><i class="ic" data-i="fail"></i>lint<span class="sp"></span><span>1 min</span></div>
+            <div class="stp">biome lint</div>
+            <div class="code">src/cart/total.ts:14:7 <span class="m">lint/style/useConst</span></div>
+            <div class="f"><span class="chip warn sm">Also red on main</span></div>
+          </div>
+        </div>
+        <div class="edge"></div>
+        <div class="actbar"><span class="gp" style="height:52px;border-radius:26px;padding:0 18px;font-size:17px"><i class="ic" data-i="spark"></i>Fix</span><span class="btn pri"><i class="ic" data-i="eye"></i>Start review</span></div>
+        <span class="mk" style="top:248px;left:356px">1</span>
+        <span class="mk" style="top:300px;left:8px">2</span>
+        <span class="mk" style="top:438px;left:356px">3</span>
+        <span class="mk" style="top:718px;left:172px">4</span>
+      </div>
+      <figcaption><b>Checks first when they fail</b>
+        <ul>
+          <li>1 · Tabs become jump chips over one scrolling page.</li>
+          <li>2 · The agent on this branch, with Open in T3. Today this shows only on a PR without a work item.</li>
+          <li>3 · Each failing job shows the step and the error from its log tail.</li>
+          <li>4 · A failure that is red on main too says so: it isn't this PR's doing.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Round totals per line</b><span>acme/shop #412</span></div><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="jump sticky"><span>Checks</span><span>Proof 3</span><span class="on">Description</span><span>Comments 8</span><span>Files 52</span></div>
+          <div class="sl">Proof<span class="sp"></span><span>3 images</span></div>
+          <div class="pfs">
+            <div class="pf"><div class="img"><i class="hd"></i><i></i><i class="w"></i><i></i><i class="w"></i><i class="ac"></i></div><span>Basket with three lines</span></div>
+            <div class="pf"><div class="img"><i class="hd"></i><i class="gr"></i><i class="w"></i><i class="gr"></i><i></i><i class="ac"></i></div><span>Totals per line</span></div>
+            <div class="pf"><div class="img"><i class="hd"></i><i></i><i></i><i class="w"></i><i></i><i class="w"></i><i></i></div><span>Receipt PDF</span></div>
+          </div>
+          <div class="sl">Description</div>
+          <div class="desc md">
+            <h5>What</h5>
+            <p>Totals were rounded once per order, so three lines of € 4,133 came to € 12,39. Each line now rounds on its own, like the receipt. <span class="rc"><span class="ty pbi" style="width:9px;height:9px"></span>AB#61021</span></p>
+            <h5>Changes</h5>
+            <ul><li><code>lineTotal()</code> replaces <code>Order.roundTotal()</code></li><li>Receipts and invoices read the line totals</li></ul>
+            <h5>How to test</h5>
+            <ul class="task">
+              <li><span class="cb on"><i class="ic" data-i="check"></i></span>Three lines of € 4,133 show € 12,40</li>
+              <li><span class="cb on"><i class="ic" data-i="check"></i></span>The receipt matches the basket</li>
+              <li><span class="cb"></span>Invoice export (needs staging)</li>
+            </ul>
+            <table><tr><th>Basket</th><th>Before</th><th>After</th></tr><tr><td>3 × € 4,133</td><td>€ 12,39</td><td>€ 12,40</td></tr></table>
+            <div class="det"><i class="ic" data-i="chev-r"></i>The old receipt</div>
+          </div>
+        </div>
+        <div class="edge"></div>
+        <div class="actbar"><span class="btn pri"><i class="ic" data-i="eye"></i>Start review</span></div>
+        <span class="mk" style="top:152px;left:356px">1</span>
+        <span class="mk" style="top:384px;left:4px">2</span>
+        <span class="mk" style="top:582px;left:4px">3</span>
+        <span class="mk" style="top:742px;left:356px">4</span>
+      </div>
+      <figcaption><b>Proof and description, rendered</b>
+        <ul>
+          <li>1 · Proof is a row of images on the page, not a tab you find when it exists.</li>
+          <li>2 · Headings, lists, code and AB# chips. Today the description is inline-only markdown with its images stripped.</li>
+          <li>3 · Task lists and tables render as GitHub shows them.</li>
+          <li>4 · A <code>&lt;details&gt;</code> block folds instead of printing its tags.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Round totals per line</b><span>acme/shop #412</span></div><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="jump sticky"><span>Checks</span><span>Proof 3</span><span>Description</span><span class="on">Comments 8</span><span>Files 52</span></div>
+          <div style="height:12px"></div>
+          <div class="cm">
+            <div class="fp"><i class="ic" data-i="file"></i>src/cart/total.ts<span class="sp"></span>L14</div>
+            <div class="diff" style="padding:3px 0">
+              <div class="dl a"><span class="n">13</span><span class="m">+</span><span>export function orderTotal(lines: Line[]) {</span></div>
+              <div class="dl a"><span class="n">14</span><span class="m">+</span><span>  let total = Money.zero;</span></div>
+            </div>
+            <div class="bd"><span class="av lg" style="--h:200">TB</span><div style="flex:1;min-width:0"><div class="who">Tom Berg<span>2 h</span></div>
+              <div class="md"><p><b>Nit:</b> <code>const</code> with a <code>reduce</code> here? Then:</p><ul><li>lint stops failing</li><li>the receipt can call it too</li></ul></div></div></div>
+            <div class="acts"><span>Resolve</span><span>Reply</span></div>
+          </div>
+          <div class="cm">
+            <div class="bd"><span class="ico r" style="background:var(--tx3)"><i class="ic" data-i="bot"></i></span><div style="flex:1;min-width:0"><div class="who">E2E Test Results<span class="chip bad sm">1 failed</span></div>
+              <div class="md"><table><tr><th>Test</th><th>Error</th></tr><tr><td class="mono">checkout.spec.ts › totals round per line</td><td class="mono">Expected "€ 12,40"</td></tr></table><p style="font-size:12.5px;color:var(--tx2)">Run #2214 · 311 passed</p></div></div></div>
+          </div>
+          <div class="cm bot">
+            <div class="bd"><i class="ic b" data-i="bot"></i><div class="t"><b>codesmith</b> · review summary<span>3 notes · footer and badges hidden</span></div><span class="chip">Show</span></div>
+          </div>
+          <div class="cm">
+            <div class="bd"><span class="av lg" style="--h:20">PS</span><div style="flex:1;min-width:0"><div class="who">Priya Shah<span>1 h</span></div>
+              <div class="md"><blockquote>the receipt can call it too</blockquote><p>Done, the receipt reads <code>lineTotal</code> now.</p></div></div></div>
+          </div>
+        </div>
+        <div class="edge" style="height:110px"></div>
+        <div class="compose glass">Reply to Priya…<span class="snd"><i class="ic" data-i="up"></i></span></div>
+        <span class="mk" style="top:282px;left:4px">1</span>
+        <span class="mk" style="top:446px;left:356px">2</span>
+        <span class="mk" style="top:580px;left:356px">3</span>
+      </div>
+      <figcaption><b>Comments you can read</b>
+        <ul>
+          <li>1 · Review threads keep the lines they were left on, and their text renders as markdown.</li>
+          <li>2 · A bot report's table renders as a table.</li>
+          <li>3 · Bot footers and badges are dropped (the desktop's <code>review-proof.ts</code> rules) and long bot comments fold to one line.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 5 · WALK ============================== -->
+<section class="sec" id="walk">
+  <div class="sec-h"><span class="n">05</span><h2>Review: straight into the first file, tests as one step</h2></div>
+  <p class="sec-lead">Start review opens the first source file directly; the "Walk 52 files" screen is gone. The navigation bar names the file and stays as you scroll down the diff. Files x of y moves under Mark reviewed. Tests and generated files come last, one step each, so a 52-file PR is 12 files to read and two steps to confirm.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="wn"><small>src/cart/</small><b>total.ts<i class="ic" data-i="chev-d"></i></b><div class="pb"><i style="--n:3"></i><i class="o" style="--n:9;background:var(--fill2)"></i><i class="t" style="--n:2;opacity:.55"></i></div></div><span class="lock glass"><i class="ic" data-i="lock"></i>11 left</span></div>
+          <div class="meta"><span class="chip sm">Modified</span>1 draft comment<span class="ds"><span class="a">+31</span> <span class="d">−8</span></span></div>
+          <div class="diff" style="margin-top:4px">
+            <div class="hk">@@ -8,14 +8,18 @@ export function orderTotal</div>
+            <div class="dl"><span class="n">8</span><span class="m"> </span><span><span class="k">import</span> { Money } <span class="k">from</span> <span class="s">'../money'</span>;</span></div>
+            <div class="dl"><span class="n">9</span><span class="m"> </span><span></span></div>
+            <div class="dl d"><span class="n">10</span><span class="m">−</span><span><span class="k">export function</span> <span class="f">orderTotal</span>(lines: <span class="ty2">Line</span>[]) {</span></div>
+            <div class="dl d"><span class="n">11</span><span class="m">−</span><span>  <span class="k">const</span> raw = lines.<span class="f">reduce</span>((s, l) =&gt; s + l.qty * l.price, 0);</span></div>
+            <div class="dl d"><span class="n">12</span><span class="m">−</span><span>  <span class="k">return</span> Money.<span class="f">round</span>(raw);</span></div>
+            <div class="dl a"><span class="n">10</span><span class="m">+</span><span><span class="k">export function</span> <span class="f">lineTotal</span>(line: <span class="ty2">Line</span>) {</span></div>
+            <div class="dl a"><span class="n">11</span><span class="m">+</span><span>  <span class="k">return</span> Money.<span class="f">round</span>(line.qty * line.price);</span></div>
+            <div class="dl a"><span class="n">12</span><span class="m">+</span><span>}</span></div>
+            <div class="dl a"><span class="n">13</span><span class="m">+</span><span></span></div>
+            <div class="dl a"><span class="n">14</span><span class="m">+</span><span><span class="k">export function</span> <span class="f">orderTotal</span>(lines: <span class="ty2">Line</span>[]) {</span></div>
+            <div class="dl a"><span class="n">15</span><span class="m">+</span><span>  <span class="k">let</span> total = Money.zero;</span></div>
+            <div class="dl a"><span class="n">16</span><span class="m">+</span><span>  <span class="k">for</span> (<span class="k">const</span> line <span class="k">of</span> lines)</span></div>
+            <div class="dl a"><span class="n">17</span><span class="m">+</span><span>    total = total.<span class="f">add</span>(<span class="f">lineTotal</span>(line));</span></div>
+            <div class="dl a"><span class="n">18</span><span class="m">+</span><span>  <span class="k">return</span> total;</span></div>
+            <div class="dl"><span class="n">19</span><span class="m"> </span><span>}</span></div>
+            <div class="dl"><span class="n">20</span><span class="m"> </span><span></span></div>
+            <div class="hk">@@ -41,6 +45,9 @@ export function receiptLines</div>
+            <div class="dl"><span class="n">45</span><span class="m"> </span><span>  <span class="k">return</span> lines.<span class="f">map</span>((line) =&gt; ({</span></div>
+            <div class="dl d"><span class="n">46</span><span class="m">−</span><span>    total: line.qty * line.price,</span></div>
+            <div class="dl a"><span class="n">46</span><span class="m">+</span><span>    total: <span class="f">lineTotal</span>(line),</span></div>
+          </div>
+        </div>
+        <div class="wb">
+          <div class="r3"><span class="gb glass"><i class="ic" data-i="chev-l"></i></span><span class="btn go"><i class="ic" data-i="check"></i>Mark reviewed</span><span class="gb glass"><i class="ic" data-i="chev-r"></i></span></div>
+          <div class="cap"><b>File 4 of 12</b> <span>· then tests and generated, one step each</span></div>
+        </div>
+        <span class="mk" style="top:58px;left:236px">1</span>
+        <span class="mk" style="top:96px;left:118px">2</span>
+        <span class="mk" style="top:806px;left:356px">3</span>
+      </div>
+      <figcaption><b>A source file</b>
+        <ul>
+          <li>1 · The bar names the file, and stays while you scroll. Tap it for every file.</li>
+          <li>2 · The progress bar has a segment for source files and one for each step after them.</li>
+          <li>3 · The count sits under Mark reviewed. Mark reviewed opens the next unread file, and the page always shows the file the count names.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="wn"><small>one step</small><b>Tests · 31 files<i class="ic" data-i="chev-d"></i></b><div class="pb"><i style="--n:12"></i><i class="t" style="--n:1;background:var(--bl)"></i><i class="t" style="--n:1;opacity:.55"></i></div></div><span class="lock glass"><i class="ic" data-i="lock"></i>2 left</span></div>
+          <div class="kind"><span class="ico soft" style="--c:var(--bl)"><i class="ic" data-i="flask"></i></span><div><b>Tests, in one step</b>Test folders and targets, <code>e2e/</code>, fixtures, mocks and stories. Open one to read it. Mark reviewed covers all 31.</div></div>
+          <div class="sl">31 files<span class="sp"></span><span><span style="color:var(--gr)">+842</span> <span style="color:var(--rd)">−120</span></span></div>
+          <div class="grp">
+            <div class="fr"><span class="ck2"><span class="dot" style="color:var(--gr)"></span></span><span class="p"><span>src/cart/__tests__/</span>total.test.ts</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span><i class="ic chev" data-i="chev-r" style="--s:13px;color:var(--tx3)"></i></div>
+            <div class="fr"><span class="ck2"><span class="dot" style="color:var(--gr)"></span></span><span class="p"><span>src/cart/__tests__/</span>receipt.test.ts</span><span class="ds"><span class="a">+38</span></span><i class="ic chev" data-i="chev-r" style="--s:13px;color:var(--tx3)"></i></div>
+            <div class="fr"><span class="ck2"><span class="dot" style="color:var(--tx3)"></span></span><span class="p"><span>src/invoice/__tests__/</span>export.test.ts</span><span class="ds"><span class="a">+21</span> <span class="d">−4</span></span><i class="ic chev" data-i="chev-r" style="--s:13px;color:var(--tx3)"></i></div>
+            <div class="fr"><span class="ck2"><span class="dot" style="color:var(--gr)"></span></span><span class="p"><span>e2e/</span>checkout.spec.ts</span><span class="ds"><span class="a">+112</span> <span class="d">−30</span></span><i class="ic chev" data-i="chev-r" style="--s:13px;color:var(--tx3)"></i></div>
+            <div class="fr"><span class="ck2"><span class="dot" style="color:var(--tx3)"></span></span><span class="p"><span>e2e/</span>receipt.spec.ts</span><span class="ds"><span class="a">+47</span></span><i class="ic chev" data-i="chev-r" style="--s:13px;color:var(--tx3)"></i></div>
+            <div class="fr"><span class="ck2"><span class="dot" style="color:var(--tx3)"></span></span><span class="p"><span>e2e/helpers/</span>basket.ts</span><span class="ds"><span class="a">+19</span> <span class="d">−2</span></span><i class="ic chev" data-i="chev-r" style="--s:13px;color:var(--tx3)"></i></div>
+            <div class="fr" style="font-family:inherit;font-size:14px;color:var(--ac-tx);font-weight:600"><span class="ck2"></span>25 more</div>
+          </div>
+        </div>
+        <div class="wb">
+          <div class="r3"><span class="gb glass"><i class="ic" data-i="chev-l"></i></span><span class="btn go"><i class="ic" data-i="check"></i>Mark 31 tests reviewed</span><span class="gb glass"><i class="ic" data-i="chev-r"></i></span></div>
+          <div class="cap"><b>Step 13 of 14</b> <span>· all 12 source files reviewed</span></div>
+        </div>
+        <span class="mk" style="top:96px;left:232px">1</span>
+        <span class="mk" style="top:412px;left:4px">2</span>
+      </div>
+      <figcaption><b>Tests, one step</b>
+        <ul>
+          <li>1 · Tests come after the source files as one page.</li>
+          <li>2 · Tap a test to read it in the walk. A green dot means you've opened it.</li>
+        </ul>
+        Generated files (lockfiles, snapshots, <code>src/generated</code>) get the same page after this one.
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view blurred">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="wn"><small>src/cart/</small><b>total.ts</b></div><span class="lock glass">11 left</span></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:700px">
+          <div class="grab"></div>
+          <div class="sh-h"><span class="gb" style="visibility:hidden"></span><h3>52 files</h3><span class="gb"><i class="ic" data-i="x"></i></span></div>
+          <div class="opt-h">Source · 3 of 12 reviewed</div>
+          <div class="grp">
+            <div class="fr done"><span class="ck2"><i class="ic" data-i="ok" style="color:var(--gr)"></i></span><span class="p"><span>src/cart/</span>line.ts</span><span class="ds"><span class="a">+12</span></span></div>
+            <div class="fr done"><span class="ck2"><i class="ic" data-i="ok" style="color:var(--gr)"></i></span><span class="p"><span>src/cart/</span>money.ts</span><span class="ds"><span class="a">+4</span> <span class="d">−1</span></span></div>
+            <div class="fr done"><span class="ck2"><i class="ic" data-i="ok" style="color:var(--gr)"></i></span><span class="p"><span>src/cart/</span>basket.ts</span><span class="ds"><span class="a">+9</span> <span class="d">−6</span></span></div>
+            <div class="fr" style="background:var(--ac-soft)"><span class="ck2"><span class="dot" style="color:var(--ac)"></span></span><span class="p"><span>src/cart/</span>total.ts</span><span class="ds"><span class="a">+31</span> <span class="d">−8</span></span></div>
+            <div class="fr"><span class="ck2"><i class="ic" data-i="pending" style="color:var(--tx3)"></i></span><span class="p"><span>src/invoice/</span>export.ts</span><span class="ds"><span class="a">+22</span> <span class="d">−18</span></span></div>
+            <div class="fr"><span class="ck2"><i class="ic" data-i="pending" style="color:var(--tx3)"></i></span><span class="p"><span>src/receipt/</span>render.ts</span><span class="ds"><span class="a">+15</span> <span class="d">−9</span></span></div>
+            <div class="fr" style="font-family:inherit;font-size:14px;color:var(--ac-tx);font-weight:600"><span class="ck2"></span>6 more</div>
+          </div>
+          <div class="opt-h">One step each</div>
+          <div class="grp">
+            <div class="gx"><span class="ico soft" style="--c:var(--bl)"><i class="ic" data-i="flask"></i></span><div class="t"><b>Tests</b><span>31 files · +842 −120</span></div><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="gx"><span class="ico soft" style="--c:var(--tx2)"><i class="ic" data-i="cog"></i></span><div class="t"><b>Generated and lockfiles</b><span>9 files · bun.lock, snapshots, src/generated</span></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="foot">Which paths count as tests or generated: Settings → Review. The defaults match the desktop's.</div>
+        </div>
+      </div>
+      <figcaption><b>Every file, from the title</b>Source files in folder order with what you've read, then the two steps. Tapping a file opens it. The walk moves by file path, never by position in a list, so the page and the count can't drift apart.</figcaption>
+    </figure>
+
+  </div>
+
+  <div class="rules">
+    <div class="rule"><h4><span>Step 1 of 2 after the source</span>Tests</h4>
+      The desktop's rule (<code>reviewFileCategory</code>), plus what it misses in BorgDock and in the work monorepo:
+      <ul>
+        <li><code>__tests__/</code>, <code>test/</code>, <code>tests/</code>, <code>*.Tests/</code>, <code>*.test.*</code>, <code>*.spec.*</code></li>
+        <li>Xcode and other test targets without a dot: <code>BorgDockTests/</code>, <code>BorgDockUITests/</code>, <code>*Testing/</code> <span class="new">new</span></li>
+        <li>Everything under <code>e2e/</code>, so page objects and helpers count too, not only <code>*.spec.ts</code> <span class="new">new</span></li>
+        <li>Test data: <code>fixtures/</code>, <code>__fixtures__/</code>, <code>test-fixtures/</code>, <code>__mocks__/</code>, <code>.storybook/mocks/</code> <span class="new">new</span></li>
+        <li>Stories <code>*.stories.*</code> and <code>loadtests/</code> <span class="new">new</span></li>
+      </ul>
+    </div>
+    <div class="rule"><h4><span>Step 2 of 2</span>Generated, lockfiles and snapshots</h4>
+      The desktop's <code>isGeneratedPath</code>, plus:
+      <ul>
+        <li>Lockfiles: <code>bun.lock</code>, <code>package-lock.json</code>, <code>Cargo.lock</code> and the rest, plus <code>*.lock.json</code> (NuGet, toolchain), <code>Package.resolved</code>, <code>Podfile.lock</code> <span class="new">new</span></li>
+        <li><code>generated/</code>, <code>*.generated.*</code>, <code>*.g.cs</code>, <code>*.min.js</code>, source maps, <code>dist/</code>, <code>obj/</code></li>
+        <li>Snapshots: <code>*.snap</code>, <code>__snapshots__/</code>, Playwright's <code>*-snapshots/</code> baselines <span class="new">new</span></li>
+        <li><code>src-tauri/gen/</code>, <code>*.Designer.cs</code>, <code>*.pbxproj</code>, load-test reports, and any file GitHub sends no diff for (wasm, images) <span class="new">new</span></li>
+      </ul>
+    </div>
+    <div class="rule"><h4><span>Why it matters</span>What today's rule misses</h4>
+      <ul>
+        <li><b style="color:#ededef">BorgDock:</b> 26 iOS test files, 82 stories and fixtures in the Tauri app and 8 server fixtures count as source.</li>
+        <li><b style="color:#ededef">The work monorepo:</b> several hundred files under <code>e2e/</code> and <code>test-fixtures/</code>, a shared UI testing library, visual snapshot baselines and load-test reports count as source.</li>
+        <li>Docs (<code>*.md</code>, <code>docs/</code>) stay in the walk, after the source files: plans and specs are worth reading.</li>
+        <li>One rule for both apps: the server sends each file's category with <code>/files</code>, and the desktop's two functions get the same patterns.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== 6 · AFTER APPROVE ============================== -->
+<section class="sec" id="after">
+  <div class="sec-h"><span class="n">06</span><h2>After Approve: the next brief, the decision you made, and a load that recovers</h2></div>
+  <p class="sec-lead">Approve moves on at once and the approval waits out its five-second Undo. The next pull request opens on its brief, loaded in the background while you read the previous one. Going back shows what you decided. A PR that fails to load retries before it asks you anything.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="nav-t"><b>Review · 2 of 6</b><span>Up next: #401</span></div><span class="gb" style="visibility:hidden"></span></div>
+          <div class="ph">
+            <div class="rp"><i class="ic" data-i="pr"></i><b>acme/shop</b>#405 · Open</div>
+            <h1>Webhook retries back off exponentially</h1>
+            <div class="by"><span class="av" style="--h:150">SO</span>Sam Okafor · 4 commits · <span class="br">sam/webhook-backoff</span></div>
+            <div class="chips"><span class="chip ok"><i class="ic" data-i="check"></i>Checks pass</span><span class="chip ok"><i class="ic" data-i="check"></i>No conflicts</span><span class="chip ac">AB#61002</span></div>
+          </div>
+          <div class="sl">Proof<span class="sp"></span><span>2 images</span></div>
+          <div class="pfs">
+            <div class="pf" style="width:150px"><div class="img" style="height:70px;padding:9px 8px;gap:5px"><i class="hd"></i><i class="gr"></i><i class="w"></i></div><span>Retry schedule in the log</span></div>
+            <div class="pf" style="width:150px"><div class="img" style="height:70px;padding:9px 8px;gap:5px"><i class="hd"></i><i></i><i class="w"></i><i></i></div><span>Gives up after 12 tries</span></div>
+          </div>
+          <div class="sl">Description</div>
+          <div class="desc md"><div class="fade" style="--h:92px">
+            <p>Failed webhooks were retried every 10 s, forever. They now back off 10 s, 30 s, 90 s and so on up to an hour, and stop after 12 tries.</p>
+            <ul><li>Retry state lives on the delivery row</li><li>A dead delivery shows in the admin's webhook log</li></ul>
+          </div><span class="more">Read all</span></div>
+          <div class="sl">What changed<span class="sp"></span><span><span style="color:var(--gr)">+412</span> <span style="color:var(--rd)">−96</span></span></div>
+          <div class="desc">
+            <div class="kbar"><i style="--n:8;--c:var(--ac)"></i><i style="--n:14;--c:var(--bl)"></i><i style="--n:2;--c:var(--tx3)"></i></div>
+            <div class="klg"><span style="--c:var(--ac)">8 source</span><span style="--c:var(--bl)">14 tests</span><span style="--c:var(--tx3)">2 generated</span></div>
+          </div>
+        </div>
+        <div class="toast glass" style="top:auto;bottom:92px"><span class="rg"></span><div class="t">Approving #412<span>Posts in 4 s</span></div><span class="u"><i class="ic" data-i="undo"></i>Undo</span></div>
+        <div class="wb" style="padding-top:20px">
+          <div class="r3"><span class="gb glass"><i class="ic" data-i="chev-l"></i></span><span class="btn pri" style="font-size:16px"><i class="ic" data-i="eye"></i>Start with retry.ts</span></div>
+        </div>
+        <span class="mk" style="top:130px;left:356px">1</span>
+        <span class="mk" style="top:700px;left:356px">2</span>
+        <span class="mk" style="top:770px;left:356px">3</span>
+      </div>
+      <figcaption><b>The next pull request's brief</b>
+        <ul>
+          <li>1 · Description, proof and checks: what the PR is and why, instead of a list of files.</li>
+          <li>2 · The approval you just gave waits out its Undo here.</li>
+          <li>3 · Start names the first file. From a PR you came from, Start review skips this brief.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="nav-t"><b>Review · 1 of 6</b><span>Up next: #405</span></div><span class="gb" style="visibility:hidden"></span></div>
+          <div class="ph">
+            <div class="rp"><i class="ic" data-i="pr"></i><b>acme/shop</b>#412 · Open</div>
+            <h1>Checkout: round totals per line instead of per order</h1>
+            <div class="by"><span class="av" style="--h:20">PS</span>Priya Shah · 6 commits · <span class="br">priya/round-lines</span></div>
+            <div class="trk" style="margin-top:12px"><span class="s" style="--c:var(--rd)"><i class="tm"><i class="ic" data-i="x"></i></i>2 failing</span><i class="ln"></i><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Approved</span><i class="ln"></i><span class="s" style="--c:var(--bl)"><i class="tm ring"></i>Auto-merge</span></div>
+          </div>
+          <div class="bn"><i class="ic" data-i="ok"></i><div><b>You approved this</b> <span>at 4f2c1a9, 1 minute ago. Auto-merge is on: GitHub merges when e2e passes.</span></div></div>
+          <div class="sl">Your review</div>
+          <div class="desc md"><p>Nice catch on the receipt. One nit inline.</p><p style="color:var(--tx2);font-size:13px;margin-top:8px">1 line comment · total.ts:14</p></div>
+          <div class="sl">While the Undo runs</div>
+          <div class="bn warn" style="margin-top:0"><i class="ic" data-i="clock"></i><div><b>Approving, posts in 3 s.</b> <span>Undo brings the decision sheet back with your comments.</span></div></div>
+        </div>
+        <div class="wb" style="padding-top:20px">
+          <div class="r3"><span class="gb glass"><i class="ic" data-i="chev-l"></i></span><span class="btn"><span>Next: #405</span><i class="ic" data-i="chev-r"></i></span></div>
+          <div class="cap"><b>Reviewed</b> <span>· 12 of 12 files and both steps</span></div>
+        </div>
+        <span class="mk" style="top:300px;left:356px">1</span>
+      </div>
+      <figcaption><b>Back to a PR you approved</b>1 · It shows your decision, not the state from before it. After the approval posts, BorgDock reads the PR again, so the track says Approved. The second banner is the same page during the Undo.</figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="nav-t"><b>Review · 3 of 6</b><span>Up next: #377</span></div><span class="gb" style="visibility:hidden"></span></div>
+          <div class="ph">
+            <div class="rp"><i class="ic" data-i="pr"></i><b>acme/shop</b>#401</div>
+            <h1>Price list import accepts semicolons</h1>
+          </div>
+          <div class="center" style="top:300px">
+            <div class="big"><i class="ic" data-i="alert"></i></div>
+            <h3>#401 didn't load</h3>
+            <p>GitHub took longer than 30 seconds, twice. Your approval of #405 isn't affected.</p>
+            <div class="btns" style="padding:0;margin-top:22px"><span class="btn">Skip to #377</span><span class="btn pri"><i class="ic" data-i="rerun"></i>Retry</span></div>
+          </div>
+        </div>
+        <span class="mk" style="top:390px;left:300px">1</span>
+      </div>
+      <figcaption><b>A load that fails</b>1 · The title and number come from the list, so you know which PR it is. It retries once on its own, then offers Retry next to Skip. Today it says "Couldn't load #405" with only Skip, and the same PR loads a minute later.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+
+<!-- ============================== 7 · WORK ============================== -->
+<section class="sec" id="work">
+  <div class="sec-h"><span class="n">07</span><h2>Work: the states walk, made scannable</h2></div>
+  <p class="sec-lead">The Work tab keeps Dispatch's states walk: one lane per ADO state, a verdict on every item. Today every row is five lines tall and every lane is open, so 52 items are a long scroll. Rows become two lines, an item that needs nothing becomes one, and lanes fold to a summary. Lanes that need you open first. Scopes replace the separate Browse screen, and agents without an item open in T3.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light" data-tab="work">
+        <div class="view">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sync"></i></span><span class="gb"><i class="ic" data-i="plus"></i></span></div>
+          <div class="lt">Work</div>
+          <div class="sub"><b class="t-bad">2 failed QA</b> · <b style="color:var(--yl)">2 questions</b> · 4 running</div>
+          <div class="pills"><span class="pill on">Mine <span class="c">52</span></span><span class="pill">Sprint 23 <span class="c">140</span></span><span class="pill">Unassigned <span class="c">12</span></span><span class="pill"><i class="ic" data-i="chev-d"></i></span></div>
+          <div class="act-pills"><span class="pill warn"><i class="ic" data-i="sync"></i>Fix out of sync <span class="c" style="color:inherit;opacity:.7">3</span></span><span class="pill">Sync all</span></div>
+          <div class="gh"><i class="ic chev" data-i="chev-d"></i><span class="lane-dot" style="--c:var(--rd)"></span>Testing Failed <span class="n">2</span></div>
+          <div class="grp">
+            <div class="wi"><div class="t"><div class="h"><span class="ty bug"></span>AB#61021<span class="chip bad sm">Failed QA</span></div><span class="ti">Totals off by a cent on invoices</span><div class="l1"><b>Lena (QA)</b> — still € 0,01 off on the export</div></div></div>
+            <div class="wi"><div class="t"><div class="h"><span class="ty pbi"></span>AB#61034<span class="chip bad sm">Failed QA</span></div><span class="ti">Customer price lists per group</span><div class="l1"><b>Vera</b> — 2 of 9 acceptance checks fail</div></div></div>
+          </div>
+          <div class="gh"><i class="ic chev" data-i="chev-d"></i><span class="lane-dot" style="--c:var(--yl)"></span>Needs Human <span class="n">2</span></div>
+          <div class="grp">
+            <div class="wi"><div class="t"><div class="h"><span class="ty bug"></span>AB#61040<span class="chip warn sm">Answer</span></div><span class="ti">Webhook deliveries stop after a restart</span><div class="l1"><b>Agent</b> — keep the old retry table, or migrate it?</div></div></div>
+          </div>
+          <div class="grp" style="margin-top:12px">
+            <div class="gx"><span class="ico soft r" style="--c:var(--bl)"><i class="ic" data-i="eye"></i></span><div class="t"><b>Code Review</b><span><span class="r">2 CI red</span> · 7 waiting on review</span></div><span class="n">9</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="gx"><span class="ico soft r" style="--c:var(--ac)"><i class="ic" data-i="cpu"></i></span><div class="t"><b>In Progress</b><span>4 agents running</span></div><span class="n">4</span><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+        </div>
+        <span class="mk" style="top:210px;left:356px">1</span>
+        <span class="mk" style="top:340px;left:4px">2</span>
+        <span class="mk" style="top:636px;left:4px">3</span>
+      </div>
+      <figcaption><b>Work</b>
+        <ul>
+          <li>1 · Scopes in place of Browse: Mine, the sprint, unassigned, and your saved ADO queries behind the chevron.</li>
+          <li>2 · Two lines per item: AB#, verdict, title, and who said what last.</li>
+          <li>3 · A lane that needs nothing folds to one row that sums it up. BorgDock remembers what you fold.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light" data-tab="work">
+        <div class="view">
+          <div class="nav"><span class="gb" style="visibility:hidden"></span><div class="nav-t"><b>Work</b><span>Mine · 52</span></div><span class="gb"><i class="ic" data-i="plus"></i></span></div>
+          <div class="gh" style="padding-top:8px"><i class="ic chev" data-i="chev-d"></i><span class="lane-dot" style="--c:var(--bl)"></span>Code Review <span class="n">9</span></div>
+          <div class="grp">
+            <div class="wi"><div class="t"><div class="h"><span class="ty bug"></span>AB#61050<span class="chip bad sm">CI red</span></div><span class="ti">Price import rejects semicolons</span><div class="evs"><span class="chip sm bad"><i class="ic" data-i="pr"></i>#401 e2e red</span><span class="chip sm">1 of 2 reviews</span></div></div></div>
+            <div class="swp"><div class="swa"><span style="background:var(--yl)"><i class="ic" data-i="star"></i>Up next</span><span style="background:var(--ac)"><i class="ic" data-i="cpu"></i>Agent</span></div>
+              <div class="wi"><div class="t"><div class="h"><span class="ty pbi"></span>AB#61055<span class="chip ac sm">Review</span></div><span class="ti">Show stock per warehouse</span><div class="evs"><span class="chip sm ok"><i class="ic" data-i="pr"></i>#377 checks pass</span></div></div></div></div>
+            <div class="wi one"><span class="ty pbi"></span><div class="t"><span class="ti">Refunds for split payments</span></div><span class="st">waiting on review · 2 d</span></div>
+            <div class="wi one"><span class="ty task"></span><div class="t"><span class="ti">Log the webhook payload size</span></div><span class="st">waiting · 1 d</span></div>
+            <div class="wi one" style="padding-bottom:12px"><div class="t" style="padding-left:20px"><span class="ti" style="color:var(--ac-tx);font-weight:600">5 more waiting on review</span></div></div>
+          </div>
+          <div class="grp-h">Agents without an item<span>2</span></div>
+          <div class="grp">
+            <div class="ag"><span class="dot pulse" style="color:var(--bl)"></span><div class="t"><b>Bump the payment SDK to 7.2</b><span><i class="ic" data-i="branch"></i>deps/payment-sdk · running 6 min</span></div><span class="t3"><i class="ic" data-i="ext"></i>T3</span></div>
+            <div class="ag"><span class="dot" style="color:var(--tx3)"></span><div class="t"><b>Spike: faster price lookups</b><span><i class="ic" data-i="branch"></i>spike/price-cache · settled 1 d</span></div><span class="t3"><i class="ic" data-i="ext"></i>T3</span></div>
+          </div>
+        </div>
+        <span class="mk" style="top:200px;left:356px">1</span>
+        <span class="mk" style="top:262px;left:226px">2</span>
+        <span class="mk" style="top:392px;left:4px">3</span>
+        <span class="mk" style="top:596px;left:356px">4</span>
+      </div>
+      <figcaption><b>A lane, opened</b>
+        <ul>
+          <li>1 · Evidence stays: the linked PR and its checks, the reviews. It sits on the second line, not in a strip of its own.</li>
+          <li>2 · Swipe for Up next or an agent, without opening the item.</li>
+          <li>3 · An item that needs nothing from you takes one line.</li>
+          <li>4 · Agents without an item open in T3 Code, like everywhere else. BorgDock's own thread screen is gone.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view blurred">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sync"></i></span></div>
+          <div class="lt">Work</div>
+          <div class="pills"><span class="pill on">Mine <span class="c">52</span></span><span class="pill">Sprint 23 <span class="c">140</span></span></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:720px">
+          <div class="grab"></div>
+          <div class="sh-h"><span class="gb" style="visibility:hidden"></span><h3>Show</h3><span class="gb"><i class="ic" data-i="x"></i></span></div>
+          <div style="padding:2px 16px 0"><div class="p-search" style="margin:0;border-radius:12px;border:none;background:var(--fill)"><i class="ic" data-i="search"></i>AB# or words from the title</div></div>
+          <div class="opt-h">Scopes</div>
+          <div class="grp">
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Mine</b></div><span class="v">52</span><i class="ic ck" data-i="check"></i></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Sprint 23</b></div><span class="v">140</span></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Unassigned in Sprint 23</b></div><span class="v">12</span></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Up next</b></div><span class="v">4</span></div>
+          </div>
+          <div class="opt-h">Saved queries in Azure DevOps</div>
+          <div class="grp">
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Team bugs</b></div><span class="v">31</span></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>QA board</b></div><span class="v">18</span></div>
+          </div>
+          <div class="opt-h">Lanes</div>
+          <div style="padding:0 16px"><div class="segc"><span class="on">State</span><span>Verdict</span><span>Sprint</span></div></div>
+          <div class="grp" style="margin-top:10px">
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Lane order</b></div><span class="v">your walk</span><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+        </div>
+        <span class="mk" style="top:178px;left:356px">1</span>
+        <span class="mk" style="top:532px;left:356px">2</span>
+      </div>
+      <figcaption><b>Scopes, from the chevron</b>
+        <ul>
+          <li>1 · Find any item by number or title. A result outside the scope opens it all the same.</li>
+          <li>2 · Saved ADO queries open in the same lanes with the same verdicts. Browse's own list, with no verdicts, goes.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 8 · ITEM ============================== -->
+<section class="sec" id="item">
+  <div class="sec-h"><span class="n">08</span><h2>A work item: the next step first, rich text intact</h2></div>
+  <p class="sec-lead">An item puts what decides the next step at the top: for a failed item that's QA's notes, in full. Rich text keeps its lists, tables and screenshots; today the server flattens it to plain text. Every linked pull request and agent is listed, the fields move below the text, and Activity joins comments and state changes, with a box to reply.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="ext"></i></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="ih">
+            <div class="tp"><span class="ty bug"></span>Bug · AB#61021<span class="chip bad">Testing Failed</span></div>
+            <h1>Totals off by a cent on invoices with three or more lines</h1>
+          </div>
+          <div class="wf">
+            <div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="x"></i><i></i></div>
+            <div class="lb"><span>New</span><span>Dev</span><span>Plan</span><span>Review</span><b>Testing</b><span>Done</span></div>
+            <div class="note">Back from QA twice · in Testing Failed for 1 day</div>
+          </div>
+          <div class="sl">QA notes<span class="sp"></span><span>Lena · 1 d</span></div>
+          <div class="desc md">
+            <p>Basket totals are right now. The <b>invoice export</b> still rounds per order:</p>
+            <ol><li>Three lines of € 4,133</li><li>Export the invoice as PDF</li><li>Total says € 12,39, basket says € 12,40</li></ol>
+            <div class="simg"><i class="hd"></i><i></i><i class="w"></i><i class="r"></i><span><b style="color:var(--tx2);font-weight:500">invoice-export.png</b>240 KB</span></div>
+          </div>
+          <div class="sl">Pull requests<span class="sp"></span><span>2</span></div>
+          <div class="grp" style="--indent:16px">
+            <div class="pl"><div class="t"><div class="pr-h"><b>shop</b>#412 · Priya<span class="sp"></span>4 d</div><h4 style="-webkit-line-clamp:1">Round totals per line instead of per order</h4>
+              <div class="trk"><span class="s" style="--c:var(--rd)"><i class="tm"><i class="ic" data-i="x"></i></i>2 failing</span><i class="ln"></i><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Approved</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Merge</span></div></div></div>
+            <div class="pl" style="padding-top:9px;padding-bottom:10px"><div class="t"><div class="pr-h"><b>shop</b>#398<span class="chip sm" style="margin-left:4px">Shared</span><span class="sp"></span>epic plan</div></div></div>
+          </div>
+        </div>
+        <div class="edge"></div>
+        <div class="actbar"><span class="gp" style="height:52px;border-radius:26px;padding:0 20px;font-size:17px">Move to…</span><span class="btn pri"><i class="ic" data-i="spark"></i>Fix with agent</span></div>
+        <span class="mk" style="top:226px;left:356px">1</span>
+        <span class="mk" style="top:296px;left:4px">2</span>
+        <span class="mk" style="top:494px;left:356px">3</span>
+        <span class="mk" style="top:660px;left:356px">4</span>
+      </div>
+      <figcaption><b>A failed item</b>
+        <ul>
+          <li>1 · Where it is in its workflow, and how often it came back.</li>
+          <li>2 · QA's notes come first because the item failed QA. In Code Review the pull request leads, in Needs Human the agent's question.</li>
+          <li>3 · Screenshots from ADO show inline, through the server (ADO attachments need your sign-in).</li>
+          <li>4 · Every linked pull request, its own first. One that sits on every PBI of an epic is marked Shared, as on the desktop.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Totals off by a cent</b><span>AB#61021 · Testing Failed</span></div><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="jump sticky"><span>QA notes</span><span class="on">Description</span><span>Acceptance</span><span>Details</span><span>Activity 6</span></div>
+          <div class="grp" style="margin-top:12px">
+            <div class="ag"><span class="dot pulse" style="color:var(--bl)"></span><div class="t"><b>Fix the invoice export rounding</b><span>Agent running 12 min · mac-mini</span></div><span class="t3"><i class="ic" data-i="ext"></i>T3</span></div>
+          </div>
+          <div class="sl">Repro steps</div>
+          <div class="desc md">
+            <ol><li>Add three lines of € 4,133 to a basket</li><li>Check out and pay</li><li>Open <b>Orders → Invoice</b></li></ol>
+            <table><tr><th></th><th>Expected</th><th>Actual</th></tr><tr><td>Basket</td><td>€ 12,40</td><td>€ 12,40</td></tr><tr><td>Invoice</td><td>€ 12,40</td><td style="color:var(--rd)">€ 12,39</td></tr></table>
+          </div>
+          <div class="sl">Acceptance criteria</div>
+          <div class="desc md"><ul><li>Every total rounds per line: basket, receipt, invoice</li><li>Existing invoices keep their totals</li></ul></div>
+          <div class="sl">Details</div>
+          <div class="dg">
+            <div><small>Assigned to</small><b><span class="av" style="background:linear-gradient(135deg,#7f7eff,#4f46e5)">KV</span>You</b></div>
+            <div><small>Sprint</small><b>Sprint 23 · 6 d left</b></div>
+            <div><small>Priority</small><b>2</b></div>
+            <div><small>Effort</small><b>3</b></div>
+            <div class="wide"><small>Parent</small><b><span class="ty" style="background:#8250df"></span>AB#60990 Checkout totals</b></div>
+            <div class="wide"><small>Tags</small><b><span class="chip sm">invoice</span><span class="chip sm">rounding</span></b></div>
+          </div>
+        </div>
+        <div class="edge"></div>
+        <div class="actbar"><span class="gp" style="height:52px;border-radius:26px;padding:0 20px;font-size:17px">Move to…</span><span class="btn pri"><i class="ic" data-i="spark"></i>Fix with agent</span></div>
+        <span class="mk" style="top:156px;left:356px">1</span>
+        <span class="mk" style="top:214px;left:356px">2</span>
+        <span class="mk" style="top:378px;left:4px">3</span>
+        <span class="mk" style="top:586px;left:4px">4</span>
+      </div>
+      <figcaption><b>The rest of the item</b>
+        <ul>
+          <li>1 · Jump chips over one page, as on a pull request.</li>
+          <li>2 · Every open agent on the item, each with Open in T3.</li>
+          <li>3 · Numbered steps and tables survive. Today they arrive as one paragraph.</li>
+          <li>4 · Fields move below the text and gain parent, effort and tags.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Totals off by a cent</b><span>AB#61021 · Testing Failed</span></div><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="jump sticky"><span>QA notes</span><span>Description</span><span>Acceptance</span><span>Details</span><span class="on">Activity 6</span></div>
+          <div style="padding:12px 16px 8px"><div class="segc"><span class="on">All</span><span>Comments</span><span>Changes</span></div></div>
+          <div class="cm">
+            <div class="bd"><span class="av lg" style="--h:330">LN</span><div style="flex:1;min-width:0"><div class="who">Lena<span>QA · 1 d</span></div>
+              <div class="md"><p>Basket is fine now, the <b>invoice export</b> isn't. Steps are in QA notes.</p></div></div></div>
+          </div>
+          <div class="tl-ev"><span class="dot" style="color:var(--rd)"></span><span><b>Testing → Testing Failed</b> · Lena</span><span class="sp"></span><span>1 d</span></div>
+          <div class="cm">
+            <div class="bd"><span class="ico r" style="background:var(--mg)"><i class="ic" data-i="shield"></i></span><div style="flex:1;min-width:0"><div class="who">Vera<span class="vera">test report</span><span>1 d</span></div>
+              <div class="md"><p>14 checks passed, 1 failed: <code>invoice totals round per line</code>.</p></div></div></div>
+          </div>
+          <div class="tl-ev"><span class="dot" style="color:var(--ac)"></span><span><b>Code Review → Testing</b> · you</span><span class="sp"></span><span>3 d</span></div>
+          <div class="tl-ev"><span class="dot" style="color:var(--gr)"></span><span><b>PR #412 linked</b> · Priya</span><span class="sp"></span><span>4 d</span></div>
+          <div class="cm">
+            <div class="bd"><span class="av lg" style="background:linear-gradient(135deg,#7f7eff,#4f46e5)">KV</span><div style="flex:1;min-width:0"><div class="who">You<span>4 d</span></div>
+              <div class="md"><p>Fix is in <span class="rc"><i class="ic" data-i="pr"></i>#412</span>; it rounds per line everywhere.</p></div></div></div>
+          </div>
+        </div>
+        <div class="edge" style="height:110px"></div>
+        <div class="compose glass">Comment on AB#61021…<span class="snd"><i class="ic" data-i="up"></i></span></div>
+        <span class="mk" style="top:208px;left:356px">1</span>
+        <span class="mk" style="top:392px;left:4px">2</span>
+        <span class="mk" style="top:452px;left:356px">3</span>
+        <span class="mk" style="top:780px;left:356px">4</span>
+      </div>
+      <figcaption><b>Activity</b>
+        <ul>
+          <li>1 · Comments and changes in one list, newest first, filterable.</li>
+          <li>2 · State changes and linked pull requests come from the item's history, so you see how it got here.</li>
+          <li>3 · A comment that starts <code>Vera · &lt;kind&gt; —</code> shows as Vera's, as on the desktop.</li>
+          <li>4 · Reply from the phone. Today comments show only when there are two or more, as plain text, and you can't answer.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 9 · WHY ============================== -->
+<section class="sec" id="why">
+  <div class="sec-h"><span class="n">09</span><h2>What's broken today, and why</h2></div>
+  <p class="sec-lead">Each problem you reported, traced to the code. "From the code" means the cause is plain in the source. "Likely" means the code explains the symptom, but it still needs a run on the device or the server log to confirm.</p>
+  <div class="fixes">
+    <div class="fix"><span class="k">F1</span>
+      <div><b>Mark reviewed counts up, but the page shows the same file</b><span class="conf likely">Likely</span></div>
+      <div><h6>Why</h6><code>FileWalk</code> is a paged <code>TabView(selection: $session.fileIndex)</code>. <code>markCurrentReviewed()</code> jumps to the next <em>unreviewed</em> file, often several pages away, inside <code>withAnimation</code>. A paged TabView doesn't reliably follow a jump like that. The title reads <code>fileIndex</code>, so the count moves and the page stays. <code>load()</code> also sets <code>fileIndex</code> before the pager exists, which matches the walk starting at file 1.</div>
+      <div><h6>Fix</h6>Key the walk by file path, not position: a <code>currentPath</code> on <code>ReviewSession</code> and a horizontal <code>ScrollView</code> with <code>.scrollTargetBehavior(.paging)</code> and <code>.scrollPosition(id:)</code>, or one <code>FilePage</code> with <code>.id(path)</code> and a swipe gesture. A UI test marks five files and checks that the page's file name matches the title each time.</div>
+    </div>
+    <div class="fix"><span class="k">F2</span>
+      <div><b>After Approve, the next PR doesn't load, then does a minute later</b><span class="conf likely">Likely</span></div>
+      <div><h6>Why</h6><code>ReviewSession.load</code> gives up when the detail or the files fail, and offers only Skip. On the server, <code>detail()</code> reads up to four job logs of unread failing checks before it answers. With GitHub slow (the server log is full of timeouts reading base branches) that can pass the app's 30 s timeout. The next try is quick because the logs are read by then. <code>detail</code> and <code>files</code> both call <code>recordOf</code> at once, which can run the same GraphQL query twice.</div>
+      <div><h6>Fix</h6>Answer the detail without waiting for logs and let failure reasons arrive on the next read. In the app, retry once, then show Retry and Skip. Prefetch the next PR's detail and files while you review the current one, like the desktop's <code>usePrefetchReviewSnapshot</code>. Share one in-flight <code>recordOf</code> per PR.</div>
+    </div>
+    <div class="fix"><span class="k">F3</span>
+      <div><b>Back shows the approved PR's old state</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6><code>QuickReviewView</code> keeps one <code>ReviewSession</code> per PR for as long as the review is open, and <code>load</code> takes the detail from <code>FocusStore.details</code> when it has one. The approval's <code>onSent</code> reloads Focus, never the detail.</div>
+      <div><h6>Fix</h6>The session records its decision (held, posted, failed) and the page shows it. <code>onSent</code> reads the detail again. Undo keeps working as it does now.</div>
+    </div>
+    <div class="fix"><span class="k">F4</span>
+      <div><b>The next PR opens on a file list; the first needs "Walk 52 files"</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6><code>ReviewIntro</code> shows the header, a re-review banner and up to 12 files left. The description and proof aren't on it. Every review starts there, so starting takes an extra tap.</div>
+      <div><h6>Fix</h6>A brief (description, proof, checks, what changed) for a PR you haven't opened in this session. Starting from the PR page opens the first source file directly.</div>
+    </div>
+    <div class="fix"><span class="k">F5</span>
+      <div><b>Comments and the description are hard to read</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6><code>CommentBody</code> and <code>PrOverviewTab</code> parse with <code>AttributedString(markdown:)</code> in <code>inlineOnlyPreservingWhitespace</code> mode. Headings, lists, tables and code blocks don't render, and HTML such as <code>&lt;details&gt;</code>, <code>&lt;img&gt;</code> and <code>&lt;!-- --&gt;</code> prints as text.</div>
+      <div><h6>Fix</h6>One GitHub markdown view for the description, comments and reviews. It builds on <code>ChatMarkdown</code>'s block parser and adds task lists, HTML comments dropped, <code>&lt;details&gt;</code> folded, images moved to Proof, AB# chips, and the desktop's bot footer and badge rules.</div>
+    </div>
+    <div class="fix"><span class="k">F6</span>
+      <div><b>Needs you is pinned on top and can't fold</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6><code>PrListQuery.groups</code> adds a Needs you group above the others whenever the filter is All and the grouping is author or repository. Sections have no fold.</div>
+      <div><h6>Fix</h6>Drop the pin; Your turn is a pill. Groups fold and the folded ids are kept in <code>@AppStorage</code>. Add Waiting longest and Smallest first to the sort options.</div>
+    </div>
+    <div class="fix"><span class="k">F7</span>
+      <div><b>A teammate's 7 open PRs are missing</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6>The server searches <code>involves:@me</code>, <code>review-requested:@me</code> and <code>reviewed-by:@me</code>, plus the repositories in <code>github.repos</code>. That list is empty in your server's config; the desktop watches 16. The repository search is also a single query capped at 100 results (5 pages of 20) and runs for the first account only.</div>
+      <div><h6>Fix</h6>The desktop link sends the desktop's repository list to the server. One search per repository, paged to the end, for the account that can read it. A footer in Settings says what was read and when.</div>
+    </div>
+    <div class="fix"><span class="k">F8</span>
+      <div><b>A T3 thread only opens from the Live Activity</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6>Threads show only inside work items, or on a PR that has no work item (<code>PrOverviewTab</code> shows "Agents on this branch" only when <code>workItems</code> is empty). They open BorgDock's copy of the conversation (<code>ThreadView</code>).</div>
+      <div><h6>Fix</h6>Agents on Focus and on every PR. The row opens the PR, and Open in T3 uses <code>T3Link</code> with the <code>appLink</code> the server already sends. The Live Activity opens the PR too. <code>ThreadView</code> goes.</div>
+    </div>
+
+    <div class="fix"><span class="k">W1</span>
+      <div><b>Work rows are five lines tall, and every lane is open</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6><code>WalkRow</code> draws AB# and the verdict, a two-line title, the workflow bar, a strip of evidence chips and the latest message for every item. Lanes can't fold, so 52 items are a long scroll.</div>
+      <div><h6>Fix</h6>Two lines per item, one when it needs nothing from you. Evidence moves to the second line. Lanes fold to a summary and open by default only when they need you.</div>
+    </div>
+    <div class="fix"><span class="k">W2</span>
+      <div><b>Browse is a separate screen, with no verdicts</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6>The Work tab shows only your items. Anything else goes through the toolbar's <code>BrowseView</code>: a list in query order with its own look and no verdicts.</div>
+      <div><h6>Fix</h6>Scopes on the Work tab (Mine, the sprint, unassigned, Up next, saved ADO queries) in the same lanes, plus a search field for any AB#.</div>
+    </div>
+    <div class="fix"><span class="k">D1</span>
+      <div><b>Descriptions lose their lists, tables and screenshots</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6>The server's <code>htmlToText</code> flattens every rich-text field and comment to plain text before sending it, and the app's <code>PlainText.clean</code> strips what's left. Screenshots in repro steps disappear.</div>
+      <div><h6>Fix</h6>The server turns ADO's HTML into markdown (lists, tables, links, images) and proxies attachment images, since ADO needs your sign-in. The app renders it with the same markdown view as pull requests.</div>
+    </div>
+    <div class="fix"><span class="k">D2</span>
+      <div><b>An item shows one pull request and one agent</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6><code>ItemDetailView</code> shows <code>entry.pullRequest</code> and <code>currentThread</code> only. The desktop ranks every linked PR and marks the shared ones.</div>
+      <div><h6>Fix</h6>Every linked PR, the item's own first and shared ones marked. Every open thread, each with Open in T3.</div>
+    </div>
+    <div class="fix"><span class="k">D3</span>
+      <div><b>QA notes sit at the bottom; comments are hidden and read-only</b><span class="conf">From the code</span></div>
+      <div><h6>Why</h6>Sections come in a fixed order with QA notes last. Comments show only when <code>detail.comments.count &gt; 1</code>, there's no history, and nothing posts a comment.</div>
+      <div><h6>Fix</h6>The section that decides the next step leads: QA notes, the PR or the agent's question. Activity joins comments with state changes from the item's history, and a box posts a comment through a new server route.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== 10 · BUILD ============================== -->
+<section class="sec" id="build">
+  <div class="sec-h"><span class="n">10</span><h2>Build order</h2></div>
+  <p class="sec-lead">Four pull requests, each usable on its own. The walk comes first because it's where the bugs are.</p>
+  <div class="plan">
+    <div class="plan-col"><h4><span>PR 1 · server + iOS</span>The walk</h4>F1, F3, F4. Pages keyed by path, decision state per PR, the brief, prefetch of the next PR. The file name in the bar, the count under Mark reviewed. Tests and generated files as steps, with categories the server sends from the new rules; the desktop's rule gets the same patterns.</div>
+    <div class="plan-col"><h4><span>PR 2 · iOS</span>Readable pull requests</h4>F5 and the one-page PR: the GitHub markdown view for the description, comments and reviews, the proof row, failing checks with step and error on the page, jump chips.</div>
+    <div class="plan-col"><h4><span>PR 3 · server + iOS</span>Every pull request</h4>F7 and F6: the desktop link shares its repositories, a search per repository paged past 100, the coverage footer. Your turn pill, folding groups, new sort options, Review all per author.</div>
+    <div class="plan-col"><h4><span>PR 4 · server + iOS</span>Focus and agents</h4>F8 and the server half of F2: Today becomes Focus, agent rows on Focus and every PR, Open in T3, the Live Activity opens the PR, <code>ThreadView</code> removed. The detail answers without waiting for job logs.</div>
+    <div class="plan-col"><h4><span>PR 5 · server + iOS</span>Work items</h4>W1, W2, D1 to D3: rich text as markdown with an attachment proxy, history and comment routes, every PR and thread per item. Compact folding lanes, scopes in place of Browse, the item page and Activity.</div>
+  </div>
+  <div class="decided">
+    <h4><span>Decided</span>Your answers</h4>
+    <ul>
+      <li><b>Tests and generated files</b> are one step each, with the patterns in section 05, taken from BorgDock and the work monorepo.</li>
+      <li><b>Sprint and My work</b> sit under the pull requests on Focus.</li>
+      <li><b>BorgDock's thread screen goes.</b> Every agent row opens T3 Code.</li>
+    </ul>
+  </div>
+  <div class="open">
+    <h4><span>Open question</span>Yours to decide</h4>
+    <ul>
+      <li><b>Comments from the phone.</b> The mockup posts a comment to ADO as you, directly; state moves still go through an agent. Fine, or should a comment go through an agent too?</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+  const TABS = [['focus', 'target', 'Focus'], ['prs', 'pr', 'Pull requests'], ['work', 'tasks', 'Work'], ['sprint', 'cal', 'Sprint']];
+  for (const phone of document.querySelectorAll('.phone')) {
+    const d = phone.dataset;
+    const time = d.time ?? '9:41';
+    const statusBar = `<div class="sb ${d.sb || ''}"><span>${time}</span><span class="sb-r"><svg viewBox="0 0 18 12"><use href="#sb-sig"/></svg><svg viewBox="0 0 16 12"><use href="#sb-wifi"/></svg><svg class="bat" viewBox="0 0 27 13"><use href="#sb-bat"/></svg></span></div>`;
+    phone.insertAdjacentHTML('afterbegin', statusBar + '<div class="di"></div>');
+    if (d.tab) {
+      const tabs = TABS.map(([id, icon, label]) => {
+        const badge = { prs: '6', work: '5' }[id] ? `<span class="tb-badge">${{ prs: '6', work: '5' }[id]}</span>` : '';
+        return `<div class="tb-tab${id === d.tab ? ' on' : ''}"><i class="ic" data-i="${icon}"></i>${label}${badge}</div>`;
+      }).join('');
+      phone.insertAdjacentHTML('beforeend', `<div class="edge"></div><div class="tabbar"><div class="tb-tabs">${tabs}</div><div class="tb-search"><i class="ic" data-i="search"></i></div></div>`);
+    }
+    phone.insertAdjacentHTML('beforeend', '<div class="hi"></div>');
+  }
+  for (const el of document.querySelectorAll('[data-i]')) {
+    el.innerHTML = `<svg viewBox="0 0 24 24"><use href="#i-${el.dataset.i}"/></svg>`;
+  }
+</script>
+</body>
+</html>

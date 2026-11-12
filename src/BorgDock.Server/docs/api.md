@@ -37,7 +37,8 @@ Passkeys only, with user verification required. There is one user.
 | GET | /api/overview | | `Overview` (503 while the first sync runs). Cached: ADO is read every minute, T3 every 4 seconds |
 | POST | /api/refresh | `{}` | `Overview`, read fresh from ADO and T3 right now. Use it for pull to refresh |
 | GET | /api/events | | SSE, `event: overview` when it changes (web only) |
-| GET | /api/items/:id | | `ItemDetail` |
+| GET | /api/items/:id | | `ItemDetail`: the plain-text fields, plus `markdown` (ADO's rich text as GitHub-flavoured markdown), `history` (from the item's revisions, newest first), `pullRequests` (every linked one, its own first, shared ones marked), `parent`, `effort`, `areaPath`, `attachments`, and comments with `id` and `markdown` |
+| POST | /api/items/:id/comments | `PostItemCommentRequest` | `PostItemCommentResponse`. Posts to ADO as the server's account, as markdown. Not signed, like pull request comments; never changes a state |
 | GET | /api/items/:id/start | | `StartOptions`: the pick-up and QA prompts, the item's branch, and the worktree for a QA handoff |
 | GET | /api/browse/queries | | `BrowseQuery[]` |
 | GET | /api/browse?query=<id>&search=<text> | | `BrowseResult` |
@@ -57,6 +58,19 @@ Passkeys only, with user verification required. There is one user.
 | DELETE | /api/auth/sessions/:id | | `{ok}` |
 | GET | /api/auth/passkeys | | `PasskeyInfo[]` |
 | GET | /api/audit | | the last 100 security and action events |
+
+**Item attachments.** Images in the markdown and `ItemDetail.attachments[].url` are signed paths:
+`GET /api/items/:id/attachments/:guid?name=&exp=&sig=`. They need no session (the iPhone's `AsyncImage` sends no
+header): `sig` is HMAC-SHA256 over `itemId/guid/name/exp` with the key in `<data dir>/attachment-key`, and `exp` is a
+Unix time a day or so ahead, the same for an hour so images stay cached. A wrong or expired signature answers 403.
+The server reads the file from ADO with its own sign-in; raster images come back inline, anything else as a download.
+
+**Which pull requests belong to an item** (`server/src/borgdock/item-pull-requests.ts`): GitHub's open pull requests,
+the ones on the item's T3 threads, and a GitHub read for any linked one the open list doesn't have. A pull request
+belongs to the item when ADO links it, or it mentions `AB#<id>` in its title or body, or its branch carries the id.
+ADO's links carry ADO's own repository id, so a link counts once a pull request that names the item has shown which
+repository that id is (kept in the `preferences` table). `own`: the title or branch names the item. `shared`: linked
+on several of my items and naming none of them.
 
 The start prompt comes from `AppConfig.promptTemplate`, with `{id}`, `{title}` and `{branch}` filled in. Branch:
 `feat/` for PBIs, `chore/` for Tasks, `fix/` otherwise, then `<id>-<first 4 meaningful title words>`.
@@ -116,16 +130,35 @@ The BorgDock desktop app links to the server so it shares read state and reports
 | POST | /api/desktop/links | none | `{deviceName}` | `DesktopLinkStart`: `code` (`ABCD-EFGH`, Crockford), `pollSecret`, `link` = `borgdock://link-desktop?server=<url>&code=<code>`. 10 a minute per client; 429 when three links of the client (or twenty in all) are waiting |
 | POST | /api/desktop/links/approve | phone, **signed** | `{code}` | `{deviceName, sessionId}`. Case and dashes don't matter. 409 when the code expired (10 minutes) or was used |
 | GET | /api/desktop/links/:linkId?secret= | none | | `{status: 'pending'}`, `{status: 'expired'}`, or once `{status: 'approved', token, sessionId, serverName}`; then the link is gone (404, as for a wrong secret) |
+| PUT | /api/desktop/repositories | the desktop's | `DesktopRepositoriesRequest` | `{ok}`. The desktop's watched repositories (`owner/repo`; invalid names are dropped). It sends them after linking, at startup and within a minute of a change. 403 for any session that isn't a linked desktop's |
 
 - Links live in memory: a server restart drops the ones in progress. After an approval the desktop has at least two
   minutes to pick up its token; a token nobody picks up revokes its session.
 - The desktop's session is an app session named after `deviceName`, 180 days unused. It may only call `GET /api/server`,
   `GET /api/activity` (its reads never count as a visit for the away summary), `POST /api/activity/read`,
-  `POST /api/activity/read-targets`, `GET /api/activity/reads`, `POST /api/presence` and `POST /api/auth/logout`.
-  Anything else answers `403 {error}`.
+  `POST /api/activity/read-targets`, `GET /api/activity/reads`, `POST /api/presence`, `PUT /api/desktop/repositories`
+  and `POST /api/auth/logout`. Anything else answers `403 {error}`.
 - `GET /api/sources` lists linked desktops (`desktops: LinkedDesktop[]`, `atDesk` from its own presence reports), and
   `GET /api/account` marks each device `kind: 'desktop'` or `'phone'` (browsers leave it out). Signing the session out
   (`DELETE /api/auth/sessions/:id`, or the desktop's own logout) unlinks the desktop.
+
+## Pull requests: which repositories are read
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | /api/github/repositories | | `PrRepositories`: where the list comes from, each repository's open count and last read, the preferences, the last full read and whether a search was cut off |
+| PUT | /api/github/repositories/preferences | `PrRepositoryPreferences` | `PrRepositories`, and a poll with the new settings |
+
+- Watched repositories are the linked desktop's list, then `github.repos` from `config.json`. Each is its own search
+  (`is:open is:pr archived:false repo:<owner/repo>`), read to the end (20 pages of 20 at most; past that `cutOff`), by
+  the account that read it last, else each account in turn. A search that fails keeps its last answer, with the error.
+  A repository read in the last three minutes waits for a later poll, so the server doesn't spend the GraphQL budget
+  the desktop shares; pull to refresh (`GET /api/focus?refresh=1`), a new list and changed preferences read every one.
+- `includeInvolving` (default on) adds the searches for pull requests that involve you anywhere: `involves:@me`,
+  `review-requested:@me`, `reviewed-by:@me`. `includeTeamRequests` off searches `user-review-requested:@me` instead,
+  and a request to one of your teams no longer counts as yours.
+- `GET /api/prs/:owner/:repo/:number/files` sends each file's `category` (`server/src/github/file-category.ts`, the
+  same patterns as the desktop's Quick Review). `GET /api/prs/:owner/:repo/:number` answers without waiting for the
+  logs of failed jobs; their reasons come with the next read.
 
 ## Machines and connectors
 - `npx borgdock connect --server <url> [--label <name>] [--pair]` on any machine with T3 Code. It dials

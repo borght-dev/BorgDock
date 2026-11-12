@@ -196,27 +196,30 @@ final class WalkDisplayTests: XCTestCase {
                  sources: OverviewSources(ado: SourceStatus(ok: true, at: nil, error: nil), t3: SourceStatus(ok: true, at: nil, error: nil)), walk: walk)
     }
 
+    private func lanes(_ overview: Overview) -> [WorkLane] {
+        WorkLanes.stateLanes(WorkEntries.of(.mine, overview: overview, sprint: nil, queryItems: nil) ?? [], walk: overview.walk)
+    }
+
     func testLanesFollowTheWalkOrderAndSkipUnknownItems() {
         let walk = Walk(lanes: [
             .init(state: "Code Review", itemIds: [2, 99], tone: .bad, summary: ""),
             .init(state: "Testing Failed", itemIds: [42], tone: .warn, summary: ""),
             .init(state: "New", itemIds: [1], tone: nil, summary: ""),
         ], briefing: .init(needYou: 1, outOfSync: 2, running: 3))
-        let lanes = WalkDisplay.lanes(overview([entry(1, state: "New", bay: .idle), entry(2, state: "Code Review", bay: .waiting)], walk: walk))
+        let lanes = lanes(overview([entry(1, state: "New", bay: .idle), entry(2, state: "Code Review", bay: .waiting)], walk: walk))
         XCTAssertEqual(lanes.map(\.title), ["Code Review", "New"])
         XCTAssertEqual(lanes[0].entries.map(\.item.id), [2])
     }
 
     func testWithoutAWalkLanesComeFromStatesAndVerdictsFromBays() {
-        let lanes = WalkDisplay.lanes(overview([
+        let lanes = lanes(overview([
             entry(1, state: "Code Review", bay: .working),
             entry(2, state: "Code Review", bay: .waiting),
             entry(3, state: "New", bay: .idle),
         ]))
         XCTAssertEqual(lanes.map(\.title), ["Code Review", "New"])
         XCTAssertEqual(lanes[0].entries.map(\.item.id), [2, 1], "what needs you first")
-        XCTAssertEqual(WalkDisplay.verdict(for: lanes[0].entries[1]), Verdict(label: "Agent on it", tone: .run))
-        XCTAssertEqual(lanes[0].tone, .bad)
+        XCTAssertEqual(lanes[0].entries[1].verdict, Verdict(label: "Agent on it", tone: .run))
     }
 
     func testTheServersVerdictWins() {
@@ -226,13 +229,6 @@ final class WalkDisplayTests: XCTestCase {
         XCTAssertEqual(WalkDisplay.verdict(for: value).label, "CI red")
         XCTAssertEqual(WalkDisplay.evidence(for: value).map(\.label), ["#3712 open"])
         XCTAssertEqual(WalkDisplay.latest(for: value).map { WalkDisplay.oneLine($0.text) }, "e2e fails on the timeout path")
-    }
-
-    func testBriefingLine() {
-        XCTAssertEqual(WalkDisplay.briefingParts(.init(needYou: 2, outOfSync: 3, running: 4)).map(\.text), ["2 need you", "3 out of sync", "4 agents running"])
-        XCTAssertEqual(WalkDisplay.briefingParts(.init(needYou: 1, outOfSync: 0, running: 1)).map(\.text), ["1 needs you", "0 out of sync", "1 agent running"])
-        XCTAssertEqual(WalkDisplay.briefingParts(.init(needYou: 2, outOfSync: 0, running: 0)).first?.tone, .bad)
-        XCTAssertEqual(WalkDisplay.briefingParts(.init(needYou: 0, outOfSync: 0, running: 0)).map(\.text), ["Nothing needs you"])
     }
 
     func testFixOutOfSyncTakesTheDriftedItems() {
@@ -290,7 +286,7 @@ final class ActivityTests: XCTestCase {
         XCTAssertEqual(targets.map(\.route), [
             .pullRequest(PrKey(owner: "acme", repo: "shop", number: 12)),
             .workItem(ItemRoute(id: 5)),
-            .thread("t"),
+            nil,
             .ciGroup("g"),
             nil,
         ])
