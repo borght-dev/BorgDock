@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.12.1 — 2026-11-12
+
+### Improvements
+
+- **See why CI failed without leaving Quick Review** — Hover the CI chip above a pull request in Quick Review and the checks card opens, the same one the pull request list shows: what failed and why (the test, expected against received, the file and line), what is still running and what passed. Rerun the failed checks or start a fix from the card, or click the chip to open the Checks panel beside the diff. ![The checks card under the CI chip in Quick Review](whats-new/4.12.1/quick-review-checks.png)
+
 ## 4.12.0 — 2026-11-12
 
 ### New Features

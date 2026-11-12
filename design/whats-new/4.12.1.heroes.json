@@ -1,0 +1,8 @@
+[
+  {
+    "slug": "quick-review-checks",
+    "storyId": "focus-quick-review--checks-on-hover",
+    "viewport": { "width": 1600, "height": 1000 },
+    "delay": 2500
+  }
+]
