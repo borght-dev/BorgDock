@@ -3453,23 +3453,49 @@ body.sql-resizing-v .sql-resize-handle {
     height: 34px;
     padding: 0;
   }
+  .bd-rail__glyph {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+  }
   .bd-rail__icon {
     flex-shrink: 0;
   }
+  /* Pinned to the icon's top-right corner, so a wide "99+" grows away from the
+     icon instead of over it. Opaque on the surface behind the item, and ringed
+     in it, which cuts the badge out of the icon's stroke. */
   .bd-rail__count--badge {
+    --bd-rail-badge-surface: var(--color-background);
+    --bd-rail-badge-tint: 18%;
     position: absolute;
-    top: 1px;
-    right: 0;
-    min-width: 15px;
-    height: 15px;
-    padding: 0 4px;
-    border-radius: 8px;
-    background: var(--color-surface-hover);
-    font-size: 9.5px;
+    bottom: 9px;
+    left: 11px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    border-radius: 7px;
+    background: color-mix(
+      in srgb,
+      var(--color-text-tertiary) var(--bd-rail-badge-tint),
+      var(--bd-rail-badge-surface)
+    );
+    box-shadow: 0 0 0 2px var(--bd-rail-badge-surface);
+    font-size: 9px;
     font-weight: 600;
-    line-height: 15px;
+    letter-spacing: -0.1px;
+    line-height: 14px;
     text-align: center;
+    white-space: nowrap;
     color: var(--color-text-secondary);
+    pointer-events: none;
+  }
+  .bd-rail__item--active .bd-rail__count--badge {
+    --bd-rail-badge-surface: var(--color-seg-highlight);
+  }
+  /* A light tint vanishes on the near-black rail. */
+  .dark .bd-rail__count--badge {
+    --bd-rail-badge-tint: 38%;
+    color: var(--color-text-primary);
   }
   .bd-rail__count--badge.bd-rail__count--hot {
     background: var(--color-status-red);

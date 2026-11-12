@@ -241,22 +241,29 @@ export function Rail() {
                 }
                 onClick={() => void showSection(section)}
               >
-                {collapsed && (
-                  <Icon size={16} strokeWidth={2} aria-hidden="true" className="bd-rail__icon" />
-                )}
                 <span className={clsx('bd-rail__label', collapsed && 'sr-only')}>
                   {SECTION_LABELS[section]}
                 </span>
-                {count && (
-                  <span
-                    className={clsx(
-                      'bd-rail__count',
-                      count.hot && 'bd-rail__count--hot',
-                      collapsed && 'bd-rail__count--badge',
+                {collapsed ? (
+                  <span className="bd-rail__glyph">
+                    <Icon size={16} strokeWidth={2} aria-hidden="true" className="bd-rail__icon" />
+                    {count && (
+                      <span
+                        className={clsx(
+                          'bd-rail__count bd-rail__count--badge',
+                          count.hot && 'bd-rail__count--hot',
+                        )}
+                      >
+                        {badgeText(count.value)}
+                      </span>
                     )}
-                  >
-                    {collapsed ? badgeText(count.value) : count.value}
                   </span>
+                ) : (
+                  count && (
+                    <span className={clsx('bd-rail__count', count.hot && 'bd-rail__count--hot')}>
+                      {count.value}
+                    </span>
+                  )
                 )}
               </button>
             );
