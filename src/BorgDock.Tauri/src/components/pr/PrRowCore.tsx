@@ -14,6 +14,7 @@ import { isStaleUpdate } from '@/services/focus-bucket';
 import { pullRequestRef } from '@/services/workstreams/membership';
 import type { PrDensity } from '@/types';
 import { formatAgo, STALE_AFTER_DAYS } from '@/utils/relative-time';
+import { CHECKS_CARD_SIZE } from './checks-card-data';
 import {
   avatarInitials,
   type PrCardData,
@@ -177,9 +178,6 @@ export interface PrRowCoreProps extends Omit<HTMLAttributes<HTMLDivElement>, 'ch
   /** Click on the check bar while it has a card: open the PR on its Checks tab. */
   onChecksClick?: (event: MouseEvent<HTMLSpanElement>) => void;
 }
-
-/** The hover card's size on a check bar (`ChecksHoverCard`). */
-const CHECKS_CARD_SIZE = { maxWidth: 420, maxHeight: 640 } as const;
 
 /** What the meta line dates: the merge or close of a closed PR, else the last update. */
 function metaEvent(pr: PrCardData): { verb: string; at: string } | null {

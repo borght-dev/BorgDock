@@ -86,6 +86,8 @@ export interface QuickReviewCardProps {
   reReview?: boolean;
   onOpenComments?: () => void;
   onOpenGitHub?: () => void;
+  /** Click on the CI chip. */
+  onOpenChecks?: () => void;
   now?: number;
 }
 
@@ -106,6 +108,7 @@ export function QuickReviewCard({
   reReview,
   onOpenComments,
   onOpenGitHub,
+  onOpenChecks,
   now,
   onFileSelect,
 }: QuickReviewCardProps) {
@@ -130,6 +133,7 @@ export function QuickReviewCard({
         risk={risk?.pill}
         onOpenComments={onOpenComments}
         onOpenGitHub={onOpenGitHub}
+        onOpenChecks={onOpenChecks}
         now={now}
       />
       {alert}

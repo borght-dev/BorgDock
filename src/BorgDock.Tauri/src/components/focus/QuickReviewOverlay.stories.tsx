@@ -4,6 +4,7 @@ import { ToastViewport } from '@/components/shared/Toast';
 import type { HeldPr } from '@/services/author-run';
 import { useE2eStore } from '@/services/e2e/load';
 import { RISK_PROMPT_TITLE } from '@/services/risk-assessment';
+import { useCiFailuresStore } from '@/stores/ci-failures-store';
 import { useLinkStore } from '@/stores/link-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useQuickReviewStore } from '@/stores/quick-review-store';
@@ -15,6 +16,7 @@ import type { ClaudeReviewComment } from '@/types/claude-review';
 import beforeDispatch from '../../../../../docs/whats-new/4.0.0/dispatch.png?inline';
 import afterDispatch from '../../../../../docs/whats-new/4.0.1/dispatch-width.png?inline';
 import { getControl } from '../../../.storybook/mocks/control';
+import { failingPr, failingPrFailures, sharedGroup } from '../pr/__fixtures__/checks-card-data';
 import { LARGE_PR_BODY, LARGE_PR_FILES, LARGE_PR_TITLE } from './__fixtures__/quick-review-large';
 import {
   NOISE_FILES,
@@ -1531,5 +1533,72 @@ export const RiskAssessing: Story = {
   beforeEach: () => startRisk(refunds),
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByText('Assessing risk');
+  },
+};
+
+/** The PR of the meta, in a made-up repository, red from two checks: a release hero. */
+const redChecks = (() => {
+  const checks = failingPr();
+  return {
+    ...pr,
+    pullRequest: {
+      ...pr.pullRequest,
+      repoOwner: 'acme',
+      repoName: 'shop',
+      htmlUrl: 'https://github.com/acme/shop/pull/3668',
+      headSha: checks.pullRequest.headSha,
+      updatedAt: new Date(Date.now() - 52 * 60_000).toISOString(),
+    },
+    overallStatus: 'red' as const,
+    failedCheckNames: checks.failedCheckNames,
+    pendingCheckNames: checks.pendingCheckNames,
+    passedCount: checks.passedCount,
+    skippedCount: checks.skippedCount,
+    totalCheckCount: checks.totalCheckCount,
+    ciJobs: checks.ciJobs,
+  };
+})();
+
+const redChecksDecorator: Decorator = (Story) => {
+  const control = getControl();
+  control.githubResponses.getPRReviewDetails = {
+    pr: redChecks.pullRequest,
+    baseSha: 'review-base',
+  };
+  control.invokeResponses.ci_load_pr = failingPrFailures();
+  return <Story />;
+};
+
+function startRedChecks() {
+  useCiFailuresStore.setState({ groups: [sharedGroup()], loaded: true });
+  usePrStore.setState({ pullRequests: [redChecks] });
+  useQuickReviewStore.getState().startSinglePr(redChecks);
+}
+
+async function hoverCiChip(canvasElement: HTMLElement) {
+  const chip = await within(canvasElement).findByRole('button', { name: 'CI 2 failing' });
+  await userEvent.hover(chip);
+  await waitFor(() => expect(document.querySelector('[data-checks-card]')).toBeTruthy());
+  await waitFor(() =>
+    expect(document.body.textContent).toContain('AssertionError: expected 412 to be 380'),
+  );
+}
+
+/** Hovering the CI chip above the walk shows every check and why the red ones failed. */
+export const ChecksOnHover: Story = {
+  decorators: [redChecksDecorator],
+  beforeEach: startRedChecks,
+  play: async ({ canvasElement }) => {
+    await continueReviewing(canvasElement);
+    await hoverCiChip(canvasElement);
+  },
+};
+
+/** The same card from the CI chip on the overview card. */
+export const ChecksOnHoverCard: Story = {
+  decorators: [redChecksDecorator],
+  beforeEach: startRedChecks,
+  play: async ({ canvasElement }) => {
+    await hoverCiChip(canvasElement);
   },
 };

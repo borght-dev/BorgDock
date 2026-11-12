@@ -1761,6 +1761,21 @@ button.qr-cb:disabled {
   background: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
+/* The CI chip: the checks card on hover, the walk's Checks panel on click. */
+.qr-prhead__ci-trigger {
+  display: inline-flex;
+}
+button.qr-prhead__ci {
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 500;
+  cursor: pointer;
+}
+.qr-prhead__ci-trigger:hover .qr-prhead__ci,
+.qr-prhead__ci:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
+  outline: none;
+}
 .qr-prhead__title {
   flex: 1;
   min-width: 0;

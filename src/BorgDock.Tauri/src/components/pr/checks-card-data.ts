@@ -9,6 +9,9 @@ import { formatDuration } from '@/utils/relative-time';
  * reasons from the CI failure store's signals for each failed job. Pure.
  */
 
+/** The hover card's size, wherever it opens (a row's check bar, Quick Review's CI chip). */
+export const CHECKS_CARD_SIZE = { maxWidth: 420, maxHeight: 640 } as const;
+
 const FAILED = new Set(['failure', 'timed_out', 'startup_failure']);
 const PASSED = new Set(['success']);
 const SKIPPED = new Set(['skipped', 'neutral', 'cancelled']);
