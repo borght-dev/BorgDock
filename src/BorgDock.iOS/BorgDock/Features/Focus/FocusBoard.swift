@@ -4,6 +4,7 @@ import Foundation
 /// Pure: the stores' data in, the sections out. Mockup: design/ios-flow/mockups.html, section 02.
 struct FocusBoard {
     /// Others' pull requests that ask for your review, the one that has waited longest first: Start review's queue.
+    /// Never a draft: it isn't ready for a review, even when it asks for one.
     let reviews: [PrSummary]
     /// The reviews, then your own pull requests that need you.
     let yourTurn: [PrSummary]
@@ -15,7 +16,7 @@ struct FocusBoard {
 
     init(pullRequests: [PrSummary], threads: [ThreadSummary], myLogins: Set<String>) {
         let needYou = pullRequests.filter { $0.bucket == .you }
-        reviews = needYou.filter { !$0.isMine }.sorted { $0.waitingSince.sortDate < $1.waitingSince.sortDate }
+        reviews = needYou.filter { !$0.isMine && !$0.isDraft }.sorted { $0.waitingSince.sortDate < $1.waitingSince.sortDate }
         yourTurn = reviews + needYou.filter(\.isMine)
         readyToMerge = pullRequests.filter { $0.bucket == .ready }
         waitingOnOthers = pullRequests.filter { $0.isWaitingOnOthers(myLogins: myLogins) }

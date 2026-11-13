@@ -165,9 +165,10 @@ export function isSnoozed(pr: PrRecord, ctx: FocusContext): boolean {
   return until !== null && until > ctx.now;
 }
 
+/** A draft is never your turn, not even when it asks for your review: it is not ready for one (the desktop's `yourTurn`). */
 export function bucketFor(pr: PrRecord, ctx: FocusContext): FocusBucket {
   if (isStale(pr, ctx)) return 'stale';
-  if (isNeedsYou(pr, ctx.login, ctx.teams)) return isSnoozed(pr, ctx) ? 'wait' : 'you';
+  if (!pr.isDraft && isNeedsYou(pr, ctx.login, ctx.teams)) return isSnoozed(pr, ctx) ? 'wait' : 'you';
   if (isReady(pr)) return 'ready';
   return 'wait';
 }
@@ -253,13 +254,13 @@ export function reasonFor(pr: PrRecord, ctx: FocusContext): PrReason {
   }
 
   const author = mine ? 'Your PR' : `${firstName(pr.author)}'s PR`;
+  if (pr.isDraft) {
+    return { text: mine ? 'Draft, you are still working on it.' : `Draft, ${firstName(pr.author)} is still working on it.`, tone: 'mute', icon: 'clock' };
+  }
   if (isNeedsYou(pr, ctx.login, ctx.teams) && isSnoozed(pr, ctx)) {
     const until = ctx.snoozedUntil(prKey(pr))!;
     const when = until - ctx.now < DAY ? 'tomorrow' : new Date(until).toISOString().slice(0, 10);
     return { text: `Snoozed until ${when}.`, tone: 'mute', icon: 'clock' };
-  }
-  if (pr.isDraft) {
-    return { text: mine ? 'Draft, you are still working on it.' : `Draft, ${firstName(pr.author)} is still working on it.`, tone: 'mute', icon: 'clock' };
   }
   if (pr.mergeable === 'conflicting') return { text: `${author} has merge conflicts.`, tone: 'bad', icon: 'conflict' };
   const running = pr.checks.filter((c) => c.state === 'pending').length;
