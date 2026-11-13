@@ -219,6 +219,20 @@ struct ReviewDecisionRecord: Hashable, Sendable {
 // MARK: - Loading
 
 /// Why a pull request didn't load, after its automatic retry: "GitHub took longer than 30 seconds, twice."
+/// The end of a review run: "All 6 reviewed", or "4 reviewed, 2 skipped" when some were skipped.
+enum ReviewRunSummary {
+    static func title(total: Int, decided: Int) -> String {
+        let skipped = total - decided
+        if skipped <= 0 { return total == 1 ? "Reviewed" : "All \(total) reviewed" }
+        if decided == 0 { return skipped == 1 ? "Skipped" : "All \(skipped) skipped" }
+        return "\(decided) reviewed, \(skipped) skipped"
+    }
+
+    static func detail(decided: Int) -> String {
+        decided > 0 ? "Approvals post when their Undo runs out." : "Skipped pull requests stay on Focus."
+    }
+}
+
 enum ReviewLoadFailure {
     static func message(_ error: Error, attempts: Int, approvalElsewhere: Int?) -> String {
         var reason = (error as? APIError)?.message ?? error.localizedDescription

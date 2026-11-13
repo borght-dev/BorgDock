@@ -19,6 +19,14 @@ test('a review requested from you needs you, with who asked and when', () => {
   assert.deepEqual(reasonFor(p, c), { text: 'Sanne asked for your review 5 h ago.', tone: 'warn', icon: 'review' });
 });
 
+test('a draft never needs you, not even with your review requested', () => {
+  const p = pr({ requested: ['koen'], draft: true });
+  assert.equal(bucketFor(p, ctx()), 'wait');
+  assert.equal(reasonFor(p, ctx()).text, 'Draft, Sanne is still working on it.');
+  const failingDraft = pr({ author: 'koen', draft: true, checks: [{ name: 'build', conclusion: 'FAILURE' }] });
+  assert.equal(bucketFor(failingDraft, ctx()), 'wait');
+});
+
 test('a team request counts when you are on the team, named in the reason', () => {
   const p = pr({ teams: ['acme/Platform'] });
   assert.equal(bucketFor(p, ctx()), 'wait');

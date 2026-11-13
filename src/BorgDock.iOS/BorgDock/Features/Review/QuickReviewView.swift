@@ -3,7 +3,8 @@ import SwiftUI
 /// Quick Review: one pull request after another. A PR you haven't opened yet starts on its brief; from its own page,
 /// Start review goes straight to the first file you haven't reviewed. Approve stays locked until every file and step
 /// is reviewed, an approval waits out its Undo before GitHub hears about it, and going back to a decided PR shows the
-/// decision. Mockup: design/ios-flow/mockups.html, sections 05 and 06.
+/// decision. Skip (on the brief, in the walk's lock menu) moves on without a decision, like the desktop's Review later.
+/// Mockup: design/ios-flow/mockups.html, sections 05 and 06.
 struct QuickReviewView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -203,7 +204,22 @@ struct QuickReviewView: View {
         ToolbarItem(placement: .principal) { title }
         if case .walk = page, let session {
             ToolbarItem(placement: .topBarTrailing) { lockButton(session) }
+        } else if case .brief = page {
+            ToolbarItem(placement: .topBarTrailing) { skipButton }
         }
+    }
+
+    private var skipTitle: String { nextKey.map { "Skip to #\($0.number)" } ?? "Skip this pull request" }
+
+    private var skipButton: some View {
+        Button(action: advance) {
+            Text("Skip")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(BD.text2)
+                .padding(.horizontal, 4)
+        }
+        .accessibilityLabel(skipTitle)
+        .accessibilityIdentifier("review-skip")
     }
 
     @ViewBuilder
@@ -239,6 +255,8 @@ struct QuickReviewView: View {
             Menu {
                 Button("Next file to review", systemImage: "arrow.right") { withAnimation(.snappy(duration: 0.28)) { session.goToNextUnreviewed() } }
                 Button("Comment or request changes…", systemImage: "text.bubble") { deciding = true }
+                Divider()
+                Button(skipTitle, systemImage: "forward") { advance() }
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "lock")
@@ -329,9 +347,11 @@ struct QuickReviewView: View {
 
     private var finished: some View {
         VStack(spacing: 14) {
-            Image(systemName: "checkmark.circle").font(.system(size: 52, weight: .light)).foregroundStyle(BD.green)
-            Text(queue.count == 1 ? "Reviewed" : "All \(queue.count) reviewed").font(.title2.bold()).foregroundStyle(BD.text)
-            Text("Approvals post when their Undo runs out.").font(.subheadline).foregroundStyle(BD.text2)
+            let decided = queue.filter { app.focus.reviewDecisions[$0.key] != nil }.count
+            Image(systemName: decided > 0 ? "checkmark.circle" : "forward.circle").font(.system(size: 52, weight: .light))
+                .foregroundStyle(decided > 0 ? BD.green : BD.text3)
+            Text(ReviewRunSummary.title(total: queue.count, decided: decided)).font(.title2.bold()).foregroundStyle(BD.text)
+            Text(ReviewRunSummary.detail(decided: decided)).font(.subheadline).foregroundStyle(BD.text2)
             Button("Back to Focus") { dismiss() }.buttonStyle(.bd(.plain, height: 46)).frame(width: 200).padding(.top, 8)
         }
     }

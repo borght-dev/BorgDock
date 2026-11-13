@@ -76,4 +76,21 @@ final class ReviewWalkUITests: XCTestCase {
         let track = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", ", Approved")).firstMatch
         XCTAssertTrue(track.waitForExistence(timeout: 15), "after it posts, the track reads GitHub's state")
     }
+
+    /// Skip moves on to the next pull request without a decision: from the brief, and from the walk's lock menu.
+    @MainActor
+    func testSkipMovesOnFromTheBriefAndFromTheWalk() {
+        let brief = launch("review/brief")
+        XCTAssertTrue(brief.buttons["brief-start"].waitForExistence(timeout: 20))
+        XCTAssertTrue(brief.staticTexts["Review · 2 of 6"].exists)
+        brief.buttons["review-skip"].tap()
+        XCTAssertTrue(brief.staticTexts["Review · 3 of 6"].waitForExistence(timeout: 10), "Skip opens the next pull request")
+        brief.terminate()
+
+        let walk = launch("review/walk/412/0")
+        XCTAssertTrue(walk.scrollViews["walk-page-src/cart/line.ts"].waitForExistence(timeout: 20))
+        walk.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Approve is locked")).firstMatch.tap()
+        walk.buttons["Skip to #405"].tap()
+        XCTAssertTrue(walk.staticTexts["Review · 2 of 6"].waitForExistence(timeout: 10), "the walk's menu skips too")
+    }
 }

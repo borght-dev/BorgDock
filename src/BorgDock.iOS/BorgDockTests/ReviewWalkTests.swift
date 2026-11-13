@@ -225,4 +225,13 @@ final class ReviewWalkTests: XCTestCase {
             XCTAssertEqual(attempts, 2)
         }
     }
+
+    func testTheRunsEndCountsWhatYouSkipped() {
+        XCTAssertEqual(ReviewRunSummary.title(total: 6, decided: 6), "All 6 reviewed")
+        XCTAssertEqual(ReviewRunSummary.title(total: 1, decided: 1), "Reviewed")
+        XCTAssertEqual(ReviewRunSummary.title(total: 6, decided: 4), "4 reviewed, 2 skipped")
+        XCTAssertEqual(ReviewRunSummary.title(total: 3, decided: 0), "All 3 skipped")
+        XCTAssertEqual(ReviewRunSummary.title(total: 1, decided: 0), "Skipped")
+        XCTAssertEqual(ReviewRunSummary.detail(decided: 0), "Skipped pull requests stay on Focus.")
+    }
 }

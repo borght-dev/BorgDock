@@ -36,6 +36,13 @@ final class FocusBoardTests: XCTestCase {
         XCTAssertEqual(board.reviewAuthors.map(\.login), ["sam", "sanne"])
     }
 
+    func testADraftNeverJoinsTheReviewQueue() throws {
+        let draft = try samplePR(7, author: "sam", bucket: "you", extra: ["isDraft": true, "createdAt": sampleISO(hoursAgo: 90)])
+        let board = FocusBoard(pullRequests: [try review(1, hoursAgo: 10), draft], threads: [], myLogins: me)
+        XCTAssertEqual(board.reviews.map(\.number), [1], "an older server still puts a draft that asks for review in the you bucket")
+        XCTAssertEqual(board.reviewsTitle, "1 review waits for you")
+    }
+
     func testTheQueueCardSaysHowLongAndHowMuchReading() throws {
         let prs = [
             try review(1, hoursAgo: 74, files: 21, lines: 700),
