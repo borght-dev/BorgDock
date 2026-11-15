@@ -36,7 +36,11 @@ struct ProofRow: View {
             }
             .padding(.horizontal, 16)
         }
-        .fullScreenCover(item: $zoomed) { ImageZoomView(image: $0) }
+        .fullScreenCover(item: $zoomed) {
+            ImageZoomView(image: $0, images: images.compactMap { image in
+                URL(string: image.url).map { ZoomedImage(url: $0, caption: image.alt) }
+            })
+        }
     }
 }
 

@@ -163,10 +163,10 @@ struct ReviewBrief: View {
             }
             .scrollIndicators(.hidden)
             .fullScreenCover(item: $zoomed) { image in
-                ZStack(alignment: .topTrailing) {
-                    Color.black.ignoresSafeArea()
-                    ProofImageView(image: image).aspectRatio(contentMode: .fit).frame(maxWidth: .infinity, maxHeight: .infinity)
-                    GlassIconButton(systemImage: "xmark", label: "Close") { zoomed = nil }.padding()
+                if let url = URL(string: image.url) {
+                    ImageZoomView(image: ZoomedImage(url: url, caption: image.alt), images: detail.proofImages.compactMap { proof in
+                        URL(string: proof.url).map { ZoomedImage(url: $0, caption: proof.alt) }
+                    })
                 }
             }
         }
