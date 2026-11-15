@@ -355,7 +355,7 @@ struct MarkdownImagesView: View {
                 }
             }
         }
-        .fullScreenCover(item: $zoomed) { ImageZoomView(image: $0) }
+        .fullScreenCover(item: $zoomed) { ImageZoomView(image: $0, images: shown.compactMap(zoom)) }
     }
 
     private func zoom(_ image: MarkdownImage) -> ZoomedImage? {
@@ -403,30 +403,71 @@ struct ZoomedImage: Identifiable, Hashable {
     var id: URL { url }
 }
 
-/// An image over black: pinch to zoom, double tap to fit again.
+/// Swipe between images; each page keeps its own pinch and double-tap zoom.
 struct ImageZoomView: View {
     @Environment(\.dismiss) private var dismiss
+    let images: [ZoomedImage]
+    @State private var index: Int
+
+    init(image: ZoomedImage, images: [ZoomedImage]) {
+        self.images = images.isEmpty ? [image] : images
+        _index = State(initialValue: images.firstIndex(of: image) ?? 0)
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
+            TabView(selection: $index) {
+                ForEach(images.indices, id: \.self) { page in
+                    ZoomableImagePage(image: images[page])
+                        .tag(page)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .accessibilityIdentifier("proof-gallery")
+            GlassIconButton(systemImage: "xmark", label: "Close") { dismiss() }.padding()
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 12) {
+                if !images[index].caption.isEmpty {
+                    Text(images[index].caption)
+                        .font(.system(size: 14))
+                        .multilineTextAlignment(.center)
+                }
+                if images.count > 1 {
+                    HStack(spacing: 24) {
+                        GlassIconButton(systemImage: "chevron.left", label: "Previous image") { index -= 1 }
+                            .disabled(index == 0)
+                        Text("\(index + 1) of \(images.count)")
+                            .monospacedDigit()
+                            .accessibilityIdentifier("proof-gallery-position")
+                        GlassIconButton(systemImage: "chevron.right", label: "Next image") { index += 1 }
+                            .disabled(index == images.count - 1)
+                    }
+                }
+            }
+            .foregroundStyle(.white.opacity(0.8))
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(.black)
+        }
+        .environment(\.colorScheme, .dark)
+    }
+}
+
+private struct ZoomableImagePage: View {
     let image: ZoomedImage
     @State private var scale: CGFloat = 1
     @GestureState private var pinch: CGFloat = 1
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Color.black.ignoresSafeArea()
-            RemoteImage(url: image.url, contentMode: .fit)
-                .scaleEffect(scale * pinch)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .gesture(MagnifyGesture().updating($pinch) { value, state, _ in state = value.magnification }
-                    .onEnded { scale = min(max(scale * $0.magnification, 1), 5) })
-                .onTapGesture(count: 2) { withAnimation(.snappy) { scale = scale > 1 ? 1 : 2.5 } }
-            GlassIconButton(systemImage: "xmark", label: "Close") { dismiss() }.padding()
-        }
-        .overlay(alignment: .bottom) {
-            if !image.caption.isEmpty {
-                Text(image.caption).font(.system(size: 14)).foregroundStyle(.white.opacity(0.8)).padding(.bottom, 24)
-            }
-        }
-        .environment(\.colorScheme, .dark)
+        RemoteImage(url: image.url, contentMode: .fit)
+            .scaleEffect(scale * pinch)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+            .gesture(MagnifyGesture().updating($pinch) { value, state, _ in state = value.magnification }
+                .onEnded { scale = min(max(scale * $0.magnification, 1), 5) })
+            .onTapGesture(count: 2) { withAnimation(.snappy) { scale = scale > 1 ? 1 : 2.5 } }
     }
 }
 

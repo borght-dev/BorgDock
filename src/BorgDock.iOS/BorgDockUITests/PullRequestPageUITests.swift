@@ -6,6 +6,34 @@ import XCTest
 /// folder writes the opened states there.
 final class PullRequestPageUITests: XCTestCase {
     @MainActor
+    func testProofGalleryStartsAtTappedImageAndSwipesBothWays() {
+        let app = XCUIApplication()
+        let server = ProcessInfo.processInfo.environment["FIXTURE_URL"] ?? "http://localhost:8801"
+        app.launchArguments = ["-BorgDockServer", server, "-BorgDockToken", "fixture", "-BorgDockRoute", "i1/pr/proof/acme/shop/412"]
+        app.launch()
+        let thumbnail = app.buttons["Totals per line"]
+        XCTAssertTrue(thumbnail.waitForExistence(timeout: 20))
+        thumbnail.tap()
+        let position = app.staticTexts["proof-gallery-position"]
+        XCTAssertTrue(position.waitForExistence(timeout: 5))
+        XCTAssertEqual(position.label, "2 of 3")
+        capture("proof-gallery-middle")
+        app.swipeLeft()
+        XCTAssertTrue(app.staticTexts["Receipt PDF"].waitForExistence(timeout: 5))
+        XCTAssertEqual(position.label, "3 of 3")
+        XCTAssertFalse(app.buttons["Next image"].isEnabled)
+        capture("proof-gallery-last")
+        app.swipeRight()
+        XCTAssertTrue(app.staticTexts["Totals per line"].waitForExistence(timeout: 5))
+        XCTAssertEqual(position.label, "2 of 3")
+        app.buttons["Previous image"].tap()
+        XCTAssertEqual(position.label, "1 of 3")
+        XCTAssertFalse(app.buttons["Previous image"].isEnabled)
+        app.buttons["Close"].tap()
+        XCTAssertTrue(thumbnail.waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testFoldsOpenTheCommentsBringTheReplyBoxAndAChipOpensTheItem() {
         let app = XCUIApplication()
         let server = ProcessInfo.processInfo.environment["FIXTURE_URL"] ?? "http://localhost:8801"
