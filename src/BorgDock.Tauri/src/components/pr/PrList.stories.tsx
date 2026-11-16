@@ -374,3 +374,10 @@ export const KeepUnrelatedFailuresLight: Story = {
   args: { hideFailing: 'except-unrelated' },
   globals: { theme: 'light' },
 };
+
+export const KeepUnrelatedFailuresDisplay: Story = {
+  args: { hideFailing: 'except-unrelated' },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Display' }));
+  },
+};

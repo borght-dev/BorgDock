@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.12.2 — 2026-11-16
+
+### Improvements
+
+- **Keep reviewable PRs in view** — In Display, set Failures to Keep unrelated failures to hide failing PRs while keeping those affected only by known base-branch, infrastructure or flaky failures. Unknown or mixed causes stay hidden, and your choice is remembered between launches. ![The Display menu keeping unrelated CI failures visible](whats-new/4.12.2/pr-failure-filter.png)
+- On iPhone, the PR and work item pages put the details you need together, and Quick Review lets you skip a PR and move on.
+
+### Bug Fixes
+
+- Draft PRs stay out of the iPhone review queue.
+- Swipe between proof images on iPhone without closing the image viewer.
+
 ## 4.12.1 — 2026-11-12
 
 ### Improvements

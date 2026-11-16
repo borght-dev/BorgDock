@@ -4,6 +4,28 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.12.2",
+    "date": "2026-11-16",
+    "summary": "Keep reviewable PRs in view.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "Keep reviewable PRs in view",
+        "description": "In Display, set Failures to Keep unrelated failures to hide failing PRs while keeping those affected only by known base-branch, infrastructure or flaky failures. Unknown or mixed causes stay hidden, and your choice is remembered between launches.",
+        "hero": {
+          "src": "/whats-new/4.12.2/pr-failure-filter.png",
+          "alt": "The Display menu keeping unrelated CI failures visible"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Draft PRs stay out of the iPhone review queue.",
+      "Swipe between proof images on iPhone without closing the image viewer."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.12.1",
     "date": "2026-11-12",
     "summary": "See why CI failed without leaving Quick Review.",
