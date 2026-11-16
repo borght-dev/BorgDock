@@ -125,6 +125,19 @@ describe('pr-store', () => {
       expect(usePrStore.getState().counts().all).toBe(2);
     });
 
+    it('persists and restores the unrelated-failures mode', async () => {
+      usePrStore.getState().setHideFailing('except-unrelated');
+      expect(persistToTauriStore).toHaveBeenCalledWith(
+        'ui-state.json',
+        PR_HIDE_FAILING_STORE_KEY,
+        'except-unrelated',
+      );
+      usePrStore.setState({ hideFailing: false });
+      vi.mocked(readFromTauriStore).mockResolvedValueOnce('except-unrelated');
+      await usePrStore.getState().restoreHideFailing();
+      expect(usePrStore.getState().hideFailing).toBe('except-unrelated');
+    });
+
     it('keeps the current choice when nothing was stored', async () => {
       usePrStore.setState({ hideFailing: true });
       vi.mocked(readFromTauriStore).mockResolvedValueOnce(undefined);

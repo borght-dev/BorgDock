@@ -12,6 +12,7 @@ import {
 } from '@/services/pr-list/display';
 import { hasTerms } from '@/services/pr-list/facets';
 import { YOUR_TURN_GROUP_KEY } from '@/services/pr-list/groups';
+import type { HideFailing } from '@/services/pr-list/model';
 import { buildFacts, inView } from '@/services/pr-list/model';
 import { holdChange, releaseChange, settleChange } from '@/services/pr-list/pending-change';
 import { clearTerms } from '@/services/pr-list/query';
@@ -258,7 +259,7 @@ export function PrList() {
   );
 
   const handleHideFailing = useCallback(
-    (hide: boolean) => {
+    (hide: HideFailing) => {
       settleChange();
       animateChange(
         () => usePrStore.getState().setHideFailing(hide),
@@ -319,7 +320,7 @@ export function PrList() {
           <span className="bd-prl-fchip bd-prl-fchip--state" data-hide-failing-chip="">
             <span className="bd-prl-fchip__body bd-prl-fchip__body--static">
               <EyeOff size={11} strokeWidth={2.25} aria-hidden="true" />
-              Failing hidden
+              {hideFailing === 'except-unrelated' ? 'PR failures hidden' : 'Failing hidden'}
             </span>
             <button
               type="button"

@@ -304,6 +304,39 @@ describe('PrList', () => {
     expect(leavingOf(1)).toEqual([]);
   });
 
+  it('selects the unrelated-failures filter and clears it from its chip', async () => {
+    seed({ prs: overviewPrs(NOW), ciGroups: overviewCiGroups(NOW) });
+    render(<PrList />);
+    fireEvent.click(screen.getByRole('button', { name: 'Display' }));
+    await act(async () =>
+      fireEvent.change(screen.getByRole('combobox', { name: 'Failing checks' }), {
+        target: { value: 'except-unrelated' },
+      }),
+    );
+    expect(usePrStore.getState().hideFailing).toBe('except-unrelated');
+    const expected = readPrListModel();
+    expect(openRowNumbers().sort((a, b) => a - b)).toEqual(
+      expected.rows.map((f) => f.pr.pullRequest.number).sort((a, b) => a - b),
+    );
+    expect(expected.rows.some((f) => f.failing && f.ci?.outside)).toBe(true);
+    expect(expected.rows.some((f) => f.failing && !f.ci?.outside)).toBe(false);
+    expect(screen.getByText('PR failures hidden')).toBeInTheDocument();
+    expect(usePrStore.getState().counts().all).toBe(expected.counts.all);
+    act(() => useCiFailuresStore.setState({ groups: [] }));
+    const withoutEvidence = readPrListModel();
+    expect(withoutEvidence.rows.some((f) => f.failing)).toBe(false);
+    expect(usePrStore.getState().counts().all).toBe(withoutEvidence.counts.all);
+    await click(screen.getByRole('button', { name: 'Show PRs with failing checks again' }));
+    expect(usePrStore.getState().hideFailing).toBe(false);
+  });
+
+  it('disables failure filtering in the Failing view', () => {
+    seed({ filter: 'failing' });
+    render(<PrList />);
+    fireEvent.click(screen.getByRole('button', { name: 'Display' }));
+    expect(screen.getByRole('combobox', { name: 'Failing checks' })).toBeDisabled();
+  });
+
   it('switches to the board from the Display dialog', async () => {
     render(<PrList />);
     fireEvent.click(screen.getByRole('button', { name: 'Display' }));

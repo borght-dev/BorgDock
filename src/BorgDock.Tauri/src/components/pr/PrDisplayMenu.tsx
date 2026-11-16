@@ -24,6 +24,7 @@ import {
   SORT_OPTIONS,
   sortLabelOf,
 } from '@/services/pr-list/display';
+import type { HideFailing } from '@/services/pr-list/model';
 import { usePrStore } from '@/stores/pr-store';
 import { usePrViewStore } from '@/stores/pr-view-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -218,7 +219,7 @@ export function DisplayButton({
 }: {
   display: PrDisplay;
   onChange: DisplayChange;
-  onHideFailing: (hide: boolean) => void;
+  onHideFailing: (hide: HideFailing) => void;
 }) {
   const pop = usePopover();
   const hideFailing = usePrStore((s) => s.hideFailing);
@@ -343,12 +344,27 @@ export function DisplayButton({
               on={display.showEmptyGroups}
               onChange={(showEmptyGroups) => onChange({ showEmptyGroups })}
             />
-            <SwitchRow
-              label="Hide PRs with failing checks"
-              on={hideFailing}
-              disabled={filter === 'failing'}
-              onChange={onHideFailing}
-            />
+            <fieldset className="bd-prl-field" disabled={filter === 'failing'}>
+              <span>Failures</span>
+              <Select
+                ariaLabel="Failing checks"
+                value={String(hideFailing)}
+                options={[
+                  { value: 'false', label: 'Show all' },
+                  { value: 'except-unrelated', label: 'Keep unrelated failures' },
+                  { value: 'true', label: 'Hide all failing' },
+                ]}
+                onChange={(value) =>
+                  onHideFailing(value === 'except-unrelated' ? value : value === 'true')
+                }
+              />
+            </fieldset>
+            {hideFailing === 'except-unrelated' && (
+              <p className="bd-prl-display__hint">
+                Keeps base-branch, infrastructure and flaky failures. Unknown or mixed causes stay
+                hidden.
+              </p>
+            )}
             <SwitchRow
               label="Compact rows"
               on={density === 'compact'}

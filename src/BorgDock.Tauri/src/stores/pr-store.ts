@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { jobIndexOf, prCiLens } from '@/services/ci-failures/lens';
 import { getPRWithChecks } from '@/services/github/pulls';
 import { getClient, getClientForRepo } from '@/services/github/singleton';
 import { syncViewerTeams } from '@/services/github/teams';
@@ -11,7 +12,7 @@ import {
   isReviewing,
   isWaitingOnMe,
 } from '@/services/pr-grouping';
-import type { PrViewKey } from '@/services/pr-list/model';
+import type { HideFailing, PrViewKey } from '@/services/pr-list/model';
 import {
   computePriorityScores,
   type PriorityScore,
@@ -22,6 +23,7 @@ import {
 } from '@/services/priority-scoring';
 import { mergeTeamLists } from '@/services/team-membership';
 import { computeTeamReviewLoad, type ReviewerLoad } from '@/services/team-review-load';
+import { useCiFailuresStore } from '@/stores/ci-failures-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { shareEntities } from '@/utils/structural-sharing';
@@ -117,7 +119,7 @@ interface PrState extends DerivedCache {
    * Leave PRs with a failing check out of the list and its counts, next to
    * any filter but Failing and Closed. Remembered across launches.
    */
-  hideFailing: boolean;
+  hideFailing: HideFailing;
   username: string;
   /** Effective team memberships (manual settings list ∪ auto-detected). */
   teams: string[];
@@ -155,7 +157,7 @@ interface PrState extends DerivedCache {
   setFilter: (filter: PrFilter) => void;
   setSearchQuery: (query: string) => void;
   setRelatedFailure: (filter: RelatedFailureFilter | null) => void;
-  setHideFailing: (hide: boolean) => void;
+  setHideFailing: (hide: HideFailing) => void;
   /** Reads the remembered "Hide failing" choice. */
   restoreHideFailing: () => Promise<void>;
   setUsername: (username: string) => void;
@@ -299,10 +301,19 @@ export const usePrStore = create<PrState>()((set, get) => ({
   counts: () => {
     const state = get();
     const deps = ensureDataCache(state);
-    if (state._cachedCounts) return state._cachedCounts;
+    if (state._cachedCounts && state.hideFailing !== 'except-unrelated') return state._cachedCounts;
     const { username, teams } = deps;
     // Under "Hide failing" every segment counts what it would show; Failing keeps its own count.
-    const prs = state.hideFailing ? deps.prs.filter((pr) => !isFailing(pr)) : deps.prs;
+    const index =
+      state.hideFailing === 'except-unrelated'
+        ? jobIndexOf(useCiFailuresStore.getState().groups)
+        : null;
+    const prs = deps.prs.filter(
+      (pr) =>
+        !state.hideFailing ||
+        !isFailing(pr) ||
+        (index !== null && prCiLens(pr, index)?.outsideCause != null),
+    );
     const counts = {
       all: prs.length,
       mine: prs.filter((pr) => isMyPr(pr, username)).length,
@@ -410,8 +421,14 @@ export const usePrStore = create<PrState>()((set, get) => ({
     );
   },
   restoreHideFailing: async () => {
-    const stored = await readFromTauriStore<boolean>('ui-state.json', PR_HIDE_FAILING_STORE_KEY);
-    if (typeof stored === 'boolean' && stored !== get().hideFailing) {
+    const stored = await readFromTauriStore<HideFailing>(
+      'ui-state.json',
+      PR_HIDE_FAILING_STORE_KEY,
+    );
+    if (
+      (typeof stored === 'boolean' || stored === 'except-unrelated') &&
+      stored !== get().hideFailing
+    ) {
       set({ hideFailing: stored, _cachedCounts: null });
     }
   },

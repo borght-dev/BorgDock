@@ -7,6 +7,7 @@ import type { PrCiFacts, PrFacts } from '@/services/pr-list/facts';
 import {
   buildFacts,
   buildPrListModel,
+  type HideFailing,
   type PrListModel,
   type PrViewKey,
 } from '@/services/pr-list/model';
@@ -92,7 +93,7 @@ export function usePrListModel(now: number = minuteNow()): PrListModel & { facts
 export interface PrListOverrides {
   view?: PrViewKey;
   query?: string;
-  hideFailing?: boolean;
+  hideFailing?: HideFailing;
   display?: PrDisplay;
 }
 
