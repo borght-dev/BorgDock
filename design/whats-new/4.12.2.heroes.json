@@ -1,0 +1,11 @@
+[
+  {
+    "slug": "pr-failure-filter",
+    "storyId": "pr-prlist--keep-unrelated-failures-display",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "delay": 2500
+  }
+]
