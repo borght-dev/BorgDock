@@ -45,8 +45,14 @@ export function inView(f: PrFacts, view: PrViewKey): boolean {
 }
 
 /** "Hide failing" applies to every view but Failing. */
-export function hidesFailing(hideFailing: boolean, view: PrViewKey): boolean {
-  return hideFailing && view !== 'failing';
+export type HideFailing = boolean | 'except-unrelated';
+
+export function hidesFailing(hideFailing: HideFailing, view: PrViewKey): boolean {
+  return !!hideFailing && view !== 'failing';
+}
+
+export function hiddenByFailureFilter(f: PrFacts, mode: HideFailing): boolean {
+  return !!mode && f.failing && (mode === true || !f.ci?.outside);
 }
 
 export interface PrFactsInput {
@@ -82,7 +88,7 @@ export interface PrListInput {
   now: number;
   view: PrViewKey;
   query: string;
-  hideFailing: boolean;
+  hideFailing: HideFailing;
   /** A related CI failure narrows the list to its PRs (`owner/repo#number`). */
   relatedKeys: ReadonlySet<string> | null;
   display: PrDisplay;
@@ -106,7 +112,7 @@ function filterFacts(
   facts: readonly PrFacts[],
   view: PrViewKey,
   parsed: ParsedQuery,
-  hideFailing: boolean,
+  hideFailing: HideFailing,
   ctx: { username: string; now: number },
   relatedKeys: ReadonlySet<string> | null = null,
 ): PrFacts[] {
@@ -114,7 +120,7 @@ function filterFacts(
   return facts.filter(
     (f) =>
       inView(f, view) &&
-      !(hide && f.failing) &&
+      !(hide && hiddenByFailureFilter(f, hideFailing)) &&
       (!relatedKeys || relatedKeys.has(f.key)) &&
       matchesQuery(f, parsed, ctx),
   );
@@ -137,7 +143,7 @@ export function buildPrListModel(input: PrListInput): PrListModel {
     subGroups: input.display.layout !== 'board',
   });
 
-  const visible = input.hideFailing ? input.facts.filter((f) => !f.failing) : input.facts;
+  const visible = input.facts.filter((f) => !hiddenByFailureFilter(f, input.hideFailing));
   const counts = {} as Record<PrViewKey, number>;
   for (const key of ['all', 'needsYou', 'mine', 'ready', 'stale'] as const) {
     counts[key] = visible.filter((f) => inView(f, key)).length;

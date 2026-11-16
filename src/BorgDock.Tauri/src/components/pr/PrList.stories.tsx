@@ -1,3 +1,4 @@
+import type { HideFailing as HideFailingMode } from '@/services/pr-list/model';
 // src/components/pr/PrList.stories.tsx
 //
 // The Pull requests list (design/pr-overview/mockups.html): view tabs,
@@ -44,7 +45,7 @@ interface HarnessProps {
   display?: Partial<PrDisplay>;
   filter?: PrFilter;
   query?: string;
-  hideFailing?: boolean;
+  hideFailing?: HideFailingMode;
   showCiSummary?: boolean;
   savedViews?: SavedPrView[];
   activeViewId?: string | null;
@@ -364,5 +365,12 @@ export const TwoHundred: Story = { args: { fixture: 'many', closedCount: 200 } }
 
 export const ReviewProgress: Story = {
   args: { reviewProgress: true },
+  globals: { theme: 'light' },
+};
+
+export const KeepUnrelatedFailures: Story = { args: { hideFailing: 'except-unrelated' } };
+
+export const KeepUnrelatedFailuresLight: Story = {
+  args: { hideFailing: 'except-unrelated' },
   globals: { theme: 'light' },
 };

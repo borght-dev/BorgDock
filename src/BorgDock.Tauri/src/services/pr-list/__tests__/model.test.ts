@@ -154,6 +154,33 @@ describe('buildPrListModel', () => {
     expect(numbers(model({ view }).rows)).toEqual(rows);
   });
 
+  it('keeps only failures known to be unrelated, including counts and saved views', () => {
+    const facts = FACTS.map((f) =>
+      f.pr.pullRequest.number === 4 ? { ...f, ci: { blocked: 3, outside: true } } : f,
+    );
+    const result = model({
+      facts,
+      hideFailing: 'except-unrelated',
+      savedViews: [{ id: 'red', filter: 'all', query: 'is:failing' }],
+    });
+    expect(numbers(result.rows)).toEqual([2, 3, 4, 5, 6]);
+    expect(result.counts.all).toBe(5);
+    expect(result.counts.failing).toBe(2);
+    expect(result.savedCounts.red).toBe(1);
+    expect(numbers(model({ facts, hideFailing: true }).rows)).toEqual([2, 3, 5, 6]);
+    expect(
+      numbers(model({ facts, hideFailing: 'except-unrelated', view: 'failing' }).rows),
+    ).toEqual([1, 4]);
+    expect(
+      numbers(
+        model({
+          facts: facts.map((f) => ({ ...f, ci: { blocked: 3, outside: false } })),
+          hideFailing: 'except-unrelated',
+        }).rows,
+      ),
+    ).toEqual([2, 3, 5, 6]);
+  });
+
   it('narrows the rows to the query', () => {
     expect(numbers(model({ query: 'repo:api' }).rows)).toEqual([2, 4]);
     expect(numbers(model({ query: 'is:mine grid' }).rows)).toEqual([1]);
