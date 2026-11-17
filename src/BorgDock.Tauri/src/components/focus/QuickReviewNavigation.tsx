@@ -28,6 +28,8 @@ interface Props {
   header?: ReactNode;
   /** Files whose every hunk is noise are drawn muted, with what they hold. */
   noise?: ReadonlyMap<string, FileNoise>;
+  /** What a done file is: `reviewed`, or `read` on a walk-through of my own PR. */
+  doneWord?: 'reviewed' | 'read';
   /** The regression risk's reasons that cite each file, tagged beside it. */
   riskTags?: ReadonlyMap<string, readonly RiskReason[]>;
 }
@@ -69,6 +71,7 @@ export function QuickReviewNavigation({
   header,
   noise,
   riskTags,
+  doneWord = 'reviewed',
 }: Props) {
   const [open, setOpen] = useState(false);
   const reviewed = new Set(doc.reviewed);
@@ -98,8 +101,7 @@ export function QuickReviewNavigation({
       <div className="qr-tree__progress" data-quick-review-progress="">
         <div className="qr-tree__counts">
           <span>
-            <b>{progress.reviewed}</b> of {progress.total}{' '}
-            {unchanged ? 'changed files' : 'reviewed'}
+            <b>{progress.reviewed}</b> of {progress.total} {unchanged ? 'changed files' : doneWord}
           </span>
           <span>{progress.left ? `${progress.left} left` : 'done'}</span>
         </div>
@@ -130,7 +132,7 @@ export function QuickReviewNavigation({
                 <span
                   className="qr-fold__count"
                   data-done={done === group.files.length || undefined}
-                  title={`${done} of ${group.files.length} reviewed`}
+                  title={`${done} of ${group.files.length} ${doneWord}`}
                 >
                   {done}/{group.files.length}
                 </span>
@@ -149,7 +151,7 @@ export function QuickReviewNavigation({
                       type="button"
                       role="checkbox"
                       aria-checked={isDone}
-                      aria-label={`Reviewed: ${name}`}
+                      aria-label={`${doneWord === 'read' ? 'Read' : 'Reviewed'}: ${name}`}
                       className="qr-cb"
                       data-done={isDone || undefined}
                       disabled={!onToggleReviewed}

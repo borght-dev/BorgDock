@@ -3,6 +3,7 @@ import {
   Copy,
   Ellipsis,
   ExternalLink,
+  Footprints,
   GitBranch,
   GitMerge,
   MessageSquareText,
@@ -29,6 +30,8 @@ import type { PrActions } from './usePrActions';
 interface ActionBarProps {
   actions: PrActions;
   onReview: () => void;
+  /** My own PR: Review becomes a walk-through. */
+  own?: boolean;
   /** PullRequest.state — 'open' | 'closed'. Closed PRs hide destructive + draft actions. */
   prState: string;
   /** PullRequest.isDraft. */
@@ -41,7 +44,14 @@ interface ActionBarProps {
  * ActionBar — sticky toolbar below the header on the PR detail panel.
  * Pure presentation; all state + handlers live in usePrActions().
  */
-export function ActionBar({ actions, prState, isDraft, mergeable, onReview }: ActionBarProps) {
+export function ActionBar({
+  actions,
+  prState,
+  isDraft,
+  mergeable,
+  onReview,
+  own = false,
+}: ActionBarProps) {
   const isOpen = prState === 'open';
 
   return (
@@ -63,7 +73,7 @@ export function ActionBar({ actions, prState, isDraft, mergeable, onReview }: Ac
           onClick={actions.isReady ? actions.onMerge : onReview}
           data-action-bar-action={actions.isReady ? 'merge' : 'review'}
         >
-          {actions.isReady ? 'Merge' : 'Review'}
+          {actions.isReady ? 'Merge' : own ? 'Walk through' : 'Review'}
         </Button>
       )}
       {isOpen && (
@@ -193,6 +203,8 @@ export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchAction
   const teams = usePrStore((s) => s.teams);
   const mine = isMyPr(pr, username);
   const canReview = isOpen && !mine;
+  /** My own open PR: Quick Review walks it through without a verdict. */
+  const canWalk = isOpen && mine;
   const suggested: PrActionId | null = isOpen
     ? primaryFor(shapeFromPrWithChecks(pr, mine, isWaitingOnMe(pr, username, teams)))
     : null;
@@ -341,6 +353,17 @@ export function WorkbenchActionBar({ pr, actions, checks = [] }: WorkbenchAction
           data-action-bar-action="review"
         >
           Review
+        </Button>
+      )}
+      {canWalk && (
+        <Button
+          variant="secondary"
+          size="md"
+          leading={<Footprints {...ICON} />}
+          onClick={review}
+          data-action-bar-action="walk"
+        >
+          Walk through
         </Button>
       )}
       {failing && (

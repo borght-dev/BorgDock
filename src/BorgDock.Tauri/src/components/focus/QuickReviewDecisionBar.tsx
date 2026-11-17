@@ -114,6 +114,13 @@ interface Props {
   onApprove: (merging: boolean) => void;
   onRequestChanges: () => void;
   onComment: () => void;
+  /**
+   * My own PR: a walk-through, not a review. GitHub takes no approval or
+   * request for changes from the author, so the bar offers Comment and Done.
+   */
+  own?: boolean;
+  /** Ends the walk-through of my own PR and moves on; nothing is posted. */
+  onDone?: () => void;
 }
 
 /**
@@ -147,8 +154,52 @@ export function QuickReviewDecisionBar({
   onApprove,
   onRequestChanges,
   onComment,
+  own = false,
+  onDone,
 }: Props) {
   const done = ready && progress.left === 0;
+  if (done && own) {
+    return (
+      <div className="qr-foot" data-done="true" data-quick-review-actions="">
+        <span className="qr-foot__stat" data-tone={notice ? 'warning' : 'done'} role="status">
+          {notice || (
+            <>
+              <CircleCheck size={16} strokeWidth={2.25} aria-hidden="true" />
+              All {progress.toReview} files read
+            </>
+          )}
+        </span>
+        <textarea
+          ref={bodyRef}
+          className="qr-foot__comment"
+          rows={1}
+          aria-label="Overall comment"
+          value={body}
+          onChange={(e) => onBodyChange(e.target.value)}
+          placeholder="Overall comment (optional)"
+        />
+        <Drafts drafts={drafts} onJump={onJump} />
+        <Button
+          variant="secondary"
+          size="md"
+          className="qr-decide"
+          aria-keyshortcuts="C"
+          onClick={onComment}
+        >
+          Comment <Key>C</Key>
+        </Button>
+        <Button
+          variant="primary"
+          size="md"
+          className="qr-decide qr-decide--go"
+          aria-keyshortcuts="Enter"
+          onClick={onDone}
+        >
+          Done <Key>Enter</Key>
+        </Button>
+      </div>
+    );
+  }
   if (done) {
     const issue = notice || approveIssue;
     return (
@@ -267,19 +318,25 @@ export function QuickReviewDecisionBar({
         disabled={!ready || !hasFile}
         onClick={onMark}
       >
-        {unit === 'commit' ? 'Mark read' : 'Mark reviewed'} &amp; next <Key>V</Key>
+        {unit === 'commit' || own ? 'Mark read' : 'Mark reviewed'} &amp; next <Key>V</Key>
       </Button>
       <span className="qr-foot__divider" aria-hidden="true" />
-      <Button
-        variant="secondary"
-        size="md"
-        className="qr-foot__approve"
-        aria-disabled="true"
-        title={approveIssue ?? undefined}
-        leading={<Lock size={13} strokeWidth={2.25} aria-hidden="true" />}
-      >
-        Approve · {progress.left} left
-      </Button>
+      {own ? (
+        <Button variant="secondary" size="md" className="qr-foot__done" onClick={onDone}>
+          Done · {progress.left} unread
+        </Button>
+      ) : (
+        <Button
+          variant="secondary"
+          size="md"
+          className="qr-foot__approve"
+          aria-disabled="true"
+          title={approveIssue ?? undefined}
+          leading={<Lock size={13} strokeWidth={2.25} aria-hidden="true" />}
+        >
+          Approve · {progress.left} left
+        </Button>
+      )}
     </div>
   );
 }

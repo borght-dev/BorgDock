@@ -38,8 +38,8 @@ vi.mock('@/services/cache', () => ({
 vi.mock('@/generated/commands', () => ({ commands: { runHeadlessPrompt: vi.fn() } }));
 vi.mock('@/stores/pr-store', () => ({
   usePrStore: Object.assign(
-    (selector: (state: { needsMyReview: () => [] }) => unknown) =>
-      selector({ needsMyReview: () => [] }),
+    (selector: (state: { needsMyReview: () => []; username: string }) => unknown) =>
+      selector({ needsMyReview: () => [], username: '' }),
     { getState: () => ({ refreshPr: vi.fn().mockResolvedValue(null), recordApproval: vi.fn() }) },
   ),
 }));

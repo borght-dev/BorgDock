@@ -23,6 +23,7 @@ const DECISION_LABELS: Record<ReviewDecision, { label: string; tone: PillTone }>
   approved: { label: 'Approved', tone: 'success' },
   commented: { label: 'Commented', tone: 'warning' },
   skipped: { label: 'Skipped', tone: 'ghost' },
+  walked: { label: 'Walked through', tone: 'neutral' },
 };
 
 function checksLabel(pr: PullRequestWithChecks): string {
@@ -51,16 +52,20 @@ export function QuickReviewSummary({
   const approved = reviewed.filter((entry) => entry.decision === 'approved').length;
   const commented = reviewed.filter((entry) => entry.decision === 'commented').length;
   const skipped = reviewed.filter((entry) => entry.decision === 'skipped').length;
-  const reviewedCount = reviewed.length - skipped;
+  const walked = reviewed.filter((entry) => entry.decision === 'walked').length;
+  const reviewedCount = reviewed.length - skipped - walked;
+  const onlyWalks = walked > 0 && reviewedCount === 0;
 
   return (
     <div data-quick-review-summary="" className="space-y-4">
       <div className="text-center">
         <div className="text-lg font-semibold text-[var(--color-text-primary)]">
-          Review complete
+          {onlyWalks ? 'Walk-through complete' : 'Review complete'}
         </div>
         <div className="mt-1 text-xs text-[var(--color-text-tertiary)]">
-          {reviewedCount} PR{reviewedCount !== 1 ? 's' : ''} reviewed
+          {onlyWalks
+            ? `${walked} of your PR${walked !== 1 ? 's' : ''} walked through`
+            : `${reviewedCount} PR${reviewedCount !== 1 ? 's' : ''} reviewed`}
           {activity?.length ? ' this app session' : ''}
         </div>
       </div>
@@ -77,6 +82,12 @@ export function QuickReviewSummary({
           <div className="text-center">
             <div className="text-xl font-bold text-[var(--color-status-yellow)]">{commented}</div>
             <div className="text-[10px] text-[var(--color-text-muted)]">Commented</div>
+          </div>
+        )}
+        {walked > 0 && (
+          <div className="text-center">
+            <div className="text-xl font-bold text-[var(--color-text-primary)]">{walked}</div>
+            <div className="text-[10px] text-[var(--color-text-muted)]">Walked through</div>
           </div>
         )}
         {skipped > 0 && (

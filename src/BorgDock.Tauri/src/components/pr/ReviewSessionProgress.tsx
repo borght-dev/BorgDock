@@ -5,7 +5,10 @@ export function ReviewSessionProgress() {
     (s) => Object.values(s.activity).filter((entry) => entry.decision === 'approved').length,
   );
   const reviewed = useQuickReviewStore(
-    (s) => Object.values(s.activity).filter((entry) => entry.decision !== 'skipped').length,
+    (s) =>
+      Object.values(s.activity).filter(
+        (entry) => entry.decision !== 'skipped' && entry.decision !== 'walked',
+      ).length,
   );
 
   return (

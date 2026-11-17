@@ -8,6 +8,8 @@ interface Props {
   comments: ReactNode;
   submitIssue: string | null;
   update: (updater: (doc: ReviewDocument) => ReviewDocument) => void;
+  /** My own PR: the drafts post as a comment, never a verdict. */
+  own?: boolean;
 }
 
 /**
@@ -22,34 +24,41 @@ export function QuickReviewFinish({
   comments,
   submitIssue,
   update,
+  own = false,
 }: Props) {
   return (
     <div className="qr-compose">
-      <h3>Your review</h3>
+      <h3>{own ? 'Your comment' : 'Your review'}</h3>
       <p className="qr-finish-progress">
         {progress.left === 0
-          ? `All ${progress.toReview} files reviewed.`
-          : `${progress.left} of ${progress.toReview} files still to review.`}
+          ? `All ${progress.toReview} files ${own ? 'read' : 'reviewed'}.`
+          : `${progress.left} of ${progress.toReview} files still to ${own ? 'read' : 'review'}.`}
       </p>
       {doc.comments.length === 0 ? <p className="qr-muted">No inline comments.</p> : comments}
-      <ReviewDecisionPicker
-        decision={
-          doc.event === 'APPROVE'
-            ? 'approve'
-            : doc.event === 'REQUEST_CHANGES'
-              ? 'request'
-              : 'comment'
-        }
-        onChange={(value) =>
-          update((d) => ({
-            ...d,
-            event:
-              value === 'approve' ? 'APPROVE' : value === 'request' ? 'REQUEST_CHANGES' : 'COMMENT',
-          }))
-        }
-      />
+      {!own && (
+        <ReviewDecisionPicker
+          decision={
+            doc.event === 'APPROVE'
+              ? 'approve'
+              : doc.event === 'REQUEST_CHANGES'
+                ? 'request'
+                : 'comment'
+          }
+          onChange={(value) =>
+            update((d) => ({
+              ...d,
+              event:
+                value === 'approve'
+                  ? 'APPROVE'
+                  : value === 'request'
+                    ? 'REQUEST_CHANGES'
+                    : 'COMMENT',
+            }))
+          }
+        />
+      )}
       <label>
-        Overall comment{doc.event === 'REQUEST_CHANGES' ? ' (required)' : ''}
+        Overall comment{!own && doc.event === 'REQUEST_CHANGES' ? ' (required)' : ''}
         <textarea
           value={doc.body}
           onChange={(e) => update((d) => ({ ...d, body: e.target.value }))}
@@ -61,7 +70,11 @@ export function QuickReviewFinish({
           {submitIssue}
         </p>
       )}
-      <p className="qr-muted">Your drafts will be posted together as one GitHub review.</p>
+      <p className="qr-muted">
+        {own
+          ? 'Your drafts post together as one comment on your PR.'
+          : 'Your drafts will be posted together as one GitHub review.'}
+      </p>
     </div>
   );
 }

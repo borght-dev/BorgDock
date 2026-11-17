@@ -157,6 +157,16 @@ describe('WorkbenchActionBar', () => {
     expect(button('merge')).toHaveClass('bd-btn--primary');
   });
 
+  it('offers Walk through, not Review, on my own open PR, and opens Quick Review for it', () => {
+    const mine = makePr({ authorLogin: 'Koen', reviewStatus: 'none' });
+    render(<WorkbenchActionBar pr={mine} actions={actions()} />);
+    expect(button('review')).toBeNull();
+    expect(button('walk')).toHaveTextContent('Walk through');
+    fireEvent.click(button('walk'));
+    expect(useQuickReviewStore.getState().currentPr()).toBe(mine);
+    act(() => useQuickReviewStore.getState().endSession());
+  });
+
   it('fills while merging, flips to "Merged", then rests', async () => {
     vi.useFakeTimers();
     const request = deferred<boolean>();

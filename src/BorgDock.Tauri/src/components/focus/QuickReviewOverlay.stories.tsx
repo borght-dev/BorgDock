@@ -724,6 +724,42 @@ export const AllFilesReviewed: Story = {
   },
 };
 
+/** Walking through one of my own PRs: the planboard PR, with me as its author. */
+function startOwnWalkThrough() {
+  resetReviewDisplayPreferences();
+  localStorage.setItem('borgdock-quick-review-context-open', 'false');
+  const before = usePrStore.getState().username;
+  usePrStore.setState({ username: planboard.pullRequest.authorLogin });
+  useQuickReviewStore.setState({ documents: {} });
+  useQuickReviewStore.getState().startSinglePr(planboard);
+  return () => {
+    usePrStore.setState({ username: before });
+  };
+}
+
+/** My own PR on the card: Walk through files and Done, no Approve. */
+export const OwnPrWalkThrough: Story = {
+  decorators: [planboardDecorator],
+  beforeEach: startOwnWalkThrough,
+};
+
+/** Every file of my own PR read: the footer offers Comment and Done. */
+export const OwnPrAllFilesRead: Story = {
+  decorators: [planboardDecorator],
+  beforeEach: startOwnWalkThrough,
+  play: async ({ canvasElement }) => {
+    await seedPlanboard(
+      PLANBOARD_FILES.map((file) => file.filename),
+      LAST_TEST,
+    );
+    const canvas = within(canvasElement);
+    const button = await canvas.findByRole('button', { name: 'Read files again' });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+    await canvas.findByText(/All \d+ files read/);
+  },
+};
+
 /** The timesheets PR of frame C, reviewed before at TIMESHEET_REVIEWED. */
 const timesheets = {
   ...makePr({
