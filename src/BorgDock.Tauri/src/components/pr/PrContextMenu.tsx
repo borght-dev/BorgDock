@@ -9,7 +9,13 @@ import {
   dependencyUpdateOf,
 } from '@/services/dependency-updates';
 import { sendOsNotification } from '@/services/notification';
-import { checkoutPrBranch, mergePr, openPrInBrowser, rerunChecks } from '@/services/pr-actions';
+import {
+  checkoutPrBranch,
+  mergePr,
+  openPrInBrowser,
+  rerunChecks,
+  reviewPr,
+} from '@/services/pr-actions';
 import { findRepoConfig } from '@/services/repo-lookup';
 import { requestT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
@@ -160,6 +166,10 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
     await startAuthorRun(pr);
   });
 
+  const handleWalkThrough = handleAction(async () => {
+    reviewPr(pr);
+  });
+
   const handleOpenInGitHub = handleAction(async () => {
     await openPrInBrowser(pullRequest.htmlUrl);
   });
@@ -288,11 +298,19 @@ export function PrContextMenu({ pr, position, onClose, onConfirmAction }: PrCont
           <Separator />
         </>
       )}
-      <MenuItem
-        label={`Review ${pullRequest.authorLogin}'s PRs, oldest first`}
-        onClick={handleAuthorRun}
-        disabled={isMine || pullRequest.isDraft}
-      />
+      {isMine ? (
+        <MenuItem
+          label="Walk through this PR"
+          onClick={handleWalkThrough}
+          disabled={pullRequest.state !== 'open'}
+        />
+      ) : (
+        <MenuItem
+          label={`Review ${pullRequest.authorLogin}'s PRs, oldest first`}
+          onClick={handleAuthorRun}
+          disabled={pullRequest.isDraft}
+        />
+      )}
       <Separator />
       <MenuItem label="Open in GitHub" onClick={handleOpenInGitHub} />
       <MenuItem label={popOutLabel} onClick={handleOpenInDetailWindow} />

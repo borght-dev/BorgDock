@@ -10,7 +10,8 @@ import {
 import type { PullRequestWithChecks } from '@/types';
 import { reviewDraftStorage } from '@/utils/review-draft-storage';
 
-export type ReviewDecision = 'approved' | 'commented' | 'skipped';
+/** `walked`: one of my own PRs read through; nothing goes to GitHub. */
+export type ReviewDecision = 'approved' | 'commented' | 'skipped' | 'walked';
 export type QuickReviewState = 'idle' | 'reviewing' | 'submitting' | 'error' | 'complete';
 
 export interface ReviewActivity {

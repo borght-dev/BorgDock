@@ -5,7 +5,14 @@ export function ReviewSessionProgress() {
     (s) => Object.values(s.activity).filter((entry) => entry.decision === 'approved').length,
   );
   const reviewed = useQuickReviewStore(
-    (s) => Object.values(s.activity).filter((entry) => entry.decision !== 'skipped').length,
+    (s) =>
+      Object.values(s.activity).filter(
+        (entry) => entry.decision !== 'skipped' && entry.decision !== 'walked',
+      ).length,
+  );
+
+  const walked = useQuickReviewStore(
+    (s) => Object.values(s.activity).filter((entry) => entry.decision === 'walked').length,
   );
 
   return (
@@ -13,6 +20,7 @@ export function ReviewSessionProgress() {
       <span>This app session</span>
       <span className="bd-review-progress__approved">{approved} approved</span>
       <span>{reviewed} reviewed</span>
+      {walked > 0 && <span>{walked} walked through</span>}
     </div>
   );
 }

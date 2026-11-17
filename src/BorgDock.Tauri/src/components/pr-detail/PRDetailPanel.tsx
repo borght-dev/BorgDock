@@ -23,10 +23,12 @@ import { createLogger } from '@/services/logger';
 import { computeMergeScore } from '@/services/merge-score';
 import { popView } from '@/services/navigation';
 import { rememberCaptureContext } from '@/services/notes/capture';
+import { isMyPr } from '@/services/pr-grouping';
 import { guardT3Launch, openT3Thread } from '@/services/t3-thread';
 import { openPrDetail } from '@/services/windows';
 import { refKey } from '@/services/workstreams/identity';
 import { usePrDetailJumpStore } from '@/stores/pr-detail-jump-store';
+import { usePrStore } from '@/stores/pr-store';
 import { type PrDetailTab, useUiStore } from '@/stores/ui-store';
 import type { CheckRun, PullRequestWithChecks } from '@/types';
 import { ActionBar } from './ActionBar';
@@ -245,6 +247,7 @@ export function PrDetailPanel({
   }, [jumpTarget, activeTab]);
 
   const reviewActive = useQuickReviewStore((s) => s.state !== 'idle');
+  const username = usePrStore((s) => s.username);
   const p = pr.pullRequest;
 
   // The PR on screen is what a quick note (Ctrl+F8) refers to.
@@ -476,6 +479,7 @@ export function PrDetailPanel({
       {!embedded && (
         <ActionBar
           onReview={() => useQuickReviewStore.getState().startSinglePr(pr)}
+          own={isMyPr(pr, username)}
           actions={actions}
           prState={p.state}
           isDraft={p.isDraft}

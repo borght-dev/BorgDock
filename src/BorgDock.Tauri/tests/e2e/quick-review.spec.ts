@@ -15,6 +15,8 @@ const pr = {
   ...(SAMPLE_PRS[0] as PullRequestWithChecks),
   pullRequest: {
     ...(SAMPLE_PRS[0] as PullRequestWithChecks).pullRequest,
+    // Someone else's PR: on your own, Quick Review is a walk-through without Approve.
+    authorLogin: 'author',
     changedFiles: paths.length,
   },
 };

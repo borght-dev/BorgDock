@@ -1177,3 +1177,71 @@ describe('Quick review walk (v2)', () => {
     await waitFor(() => expect(submitReview).toHaveBeenCalledTimes(1));
   });
 });
+
+describe('Walking through my own PR', () => {
+  /** One of my PRs (the store's user is `reviewer`), alone in the deck. */
+  async function startOwn() {
+    pr = makePr({ authorLogin: 'Reviewer', changedFiles: files.length });
+    vi.mocked(getPRReviewDetails).mockResolvedValue({ pr: pr.pullRequest, baseSha: 'base' });
+    useQuickReviewStore.getState().startSinglePr(pr);
+    render(<QuickReviewOverlay />);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Walk through files' })).toBeEnabled(),
+    );
+  }
+  function readEverythingInWalk() {
+    fireEvent.click(screen.getByRole('button', { name: 'Walk through files' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip generated' }));
+    for (let i = 0; i < 3; i++) press('v');
+  }
+
+  it('offers the same walk without a verdict: no Approve, no Request changes', async () => {
+    await startOwn();
+    expect(screen.getByRole('heading', { name: 'Walk-through' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Write comment' })).toBeInTheDocument();
+    readEverythingInWalk();
+    expect(screen.getByText('All 3 files read')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Request changes/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Approve/ })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Done' }));
+  });
+
+  it('Done ends the walk-through without posting anything to GitHub', async () => {
+    await startOwn();
+    readEverythingInWalk();
+    press('Enter');
+    expect(useQuickReviewStore.getState().state).toBe('complete');
+    expect(useQuickReviewStore.getState().decisions.get(prRowKey(pr.pullRequest))).toBe('walked');
+    expect(screen.getByText('Walk-through complete')).toBeInTheDocument();
+    expect(submitReview).not.toHaveBeenCalled();
+    expect(useToastStore.getState().toasts).toHaveLength(0);
+  });
+
+  it('can end the walk-through before every file is read', async () => {
+    await startOwn();
+    press('ArrowRight');
+    expect(useQuickReviewStore.getState().decisions.get(prRowKey(pr.pullRequest))).toBe('walked');
+    expect(submitReview).not.toHaveBeenCalled();
+  });
+
+  it('posts notes to self as a comment, never an approval', async () => {
+    await startOwn();
+    readEverythingInWalk();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Overall comment' }), {
+      target: { value: 'Remember the migration.' },
+    });
+    press('c');
+    await waitFor(() =>
+      expect(submitReview).toHaveBeenCalledWith(
+        expect.anything(),
+        'owner',
+        'repo',
+        pr.pullRequest.number,
+        'COMMENT',
+        'Remember the migration.',
+        { commit_id: pr.pullRequest.headSha, comments: [] },
+      ),
+    );
+  });
+});

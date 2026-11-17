@@ -45,6 +45,7 @@ import { useE2eStore } from '@/services/e2e/load';
 import { isImagePath } from '@/services/github/images';
 import { postComment } from '@/services/github/mutations';
 import { getClientForRepo } from '@/services/github/singleton';
+import { isMyPr } from '@/services/pr-grouping';
 import type { ApprovalMerge } from '@/services/pr-review';
 import {
   isGeneratedPath,
@@ -363,6 +364,7 @@ export function QuickReviewOverlay() {
 
   const current = queue[index];
   const complete = state === 'complete';
+  const walkingOwn = !complete && !!current && isMyPr(current, username);
   const reviewedKeys = new Set([
     ...Object.keys(activity),
     ...handledInRun.current,
@@ -449,7 +451,7 @@ export function QuickReviewOverlay() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Quick Review"
+          aria-label={walkingOwn ? 'Walk-through' : 'Quick Review'}
           tabIndex={-1}
           data-overlay="quick-review"
           className="qr-dialog"
@@ -457,7 +459,7 @@ export function QuickReviewOverlay() {
           data-fullscreen={fullscreen}
         >
           <div className="qr-titlebar">
-            <h2 className="qr-heading">Quick review</h2>
+            <h2 className="qr-heading">{walkingOwn ? 'Walk-through' : 'Quick review'}</h2>
             {run && (
               <span className="qr-run" title={`${run.author}'s open PRs, oldest first`}>
                 <UserRound size={13} strokeWidth={2.25} aria-hidden="true" />
@@ -502,7 +504,7 @@ export function QuickReviewOverlay() {
                 trailing={<ChevronRight size={14} aria-hidden="true" />}
                 onClick={() => useQuickReviewStore.getState().advance('skipped')}
               >
-                Review later
+                {walkingOwn ? 'Later' : 'Review later'}
               </Button>
             )}
             <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
@@ -698,6 +700,8 @@ function QuickReviewWorkspace({
   const walkPhase = usePresence(mode === 'walk', motionMs('--motion-push', 260));
 
   const detail = snapshot?.pr ?? pr.pullRequest;
+  /** My own PR: walked through like a review, but never approved or blocked. */
+  const own = usePrStore((s) => isMyPr(pr, s.username));
   const fit = useRunFit(pr);
   const mergeOffer = mergeOfferFor(fit, !!detail.autoMergeEnabled);
   const client = getClientForRepo(detail.repoOwner, detail.repoName);
@@ -829,7 +833,9 @@ function QuickReviewWorkspace({
     if (detail.state.toLowerCase() !== 'open') return 'This PR is no longer open.';
     return null;
   }
-  const submitIssue = issueFor(doc.event);
+  /** On my own PR the composer only comments: GitHub refuses the author's verdict. */
+  const composedEvent: ReviewEvent = own ? 'COMMENT' : doc.event;
+  const submitIssue = issueFor(composedEvent);
   /**
    * Why Approve is not possible yet, in a few words for the line under the
    * card's actions. The same checks as `issueFor('APPROVE')`, and the one
@@ -1119,8 +1125,17 @@ function QuickReviewWorkspace({
     if (busy) return;
     useQuickReviewStore.getState().advance('skipped');
   }
+  /** Ends the walk-through of my own PR: nothing goes to GitHub. */
+  function finishWalk() {
+    if (busy) return;
+    useQuickReviewStore.getState().advance('walked');
+  }
   function submitComposed() {
     if (busy || submitIssue) return;
+    if (own) {
+      void submit('COMMENT');
+      return;
+    }
     if (doc.event === 'APPROVE') {
       const send = prepare();
       if (send) holdApproval(pr, send, null);
@@ -1166,29 +1181,40 @@ function QuickReviewWorkspace({
           '4': () => openContext('comments'),
           z: undoHeldApproval,
           ...(changed ? { s: () => chooseScope(scope === 'since' ? 'all' : 'since') } : {}),
-          ...(allReviewed
-            ? {
-                a: () => approve(false),
-                Enter: () => approve(),
-                r: () => decide('REQUEST_CHANGES'),
-                c: () => decide('COMMENT'),
-              }
-            : {}),
+          ...(allReviewed && own
+            ? { Enter: finishWalk, c: () => decide('COMMENT') }
+            : allReviewed
+              ? {
+                  a: () => approve(false),
+                  Enter: () => approve(),
+                  r: () => decide('REQUEST_CHANGES'),
+                  c: () => decide('COMMENT'),
+                }
+              : {}),
           Escape: toCard,
         }
       : mode === 'compose'
         ? { Escape: toCard }
-        : {
-            ArrowRight: () => approve(),
-            ArrowLeft: later,
-            // Once Approve can go it is the card's next step, so Enter takes
-            // it, as in the walk's decision bar.
-            Enter: approveIssue ? openWalk : () => approve(),
-            a: () => approve(),
-            w: () => setMode('compose'),
-            z: undoHeldApproval,
-            Escape: onClose,
-          };
+        : own
+          ? {
+              ArrowRight: finishWalk,
+              ArrowLeft: later,
+              // Enter opens the files until every one is read, then ends the walk-through.
+              Enter: allReviewed ? finishWalk : openWalk,
+              w: () => setMode('compose'),
+              Escape: onClose,
+            }
+          : {
+              ArrowRight: () => approve(),
+              ArrowLeft: later,
+              // Once Approve can go it is the card's next step, so Enter takes
+              // it, as in the walk's decision bar.
+              Enter: approveIssue ? openWalk : () => approve(),
+              a: () => approve(),
+              w: () => setMode('compose'),
+              z: undoHeldApproval,
+              Escape: onClose,
+            };
   useQuickReviewKeyboard(keymap);
 
   function changeComment(id: string, change: Partial<ReviewCommentDraft>) {
@@ -1272,13 +1298,21 @@ function QuickReviewWorkspace({
     </div>
   ) : null;
 
-  const filesLabel = !doc.walked
-    ? 'Review files'
-    : progress.left > 0
-      ? `Continue reviewing · ${progress.left} left`
-      : 'Review files again';
-  const submitLabel =
-    doc.event === 'APPROVE'
+  const filesLabel = own
+    ? !doc.walked
+      ? 'Walk through files'
+      : progress.left > 0
+        ? `Continue · ${progress.left} unread`
+        : 'Read files again'
+    : !doc.walked
+      ? 'Review files'
+      : progress.left > 0
+        ? `Continue reviewing · ${progress.left} left`
+        : 'Review files again';
+  const filesFirst = own ? !allReviewed : !!approveIssue;
+  const submitLabel = own
+    ? 'Post comment'
+    : doc.event === 'APPROVE'
       ? 'Submit approval'
       : doc.event === 'REQUEST_CHANGES'
         ? 'Request changes'
@@ -1307,10 +1341,10 @@ function QuickReviewWorkspace({
     ) : (
       <>
         <Button
-          variant={approveIssue ? 'primary' : 'secondary'}
+          variant={filesFirst ? 'primary' : 'secondary'}
           size="lg"
           className="qr-files-btn"
-          aria-keyshortcuts={approveIssue ? 'Enter' : undefined}
+          aria-keyshortcuts={filesFirst ? 'Enter' : undefined}
           disabled={!ready || files.length === 0}
           onClick={openWalk}
         >
@@ -1323,7 +1357,8 @@ function QuickReviewWorkspace({
           aria-keyshortcuts="W"
           onClick={() => setMode('compose')}
         >
-          Write review{doc.comments.length ? ` · ${doc.comments.length}` : ''}
+          {own ? 'Write comment' : 'Write review'}
+          {doc.comments.length ? ` · ${doc.comments.length}` : ''}
         </Button>
         <Button
           variant="ghost"
@@ -1332,27 +1367,39 @@ function QuickReviewWorkspace({
           aria-keyshortcuts="ArrowLeft"
           onClick={later}
         >
-          Review later
+          {own ? 'Later' : 'Review later'}
         </Button>
-        <div className="qr-approval-actions" role="group" aria-label="Approval actions">
-          <ApproveButton
-            issue={approveIssue}
-            busy={busy}
-            onApprove={() => approve(false)}
-            shortcut={!mergeOffer}
-            reasonId={approveReasonId}
-          />
-          {mergeOffer && (
+        {own ? (
+          <Button
+            variant={allReviewed ? 'primary' : 'secondary'}
+            size="lg"
+            className="qr-done"
+            aria-keyshortcuts={allReviewed ? 'Enter ArrowRight' : 'ArrowRight'}
+            onClick={finishWalk}
+          >
+            Done
+          </Button>
+        ) : (
+          <div className="qr-approval-actions" role="group" aria-label="Approval actions">
             <ApproveButton
               issue={approveIssue}
               busy={busy}
-              onApprove={() => approve(true)}
-              label={mergeOffer.label}
-              hint={mergeOffer.hint}
+              onApprove={() => approve(false)}
+              shortcut={!mergeOffer}
               reasonId={approveReasonId}
             />
-          )}
-        </div>
+            {mergeOffer && (
+              <ApproveButton
+                issue={approveIssue}
+                busy={busy}
+                onApprove={() => approve(true)}
+                label={mergeOffer.label}
+                hint={mergeOffer.hint}
+                reasonId={approveReasonId}
+              />
+            )}
+          </div>
+        )}
       </>
     );
 
@@ -1369,42 +1416,60 @@ function QuickReviewWorkspace({
    */
   const inlineDrafts = !splitDiff && !sinceFile;
   const autoMergeLabel = mergeOffer ? mergeOffer.label.toLowerCase() : 'approve';
-  const walkShortcuts: Array<readonly [string, string]> = allReviewed
-    ? [
-        ['Enter', autoMergeLabel],
-        ...(mergeOffer ? [['A', 'approve'] as const] : []),
-        ['R', 'request changes'],
-        ['C', 'comment'],
-        ['N/P', commitsView ? 'commit' : 'file'],
-        ['Esc', 'overview'],
-      ]
-    : [
-        ...(wrapLines || richDiffVisible ? [] : [['H/L', 'scroll horizontally'] as const]),
-        ['J/K', 'scroll'],
-        ['N/P', commitsView ? 'commit' : 'file'],
-        ['V', commitsView ? 'read & next' : 'mark & next'],
-        ['O', 'reading order'],
-        ['D', 'description'],
-        [']', 'context panel'],
-        ['1–4', 'panel tab'],
-        ...(richDiffVisible ? [] : [['W', 'wrap lines'] as const]),
-        ...(changed ? [['S', 'since my review / all'] as const] : []),
-        ['Esc', 'overview'],
-      ];
+  const walkShortcuts: Array<readonly [string, string]> =
+    allReviewed && own
+      ? [
+          ['Enter', 'done'],
+          ['C', 'comment'],
+          ['N/P', commitsView ? 'commit' : 'file'],
+          ['Esc', 'overview'],
+        ]
+      : allReviewed
+        ? [
+            ['Enter', autoMergeLabel],
+            ...(mergeOffer ? [['A', 'approve'] as const] : []),
+            ['R', 'request changes'],
+            ['C', 'comment'],
+            ['N/P', commitsView ? 'commit' : 'file'],
+            ['Esc', 'overview'],
+          ]
+        : [
+            ...(wrapLines || richDiffVisible ? [] : [['H/L', 'scroll horizontally'] as const]),
+            ['J/K', 'scroll'],
+            ['N/P', commitsView ? 'commit' : 'file'],
+            ['V', commitsView || own ? 'read & next' : 'mark & next'],
+            ['O', 'reading order'],
+            ['D', 'description'],
+            [']', 'context panel'],
+            ['1–4', 'panel tab'],
+            ...(richDiffVisible ? [] : [['W', 'wrap lines'] as const]),
+            ...(changed ? [['S', 'since my review / all'] as const] : []),
+            ['Esc', 'overview'],
+          ];
   const shortcuts: Array<readonly [string, string]> = [
     ...(walking
       ? walkShortcuts
       : mode === 'compose'
         ? [['Esc', 'back to the card'] as const]
-        : [
-            // While Approve is blocked its keys do nothing, so they are not offered.
-            approveIssue
-              ? (['Enter', 'review files'] as const)
-              : (['Enter/A/→', autoMergeLabel] as const),
-            ['W', 'write review'] as const,
-            ['←', 'review later'] as const,
-            ['Esc', 'close'] as const,
-          ]),
+        : own
+          ? [
+              allReviewed
+                ? (['Enter/→', 'done'] as const)
+                : (['Enter', 'walk through files'] as const),
+              ...(allReviewed ? [] : [['→', 'done'] as const]),
+              ['W', 'write comment'] as const,
+              ['←', 'later'] as const,
+              ['Esc', 'close'] as const,
+            ]
+          : [
+              // While Approve is blocked its keys do nothing, so they are not offered.
+              approveIssue
+                ? (['Enter', 'review files'] as const)
+                : (['Enter/A/→', autoMergeLabel] as const),
+              ['W', 'write review'] as const,
+              ['←', 'review later'] as const,
+              ['Esc', 'close'] as const,
+            ]),
     ...(heldApproval ? [['Z', 'undo approval'] as const] : []),
   ];
 
@@ -1415,7 +1480,7 @@ function QuickReviewWorkspace({
         proofs={proofs}
         conversation={conversation}
         since={since}
-        onAskForProof={client ? (commit) => void askForProof(commit) : undefined}
+        onAskForProof={client && !own ? (commit) => void askForProof(commit) : undefined}
       />
     ),
     checks: <ChecksTab pr={pr} detail={detail} />,
@@ -1520,6 +1585,7 @@ function QuickReviewWorkspace({
               body={
                 mode === 'compose' ? (
                   <QuickReviewFinish
+                    own={own}
                     document={doc}
                     progress={progress}
                     comments={doc.comments.map(commentView)}
@@ -1530,7 +1596,7 @@ function QuickReviewWorkspace({
               }
               actions={cardActions}
               actionsNote={
-                mode === 'card' && approveIssue ? (
+                mode === 'card' && approveIssue && !own ? (
                   <p id={approveReasonId} className="qr-act-note">
                     {approveIssue}
                   </p>
@@ -1633,6 +1699,7 @@ function QuickReviewWorkspace({
                 currentPath={prFile?.filename ?? null}
                 onNavigate={go}
                 onToggleReviewed={toggleReviewed}
+                doneWord={own ? 'read' : 'reviewed'}
                 progress={walkProgress}
                 riskTags={riskTags}
                 changed={changed ?? undefined}
@@ -1748,12 +1815,16 @@ function QuickReviewWorkspace({
                       disabled={!ready}
                     />
                     {reviewed.has(prFile.filename)
-                      ? 'Reviewed'
+                      ? own
+                        ? 'Read'
+                        : 'Reviewed'
                       : generatedFile
                         ? 'Generated, skippable'
                         : fileNoise?.mechanical
-                          ? `${fileNoise.label}, mark reviewed`
-                          : 'Mark reviewed'}
+                          ? `${fileNoise.label}, mark ${own ? 'read' : 'reviewed'}`
+                          : own
+                            ? 'Mark read'
+                            : 'Mark reviewed'}
                   </label>
                 )}
               </div>
@@ -1873,8 +1944,14 @@ function QuickReviewWorkspace({
                           <CircleCheck size={16} strokeWidth={2.25} aria-hidden="true" />
                           {fileIndex === walkFiles.length - 1
                             ? 'That was the last file.'
-                            : 'Every file is reviewed.'}{' '}
-                          <span className="qr-muted">Add an overall comment and decide below.</span>
+                            : own
+                              ? 'Every file is read.'
+                              : 'Every file is reviewed.'}{' '}
+                          <span className="qr-muted">
+                            {own
+                              ? 'Leave a comment if you like, then press Done.'
+                              : 'Add an overall comment and decide below.'}
+                          </span>
                         </p>
                       ) : (
                         <p className="qr-notice qr-muted">
@@ -1932,6 +2009,8 @@ function QuickReviewWorkspace({
               onApprove={(merging) => approve(merging)}
               onRequestChanges={() => decide('REQUEST_CHANGES')}
               onComment={() => decide('COMMENT')}
+              own={own}
+              onDone={finishWalk}
             />
           </section>
         )}
