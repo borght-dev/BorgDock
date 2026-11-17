@@ -96,6 +96,15 @@
   .bd-note-frontmatter-fence {
     color: var(--color-text-muted);
   }
+  .bd-note-function { color: var(--color-syntax-function); }
+  .bd-note-property { color: var(--color-syntax-property); }
+  .bd-note-constant { color: var(--color-syntax-constant); }
+  .bd-note-keyword { color: var(--color-syntax-keyword); }
+  .bd-note-string { color: var(--color-syntax-string); }
+  .bd-note-number { color: var(--color-syntax-number); }
+  .bd-note-operator { color: var(--color-syntax-operator); }
+  .bd-note-type { color: var(--color-syntax-type); }
+
   .bd-note-codeblock {
     font-family: var(--font-code);
     font-size: 0.86em;
@@ -187,6 +196,44 @@
     display: inline-block;
     vertical-align: baseline;
     cursor: pointer;
+  }
+  .bd-note-table-preview {
+    margin: 12px 24px;
+    overflow-x: auto;
+    cursor: text;
+  }
+  .bd-note-table-preview table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+  }
+  .bd-note-table-preview :is(th, td) {
+    padding: 8px 12px;
+    border: 1px solid var(--color-subtle-border);
+    vertical-align: top;
+  }
+  .bd-note-table-preview th {
+    background: var(--color-surface-raised);
+    font-weight: 650;
+  }
+  .bd-note-table-preview code {
+    font-family: var(--font-code);
+    background: var(--bd-note-code-bg);
+    border-radius: var(--radius-sm);
+    padding: 1px 4px;
+  }
+  .bd-note-image-preview img,
+  .bd-note-table-preview img {
+    max-width: 100%;
+    max-height: 360px;
+    object-fit: contain;
+    vertical-align: middle;
+    border-radius: var(--radius-md);
+    cursor: text;
+  }
+  .bd-note-image-error {
+    color: var(--color-text-muted);
+    font-style: italic;
   }
   /* A BorgDock block marker (`<!-- borgdock:since … -->`) on a preview line. */
   .bd-note-marker {

@@ -6,7 +6,9 @@
  * plugin turns its answer into decorations for the visible part of the note.
  */
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { syntaxTree } from '@codemirror/language';
+import { sql } from '@codemirror/lang-sql';
+import { LanguageDescription, syntaxTree } from '@codemirror/language';
+import { languages } from '@codemirror/language-data';
 import { type ChangeSpec, type Extension, type Range, StateEffect, Text } from '@codemirror/state';
 import {
   type Command,
@@ -21,6 +23,7 @@ import type { SyntaxNodeRef } from '@lezer/common';
 import { tags } from '@lezer/highlight';
 import type { BlockContext, MarkdownConfig, Line as MarkdownLine } from '@lezer/markdown';
 import { isRefToken, type RefToken, scanLine } from '@/services/notes/parse';
+import { renderedMarkdown } from './rendered-markdown';
 
 export interface Span {
   from: number;
@@ -104,6 +107,10 @@ const noteLanguage = markdown({
   base: markdownLanguage,
   extensions: [frontmatterSyntax],
   completeHTMLTags: false,
+  codeLanguages: [
+    ...languages,
+    LanguageDescription.of({ name: 'T-SQL', alias: ['tsql', 'mssql'], support: sql() }),
+  ],
 });
 
 /** Markdown (GFM) with frontmatter, Enter continuing lists and Backspace removing markup. */
@@ -882,6 +889,7 @@ function onMouseDown(event: MouseEvent, view: EditorView, handlers: LivePreviewH
  */
 export function livePreview(handlers: LivePreviewHandlers): Extension {
   return [
+    renderedMarkdown(),
     ViewPlugin.define((view) => new LivePreview(view, handlers), {
       decorations: (plugin) => plugin.decorations,
     }),

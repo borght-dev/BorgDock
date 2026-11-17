@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.14.0 — 2026-11-17
+
+### Improvements
+
+- **Quick notes that save while you write** — Open quick notes with Ctrl+F8 and write freely. Your text saves automatically to today's note, and Enter starts a new line. Headings, lists, code, tables and image links render as you write, with syntax colours for TypeScript, SQL and other languages. Click a table or image to edit its Markdown, or choose New note for another capture. ![Quick notes with live Markdown, a rendered table, TypeScript highlighting and an embedded image](whats-new/4.14.0/quick-notes.png)
+
 ## 4.13.0 — 2026-11-17
 
 ### New Features

@@ -2,34 +2,19 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Kbd } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
 import { useNotesVault } from '@/hooks/useNotesVault';
 import { showNote } from '@/services/navigation';
-import {
-  type CaptureContext,
-  captureContext,
-  captureLines,
-  contextRef,
-  withCapture,
-} from '@/services/notes/capture';
-import { ensureDailyNote } from '@/services/notes/daily';
-import { useNotesStore } from '@/stores/notes-store';
+import { type CaptureContext, captureContext, contextRef } from '@/services/notes/capture';
+import { createCaptureSession } from '@/services/notes/capture-session';
+import { AUTOSAVE_MS, useNotesStore } from '@/stores/notes-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { AppSettings } from '@/types/settings';
 import { revealWindow } from '@/utils/window-reveal';
-
-/** Append `text` to today's note under `## Captured`; the note's path. */
-export async function captureToToday(text: string, context: CaptureContext | null) {
-  const path = await ensureDailyNote();
-  const lines = captureLines(text, new Date(), context);
-  const written = await useNotesStore
-    .getState()
-    .update(path, (current) => (current === null ? null : withCapture(current, lines)));
-  if (!written) throw new Error("Today's note could not be written.");
-  return path;
-}
+import { NoteEditor } from './editor/NoteEditor';
+import { completionSources, openNoteUrl, renderChip } from './editor-support';
 
 /**
  * The window has its own stores and stays alive while hidden: it reads the
@@ -54,12 +39,7 @@ function hide() {
     .catch(() => {});
 }
 
-/**
- * NoteCaptureApp — the quick note window (Ctrl+F8 from anywhere). What you
- * type lands in today's note under "Captured", with a reference to the pull
- * request or work item you last had open. Enter saves, Shift+Enter starts a
- * new line, Esc closes.
- */
+/** Ctrl+F8 capture with live Markdown and autosave. Enter inserts a line. */
 export function NoteCaptureApp() {
   useNotesVault();
   const status = useNotesStore((s) => s.status);
@@ -68,12 +48,44 @@ export function NoteCaptureApp() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
+  const session = useRef<ReturnType<typeof createCaptureSession> | null>(null);
+  const draft = useRef({ text, context });
+  const revision = useRef(0);
+
+  const save = useCallback(async (snapshot?: { text: string; context: CaptureContext | null }) => {
+    const current = snapshot ?? draft.current;
+    const version = revision.current;
+    if (!session.current) session.current = createCaptureSession();
+    setSaving(true);
+    setError(null);
+    try {
+      const path = await session.current(current.text, current.context);
+      if (version === revision.current) setSaved(path);
+      return true;
+    } catch (e) {
+      setError(String(e instanceof Error ? e.message : e));
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  const close = useCallback(async () => {
+    const version = revision.current;
+    if ((await save()) && version === revision.current) hide();
+  }, [save]);
+
+  useEffect(() => {
+    if (status !== 'ready') return;
+    const timer = window.setTimeout(() => void save({ text, context }), AUTOSAVE_MS);
+    return () => window.clearTimeout(timer);
+  }, [text, context, status, save]);
 
   useEffect(() => {
     if (!useSettingsStore.getState().hasLoaded) readSettings();
     const raf = requestAnimationFrame(() => {
-      inputRef.current?.focus();
+      inputRef.current?.querySelector<HTMLElement>('.cm-content')?.focus();
       void revealWindow();
     });
     return () => cancelAnimationFrame(raf);
@@ -81,13 +93,11 @@ export function NoteCaptureApp() {
 
   useEffect(() => {
     const unlisten = listen('palette-shown', () => {
-      setText('');
-      setSaved(null);
-      setError(null);
-      setContext(captureContext());
       readSettings();
       void useNotesStore.getState().refresh();
-      requestAnimationFrame(() => inputRef.current?.focus());
+      requestAnimationFrame(() =>
+        inputRef.current?.querySelector<HTMLElement>('.cm-content')?.focus(),
+      );
     });
     return () => {
       unlisten.then((fn) => fn()).catch(() => {});
@@ -98,50 +108,38 @@ export function NoteCaptureApp() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        hide();
+        void close();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
-
-  const save = async () => {
-    if (!text.trim() || saving) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const path = await captureToToday(text, context);
-      setSaved(path);
-      setText('');
-      window.setTimeout(hide, 700);
-    } catch (e) {
-      setError(String(e instanceof Error ? e.message : e));
-    } finally {
-      setSaving(false);
-    }
-  };
+  }, [close]);
 
   return (
     <div
       className="bd-notes-capture"
       data-app-ready={status === 'ready' || status === 'error' ? 'true' : undefined}
     >
-      <WindowTitleBar title="Quick note" meta={<Kbd>Ctrl+F8</Kbd>} onClose={hide} />
-      <textarea
-        ref={inputRef}
-        className="bd-notes-capture__input"
-        aria-label="Quick note"
-        placeholder="What's on your mind? It goes into today's note."
-        value={text}
-        disabled={status === 'loading' || status === 'idle'}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            void save();
-          }
-        }}
-      />
+      <WindowTitleBar title="Quick note" meta={<Kbd>Ctrl+F8</Kbd>} onClose={() => void close()} />
+      <div ref={inputRef} className="bd-notes-capture__input">
+        <NoteEditor
+          path="quick-capture"
+          text={text}
+          ariaLabel="Quick note"
+          autoFocus
+          readOnly={status !== 'ready'}
+          onChange={(next) => {
+            draft.current = { text: next, context };
+            revision.current++;
+            setSaved(null);
+            setText(next);
+          }}
+          renderChip={renderChip}
+          onOpenLink={(target) => void showNote(`${target}.md`)}
+          onOpenUrl={openNoteUrl}
+          completions={completionSources(() => 'Quick note')}
+        />
+      </div>
       <footer className="bd-notes-capture__foot">
         <span className="bd-notes-capture__to">→ Today's note</span>
         {context && (
@@ -150,14 +148,26 @@ export function NoteCaptureApp() {
             <button
               type="button"
               aria-label="Don't link this capture"
-              onClick={() => setContext(null)}
+              onClick={() => {
+                draft.current = { text, context: null };
+                revision.current++;
+                setSaved(null);
+                setContext(null);
+              }}
             >
               <X size={11} />
             </button>
           </span>
         )}
         <span className="bd-notes-capture__status" role="status">
-          {error ?? (saved ? 'Saved.' : status === 'loading' ? 'Opening your notes…' : '')}
+          {error ??
+            (saving
+              ? 'Saving...'
+              : saved
+                ? 'Saved.'
+                : status === 'loading'
+                  ? 'Opening your notes…'
+                  : '')}
         </span>
         {saved ? (
           <Button
@@ -165,16 +175,34 @@ export function NoteCaptureApp() {
             size="sm"
             onClick={() => {
               void showNote(saved);
-              hide();
+              void close();
             }}
           >
             Open note
           </Button>
         ) : (
           <span className="bd-notes-capture__hint">
-            Enter saves · Shift+Enter new line · Esc closes
+            Saves automatically · Enter new line · Esc closes
           </span>
         )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={async () => {
+            const version = revision.current;
+            if (!(await save()) || version !== revision.current) return;
+            session.current = null;
+            const nextContext = captureContext();
+            draft.current = { text: '', context: nextContext };
+            revision.current++;
+            setText('');
+            setContext(nextContext);
+            setSaved(null);
+            inputRef.current?.querySelector<HTMLElement>('.cm-content')?.focus();
+          }}
+        >
+          New note
+        </Button>
       </footer>
     </div>
   );
