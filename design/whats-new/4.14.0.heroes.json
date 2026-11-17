@@ -1,0 +1,11 @@
+[
+  {
+    "slug": "quick-notes",
+    "storyId": "notes-release--live-markdown",
+    "viewport": {
+      "width": 1000,
+      "height": 660
+    },
+    "delay": 1200
+  }
+]

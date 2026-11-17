@@ -129,3 +129,50 @@ describe('NoteEditor', () => {
     expect(content).toHaveAttribute('contenteditable', 'true');
   });
 });
+
+describe('rendered Markdown blocks', () => {
+  it('renders GFM tables and reference images without changing the document', async () => {
+    const text =
+      '| Name | Value |\n| --- | ---: |\n| **Total** | 3 |\n\n![Diagram][diagram]\n\n[diagram]: https://example.com/diagram.png\n';
+    const { container, props, view, unmount } = setup({ text, readOnly: true });
+    await waitFor(() => expect(container.querySelector('table strong')).toHaveTextContent('Total'));
+    await waitFor(() =>
+      expect(container.querySelector('.bd-note-image-preview img')).toHaveAttribute(
+        'src',
+        'https://example.com/diagram.png',
+      ),
+    );
+    expect(container.querySelector('.bd-note-image-preview img')).toHaveAttribute('alt', 'Diagram');
+    expect(view.state.doc.toString()).toBe(text);
+    expect(props.onChange).not.toHaveBeenCalled();
+    await act(async () => unmount());
+  });
+
+  it('keeps table and image examples inside code as source', () => {
+    const { container } = setup({
+      text: '```md\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n![Example](https://example.com/image.png)\n```',
+    });
+    expect(container.querySelector('table, img')).toBeNull();
+  });
+
+  it('does not turn unsafe image URLs into loaded images', async () => {
+    const { container, unmount } = setup({
+      text: '![Blocked](javascript:alert%281%29)',
+      readOnly: true,
+    });
+    await waitFor(() =>
+      expect(container.querySelector('.bd-note-image-error')).toHaveTextContent('Blocked'),
+    );
+    expect(container.querySelector('.bd-note-image-preview img')).toBeNull();
+    await act(async () => unmount());
+  });
+});
+
+it('renders a table inside a blockquote with its alignment and inline markup', async () => {
+  const text = '> | Feature | State |\n> | --- | ---: |\n> | **Tables** | Ready |\n';
+  const { container, view, unmount } = setup({ text, readOnly: true });
+  await waitFor(() => expect(container.querySelector('table strong')).toHaveTextContent('Tables'));
+  expect(container.querySelectorAll('tr')).toHaveLength(2);
+  expect(view.state.doc.toString()).toBe(text);
+  await act(async () => unmount());
+});

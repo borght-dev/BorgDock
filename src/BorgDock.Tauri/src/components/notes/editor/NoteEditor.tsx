@@ -51,6 +51,15 @@ export interface NoteEditorProps {
 
 // Classes, not inline colours: notes-editor.css styles them from the tokens.
 const noteHighlighting = HighlightStyle.define([
+  { tag: tags.function(tags.variableName), class: 'bd-note-function' },
+  { tag: tags.propertyName, class: 'bd-note-property' },
+  { tag: tags.bool, class: 'bd-note-constant' },
+  { tag: tags.null, class: 'bd-note-constant' },
+  { tag: tags.keyword, class: 'bd-note-keyword' },
+  { tag: tags.string, class: 'bd-note-string' },
+  { tag: tags.number, class: 'bd-note-number' },
+  { tag: tags.operator, class: 'bd-note-operator' },
+  { tag: tags.typeName, class: 'bd-note-type' },
   { tag: tags.heading1, class: 'bd-note-h1' },
   { tag: tags.heading2, class: 'bd-note-h2' },
   { tag: tags.heading3, class: 'bd-note-h3' },
