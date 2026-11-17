@@ -4,6 +4,25 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.13.0",
+    "date": "2026-11-17",
+    "summary": "Walk through your own pull requests.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "Walk through your own pull requests",
+        "description": "Quick Review now works on your own PRs too, as a walk-through instead of a review. Choose Walk through in the PR's detail bar or its right-click menu (or press R on Focus) and you get the same guide, risk check, file tree and diff, with each file marked read as you go. Press Done when you've seen enough (nothing is posted to GitHub), or leave notes on lines and post them as a comment.",
+        "hero": {
+          "src": "/whats-new/4.13.0/own-pr-walk-through.png",
+          "alt": "Walking through your own pull request in Quick Review"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.12.2",
     "date": "2026-11-16",
     "summary": "Keep reviewable PRs in view.",

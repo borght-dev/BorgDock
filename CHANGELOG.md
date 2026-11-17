@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.13.0 — 2026-11-17
+
+### New Features
+
+- **Walk through your own pull requests** — Quick Review now works on your own PRs too, as a walk-through instead of a review. Choose Walk through in the PR's detail bar or its right-click menu (or press R on Focus) and you get the same guide, risk check, file tree and diff, with each file marked read as you go. Press Done when you've seen enough (nothing is posted to GitHub), or leave notes on lines and post them as a comment. ![Walking through your own pull request in Quick Review](whats-new/4.13.0/own-pr-walk-through.png)
+
 ## 4.12.2 — 2026-11-16
 
 ### Improvements
