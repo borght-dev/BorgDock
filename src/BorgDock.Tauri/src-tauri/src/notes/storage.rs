@@ -29,6 +29,13 @@ pub struct NoteFile {
     pub size: f64,
 }
 
+#[derive(Debug, Default, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
+pub struct NoteListing {
+    pub notes: Vec<NoteFile>,
+    pub folders: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -64,21 +71,27 @@ fn is_note(path: &Path) -> bool {
 /// hidden parts (`.obsidian/`, `.trash/`) and anything but a `.md` file, so
 /// a note path can never reach outside the vault.
 pub fn resolve(dir: &Path, path: &str) -> Result<PathBuf, String> {
-    let relative = Path::new(path);
-    if path.trim().is_empty() || !is_note(relative) {
+    if !is_note(Path::new(path)) {
         return Err(format!("Not a note: {path}"));
     }
+    resolve_relative(dir, path)
+}
+
+fn resolve_relative(dir: &Path, path: &str) -> Result<PathBuf, String> {
+    if path.trim().is_empty() {
+        return Err(format!("Invalid vault path: {path}"));
+    }
     let mut resolved = dir.to_path_buf();
-    for component in relative.components() {
+    for component in Path::new(path).components() {
         match component {
             Component::Normal(part) => {
                 let part = part.to_string_lossy();
                 if part.starts_with('.') || part.trim().is_empty() {
-                    return Err(format!("Not a note: {path}"));
+                    return Err(format!("Invalid vault path: {path}"));
                 }
                 resolved.push(part.as_ref());
             }
-            _ => return Err(format!("Not a note: {path}")),
+            _ => return Err(format!("Invalid vault path: {path}")),
         }
     }
     Ok(resolved)
@@ -93,14 +106,15 @@ fn relative_of(dir: &Path, file: &Path) -> Option<String> {
     Some(parts.join("/"))
 }
 
-/// Every note in the vault, skipping hidden folders and files.
-pub fn list(dir: &Path) -> Result<Vec<NoteFile>, String> {
+/// Notes and folders in the vault, skipping hidden entries.
+pub fn list(dir: &Path) -> Result<NoteListing, String> {
     if !dir.exists() {
-        return Ok(Vec::new());
+        return Ok(NoteListing::default());
     }
     let mut notes = Vec::new();
+    let mut folders = Vec::new();
     let mut pending = vec![dir.to_path_buf()];
-    while let Some(folder) = pending.pop() {
+    'walk: while let Some(folder) = pending.pop() {
         let Ok(entries) = fs::read_dir(&folder) else {
             continue;
         };
@@ -113,6 +127,9 @@ pub fn list(dir: &Path) -> Result<Vec<NoteFile>, String> {
             };
             let path = entry.path();
             if file_type.is_dir() {
+                if let Some(relative) = relative_of(dir, &path) {
+                    folders.push(relative);
+                }
                 pending.push(path);
             } else if file_type.is_file() && is_note(&path) {
                 let Ok(metadata) = entry.metadata() else {
@@ -126,14 +143,15 @@ pub fn list(dir: &Path) -> Result<Vec<NoteFile>, String> {
                     modified_ms: metadata.modified().map(millis).unwrap_or(0.0),
                     size: metadata.len() as f64,
                 });
-                if notes.len() >= LIST_LIMIT {
-                    break;
-                }
+            }
+            if notes.len() + folders.len() >= LIST_LIMIT {
+                break 'walk;
             }
         }
     }
     notes.sort_by(|a, b| a.path.cmp(&b.path));
-    Ok(notes)
+    folders.sort();
+    Ok(NoteListing { notes, folders })
 }
 
 /// The text of each note; a note that can't be read comes back as `None`.
@@ -236,6 +254,70 @@ pub fn trash(dir: &Path, path: &str) -> Result<(), String> {
     fs::rename(&source, &target).map_err(|e| e.to_string())
 }
 
+pub fn trash_folder(dir: &Path, path: &str) -> Result<(), String> {
+    let source = resolve_relative(dir, path)?;
+    let _guard = WRITE_LOCK.lock().map_err(|e| e.to_string())?;
+    let vault = dir.canonicalize().map_err(|e| e.to_string())?;
+    let canonical = match source.canonicalize() {
+        Ok(path) => path,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.to_string()),
+    };
+    if canonical != resolve_relative(&vault, path)? || !canonical.is_dir() {
+        return Err(format!("Not a vault folder: {path}"));
+    }
+    let trash = vault.join(TRASH_DIR);
+    fs::create_dir_all(&trash).map_err(|e| e.to_string())?;
+    if trash.canonicalize().map_err(|e| e.to_string())? != trash {
+        return Err("The vault trash must be a local folder.".into());
+    }
+    let name = canonical.file_name().ok_or("Missing folder name.")?;
+    let mut target_name = trash.join(name);
+    let mut suffix = 2;
+    while target_name.symlink_metadata().is_ok() {
+        target_name = trash.join(format!("{} {suffix}", name.to_string_lossy()));
+        suffix += 1;
+    }
+    fs::rename(canonical, target_name).map_err(|e| e.to_string())
+}
+
+pub fn save_folder(dir: &Path, path: &str, from: Option<&str>) -> Result<(), String> {
+    let _guard = WRITE_LOCK.lock().map_err(|e| e.to_string())?;
+    resolve_relative(dir, path)?;
+    if from.is_none() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    let vault = dir.canonicalize().map_err(|e| e.to_string())?;
+    let target = resolve_relative(&vault, path)?;
+    let parent = target.parent().ok_or("Missing parent folder.")?;
+    if parent.canonicalize().map_err(|e| e.to_string())? != parent {
+        return Err("Choose a folder inside the vault.".into());
+    }
+    let Some(from) = from else {
+        return fs::create_dir(target).map_err(|e| e.to_string());
+    };
+    let source = resolve_relative(&vault, from)?;
+    if source.parent() != Some(parent)
+        || source.canonicalize().map_err(|e| e.to_string())? != source
+        || !source.is_dir()
+    {
+        return Err("Choose a vault folder and rename it in place.".into());
+    }
+    if source == target {
+        return Ok(());
+    }
+    if let Ok(existing) = target.symlink_metadata() {
+        let case_only = cfg!(windows)
+            && existing.is_dir()
+            && from.to_lowercase() == path.to_lowercase()
+            && target.canonicalize().ok().as_ref() == Some(&source);
+        if !case_only {
+            return Err(format!("{path} already exists."));
+        }
+    }
+    fs::rename(source, target).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -247,6 +329,38 @@ mod tests {
     }
 
     #[test]
+    fn trashes_a_subfolder_with_attachments_without_overwriting_trash() {
+        let dir = tempfile::tempdir().unwrap();
+        note(dir.path(), ".trash/Archive/Old.md", "old");
+        note(dir.path(), "Projects/Archive/Diagram.png", "attachment");
+        trash_folder(dir.path(), "Projects/Archive").unwrap();
+        assert!(!dir.path().join("Projects/Archive").exists());
+        assert_eq!(
+            fs::read_to_string(dir.path().join(".trash/Archive 2/Diagram.png")).unwrap(),
+            "attachment"
+        );
+        assert!(dir.path().join(".trash/Archive/Old.md").exists());
+        assert!(trash_folder(dir.path(), "../outside").is_err());
+    }
+
+    #[test]
+    fn creates_nested_folders_and_renames_without_overwriting() {
+        let dir = tempfile::tempdir().unwrap();
+        save_folder(dir.path(), "Ideas", None).unwrap();
+        save_folder(dir.path(), "Ideas/Drafts", None).unwrap();
+        note(dir.path(), "Ideas/Drafts/Example.png", "attachment");
+        assert!(save_folder(dir.path(), "Ideas/Drafts", None).is_err());
+        assert!(save_folder(dir.path(), "Ideas", Some("Ideas/Drafts")).is_err());
+        save_folder(dir.path(), "Ideas/Archive", Some("Ideas/Drafts")).unwrap();
+        assert_eq!(
+            fs::read_to_string(dir.path().join("Ideas/Archive/Example.png")).unwrap(),
+            "attachment"
+        );
+        assert!(!dir.path().join("Ideas/Drafts").exists());
+        assert!(save_folder(dir.path(), "../outside", None).is_err());
+    }
+
+    #[test]
     fn lists_notes_in_folders_and_skips_hidden_ones() {
         let dir = tempfile::tempdir().unwrap();
         note(dir.path(), "Inbox.md", "a");
@@ -254,14 +368,18 @@ mod tests {
         note(dir.path(), ".obsidian/workspace.md", "c");
         note(dir.path(), "Projects/.tmp-123.md", "d");
         note(dir.path(), "Projects/diagram.png", "e");
-        let paths: Vec<String> = list(dir.path()).unwrap().into_iter().map(|n| n.path).collect();
+        std::fs::create_dir(dir.path().join("Archive")).unwrap();
+        let listing = list(dir.path()).unwrap();
+        assert_eq!(listing.folders, vec!["Archive", "Daily", "Projects"]);
+        let paths: Vec<String> = listing.notes.into_iter().map(|n| n.path).collect();
         assert_eq!(paths, vec!["Daily/2026-10-28.md", "Inbox.md"]);
     }
 
     #[test]
     fn a_missing_vault_lists_nothing() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(list(&dir.path().join("gone")).unwrap().is_empty());
+        let listing = list(&dir.path().join("gone")).unwrap();
+        assert!(listing.notes.is_empty() && listing.folders.is_empty());
     }
 
     #[test]

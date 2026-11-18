@@ -1,7 +1,7 @@
 //! Tauri commands for the notes vault. Every one is async and does its file
 //! I/O on a blocking thread, never inline on the GUI thread.
 
-use super::storage::{self, NoteContent, NoteFile, NoteWriteOutcome};
+use super::storage::{self, NoteContent, NoteListing, NoteWriteOutcome};
 use std::path::PathBuf;
 
 /// The sync folder keeps notes in a folder of their own, next to
@@ -34,7 +34,7 @@ pub async fn notes_folder_path(folder: Option<String>) -> Result<String, String>
 
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
-pub async fn notes_list(folder: Option<String>) -> Result<Vec<NoteFile>, String> {
+pub async fn notes_list(folder: Option<String>) -> Result<NoteListing, String> {
     blocking(move || storage::list(&folder_of(folder))).await
 }
 
@@ -67,6 +67,28 @@ pub async fn notes_rename(folder: Option<String>, from: String, to: String) -> R
 
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
-pub async fn notes_trash(folder: Option<String>, path: String) -> Result<(), String> {
-    blocking(move || storage::trash(&folder_of(folder), &path)).await
+pub async fn notes_save_folder(
+    folder: Option<String>,
+    path: String,
+    from: Option<String>,
+) -> Result<(), String> {
+    blocking(move || storage::save_folder(&folder_of(folder), &path, from.as_deref())).await
+}
+
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn notes_trash(
+    folder: Option<String>,
+    path: String,
+    is_folder: Option<bool>,
+) -> Result<(), String> {
+    blocking(move || {
+        let vault = folder_of(folder);
+        if is_folder == Some(true) {
+            storage::trash_folder(&vault, &path)
+        } else {
+            storage::trash(&vault, &path)
+        }
+    })
+    .await
 }

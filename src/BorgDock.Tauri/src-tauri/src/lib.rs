@@ -274,6 +274,7 @@ macro_rules! app_commands {
             notes::commands::notes_read_many,
             notes::commands::notes_write,
             notes::commands::notes_rename,
+            notes::commands::notes_save_folder,
             notes::commands::notes_trash,
             workstreams::commands::workstreams_folder_path,
             workstreams::commands::workstreams_list,

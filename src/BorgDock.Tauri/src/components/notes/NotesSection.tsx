@@ -1,10 +1,11 @@
-import { CalendarDays, Plus, Search } from 'lucide-react';
+import { CalendarDays, FolderPlus, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button, Kbd, Seg2 } from '@/components/shared/primitives';
 import { ensureDailyNote } from '@/services/notes/daily';
-import { folderOf } from '@/services/notes/paths';
+import { DAILY_FOLDER, folderOf, OBSIDIAN_DAILY_FOLDER } from '@/services/notes/paths';
 import { type NotesView, useNotesStore } from '@/stores/notes-store';
 import { toastError } from '@/stores/toast-store';
+import { FolderNameDialog } from './FolderNameDialog';
 import { MentionsPane } from './MentionsPane';
 import { NotePane } from './NotePane';
 import { NoteTree } from './NoteTree';
@@ -16,7 +17,7 @@ const VIEWS = [
   { value: 'tasks', label: 'Tasks' },
 ] as const;
 
-/** Open today's daily note, making it (with yesterday's activity) the first time. */
+/** Open today's daily note, making it the first time. */
 export async function openToday() {
   try {
     const path = await ensureDailyNote();
@@ -30,7 +31,8 @@ async function newNote() {
   const store = useNotesStore.getState();
   const folder = store.openPath ? folderOf(store.openPath) : '';
   try {
-    store.open(await store.createNote('Untitled', folder === 'Daily' ? '' : folder));
+    const isDailyFolder = folder === DAILY_FOLDER || folder === OBSIDIAN_DAILY_FOLDER;
+    store.open(await store.createNote('Untitled', isDailyFolder ? '' : folder));
   } catch (error) {
     toastError('Note not created', error);
   }
@@ -68,9 +70,12 @@ export function NotesSection() {
   const view = useNotesStore((s) => s.view);
   const openPath = useNotesStore((s) => s.openPath);
   const vaultPath = useNotesStore((s) => s.vaultPath);
-  const noteCount = useNotesStore((s) => Object.keys(s.texts).length);
+  const hasVaultEntries = useNotesStore(
+    (s) => s.folders.length > 0 || Object.keys(s.texts).length > 0,
+  );
   const tasks = useNotesStore((s) => s.index.tasks);
   const [switcher, setSwitcher] = useState<SwitcherMode | null>(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -116,6 +121,9 @@ export function NotesSection() {
         >
           <Plus size={13} aria-hidden="true" /> New note
         </Button>
+        <Button variant="ghost" size="sm" onClick={() => setCreatingFolder(true)}>
+          <FolderPlus size={13} aria-hidden="true" /> New folder
+        </Button>
         <button
           type="button"
           className="bd-wb-head__search bd-notes-head__search"
@@ -147,7 +155,7 @@ export function NotesSection() {
           </Button>
         </div>
       )}
-      {status === 'ready' && noteCount === 0 ? (
+      {status === 'ready' && !hasVaultEntries ? (
         <EmptyVault vaultPath={vaultPath} />
       ) : (
         <div className="bd-notes__body">
@@ -170,6 +178,7 @@ export function NotesSection() {
         </div>
       )}
       {switcher && <QuickSwitcher initialMode={switcher} onClose={() => setSwitcher(null)} />}
+      {creatingFolder && <FolderNameDialog onClose={() => setCreatingFolder(false)} />}
     </div>
   );
 }

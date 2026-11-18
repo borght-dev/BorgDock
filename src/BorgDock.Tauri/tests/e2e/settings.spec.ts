@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { bootApp, expectInvoked } from './helpers/test-utils';
+import { getInvokeLog } from './helpers/mock-tauri';
 
 /**
  * Settings window. Default section is 'github' (see SettingsApp readInitialSection).
@@ -34,4 +35,17 @@ test('theme toggle calls save_settings', async ({ page }) => {
   // saveSettings is debounced 300ms in SettingsApp — wait for it.
   await page.waitForTimeout(500);
   await expectInvoked(page, 'save_settings');
+});
+
+test('Notes settings saves the daily note folder', async ({ page }) => {
+  await bootApp(page, 'settings.html', 'happy-path', {
+    notes_list: { notes: [], folders: ['00 - Home', '02 - Daily'] },
+  });
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  const folder = page.getByRole('combobox', { name: 'Daily note folder' });
+  await folder.selectOption('02 - Daily');
+  await expect.poll(async () => (await getInvokeLog(page)).find(
+    ({ cmd, args }) => cmd === 'save_settings' && JSON.stringify(args).includes('"dailyNoteFolder":"02 - Daily"'),
+  )).toBeTruthy();
+  await page.screenshot({ path: 'test-results/daily-note-folder.png' });
 });

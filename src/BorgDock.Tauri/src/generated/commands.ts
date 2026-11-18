@@ -392,12 +392,13 @@ export const commands = {
 	setTaskbarBadge: (count: number) => typedError<null, string>(__TAURI_INVOKE("set_taskbar_badge", { count })),
 	/**  The vault folder for `folder` (the sync folder, or none). */
 	notesFolderPath: (folder: string | null) => typedError<string, string>(__TAURI_INVOKE("notes_folder_path", { folder })),
-	notesList: (folder: string | null) => typedError<NoteFile[], string>(__TAURI_INVOKE("notes_list", { folder })),
+	notesList: (folder: string | null) => typedError<NoteListing, string>(__TAURI_INVOKE("notes_list", { folder })),
 	notesReadMany: (folder: string | null, paths: string[]) => typedError<NoteContent_Serialize[], string>(__TAURI_INVOKE("notes_read_many", { folder, paths })),
 	/**  Write a note over `base`, the text last read; `None` creates it. */
 	notesWrite: (folder: string | null, path: string, contents: string, base: string | null) => typedError<NoteWriteOutcome_Serialize, string>(__TAURI_INVOKE("notes_write", { folder, path, contents, base })),
 	notesRename: (folder: string | null, from: string, to: string) => typedError<null, string>(__TAURI_INVOKE("notes_rename", { folder, from, to })),
-	notesTrash: (folder: string | null, path: string) => typedError<null, string>(__TAURI_INVOKE("notes_trash", { folder, path })),
+	notesSaveFolder: (folder: string | null, path: string, from: string | null) => typedError<null, string>(__TAURI_INVOKE("notes_save_folder", { folder, path, from })),
+	notesTrash: (folder: string | null, path: string, isFolder: boolean | null) => typedError<null, string>(__TAURI_INVOKE("notes_trash", { folder, path, isFolder })),
 	/**  The folder workstreams are kept in for `folder` (the sync folder, or none). */
 	workstreamsFolderPath: (folder: string | null) => typedError<string, string>(__TAURI_INVOKE("workstreams_folder_path", { folder })),
 	workstreamsList: (folder: string | null) => typedError<WorkstreamFile[], string>(__TAURI_INVOKE("workstreams_list", { folder })),
@@ -1182,6 +1183,7 @@ export type AppSettings_Deserialize = {
 	ciFailures?: CiFailureSettings_Deserialize,
 	repoPriority?: { [key in string]: string },
 	workstreams?: WorkstreamSettings_Deserialize | null,
+	dailyNoteFolder?: string | null,
 };
 
 export type AppSettings_Serialize = {
@@ -1206,6 +1208,7 @@ export type AppSettings_Serialize = {
 	ciFailures: CiFailureSettings_Serialize,
 	repoPriority: { [key in string]: string },
 	workstreams?: WorkstreamSettings_Serialize,
+	dailyNoteFolder?: string,
 };
 
 export type AzureDevOpsSettings = AzureDevOpsSettings_Serialize | AzureDevOpsSettings_Deserialize;
@@ -2330,6 +2333,11 @@ export type NoteFile = {
 	path: string,
 	modifiedMs: number | null,
 	size: number | null,
+};
+
+export type NoteListing = {
+	notes: NoteFile[],
+	folders: string[],
 };
 
 export type NoteWriteOutcome = NoteWriteOutcome_Serialize | NoteWriteOutcome_Deserialize;

@@ -1,4 +1,4 @@
-import { Bot, FolderOpen, Trash2 } from 'lucide-react';
+import { Bot, FolderOpen, FolderOutput, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { IconButton } from '@/components/shared/primitives';
 import { commands } from '@/generated/commands';
@@ -10,7 +10,9 @@ import { toastError } from '@/stores/toast-store';
 import { ConflictBanner } from './ConflictBanner';
 import { NoteEditor } from './editor/NoteEditor';
 import { completionSources, openNoteUrl, renderChip } from './editor-support';
+import { MoveNoteDialog } from './MoveNoteDialog';
 import { NoteThreadSheet } from './NoteThreadSheet';
+import { NoteTrashDialog } from './NoteTrashDialog';
 
 /** Open the note a `[[link]]` names, making it first when it doesn't exist. */
 async function followLink(target: string) {
@@ -70,6 +72,7 @@ export function NotePane({ path }: { path: string }) {
   const vaultPath = useNotesStore((s) => s.vaultPath);
   const [threadText, setThreadText] = useState<string | null>(null);
   const [confirmTrash, setConfirmTrash] = useState(false);
+  const [moving, setMoving] = useState(false);
 
   if (text === undefined) {
     return (
@@ -108,22 +111,20 @@ export function NotePane({ path }: { path: string }) {
           }
         />
         <IconButton
+          icon={<FolderOutput size={14} />}
+          tooltip="Move note"
+          aria-label="Move note"
+          onClick={() => setMoving(true)}
+        />
+        <IconButton
           icon={<Trash2 size={14} />}
-          tooltip={confirmTrash ? 'Click again to move it to the trash' : 'Move to trash'}
-          aria-label={confirmTrash ? 'Confirm: move this note to the trash' : 'Move to trash'}
-          active={confirmTrash}
-          onClick={() => {
-            if (!confirmTrash) {
-              setConfirmTrash(true);
-              return;
-            }
-            void useNotesStore
-              .getState()
-              .trash(path)
-              .catch((error) => toastError('Note not moved to the trash', error));
-          }}
+          tooltip="Move note to trash"
+          aria-label="Move note to trash"
+          onClick={() => setConfirmTrash(true)}
         />
       </header>
+      {confirmTrash && <NoteTrashDialog path={path} onClose={() => setConfirmTrash(false)} />}
+      {moving && <MoveNoteDialog path={path} onClose={() => setMoving(false)} />}
       <ConflictBanner path={path} />
       <NoteEditor
         className="bd-notes-pane__editor"

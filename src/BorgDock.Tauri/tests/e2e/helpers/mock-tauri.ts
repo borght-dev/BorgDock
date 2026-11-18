@@ -295,11 +295,14 @@ export const DEFAULT_HANDLERS: MockHandlers = {
     const notes =
       (window as unknown as { __notes?: Record<string, { text: string; modifiedMs: number }> })
         .__notes ?? {};
-    return Object.entries(notes).map(([path, note]) => ({
-      path,
-      modifiedMs: note.modifiedMs,
-      size: note.text.length,
-    }));
+    return {
+      folders: (window as unknown as { __notesFolders?: string[] }).__notesFolders ?? [],
+      notes: Object.entries(notes).map(([path, note]) => ({
+        path,
+        modifiedMs: note.modifiedMs,
+        size: note.text.length,
+      })),
+    };
   },
   notes_read_many: (args: Record<string, unknown>) => {
     const notes = (window as unknown as { __notes?: Record<string, { text: string }> }).__notes ?? {};
@@ -328,9 +331,34 @@ export const DEFAULT_HANDLERS: MockHandlers = {
     notes[args.to as string] = from;
     return null;
   },
+  notes_save_folder: (args: Record<string, unknown>) => {
+    const w = window as unknown as { __notes?: Record<string, unknown>; __notesFolders?: string[] };
+    const path = args.path as string;
+    const from = args.from as string | null;
+    if ((w.__notesFolders ?? []).includes(path)) throw new Error('Folder already exists');
+    const folders = w.__notesFolders ?? [];
+    if (!from) {
+      w.__notesFolders = [...folders, path];
+      return null;
+    }
+    const move = (key: string) =>
+      key === from || key.startsWith(`${from}/`) ? path + key.slice(from.length) : key;
+    w.__notesFolders = [...new Set([...folders, from].map(move))];
+    w.__notes = Object.fromEntries(Object.entries(w.__notes ?? {}).map(([key, value]) => [move(key), value]));
+    return null;
+  },
   notes_trash: (args: Record<string, unknown>) => {
-    const w = window as unknown as { __notes?: Record<string, unknown> };
-    if (w.__notes) delete w.__notes[args.path as string];
+    const w = window as unknown as { __notes?: Record<string, unknown>; __notesFolders?: string[] };
+    const path = args.path as string;
+    if (args.isFolder) {
+      const prefix = `${path}/`;
+      for (const key of Object.keys(w.__notes ?? {})) {
+        if (key.startsWith(prefix)) delete w.__notes?.[key];
+      }
+      w.__notesFolders = w.__notesFolders?.filter((key) => key !== path && !key.startsWith(prefix));
+    } else if (w.__notes) {
+      delete w.__notes[path];
+    }
     return null;
   },
 };

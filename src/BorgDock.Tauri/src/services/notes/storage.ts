@@ -15,7 +15,7 @@ export type NoteWriteOutcome = { status: 'written' } | { status: 'conflict'; dis
  */
 export interface NotesStorage {
   folderPath(folder: string | null): Promise<string>;
-  list(folder: string | null): Promise<StoredNote[]>;
+  list(folder: string | null): Promise<{ notes: StoredNote[]; folders: string[] }>;
   /** Each note's text; `null` for a note that is gone. */
   readMany(folder: string | null, paths: string[]): Promise<Map<string, string | null>>;
   /** Write over `base`, the text last read; `null` creates the note. */
@@ -26,19 +26,21 @@ export interface NotesStorage {
     base: string | null,
   ): Promise<NoteWriteOutcome>;
   rename(folder: string | null, from: string, to: string): Promise<void>;
-  trash(folder: string | null, path: string): Promise<void>;
+  saveFolder(folder: string | null, path: string, from: string | null): Promise<void>;
+  trash(folder: string | null, path: string, isFolder?: boolean): Promise<void>;
 }
 
 export const nativeNotesStorage: NotesStorage = {
   folderPath: (folder) => commandData(commands.notesFolderPath(folder)),
   list: (folder) =>
-    commandData(commands.notesList(folder)).then((files) =>
-      files.map((file) => ({
+    commandData(commands.notesList(folder)).then(({ notes, folders }) => ({
+      folders,
+      notes: notes.map((file) => ({
         path: file.path,
         modifiedMs: file.modifiedMs ?? 0,
         size: file.size ?? 0,
       })),
-    ),
+    })),
   readMany: (folder, paths) =>
     commandData(commands.notesReadMany(folder, paths)).then(
       (read) => new Map(read.map((note) => [note.path, note.contents ?? null])),
@@ -50,7 +52,10 @@ export const nativeNotesStorage: NotesStorage = {
       : { status: 'conflict', disk: outcome.disk ?? null };
   },
   rename: (folder, from, to) => commandData(commands.notesRename(folder, from, to)).then(() => {}),
-  trash: (folder, path) => commandData(commands.notesTrash(folder, path)).then(() => {}),
+  saveFolder: (folder, path, from) =>
+    commandData(commands.notesSaveFolder(folder, path, from)).then(() => {}),
+  trash: (folder, path, isFolder) =>
+    commandData(commands.notesTrash(folder, path, isFolder ?? null)).then(() => {}),
 };
 
 /**
@@ -59,6 +64,7 @@ export const nativeNotesStorage: NotesStorage = {
  */
 export function memoryNotesStorage(
   initial: Record<string, string> = {},
+  folders: string[] = [],
 ): NotesStorage & { files: Map<string, { text: string; modifiedMs: number }> } {
   let clock = 1;
   const files = new Map(
@@ -67,10 +73,12 @@ export function memoryNotesStorage(
   return {
     files,
     folderPath: async (folder) => (folder ? `${folder}/BorgDock Notes` : 'BorgDock Notes'),
-    list: async () =>
-      [...files.entries()]
+    list: async () => ({
+      folders,
+      notes: [...files.entries()]
         .map(([path, file]) => ({ path, modifiedMs: file.modifiedMs, size: file.text.length }))
         .sort((a, b) => a.path.localeCompare(b.path)),
+    }),
     readMany: async (_folder, paths) =>
       new Map(paths.map((path) => [path, files.get(path)?.text ?? null])),
     write: async (_folder, path, contents, base) => {
@@ -86,8 +94,31 @@ export function memoryNotesStorage(
       files.delete(from);
       files.set(to, { ...file, modifiedMs: clock++ });
     },
-    trash: async (_folder, path) => {
-      files.delete(path);
+    saveFolder: async (_folder, path, from) => {
+      if (folders.includes(path) || files.has(path)) throw `${path} already exists.`;
+      if (from === null) {
+        folders = [...folders, path];
+        return;
+      }
+      const prefix = `${from}/`;
+      folders = folders.map((key) =>
+        key === from || key.startsWith(prefix) ? path + key.slice(from.length) : key,
+      );
+      for (const [key, file] of [...files]) {
+        if (!key.startsWith(prefix)) continue;
+        files.delete(key);
+        files.set(path + key.slice(from.length), file);
+      }
+    },
+    trash: async (_folder, path, isFolder) => {
+      if (!isFolder) {
+        files.delete(path);
+        return;
+      }
+      for (const key of files.keys()) {
+        if (key.startsWith(`${path}/`)) files.delete(key);
+      }
+      folders = folders.filter((key) => key !== path && !key.startsWith(`${path}/`));
     },
   };
 }

@@ -13,6 +13,7 @@ import { AppearanceSection } from './AppearanceSection';
 import { CiFailuresCard } from './CiFailuresCard';
 import { GitHubSection } from './GitHubSection';
 import { MaintenanceSection } from './MaintenanceSection';
+import { NotesSettingsSection } from './NotesSettingsSection';
 import { NotificationSection } from './NotificationSection';
 import { RailSearchInput } from './RailSearchInput';
 import { RailSearchResults } from './RailSearchResults';
@@ -176,6 +177,13 @@ export function SettingsApp() {
           <WorkstreamsSection
             workstreams={settings.workstreams ?? {}}
             onChange={(workstreams) => update({ workstreams })}
+          />
+        );
+      case 'notes':
+        return (
+          <NotesSettingsSection
+            settings={settings}
+            onChange={(dailyNoteFolder) => update({ dailyNoteFolder })}
           />
         );
       case 'updates':

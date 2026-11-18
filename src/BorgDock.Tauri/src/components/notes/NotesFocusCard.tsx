@@ -4,6 +4,7 @@ import { ensureDailyNote } from '@/services/notes/daily';
 import { titleOf } from '@/services/notes/parse';
 import { dailyPath, isTemplatePath } from '@/services/notes/paths';
 import { useNotesStore } from '@/stores/notes-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { toastError } from '@/stores/toast-store';
 
 const SHOWN = 3;
@@ -24,7 +25,10 @@ async function openToday() {
 export function NotesFocusCard() {
   const status = useNotesStore((s) => s.status);
   const tasks = useNotesStore((s) => s.index.tasks);
-  const hasToday = useNotesStore((s) => s.texts[dailyPath(new Date())] !== undefined);
+  const dailyNoteFolder = useSettingsStore((s) => s.settings.dailyNoteFolder);
+  const hasToday = useNotesStore(
+    (s) => s.texts[dailyPath(new Date(), s.folders, s.texts, dailyNoteFolder)] !== undefined,
+  );
   const hasNotes = useNotesStore((s) => Object.keys(s.texts).length > 0);
   // Someone who doesn't keep notes never sees the card; the rail has the section.
   if (status !== 'ready' || !hasNotes) return null;
