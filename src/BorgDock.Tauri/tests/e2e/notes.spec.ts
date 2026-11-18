@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { bootApp } from './helpers/test-utils';
+import { seedScenario } from './helpers/seed';
 
 /**
  * Notes: the vault is the in-page folder `window.__notes` (mock-tauri.ts),
@@ -79,6 +80,112 @@ test('Ctrl+O opens a note by title, and creates one nobody has', async ({ page }
   await expect.poll(() => vaultText(page, 'Retro notes.md')).toBe('');
 });
 
+test('collapses all folders and restores mixed folder state after reload', async ({ page }) => {
+  await seedVault(page, { ...VAULT, 'Projects/Drafts/Idea.md': '# Idea' });
+  await bootApp(page);
+  await openNotes(page);
+  const tree = page.getByRole('navigation', { name: 'Notes' });
+  const projects = tree.getByRole('button', { name: 'Projects', exact: true });
+  const drafts = tree.getByRole('button', { name: 'Drafts', exact: true });
+  const templates = tree.getByRole('button', { name: 'Templates', exact: true });
+  await expect(drafts).toHaveAttribute('aria-expanded', 'true');
+  await tree.getByRole('button', { name: 'Collapse all folders' }).click();
+  await expect(projects).toHaveAttribute('aria-expanded', 'false');
+  await expect(drafts).toHaveCount(0);
+  await page.screenshot({ path: 'test-results/notes-collapse-all.png' });
+  await projects.click();
+  await expect(drafts).toHaveAttribute('aria-expanded', 'false');
+  await page.reload();
+  await openNotes(page);
+  await expect(projects).toHaveAttribute('aria-expanded', 'true');
+  await expect(drafts).toHaveAttribute('aria-expanded', 'false');
+  await expect(templates).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('creates a note in a folder and moves notes between folders and the vault root', async ({ page }) => {
+  await seedVault(page, {
+    ...VAULT,
+    'Index.md': '[[Projects/Spec#Details|Specification]]',
+    'Occupied/Spec.md': '# Another spec',
+  });
+  await page.addInitScript(() => {
+    (window as unknown as { __notesFolders: string[] }).__notesFolders = ['Ideas', 'Occupied', 'Projects', 'Templates'];
+  });
+  await bootApp(page);
+  await openNotes(page);
+  const tree = page.getByRole('navigation', { name: 'Notes' });
+  await tree.getByRole('button', { name: 'New note in Projects' }).click();
+  await expect.poll(() => vaultText(page, 'Projects/Untitled.md')).toBe('');
+  await expect(page.getByRole('textbox', { name: 'Untitled, note text' })).toBeVisible();
+  const project = tree.getByRole('group', { name: 'Projects' });
+  await project.getByRole('button', { name: 'Spec', exact: true }).click();
+  await page.getByRole('button', { name: 'Move note', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Move note' });
+  const destination = dialog.getByRole('combobox', { name: 'Destination' });
+  const move = dialog.getByRole('button', { name: 'Move', exact: true });
+  await destination.selectOption('Occupied');
+  await move.click();
+  await expect(dialog.getByRole('alert')).toContainText('already exists');
+  expect(await vaultText(page, 'Occupied/Spec.md')).toBe('# Another spec');
+  await destination.selectOption('Ideas');
+  await page.screenshot({ path: 'test-results/notes-move-note.png' });
+  await move.click();
+  await expect.poll(() => vaultText(page, 'Ideas/Spec.md')).toContain('# Spec');
+  expect(await vaultText(page, 'Projects/Spec.md')).toBeNull();
+  await expect.poll(() => vaultText(page, 'Index.md')).toBe('[[Ideas/Spec#Details|Specification]]');
+  await page.getByRole('button', { name: 'Move note', exact: true }).click();
+  await destination.selectOption({ label: 'Vault root' });
+  await move.click();
+  await expect.poll(() => vaultText(page, 'Spec.md')).toContain('# Spec');
+  expect(await vaultText(page, 'Ideas/Spec.md')).toBeNull();
+  await expect.poll(() => vaultText(page, 'Index.md')).toBe('[[Spec#Details|Specification]]');
+});
+
+test('creates nested folders and renames a folder with its notes', async ({ page }) => {
+  await seedVault(page, { ...VAULT, 'Index.md': '[[Projects/Spec|Spec]]' });
+  await bootApp(page);
+  await openNotes(page);
+  const tree = page.getByRole('navigation', { name: 'Notes' });
+  const dialog = page.getByRole('dialog');
+  await page.getByRole('button', { name: 'New folder', exact: true }).click();
+  await dialog.getByRole('textbox', { name: 'Folder name' }).fill('Ideas');
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+  await expect(tree.getByRole('button', { name: 'Ideas', exact: true })).toBeVisible();
+  await tree.getByRole('button', { name: 'New folder in Ideas' }).click();
+  await dialog.getByRole('textbox', { name: 'Folder name' }).fill('Drafts');
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+  await expect(tree.getByRole('group', { name: 'Ideas' }).getByRole('button', { name: 'Drafts', exact: true })).toBeVisible();
+  await tree.getByRole('button', { name: 'Spec', exact: true }).click();
+  await tree.getByRole('button', { name: 'Rename Projects' }).click();
+  await dialog.getByRole('textbox', { name: 'Folder name' }).fill('Work');
+  await page.screenshot({ path: 'test-results/notes-rename-folder.png' });
+  await dialog.getByRole('button', { name: 'Rename', exact: true }).click();
+  await expect(tree.getByRole('group', { name: 'Work' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: /Spec, note text/ })).toBeVisible();
+  await expect.poll(() => vaultText(page, 'Work/Spec.md')).toContain('# Spec');
+  await expect.poll(() => vaultText(page, 'Index.md')).toBe('[[Work/Spec|Spec]]');
+});
+
+test('moves a note and a folder to trash after confirmation', async ({ page }) => {
+  await seedVault(page);
+  await bootApp(page);
+  await openNotes(page);
+  const tree = page.getByRole('navigation', { name: 'Notes' });
+  await tree.getByRole('button', { name: 'Plan', exact: true }).click();
+  await page.getByRole('button', { name: 'Move note to trash', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+  expect(await vaultText(page, 'Plan.md')).toContain('# Plan');
+  await page.getByRole('button', { name: 'Move note to trash', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Move to trash' }).click();
+  await expect.poll(() => vaultText(page, 'Plan.md')).toBeNull();
+  await tree.getByRole('button', { name: 'Move Projects to trash' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.screenshot({ path: 'test-results/notes-folder-trash.png' });
+  await page.getByRole('dialog').getByRole('button', { name: 'Move to trash' }).click();
+  await expect(tree.getByRole('button', { name: 'Projects', exact: true })).toHaveCount(0);
+  await expect.poll(() => vaultText(page, 'Projects/Spec.md')).toBeNull();
+});
+
 test('tasks across notes are ticked in their files', async ({ page }) => {
   await seedVault(page);
   await bootApp(page);
@@ -88,18 +195,57 @@ test('tasks across notes are ticked in their files', async ({ page }) => {
   await expect.poll(() => vaultText(page, 'Plan.md')).toContain('- [x] Ask QA');
 });
 
-test("Today makes today's note from the Daily template", async ({ page }) => {
-  await seedVault(page);
-  await bootApp(page);
+test('Today creates a note from the template without inserting Activity', async ({ page }) => {
+  await seedVault(page, {
+    '00 - Home/Home.md': '# Home',
+    '08 - Templates/Daily Note.md': '# {{title}}\n\n## Notes\n',
+    'Daily/2026-05-08.md': '# Old daily note\n',
+  });
+  await page.addInitScript(() => {
+    (window as unknown as { __notesFolders: string[] }).__notesFolders = [
+      '00 - Home',
+      '02 - Daily',
+      '08 - Templates',
+      '09 - Attachments',
+      '99 - Archive',
+      '99 - Archive/Needs Review',
+    ];
+  });
+  await bootApp(page, '', 'happy-path', {
+    load_settings: {
+      ...(seedScenario('happy-path').load_settings as Record<string, unknown>),
+      dailyNoteFolder: '02 - Daily',
+    },
+    activity_list: {
+      entries: [
+        {
+          id: '1',
+          category: 'github.pr',
+          entity: { kind: 'pr', key: 'gh:acme/planner#7', title: 'Export fix', url: null },
+          observedAt: '2026-05-08T09:00:00Z',
+          summary: 'Merged the export fix',
+        },
+      ],
+      total: 1,
+      revision: 1,
+    },
+  });
   await openNotes(page);
+  const tree = page.getByRole('navigation', { name: 'Notes' });
+  await expect(tree.getByRole('button', { name: '09 - Attachments', exact: true })).toBeVisible();
+  await expect(tree.getByRole('group', { name: '99 - Archive' }).getByText('Needs Review')).toBeVisible();
   await page.getByRole('button', { name: 'Today', exact: true }).click();
   const daily = await page.evaluate(() =>
     Object.keys(
       (window as unknown as { __notes: Record<string, unknown> }).__notes,
-    ).find((p) => p.startsWith('Daily/')),
+    ).find((p) => p.startsWith('02 - Daily/')),
   );
-  expect(daily).toMatch(/^Daily\/\d{4}-\d{2}-\d{2}\.md$/);
-  await expect.poll(() => vaultText(page, daily!)).toContain('## Notes');
+  expect(daily).toMatch(/^02 - Daily\/\d{4}-\d{2}-\d{2}\.md$/);
+  await expect.poll(() => vaultText(page, daily!)).toMatch(/^# [^\n]+\n\n## Notes\n\n$/);
+  await expect(page.getByRole('textbox', { name: /note text/ })).toContainText('Notes');
+  await page.getByRole('button', { name: 'Today', exact: true }).click();
+  await expect.poll(() => vaultText(page, daily!)).toMatch(/^# [^\n]+\n\n## Notes\n\n$/);
+  await page.screenshot({ path: 'test-results/today-note.png' });
 });
 
 test('the quick note window appends to today’s note', async ({ page }) => {

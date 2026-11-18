@@ -274,6 +274,7 @@ export interface PrDetailSettings {
 }
 
 export interface AppSettings {
+  dailyNoteFolder?: string;
   /** Bumped by the Rust side after one-off migrations; see settings::migrate. */
   schemaVersion?: number;
   setupComplete: boolean;

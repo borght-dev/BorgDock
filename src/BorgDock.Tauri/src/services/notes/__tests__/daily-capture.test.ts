@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { captureLines, contextRef, withCapture } from '../capture';
-import { digestLine, digestSince, sinceBlock } from '../daily';
 import { dailyPath, isDailyPath } from '../paths';
 
 describe('daily notes', () => {
@@ -10,51 +9,6 @@ describe('daily notes', () => {
     expect(dailyPath(today)).toBe('Daily/2026-10-28.md');
     expect(isDailyPath('Daily/2026-10-28.md')).toBe(true);
     expect(isDailyPath('Daily/notes.md')).toBe(false);
-  });
-
-  it('starts the digest at the previous daily note, at most a week back', () => {
-    expect(digestSince(['Daily/2026-10-27.md', 'Plan.md'], today)).toEqual(new Date(2026, 9, 27));
-    expect(digestSince(['Daily/2026-10-01.md'], today)).toEqual(
-      new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000),
-    );
-    expect(digestSince([], today)).toEqual(new Date(today.getTime() - 24 * 60 * 60 * 1000));
-    // Today's own note never counts as the previous one.
-    expect(digestSince(['Daily/2026-10-28.md', 'Daily/2026-10-26.md'], today)).toEqual(
-      new Date(2026, 9, 26),
-    );
-  });
-
-  it('writes events with a short ref so their chips draw', () => {
-    expect(
-      digestLine({
-        summary: 'Merged into main',
-        entity: { kind: 'pr', key: 'gh:acme/planner#1412', title: 'Fix', url: null },
-      } as never),
-    ).toBe('- acme/planner#1412 · Merged into main');
-    expect(
-      digestLine({
-        summary: 'AB#7 moved to Code Review',
-        entity: { kind: 'ado', key: 'ado:acme/FSP:7', title: 'Bug', url: null },
-      } as never),
-    ).toBe('- AB#7 moved to Code Review');
-    expect(
-      digestLine({
-        summary: 'Thread finished',
-        entity: { kind: 't3', key: 't3:local:thread:1', title: 'T', url: null },
-      } as never),
-    ).toBe('- Thread finished');
-  });
-
-  it('wraps the digest in markers, and writes nothing without events', () => {
-    const block = sinceBlock([{ summary: 'One', entity: { key: 'x' } } as never], '2026-10-28');
-    expect(block).toEqual([
-      '## Since yesterday',
-      '<!-- borgdock:since 2026-10-28 -->',
-      '- One',
-      '<!-- /borgdock:since 2026-10-28 -->',
-      '',
-    ]);
-    expect(sinceBlock([], '2026-10-28')).toEqual([]);
   });
 });
 

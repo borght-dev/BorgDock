@@ -10,6 +10,12 @@ export interface FieldEntry {
 }
 
 export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
+  {
+    sectionId: 'notes',
+    anchorId: 'daily-note-folder',
+    label: 'Daily note folder',
+    keywords: ['today', 'obsidian', 'location'],
+  },
   // Workstreams
   {
     sectionId: 'workstreams',

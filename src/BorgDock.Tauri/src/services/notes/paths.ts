@@ -2,6 +2,8 @@
 
 export const DAILY_FOLDER = 'Daily';
 export const TEMPLATES_FOLDER = 'Templates';
+export const OBSIDIAN_DAILY_FOLDER = '02 - Daily';
+export const OBSIDIAN_TEMPLATES_FOLDER = '08 - Templates';
 export const DECISIONS_FOLDER = 'Decisions';
 export const INBOX_PATH = 'Inbox.md';
 
@@ -13,16 +15,30 @@ export function dayKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export function dailyPath(date: Date): string {
-  return `${DAILY_FOLDER}/${dayKey(date)}.md`;
+export function dailyPath(
+  date: Date,
+  folders: readonly string[] = [],
+  texts: Readonly<Record<string, string>> = {},
+  configuredFolder?: string,
+): string {
+  const filename = `${dayKey(date)}.md`;
+  if (configuredFolder === '/') return filename;
+  if (configuredFolder) return `${configuredFolder}/${filename}`;
+  const legacy = `${DAILY_FOLDER}/${filename}`;
+  const obsidian = `${OBSIDIAN_DAILY_FOLDER}/${filename}`;
+  if (texts[obsidian] !== undefined) return obsidian;
+  if (texts[legacy] !== undefined) return legacy;
+  return folders.includes(OBSIDIAN_DAILY_FOLDER) ? obsidian : legacy;
 }
 
 export function isDailyPath(path: string): boolean {
-  return new RegExp(`^${DAILY_FOLDER}/\\d{4}-\\d{2}-\\d{2}\\.md$`).test(path);
+  return /^(?:Daily|02 - Daily)\/\d{4}-\d{2}-\d{2}\.md$/.test(path);
 }
 
 export function isTemplatePath(path: string): boolean {
-  return path.startsWith(`${TEMPLATES_FOLDER}/`);
+  return (
+    path.startsWith(`${TEMPLATES_FOLDER}/`) || path.startsWith(`${OBSIDIAN_TEMPLATES_FOLDER}/`)
+  );
 }
 
 /** The folder a note sits in, `''` for the vault's root. */

@@ -8,6 +8,7 @@ export type SettingsSectionId =
   | 'sql'
   | 'appearance'
   | 'notif'
+  | 'notes'
   | 'workstreams'
   | 'agents'
   | 'updates'
@@ -35,6 +36,7 @@ export const SETTINGS_SECTIONS: ReadonlyArray<SettingsSectionMeta> = [
   { id: 'sql', label: 'SQL Server', group: 'sources' },
   { id: 'appearance', label: 'Appearance', group: 'app' },
   { id: 'notif', label: 'Notifications', group: 'app' },
+  { id: 'notes', label: 'Notes', group: 'app' },
   ...(WORKSTREAMS_ENABLED
     ? [{ id: 'workstreams' as const, label: 'Workstreams', group: 'app' as const }]
     : []),

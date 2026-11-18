@@ -80,12 +80,27 @@ export function markerBlock(id: string, body: string[]): string[] {
  * `[[Old]]`, `[[Old#heading]]` and `[[Old|label]]` pointed at `newTitle`.
  * Links that name the old note by path (`[[Folder/Old]]`) move too.
  */
-export function renameLinks(text: string, oldTarget: string[], newTitle: string): string {
-  const names = new Set(oldTarget.map((t) => t.toLowerCase()));
+function replaceWikiTargets(text: string, change: (target: string) => string | undefined): string {
   return text.replace(
     /\[\[([^\]\n|#]+)((?:#[^\]\n|]+)?(?:\|[^\]\n]+)?)\]\]/g,
-    (whole, target: string, rest: string) =>
-      names.has(target.trim().toLowerCase()) ? `[[${newTitle}${rest}]]` : whole,
+    (whole, target: string, rest: string) => {
+      const next = change(target.trim());
+      return next === undefined ? whole : `[[${next}${rest}]]`;
+    },
+  );
+}
+
+export function renameLinks(text: string, oldTarget: string[], newTitle: string): string {
+  const names = new Set(oldTarget.map((t) => t.toLowerCase()));
+  return replaceWikiTargets(text, (target) =>
+    names.has(target.toLowerCase()) ? newTitle : undefined,
+  );
+}
+
+export function renameFolderLinks(text: string, from: string, to: string): string {
+  const prefix = `${from.toLowerCase()}/`;
+  return replaceWikiTargets(text, (target) =>
+    target.toLowerCase().startsWith(prefix) ? to + target.slice(from.length) : undefined,
   );
 }
 

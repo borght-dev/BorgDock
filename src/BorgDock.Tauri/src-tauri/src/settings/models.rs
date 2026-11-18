@@ -40,6 +40,8 @@ pub struct AppSettings {
     pub repo_priority: std::collections::HashMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workstreams: Option<WorkstreamSettings>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub daily_note_folder: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
