@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.15.0 — 2026-11-18
+
+### Improvements
+
+- **Organize your notes in BorgDock** — Create and rename folders, add notes inside them, and move notes between folders or back to the vault root. Send notes and folders to the trash. Collapse all folders in one click, and BorgDock remembers which folders you leave open. In Notes settings, choose where Today opens or creates your daily note. New daily notes start without an automatic Activity list. ![The Notes vault with the daily folder and its folder controls](whats-new/4.15.0/notes-vault-controls.png)
+- **Read rendered files in Quick Review** — Open Markdown, HTML and SVG in their rendered form, or press E to see the diff. Jump between changes in Markdown and comment on the changed text. Compare the before and after versions of an HTML page side by side. You can also comment or request changes from the first file. ![Quick Review showing rendered Markdown with inline change markers](whats-new/4.15.0/quick-review-rendered-files.png)
+
 ## 4.14.0 — 2026-11-17
 
 ### Improvements

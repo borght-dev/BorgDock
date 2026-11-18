@@ -1,0 +1,11 @@
+[
+  {
+    "slug": "notes-vault-controls",
+    "storyId": "notes-notes--section",
+    "hover": ".bd-notes-tree__folder"
+  },
+  {
+    "slug": "quick-review-rendered-files",
+    "storyId": "focus-quick-review-rendered-files--markdown-rendered"
+  }
+]
