@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Rendered files in Quick Review — mockups</title>
+<style>
+  .page { display: flex; flex-direction: column; gap: 30px; padding: 4px 0 8px; color: var(--foreground, #17181c); font-family: var(--font-sans, "Segoe UI", system-ui, sans-serif); }
+  .sec h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .sec > p { margin: 0 0 10px; font-size: 13px; line-height: 1.45; color: var(--muted-foreground, #5d6069); }
+  .legend { margin: 12px 0 0; padding-left: 0; list-style: none; display: grid; gap: 7px; font-size: 13px; line-height: 1.45; }
+  .legend li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; }
+  .legend b.n { width: 18px; height: 18px; border-radius: 50%; background: #e11d48; color: #fff; font-size: 11px; display: grid; place-items: center; margin-top: 1px; }
+  .legend kbd, .legend code { font-family: var(--font-mono, "JetBrains Mono", Consolas, monospace); font-size: 12px; }
+  .legend kbd { padding: 0 4px; border: 1px solid currentColor; border-radius: 4px; opacity: .8; }
+
+  /* A frame is drawn at 1180 x 820 and scaled to the width it gets, without script. */
+  .fit { container-type: inline-size; position: relative; width: 100%; max-width: 1182px; aspect-ratio: 1182 / 822; }
+  .fit > .app { position: absolute; top: 0; left: 0; transform-origin: 0 0; transform: scale(tan(atan2(100cqw, 1182px))); }
+
+  /* ---------- the app, dark theme ---------- */
+  .skin { --bg: #151618; --sf: #1b1c1f; --rs: #212226; --tx: #ededef; --t2: #9c9da4; --t3: #74757c; --sep: rgba(255, 255, 255, .07); --sep2: rgba(255, 255, 255, .13); --ac: #8f8eff; --acs: rgba(127, 126, 255, .16); --ok: #5cc98f; --bad: #f0616d; --warn: #e5b454; color: var(--tx); font-family: "Inter Variable", "Inter", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif; font-size: 13px; }
+  .skin code, .mono { font-family: "JetBrains Mono Variable", "JetBrains Mono", "Cascadia Mono", Consolas, monospace; }
+  .app { width: 1180px; height: 820px; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); border: 1px solid rgba(255, 255, 255, .12); border-radius: 14px; box-shadow: 0 10px 34px rgba(0, 0, 0, .35); }
+  .i { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .mk { position: absolute; z-index: 5; width: 28px; height: 28px; border-radius: 50%; background: #e11d48; color: #fff; font: 600 14px/28px system-ui, sans-serif; text-align: center; box-shadow: 0 0 0 4px rgba(225, 29, 72, .3); }
+  .rel { position: relative; }
+  .sp { flex: 1; }
+  .add { color: var(--ok); } .del { color: var(--bad); }
+  .muted { color: var(--t2); font-size: 12px; white-space: nowrap; }
+
+  .tb { height: 44px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px; border-bottom: 1px solid var(--sep); }
+  .tb h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .prog { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--t2); font-variant-numeric: tabular-nums; }
+  .bar { width: 120px; height: 3px; border-radius: 2px; background: #2c2d32; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--tx); }
+  .gh { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; color: var(--t2); font-size: 12.5px; }
+  .ib { width: 28px; height: 28px; display: grid; place-items: center; color: var(--t2); }
+
+  .prh { flex: none; padding: 11px 20px 12px; border-bottom: 1px solid var(--sep); background: var(--sf); }
+  .over { display: flex; align-items: center; gap: 8px; color: var(--t2); font-size: 12px; }
+  .over .sep { color: #45464c; }
+  .av { width: 20px; height: 20px; border-radius: 50%; background: #3b3a8a; color: #e0e0ff; font-size: 9.5px; font-weight: 600; display: grid; place-items: center; }
+  .chips { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 11px; border: 1px solid var(--sep2); color: var(--t2); font-size: 11.5px; white-space: nowrap; }
+  .chip .i { width: 12px; height: 12px; }
+  .chip.ok { color: var(--ok); background: rgba(92, 201, 143, .1); border-color: rgba(92, 201, 143, .25); }
+  .chip.wi { color: #b9b8ff; background: var(--acs); border-color: rgba(127, 126, 255, .3); }
+  .title { margin: 7px 0 0; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+
+  .bd { flex: 1; min-height: 0; display: grid; grid-template-columns: 236px 1fr 44px; grid-template-rows: minmax(0, 1fr); }
+  .tree { min-width: 0; overflow: hidden; padding: 12px 10px; border-right: 1px solid var(--sep); }
+  .tp { padding: 0 8px 8px; }
+  .tp-top { display: flex; justify-content: space-between; font-size: 12px; color: var(--t2); }
+  .tp-top b { color: var(--tx); font-weight: 600; }
+  .tp-bar { height: 4px; margin-top: 6px; border-radius: 2px; background: #2c2d32; overflow: hidden; }
+  .tp-bar i { display: block; height: 100%; background: var(--ok); }
+  .fold { display: flex; justify-content: space-between; gap: 6px; padding: 9px 8px 3px; color: var(--t3); font-size: 11.5px; }
+  .file { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; border: 1px solid transparent; font-size: 12.5px; }
+  .file.cur { background: var(--acs); border-color: rgba(127, 126, 255, .55); font-weight: 600; }
+  .file .n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file .st { font-size: 11px; font-variant-numeric: tabular-nums; }
+  .file.done .n { color: var(--t2); }
+  .ck { width: 15px; height: 15px; flex: none; display: grid; place-items: center; border-radius: 4px; border: 1.5px solid #55565d; color: #12121a; }
+  .ck .i { width: 11px; height: 11px; stroke-width: 3; }
+  .ck.on { background: var(--ok); border-color: var(--ok); }
+
+  .pane { min-width: 0; display: flex; flex-direction: column; }
+  .ph { height: 42px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--sep); }
+  .path { min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--t2); }
+  .path b { font-weight: 600; color: var(--tx); }
+  .seg { flex: none; display: inline-flex; padding: 2px; border-radius: 8px; background: #101113; border: 1px solid var(--sep); }
+  .seg > span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 6px; font-size: 11.5px; color: var(--t2); white-space: nowrap; }
+  .seg > span.on { background: #2c2d33; color: var(--tx); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+  .seg .i { width: 12px; height: 12px; }
+  .ghost { flex: none; padding: 4px 8px; border-radius: 7px; font-size: 12px; color: var(--t2); white-space: nowrap; }
+  .ghost.dis { color: #4d4e55; }
+  .markbtn { flex: none; display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border: 1px solid var(--sep2); border-radius: 7px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+
+  .strip { flex: none; min-height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--sep); background: #18191b; color: var(--t2); font-size: 12px; white-space: nowrap; }
+  .strip code { font-size: 11.5px; color: var(--tx); }
+  .strip .i { width: 13px; height: 13px; }
+  .key { display: inline-flex; align-items: center; gap: 5px; }
+  .key i { width: 3px; height: 12px; border-radius: 2px; }
+  .nav { display: inline-flex; align-items: center; gap: 2px; }
+  .nav .ib { width: 22px; height: 22px; border: 1px solid var(--sep2); border-radius: 6px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; background: rgba(92, 201, 143, .1); color: var(--ok); border: 1px solid rgba(92, 201, 143, .25); }
+  .pill.plain { background: none; color: var(--t2); border-color: var(--sep2); }
+  .lnk { color: var(--ac); font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+
+  /* ---------- rendered markdown ---------- */
+  .doc { flex: 1; min-height: 0; overflow: hidden; padding: 18px 34px 0 42px; }
+  .md { max-width: 760px; font-size: 13.5px; line-height: 1.6; }
+  .md h1 { margin: 0 0 10px; padding-bottom: 7px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; border-bottom: 1px solid var(--sep); }
+  .md h2 { margin: 0 0 6px; font-size: 16.5px; font-weight: 600; }
+  .md p { margin: 0 0 10px; }
+  .md code { padding: 1px 5px; border-radius: 4px; background: #26272c; font-size: 12px; }
+  .md table { width: 100%; border-collapse: collapse; margin: 0; font-size: 12.5px; }
+  .md th, .md td { padding: 5px 10px; border: 1px solid var(--sep2); text-align: left; }
+  .md th { background: #1f2024; font-weight: 600; }
+  .md pre { margin: 0; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--sep); background: #101113; font-size: 12px; line-height: 1.55; }
+  .blk { position: relative; margin: 0 -12px 10px -14px; padding: 8px 12px 8px 14px; border-radius: 0 7px 7px 0; }
+  .blk > :last-child { margin-bottom: 0; }
+  .blk::before { content: ""; position: absolute; left: -3px; top: 0; bottom: 0; width: 3px; border-radius: 2px; }
+  .blk.new { background: rgba(92, 201, 143, .075); } .blk.new::before { background: var(--ok); }
+  .blk.mod { background: rgba(229, 180, 84, .07); } .blk.mod::before { background: var(--warn); }
+  .plus { position: absolute; left: -29px; top: 8px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 6px; background: var(--ac); color: #12121a; font: 600 15px/1 system-ui, sans-serif; }
+  .gone { position: relative; display: flex; align-items: center; gap: 8px; margin: 0 -12px 10px -14px; padding: 5px 12px 5px 14px; border-radius: 0 7px 7px 0; background: rgba(240, 97, 109, .08); color: #f3a1a8; font-size: 12px; }
+  .gone::before { content: ""; position: absolute; left: -3px; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--bad); }
+  .gone .lnk { margin-left: auto; }
+  .draft { margin: -2px 0 12px; padding: 9px 12px; border: 1px solid rgba(127, 126, 255, .35); border-radius: 9px; background: #1c1c2b; font-size: 12.5px; line-height: 1.45; }
+  .draft .dh { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; color: var(--t2); font-size: 11.5px; }
+
+  /* ---------- rendered HTML: the file's own page inside a frame ---------- */
+  .stage { flex: 1; min-height: 0; overflow: hidden; padding: 14px 14px 0; background: #0f1011; }
+  .sheet { height: 100%; overflow: hidden; border-radius: 8px 8px 0 0; background: #fbfaf6; color: #23211c; box-shadow: 0 0 0 1px rgba(255, 255, 255, .1); font-family: "Segoe UI", system-ui, sans-serif; }
+  .pg { padding: 26px 36px; font-size: 13.5px; line-height: 1.55; }
+  .pg-top { display: flex; align-items: center; gap: 10px; color: #7a7466; font-size: 12px; }
+  .pg-tag { padding: 2px 9px; border-radius: 4px; background: #0f766e; color: #fff; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 10.5px; }
+  .pg h1 { margin: 12px 0 8px; font: 600 29px/1.2 Georgia, "Times New Roman", serif; letter-spacing: -.01em; }
+  .pg h2 { margin: 20px 0 9px; font: 600 18px/1.3 Georgia, serif; }
+  .pg-lead { margin: 0; max-width: 690px; color: #55503f; font-size: 14.5px; }
+  .pg-ph { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
+  .pg-card { padding: 12px 14px; border: 1px solid #e6e1d3; border-radius: 10px; background: #fff; }
+  .pg-card small { display: block; color: #8a8372; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+  .pg-card b { display: block; margin: 3px 0 5px; font-size: 14.5px; }
+  .pg-card p { margin: 0 0 9px; color: #5f5a4b; font-size: 12.5px; line-height: 1.45; }
+  .st { display: inline-block; padding: 1px 9px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .st.d { background: #d9f2e4; color: #14633c; } .st.p { background: #fdeccb; color: #8a5200; } .st.n { background: #ebe8df; color: #5f5a4b; }
+  .pg-ba { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pg-shot { padding: 12px 14px; border: 1px solid #e6e1d3; border-radius: 10px; background: #fff; }
+  .pg-shot small { color: #8a8372; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+  .pg-in { display: flex; align-items: center; height: 32px; margin: 8px 0 6px; padding: 0 10px; border: 1.5px solid #d6452f; border-radius: 7px; font-family: Consolas, monospace; font-size: 13px; }
+  .pg-msg { color: #b93822; font-size: 12.5px; }
+  .pg table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .pg th, .pg td { padding: 6px 10px; border-bottom: 1px solid #e6e1d3; text-align: left; }
+  .pg th { color: #8a8372; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+
+  .rail { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; border-left: 1px solid var(--sep); }
+  .rail .ri { position: relative; width: 30px; height: 30px; display: grid; place-items: center; color: var(--t2); }
+  .rail .ri .i { width: 16px; height: 16px; }
+  .rail .ri b { position: absolute; top: 0; right: -1px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; background: var(--ac); color: #12121a; font-size: 9px; line-height: 14px; text-align: center; }
+  .rail .ri.ok { color: var(--ok); }
+  .rail hr { width: 20px; border: 0; border-top: 1px solid var(--sep2); margin: 4px 0; }
+
+  .ft { height: 54px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 20px; border-top: 1px solid var(--sep); background: var(--sf); }
+  .ft .div { width: 1px; height: 24px; margin: 0 4px; background: var(--sep2); }
+  .btn { height: 34px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--sep2); border-radius: 8px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .btn.primary { background: var(--ac); border-color: var(--ac); color: #12121a; }
+  .btn.dis { border-color: var(--sep); color: #55565d; }
+  .btn kbd { padding: 0 5px; border: 1px solid currentColor; border-radius: 4px; font: 10.5px/15px "JetBrains Mono", Consolas, monospace; opacity: .6; }
+  .hint { height: 26px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 20px; border-top: 1px solid var(--sep); color: var(--t3); font-size: 11.5px; }
+  .hint kbd { font: 600 10.5px "JetBrains Mono", Consolas, monospace; color: var(--tx); }
+  .hint .hot { color: var(--tx); }
+  .hint .hot kbd { padding: 0 4px; border-radius: 4px; background: var(--acs); color: #b9b8ff; }
+
+  /* ---------- C: the pane on its own, at actual size ---------- */
+  .crop { overflow: hidden; border: 1px solid rgba(255, 255, 255, .12); border-radius: 12px; background: var(--bg); box-shadow: 0 8px 26px rgba(0, 0, 0, .3); }
+  .crop .strip { flex-wrap: wrap; row-gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px; background: #0f1011; }
+  .two figure { min-width: 0; margin: 0; }
+  .two figcaption { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; font-size: 12px; font-weight: 600; }
+  .two figcaption code { font-size: 11px; font-weight: 400; color: var(--t2); }
+  .two .sheet { height: 186px; border-radius: 8px; }
+  .two .pg { zoom: .62; padding: 22px 26px; }
+  .two .pg h1 { font-size: 25px; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #e6e1d3; }
+  .row b { flex: 1; font-size: 14px; }
+  .row span.q { color: #8a8372; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-ccheck" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-img" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
+  <symbol id="i-chl" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-max" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"/></symbol>
+</svg>
+
+<div class="page">
+
+<!-- =============================== A =============================== -->
+<section class="sec">
+  <h3>A · A Markdown file, rendered</h3>
+  <p>The file reads as the document it is, at the PR's head commit. What the PR changed is marked in the margin, so you still review the change and not the whole page.</p>
+  <div class="fit"><div class="app skin">
+    <div class="tb">
+      <h2>Quick review</h2>
+      <div class="prog"><span>PR 2 / 9</span><span class="bar"><i style="width:22%"></i></span></div>
+      <span class="gh">Review later<svg class="i"><use href="#i-right"/></svg></span>
+      <span class="ib"><svg class="i"><use href="#i-max"/></svg></span>
+      <span class="ib"><svg class="i"><use href="#i-x"/></svg></span>
+    </div>
+    <div class="prh">
+      <div class="over">
+        <span class="av">MV</span><span>mvisser</span><span class="sep">·</span><span>acme/shop</span><span class="sep">·</span><span>#482</span><span class="sep">·</span><span>updated 2 h ago</span><span class="sep">·</span><span class="mono" style="font-size:11.5px">feature/discount-refusals → main</span>
+        <div class="chips">
+          <span class="chip ok"><svg class="i"><use href="#i-ccheck"/></svg>CI 14/14</span>
+          <span class="chip ok"><svg class="i"><use href="#i-merge"/></svg>No conflicts</span>
+          <span class="chip wi"><svg class="i"><use href="#i-clip"/></svg>AB#1042</span>
+          <span class="chip"><svg class="i"><use href="#i-msg"/></svg>2</span>
+          <span class="chip"><svg class="i"><use href="#i-ext"/></svg>GitHub</span>
+        </div>
+      </div>
+      <div class="title">Checkout: tell shoppers why a discount code was refused</div>
+    </div>
+
+    <div class="bd">
+      <nav class="tree">
+        <div class="tp"><div class="tp-top"><span><b>1</b> of 7 reviewed</span><span>6 left</span></div><div class="tp-bar"><i style="width:14%"></i></div></div>
+        <div class="fold"><span>(root)</span><span>1/1</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">README.md</span><span class="st"><span class="add">+2</span> <span class="del">−1</span></span></div>
+        <div class="fold"><span>docs/checkout</span><span>0/1</span></div>
+        <div class="file cur"><span class="ck"></span><span class="n">discount-codes.md</span><span class="st"><span class="add">+18</span> <span class="del">−4</span></span></div>
+        <div class="fold"><span>docs/plans</span><span>0/1</span></div>
+        <div class="file"><span class="ck"></span><span class="n">discount-refusals-plan.html</span><span class="st add">+236</span></div>
+        <div class="fold"><span>src/checkout</span><span>0/2</span></div>
+        <div class="file"><span class="ck"></span><span class="n">DiscountField.tsx</span><span class="st"><span class="add">+64</span> <span class="del">−12</span></span></div>
+        <div class="file"><span class="ck"></span><span class="n">refusal-reasons.ts</span><span class="st add">+41</span></div>
+        <div class="fold"><span>tests/checkout</span><span>0/2</span></div>
+        <div class="file"><span class="ck"></span><span class="n">DiscountField.test.tsx</span><span class="st add">+88</span></div>
+        <div class="file"><span class="ck"></span><span class="n">discount.spec.ts</span><span class="st"><span class="add">+37</span> <span class="del">−3</span></span></div>
+      </nav>
+
+      <div class="pane">
+        <div class="ph">
+          <code class="path">docs/checkout/<b>discount-codes.md</b></code>
+          <span class="muted"><span class="add">+18</span> <span class="del">−4</span></span>
+          <span class="muted">2 of 7</span>
+          <span class="sp"></span>
+          <span class="rel"><span class="mk" style="left:-38px;top:-2px">1</span></span><span class="seg"><span><svg class="i"><use href="#i-code"/></svg>Diff</span><span class="on"><svg class="i"><use href="#i-eye"/></svg>Rendered</span></span>
+          <span class="ghost dis">Wrap</span>
+          <span class="markbtn"><span class="ck"></span>Mark reviewed</span>
+        </div>
+        <div class="strip">
+          <svg class="i"><use href="#i-eye"/></svg>
+          <span class="rel">Rendered at the head commit <code>a1b2c3d</code><span class="mk" style="right:-40px;top:-6px">2</span></span>
+          <span class="sp"></span>
+          <span class="key"><i style="background:var(--ok)"></i>added</span>
+          <span class="key"><i style="background:var(--warn)"></i>changed</span>
+          <span class="key"><i style="background:var(--bad)"></i>removed</span>
+          <span style="margin-left:8px;color:var(--tx)">Change 2 of 3</span>
+          <span class="nav"><span class="ib"><svg class="i"><use href="#i-up"/></svg></span><span class="ib"><svg class="i"><use href="#i-down"/></svg></span></span>
+        </div>
+        <div class="doc"><div class="md">
+          <h1>Discount codes</h1>
+          <p>A shopper enters a code at checkout. The shop checks it against the active campaigns, one code per order, and never against campaigns of another storefront.</p>
+          <div class="blk mod">
+            <p>The API answers with the new total, or with a <code>reason</code> that says why the code was refused.</p>
+          </div>
+          <div class="gone rel"><span class="mk" style="left:330px;top:-2px">4</span><span>−</span><span>3 lines removed here: <b>Known limitations</b></span><span class="lnk">Show<svg class="i"><use href="#i-down"/></svg></span></div>
+          <div class="blk new">
+            <span class="mk" style="right:14px;top:8px">3</span>
+            <span class="plus" title="Comment on this block">+</span>
+            <h2>Refusal reasons</h2>
+            <p>Every refused code used to show “This code is not valid”. The field now shows one sentence per reason:</p>
+            <table>
+              <tr><th>Reason</th><th>What the shopper reads</th><th>When</th></tr>
+              <tr><td><code>expired</code></td><td>This code ended on 12 March.</td><td>The campaign's end date has passed</td></tr>
+              <tr><td><code>minimum_not_met</code></td><td>Add €8.50 more to use this code.</td><td>The basket is below the campaign minimum</td></tr>
+              <tr><td><code>already_used</code></td><td>You have used this code before.</td><td>Single-use code, same account</td></tr>
+            </table>
+          </div>
+          <div class="draft rel">
+            <span class="mk" style="right:14px;top:10px">5</span>
+            <div class="dh"><span class="av" style="width:16px;height:16px;font-size:8px">KB</span>Your draft · lines 14–21</div>
+            Should <code>minimum_not_met</code> name the amount in the shop's currency, or always in euros?
+          </div>
+          <h2>Try it locally</h2>
+          <pre class="mono">bun run dev
+curl -X POST localhost:3000/api/checkout/discount -d '{"code":"SPRING10"}'</pre>
+        </div></div>
+      </div>
+
+      <aside class="rail">
+        <span class="ri"><svg class="i"><use href="#i-chl"/></svg></span>
+        <hr />
+        <span class="ri"><svg class="i"><use href="#i-img"/></svg><b>2</b></span>
+        <span class="ri ok"><svg class="i"><use href="#i-ccheck"/></svg></span>
+        <span class="ri"><svg class="i"><use href="#i-clip"/></svg></span>
+        <span class="ri"><svg class="i"><use href="#i-msg"/></svg><b>2</b></span>
+      </aside>
+    </div>
+
+    <div class="ft">
+      <span class="muted" style="font-size:13px">1 draft comment</span>
+      <span class="sp"></span>
+      <span class="btn">Previous <kbd>P</kbd></span>
+      <span class="btn">Next file <kbd>N</kbd></span>
+      <span class="btn primary">Mark reviewed &amp; next <kbd>V</kbd></span>
+      <span class="div"></span>
+      <span class="btn dis">Approve · 6 left</span>
+    </div>
+    <div class="hint"><span><kbd>J/K</kbd> scroll</span><span><kbd>N/P</kbd> file</span><span><kbd>V</kbd> mark &amp; next</span><span class="hot"><kbd>E</kbd> rendered / diff</span><span><kbd>D</kbd> description</span><span><kbd>]</kbd> context panel</span><span><kbd>Esc</kbd> overview</span><span class="sp"></span><span>Drafts saved on this device.</span></div>
+  </div></div>
+  <ol class="legend">
+    <li><b class="n">1</b><span><b>Diff / Rendered</b> sits beside Unified / Split on <code>.md</code>, <code>.html</code> and <code>.svg</code> files. <kbd>E</kbd> flips it. The choice is remembered and Rendered is the default. A picture without code (PNG, JPEG) is always drawn and has no switch: the image-only "Rich diff" button is gone.</span></li>
+    <li><b class="n">2</b><span><b>The strip says which commit you are reading</b> and steps between the changes. Opening the file scrolls to the first one.</span></li>
+    <li><b class="n">3</b><span><b>Margin bars mark what the PR touched</b>: green for new blocks, amber for edited ones; in an edited list or table the new rows are tinted. A new file gets no bars, since all of it is new. Rendering is the same component as PR descriptions, so tables, task lists, images and <code>AB#</code> links work.</span></li>
+    <li><b class="n">4</b><span><b>Removed text leaves a red marker</b> where it stood; Show unfolds the old lines. Without it a deletion would be invisible in a rendered page. A removed paragraph that a new one reads like counts as an edit of that one instead.</span></li>
+    <li><b class="n">5</b><span><b>Comments work on changed blocks</b>: <b>+</b> in the margin drafts a comment on the block's lines, the same draft the diff shows. Unchanged blocks take none, because GitHub only accepts comments on lines in the diff.</span></li>
+  </ol>
+</section>
+
+<!-- =============================== B =============================== -->
+<section class="sec">
+  <h3>B · An HTML file, rendered</h3>
+  <p>The page as a browser would draw it, with its own fonts and colours, inside a closed frame. A light page stays light in the dark app.</p>
+  <div class="fit"><div class="app skin">
+    <div class="tb">
+      <h2>Quick review</h2>
+      <div class="prog"><span>PR 2 / 9</span><span class="bar"><i style="width:22%"></i></span></div>
+      <span class="gh">Review later<svg class="i"><use href="#i-right"/></svg></span>
+      <span class="ib"><svg class="i"><use href="#i-max"/></svg></span>
+      <span class="ib"><svg class="i"><use href="#i-x"/></svg></span>
+    </div>
+    <div class="prh">
+      <div class="over">
+        <span class="av">MV</span><span>mvisser</span><span class="sep">·</span><span>acme/shop</span><span class="sep">·</span><span>#482</span><span class="sep">·</span><span>updated 2 h ago</span><span class="sep">·</span><span class="mono" style="font-size:11.5px">feature/discount-refusals → main</span>
+        <div class="chips">
+          <span class="chip ok"><svg class="i"><use href="#i-ccheck"/></svg>CI 14/14</span>
+          <span class="chip ok"><svg class="i"><use href="#i-merge"/></svg>No conflicts</span>
+          <span class="chip wi"><svg class="i"><use href="#i-clip"/></svg>AB#1042</span>
+          <span class="chip"><svg class="i"><use href="#i-msg"/></svg>2</span>
+          <span class="chip"><svg class="i"><use href="#i-ext"/></svg>GitHub</span>
+        </div>
+      </div>
+      <div class="title">Checkout: tell shoppers why a discount code was refused</div>
+    </div>
+
+    <div class="bd">
+      <nav class="tree">
+        <div class="tp"><div class="tp-top"><span><b>2</b> of 7 reviewed</span><span>5 left</span></div><div class="tp-bar"><i style="width:28%"></i></div></div>
+        <div class="fold"><span>(root)</span><span>1/1</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">README.md</span><span class="st"><span class="add">+2</span> <span class="del">−1</span></span></div>
+        <div class="fold"><span>docs/checkout</span><span>1/1</span></div>
+        <div class="file done"><span class="ck on"><svg class="i"><use href="#i-check"/></svg></span><span class="n">discount-codes.md</span><span class="st"><span class="add">+18</span> <span class="del">−4</span></span></div>
+        <div class="fold"><span>docs/plans</span><span>0/1</span></div>
+        <div class="file cur"><span class="ck"></span><span class="n">discount-refusals-plan.html</span><span class="st add">+236</span></div>
+        <div class="fold"><span>src/checkout</span><span>0/2</span></div>
+        <div class="file"><span class="ck"></span><span class="n">DiscountField.tsx</span><span class="st"><span class="add">+64</span> <span class="del">−12</span></span></div>
+        <div class="file"><span class="ck"></span><span class="n">refusal-reasons.ts</span><span class="st add">+41</span></div>
+        <div class="fold"><span>tests/checkout</span><span>0/2</span></div>
+        <div class="file"><span class="ck"></span><span class="n">DiscountField.test.tsx</span><span class="st add">+88</span></div>
+        <div class="file"><span class="ck"></span><span class="n">discount.spec.ts</span><span class="st"><span class="add">+37</span> <span class="del">−3</span></span></div>
+      </nav>
+
+      <div class="pane">
+        <div class="ph">
+          <code class="path">docs/plans/<b>discount-refusals-plan.html</b></code>
+          <span class="muted"><span class="add">+236</span> <span class="del">−0</span></span>
+          <span class="muted">3 of 7</span>
+          <span class="sp"></span>
+          <span class="seg"><span><svg class="i"><use href="#i-code"/></svg>Diff</span><span class="on"><svg class="i"><use href="#i-eye"/></svg>Rendered</span></span>
+          <span class="ghost dis">Wrap</span>
+          <span class="markbtn"><span class="ck"></span>Mark reviewed</span>
+        </div>
+        <div class="strip">
+          <svg class="i"><use href="#i-eye"/></svg>
+          <span>Rendered at the head commit <code>a1b2c3d</code></span>
+          <span class="pill plain">New file</span>
+          <span class="sp"></span>
+          <span class="rel"><span class="mk" style="left:-38px;top:-14px">3</span></span><span class="seg"><span class="on">Fit width</span><span>100%</span></span>
+          <span class="pill rel"><span class="mk" style="left:26px;top:26px">2</span><svg class="i" style="width:11px;height:11px"><use href="#i-shield"/></svg>Sandboxed</span>
+        </div>
+        <div class="stage rel">
+          <span class="mk" style="left:0;top:112px">1</span>
+          <div class="sheet"><div class="pg">
+            <div class="pg-top"><span class="pg-tag">Plan</span><span>AB#1042 · Checkout</span><span class="sp"></span><span>3 phases · about 2 days</span></div>
+            <h1>Tell shoppers why a discount code was refused</h1>
+            <p class="pg-lead">Every refused code says “This code is not valid”, and support answers forty tickets a week asking why. The API already knows the reason. This plan carries it to the field.</p>
+            <div class="pg-ph">
+              <div class="pg-card"><small>Phase 1</small><b>Reasons in the API</b><p>Return <code>reason</code> next to <code>valid</code>; four values, typed.</p><span class="st d">Done</span></div>
+              <div class="pg-card"><small>Phase 2</small><b>Copy in the field</b><p>One sentence per reason, with the amount or the date filled in.</p><span class="st p">In progress</span></div>
+              <div class="pg-card"><small>Phase 3</small><b>Docs and e2e</b><p>Update the discount guide; cover each reason in the checkout spec.</p><span class="st n">Next</span></div>
+            </div>
+            <h2>What a shopper sees</h2>
+            <div class="pg-ba">
+              <div class="pg-shot"><small>Before</small><div class="pg-in">SPRING10</div><div class="pg-msg">This code is not valid.</div></div>
+              <div class="pg-shot"><small>After</small><div class="pg-in">SPRING10</div><div class="pg-msg">Add €8.50 more to use this code.</div></div>
+            </div>
+            <h2>Risks</h2>
+            <table>
+              <tr><th>Risk</th><th>What we do about it</th></tr>
+              <tr><td>A reason leaks that a code exists</td><td>Unknown codes keep the old sentence</td></tr>
+            </table>
+          </div></div>
+        </div>
+      </div>
+
+      <aside class="rail">
+        <span class="ri"><svg class="i"><use href="#i-chl"/></svg></span>
+        <hr />
+        <span class="ri"><svg class="i"><use href="#i-img"/></svg><b>2</b></span>
+        <span class="ri ok"><svg class="i"><use href="#i-ccheck"/></svg></span>
+        <span class="ri"><svg class="i"><use href="#i-clip"/></svg></span>
+        <span class="ri"><svg class="i"><use href="#i-msg"/></svg><b>2</b></span>
+      </aside>
+    </div>
+
+    <div class="ft">
+      <span class="muted" style="font-size:13px">1 draft comment</span>
+      <span class="sp"></span>
+      <span class="btn">Previous <kbd>P</kbd></span>
+      <span class="btn">Next file <kbd>N</kbd></span>
+      <span class="btn primary">Mark reviewed &amp; next <kbd>V</kbd></span>
+      <span class="div"></span>
+      <span class="btn dis">Approve · 5 left</span>
+    </div>
+    <div class="hint"><span><kbd>J/K</kbd> scroll</span><span><kbd>N/P</kbd> file</span><span><kbd>V</kbd> mark &amp; next</span><span class="hot"><kbd>E</kbd> rendered / diff</span><span><kbd>D</kbd> description</span><span><kbd>]</kbd> context panel</span><span><kbd>Esc</kbd> overview</span><span class="sp"></span><span>Drafts saved on this device.</span></div>
+  </div></div>
+  <ol class="legend">
+    <li><b class="n">1</b><span><b>The page is drawn in a closed frame</b> with its own styles. It cannot reach BorgDock, your GitHub account or other servers on this machine. Images, stylesheets and scripts it links from the same repository are read at the head commit; fonts and libraries on public HTTPS addresses load too.</span></li>
+    <li><b class="n">2</b><span><b>Scripts run.</b> Plans and mockups draw themselves with script, so the page runs as written. A PR is someone else's code: the frame is sandboxed, with an origin of its own, and is served from a local address BorgDock's commands refuse.</span></li>
+    <li><b class="n">3</b><span><b>Fit width</b> scales a page made for a wide screen down to the pane; <b>100%</b> shows it at its own size and scrolls sideways with <kbd>H</kbd>/<kbd>L</kbd>.</span></li>
+    <li><b class="n">4</b><span><b>No line comments here.</b> A rendered page has no lines to pin a comment to; <kbd>E</kbd> goes back to the diff for that. Marking the file reviewed works in either view.</span></li>
+  </ol>
+</section>
+
+<!-- =============================== C =============================== -->
+<section class="sec">
+  <h3>C · A changed HTML file: before and after</h3>
+  <p>The file pane on its own, at actual size. When the PR edits an existing page you can put both versions next to each other, like the image diff does.</p>
+  <div class="crop skin">
+    <div class="ph">
+      <code class="path">docs/plans/<b>checkout-roadmap.html</b></code>
+      <span class="muted"><span class="add">+12</span> <span class="del">−5</span></span>
+      <span class="sp"></span>
+      <span class="seg"><span><svg class="i"><use href="#i-code"/></svg>Diff</span><span class="on"><svg class="i"><use href="#i-eye"/></svg>Rendered</span></span>
+      <span class="markbtn"><span class="ck"></span>Mark reviewed</span>
+    </div>
+    <div class="strip">
+      <svg class="i"><use href="#i-eye"/></svg>
+      <span><code>e4f5a6b</code> → <code>a1b2c3d</code></span>
+      <span class="sp"></span>
+      <span class="seg"><span>After</span><span>Before</span><span class="on">Side by side</span></span>
+      <span class="pill"><svg class="i" style="width:11px;height:11px"><use href="#i-shield"/></svg>Sandboxed</span>
+    </div>
+    <div class="two">
+      <figure>
+        <figcaption>Before <code>e4f5a6b</code></figcaption>
+        <div class="sheet"><div class="pg">
+          <div class="pg-top"><span class="pg-tag">Roadmap</span><span>Checkout · spring</span></div>
+          <h1>Checkout roadmap</h1>
+          <div class="row"><b>Address lookup by postcode</b><span class="q">March</span><span class="st d">Done</span></div>
+          <div class="row"><b>Pay later with invoice</b><span class="q">April</span><span class="st p">In progress</span></div>
+          <div class="row"><b>Gift wrapping at checkout</b><span class="q">May</span><span class="st n">Next</span></div>
+        </div></div>
+      </figure>
+      <figure>
+        <figcaption>After <code>a1b2c3d</code></figcaption>
+        <div class="sheet"><div class="pg">
+          <div class="pg-top"><span class="pg-tag">Roadmap</span><span>Checkout · spring</span></div>
+          <h1>Checkout roadmap</h1>
+          <div class="row"><b>Address lookup by postcode</b><span class="q">March</span><span class="st d">Done</span></div>
+          <div class="row"><b>Pay later with invoice</b><span class="q">April</span><span class="st d">Done</span></div>
+          <div class="row"><b>Discount refusal reasons</b><span class="q">April</span><span class="st p">In progress</span></div>
+          <div class="row"><b>Gift wrapping at checkout</b><span class="q">June</span><span class="st n">Next</span></div>
+        </div></div>
+      </figure>
+    </div>
+  </div>
+  <ol class="legend">
+    <li><b class="n">1</b><span><b>After / Before / Side by side</b> shows only for a file the PR changed; a new file has just one version. Both sides scroll together.</span></li>
+    <li><b class="n">2</b><span><b>Changes are not marked inside a rendered page</b>: unlike Markdown, HTML has no safe way to tell which pixels a changed line drew. The line counts stay in the header and the diff is one key away.</span></li>
+    <li><b class="n">3</b><span><b>When a file cannot be rendered</b> (over 1 MB, or the read fails) the pane says so in one line and shows the diff.</span></li>
+  </ol>
+</section>
+
+</div>
+</body>
+</html>

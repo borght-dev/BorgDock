@@ -439,12 +439,18 @@ test('rich image diffs show exact revisions, file lifecycle changes, and SVG tex
   expect(originalRequests).toContain('/repos/test-org/borgdock/contents/images/previous name.png');
   await review.locator('.qr-file[title="images/vector.svg"]').click();
   await expect(comparison.getByAltText('After: images/vector.svg')).toBeVisible();
-  await review.getByRole('button', { name: 'Rich diff', exact: true }).click();
+  // An SVG has code to read too: it keeps a switch. A picture without code has none.
+  const fileView = review.getByRole('group', { name: 'File view' });
+  await fileView.getByRole('button', { name: 'Diff', exact: true }).click();
   await expect(comparison).toHaveCount(0);
   await expect(review.locator('[data-diff-code]').filter({ hasText: '<svg><circle/></svg>' })).toBeVisible();
   await expect(review.getByRole('button', { name: 'Comment on new line 1' })).toBeVisible();
-  await review.getByRole('button', { name: 'Rich diff', exact: true }).click();
+  await page.keyboard.press('e');
   await expect(comparison.getByAltText('After: images/vector.svg')).toBeVisible();
+  await review.locator('.qr-file[title="images/renamed.png"]').click();
+  await expect(comparison.getByAltText('After: images/renamed.png')).toBeVisible();
+  await expect(fileView).toHaveCount(0);
+  await expect(review.getByRole('button', { name: 'Rich diff' })).toHaveCount(0);
 });
 
 test('approving the top card of a queue flings it right and the next card rises', async ({

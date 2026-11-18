@@ -55,7 +55,8 @@ function resetReviewDisplayPreferences() {
   for (const preference of [
     'fullscreen',
     'wrap-lines',
-    'rich-diff',
+    'rendered',
+    'html-fit',
     'split-diff',
     'context-open',
   ]) {
@@ -412,13 +413,15 @@ export const ImageComparison: Story = {
   ],
   play: async ({ canvasElement }) => {
     const canvas = await openFiles(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: /dispatch\.png/ }));
+    // The tree's own button: the pane's header names the open file too.
+    await userEvent.click(
+      canvasElement.querySelector<HTMLElement>('.qr-file[title="screenshots/dispatch.png"]')!,
+    );
     await canvas.findByAltText('Before: screenshots/dispatch.png');
     await canvas.findByAltText('After: screenshots/dispatch.png');
-    await expect(canvas.getByRole('button', { name: 'Rich diff' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    // A picture is always drawn: there is no diff to switch to.
+    await expect(canvas.queryByRole('button', { name: 'Rich diff' })).toBeNull();
+    await expect(canvas.queryByRole('group', { name: 'File view' })).toBeNull();
   },
 };
 

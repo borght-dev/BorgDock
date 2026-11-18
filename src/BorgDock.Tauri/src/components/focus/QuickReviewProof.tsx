@@ -1,4 +1,12 @@
-import { CircleCheck, CircleHelp, Square, SquareCheck, TriangleAlert } from 'lucide-react';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import {
+  CircleCheck,
+  CircleHelp,
+  CirclePlay,
+  Square,
+  SquareCheck,
+  TriangleAlert,
+} from 'lucide-react';
 import { useState } from 'react';
 import { avatarInitials } from '@/components/pr/pr-card-data';
 import { ImagePreview, ImageViewer } from '@/components/shared/ImageViewer';
@@ -29,9 +37,12 @@ export function proofsFor(pr: PullRequest): ReviewProof[] {
   return reviewProofs(description ? [description] : [], pr.headSha);
 }
 
-/** The Proof tab's count: screenshots when there are any, otherwise proofs. */
+/** The Proof tab's count: screenshots and recordings when there are any, otherwise proofs. */
 export function proofCount(proofs: readonly ReviewProof[]): number {
-  return proofs.reduce((n, proof) => n + proof.images.length, 0) || proofs.length;
+  return (
+    proofs.reduce((n, proof) => n + proof.images.length + proof.recordings.length, 0) ||
+    proofs.length
+  );
 }
 
 function sourceOf(entry: ConversationEntry) {
@@ -93,8 +104,9 @@ function ProofBlock({
   onAsk?: (commit: string) => void;
   onOpenImage: (images: ProofImage[], index: number) => void;
 }) {
-  const { entry, images } = proof;
+  const { entry, images, recordings } = proof;
   const hidden = images.length - SHOWN_IMAGES;
+  const [recordingError, setRecordingError] = useState('');
   return (
     <article
       className="qr-proof"
@@ -127,6 +139,29 @@ function ProofBlock({
           ))}
         </div>
       )}
+      {recordings.length > 0 && (
+        <ul className="qr-proof__recordings" aria-label="Recordings">
+          {recordings.map((recording) => (
+            <li key={recording.src}>
+              <button
+                type="button"
+                className="qr-proof__recording"
+                onClick={() => {
+                  setRecordingError('');
+                  void openUrl(recording.src).catch(() =>
+                    setRecordingError('Could not open the recording.'),
+                  );
+                }}
+              >
+                <CirclePlay {...ICON} />
+                <span>{recording.label}</span>
+                <span className="qr-muted">Opens in your browser</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {recordingError && <p role="alert">{recordingError}</p>}
     </article>
   );
 }

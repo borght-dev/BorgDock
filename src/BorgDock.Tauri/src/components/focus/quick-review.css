@@ -944,8 +944,7 @@ button.qr-cb:disabled {
 .qr-pane__head > .qr-spacer {
   flex: 1 1 0;
 }
-.qr-wrap-lines[aria-pressed="true"],
-.qr-rich-diff[aria-pressed="true"] {
+.qr-wrap-lines[aria-pressed="true"] {
   background: var(--color-accent-subtle);
   color: var(--color-accent);
 }
@@ -1026,7 +1025,6 @@ button.qr-cb:disabled {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-right: auto;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
@@ -1059,8 +1057,18 @@ button.qr-cb:disabled {
   color: var(--color-text-tertiary);
   cursor: not-allowed;
 }
-.qr-foot[data-done] .qr-foot__stat {
-  margin-right: 0;
+/* While files are left the stepping buttons share the row: the comment gives
+   way first, then the key hints go, before anything wraps. */
+.qr-foot {
+  container-type: inline-size;
+}
+.qr-workspace .qr-foot:not([data-done]) .qr-foot__comment {
+  min-width: 140px;
+}
+@container (max-width: 1240px) {
+  .qr-foot:not([data-done]) .qr-key {
+    display: none;
+  }
 }
 /* The overall comment sits beside the decision: one line until you write. */
 .qr-workspace .qr-foot__comment {
@@ -1922,6 +1930,74 @@ button.qr-prhead__ci {
   font-size: 12px;
   color: var(--color-text-secondary);
 }
+/* Above a rendered file: which commit it is and how it is shown. */
+.qr-rendered-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 4px 14px;
+  border-bottom: 1px solid var(--color-separator);
+  background: var(--color-review-rail-bg);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.qr-rendered-strip > svg {
+  flex: none;
+}
+.qr-rendered-strip code {
+  font-family: var(--font-code);
+  font-size: 11.5px;
+  color: var(--color-text-primary);
+}
+.qr-rendered-strip__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--color-strong-border);
+  border-radius: 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.qr-rendered-strip__pill[data-tone="safe"] {
+  border-color: var(--color-success-badge-border);
+  background: var(--color-success-badge-bg);
+  color: var(--color-success-badge-fg);
+}
+.qr-rendered-strip__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.qr-rendered-strip__key::before {
+  content: "";
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--color-status-green);
+}
+.qr-rendered-strip__key[data-change="changed"]::before {
+  background: var(--color-status-yellow);
+}
+.qr-rendered-strip__key[data-change="removed"]::before {
+  background: var(--color-status-red);
+}
+.qr-rendered-strip__count {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+}
+/* A rendered page scrolls inside its own frame, which fills the pane. */
+.qr-main[data-rendered="html"] {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
 .qr-interdiff > svg {
   flex: none;
   color: var(--color-accent);
@@ -2137,6 +2213,39 @@ button.qr-prhead__ci {
   max-height: none;
   object-fit: cover;
   object-position: top left;
+}
+.qr-proof__recordings {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.qr-proof__recording {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-subtle-border);
+  border-radius: 8px;
+  background: var(--color-modal-bg);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+.qr-proof__recording:hover {
+  border-color: var(--color-strong-border);
+}
+.qr-proof__recording svg {
+  flex: none;
+  color: var(--color-accent);
+}
+.qr-proof__recording .qr-muted {
+  margin-left: auto;
+  font-size: 11.5px;
 }
 .qr-proof__cap {
   position: absolute;

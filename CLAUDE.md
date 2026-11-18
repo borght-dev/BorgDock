@@ -460,6 +460,23 @@ The card's first section and a header chip: what could break if the PR merges (d
 - Tests that count `runHeadlessPrompt` calls must turn `autoRiskAssessment` off and call `resetRiskAssessments()`: the module-level pause otherwise leaks between tests and hides the extra runs. The overlay stories turn it off in `meta.beforeEach`; the `Risk…` stories turn it on and answer risk prompts (`RISK_PROMPT_TITLE`) apart from guide prompts.
 - Fixtures cite files by path (`__fixtures__/quick-review-risk.ts`): the snapshot reorders files, so numbers from a hand-written answer would point at other files.
 
+## Rendered files in Quick Review: Markdown, HTML, SVG
+
+A changed `.md`, `.html` or `.svg` file opens as the page it is; `E`, or Diff / Rendered in the pane's header, shows its diff (`borgdock-quick-review-rendered`, on by default). A picture without code (PNG, JPEG) is always drawn and has no switch. Design: `design/rendered-files/mockups.html`; stories `Focus/Quick review/Rendered files`.
+
+- **Never serve a pull request's HTML from a Tauri custom protocol.** Tauri counts a registered custom protocol as a local origin (`Webview::is_local_url`), this app has no ACL manifest for its own commands, and on Windows wry adds the IPC script, invoke key included, to every subframe: such a frame could call any command. `src-tauri/src/file_preview.rs` serves the page from `http://127.0.0.1:<port>`, a remote origin Tauri's ACL refuses, into `<iframe sandbox="allow-scripts">` (an opaque origin). `srcdoc`, `blob:` and `data:` frames inherit the app's CSP, so their scripts never run in a packaged build. Checked on 2026-11-18 in a build with the production CSP (WebView2 157): the frame does get `__TAURI_INTERNALS__.invoke`, and a command it invokes never runs (its fetch to `ipc.localhost` dies on the page's `connect-src`, the postMessage fallback reaches nothing); storage, the parent window, top navigation, popups, other origins and a self-navigation to another local port are all refused.
+- **To run a second BorgDock beside the installed one** (the single-instance guard goes by identifier): `bunx tauri build --debug --no-bundle --config <file with another "identifier">`, start the exe with `BORGDOCK_DATA_DIR` set to an empty folder, and add `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=<port>` to drive it with Playwright's `connectOverCDP`. An empty profile polls nothing and starts no agent.
+- **The preview ports are a fixed list** (`PREVIEW_PORTS`), and `frame-src` in `tauri.conf.json` names each one; a Rust test keeps them equal. With a wildcard port a page could navigate its own frame to another local server.
+- **The page gets a bridge script** (`services/file-preview.ts` `withPreviewBridge`): it reports its width and scroll position and takes scroll orders (J/K, the two sides of Side by side). Read whatever it posts with `readPreviewReport`; never act on a key or a command from the frame. A click inside the frame takes the keyboard until the pointer leaves it.
+- **Markdown marks come from a remark plugin** (`services/rendered-file.ts` `remarkChangeMarks`), on the markdown tree, where every node still has its source lines. It wraps a touched top-level block in a `div` with data attributes; `Markdown`'s `dataAttributes` lets them through the sanitizer and `RenderedMarkdown`'s `div` renderer draws them. A page can write those attributes itself, so a comment needs a line the diff added (`patch.added`).
+- **Removed text is an edit only when a new block reads like it** (`planChanges`, `REWRITE_LIKENESS`); otherwise it gets a marker where it stood. Without that, a section replaced by another showed as "changed" with the old text gone.
+- **`.markdown-body` rules for a rendered file start with `div.`**: `.qr-overlay .markdown-body :is(h1, h2)` has the same specificity and comes later.
+- Storybook and e2e have no preview server: outside Tauri `publishPreview` makes a blob, and `mock-tauri.ts` answers `file_preview_publish` with one.
+
+## Quick Review walk: comment before the last file, proof key
+
+The overall comment, Request changes (`R`) and Comment (`C`) are in the walk's footer from the first file; only Approve waits for every file (`QuickReviewDecisionBar`). `I` opens the first proof on the card and in the walk: a screenshot in the viewer, a recording in the browser (`firstProofMedia`). A recording is a `<video>`, a link to a video file, or a GitHub upload on a line of its own (`proofRecordings`); an uploaded image is written `![…](…)`.
+
 ## Self-Improvement
 
 Whenever you learn something new that is important to remember, run into the same issue twice, or encounter an issue that might happen again — update this CLAUDE.md so the next session avoids the same pitfalls.

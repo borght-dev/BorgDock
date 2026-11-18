@@ -124,13 +124,14 @@ interface Props {
 }
 
 /**
- * The file walk's footer. While files are left: drafts, Previous, Next file,
- * Mark reviewed & next, and Approve held back with how many files are left.
- * Once every file is reviewed it turns into the decision bar: the overall
- * comment right beside Request changes, Comment, Approve and the approve
- * that merges too (auto-merge, or merge as admin past failures that are not
- * the PR's), so writing and deciding happen in one place. Its primary
- * button (`.qr-decide--go`) takes focus when the last file is marked.
+ * The file walk's footer. The overall comment, Request changes and Comment
+ * are there from the first file: a review that finds its blocker in the
+ * second file does not have to mark the rest. While files are left it also
+ * has Previous, Next file, Mark reviewed & next, and Approve held back with
+ * how many files are left. Once every file is reviewed the stepping buttons
+ * go and Approve opens, with the approve that merges too (auto-merge, or
+ * merge as admin past failures that are not the PR's). Its primary button
+ * (`.qr-decide--go`) takes focus when the last file is marked.
  */
 export function QuickReviewDecisionBar({
   progress,
@@ -158,6 +159,39 @@ export function QuickReviewDecisionBar({
   onDone,
 }: Props) {
   const done = ready && progress.left === 0;
+  const overallComment = (
+    <textarea
+      ref={bodyRef}
+      className="qr-foot__comment"
+      rows={1}
+      aria-label="Overall comment"
+      value={body}
+      onChange={(e) => onBodyChange(e.target.value)}
+      placeholder="Overall comment (optional)"
+    />
+  );
+  const requestChanges = !own && (
+    <Button
+      variant="ghost"
+      size="md"
+      className="qr-decide qr-decide--changes"
+      aria-keyshortcuts="R"
+      onClick={onRequestChanges}
+    >
+      Request changes <Key>R</Key>
+    </Button>
+  );
+  const comment = (
+    <Button
+      variant="secondary"
+      size="md"
+      className="qr-decide"
+      aria-keyshortcuts="C"
+      onClick={onComment}
+    >
+      Comment <Key>C</Key>
+    </Button>
+  );
   if (done && own) {
     return (
       <div className="qr-foot" data-done="true" data-quick-review-actions="">
@@ -169,25 +203,9 @@ export function QuickReviewDecisionBar({
             </>
           )}
         </span>
-        <textarea
-          ref={bodyRef}
-          className="qr-foot__comment"
-          rows={1}
-          aria-label="Overall comment"
-          value={body}
-          onChange={(e) => onBodyChange(e.target.value)}
-          placeholder="Overall comment (optional)"
-        />
+        {overallComment}
         <Drafts drafts={drafts} onJump={onJump} />
-        <Button
-          variant="secondary"
-          size="md"
-          className="qr-decide"
-          aria-keyshortcuts="C"
-          onClick={onComment}
-        >
-          Comment <Key>C</Key>
-        </Button>
+        {comment}
         <Button
           variant="primary"
           size="md"
@@ -212,34 +230,10 @@ export function QuickReviewDecisionBar({
             </>
           )}
         </span>
-        <textarea
-          ref={bodyRef}
-          className="qr-foot__comment"
-          rows={1}
-          aria-label="Overall comment"
-          value={body}
-          onChange={(e) => onBodyChange(e.target.value)}
-          placeholder="Overall comment (optional)"
-        />
+        {overallComment}
         <Drafts drafts={drafts} onJump={onJump} />
-        <Button
-          variant="ghost"
-          size="md"
-          className="qr-decide qr-decide--changes"
-          aria-keyshortcuts="R"
-          onClick={onRequestChanges}
-        >
-          Request changes <Key>R</Key>
-        </Button>
-        <Button
-          variant="secondary"
-          size="md"
-          className="qr-decide"
-          aria-keyshortcuts="C"
-          onClick={onComment}
-        >
-          Comment <Key>C</Key>
-        </Button>
+        {requestChanges}
+        {comment}
         {!merge ? (
           <Button
             variant="primary"
@@ -282,9 +276,16 @@ export function QuickReviewDecisionBar({
   }
   return (
     <div className="qr-foot" data-quick-review-actions="">
-      <span className="qr-foot__stat">
-        <Drafts drafts={drafts} onJump={onJump} />
-      </span>
+      {notice && (
+        <span className="qr-foot__stat" data-tone="warning" role="status">
+          {notice}
+        </span>
+      )}
+      {overallComment}
+      <Drafts drafts={drafts} onJump={onJump} />
+      {requestChanges}
+      {comment}
+      <span className="qr-foot__divider" aria-hidden="true" />
       {progress.generatedLeft > 0 && (
         <Button variant="ghost" size="md" className="qr-skip-gen" onClick={onSkipGenerated}>
           Skip generated

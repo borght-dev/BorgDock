@@ -6,9 +6,15 @@ export interface ProofImage {
   alt: string;
   browserUrl?: string;
 }
+/** A screen recording: a video GitHub plays on the PR page. */
+export interface ProofRecording {
+  src: string;
+  label: string;
+}
 export interface ReviewProof {
   entry: ConversationEntry;
   images: ProofImage[];
+  recordings: ProofRecording[];
   excerpt: string;
   commit?: string;
   freshness: 'current' | 'outdated' | 'unknown';
@@ -51,6 +57,63 @@ export function proofImages(markdown: string): ProofImage[] {
   );
 }
 
+const VIDEO_FILE = /\.(?:mp4|mov|webm|m4v)(?:[?#]\S*)?$/i;
+/** An upload to a PR or comment; GitHub gives these no file extension. */
+const GITHUB_UPLOAD =
+  /^https:\/\/github\.com\/(?:user-attachments\/assets\/[\w-]+|[\w.-]+\/[\w.-]+\/assets\/\d+\/[\w-]+)$/i;
+
+/**
+ * The recordings in a description or comment: `<video>` elements, links to a
+ * video file, and uploads on a line of their own. GitHub writes an uploaded
+ * image as `![…](…)` and an uploaded video as its bare address.
+ */
+export function proofRecordings(markdown: string): ProofRecording[] {
+  const body = withoutBotFooters(markdown);
+  const found: string[] = [];
+  const doc = new DOMParser().parseFromString(body, 'text/html');
+  for (const video of doc.querySelectorAll('video[src], video source[src]')) {
+    const src = video.getAttribute('src') ?? '';
+    if (/^https?:\/\//i.test(src)) found.push(src);
+  }
+  for (const link of doc.querySelectorAll('a[href]')) {
+    const href = link.getAttribute('href') ?? '';
+    if (/^https?:\/\//i.test(href) && VIDEO_FILE.test(href)) found.push(href);
+  }
+  for (const match of body.matchAll(/\[[^\]]*\]\(\s*<?(https?:\/\/[^\s)>]+)>?[^)]*\)/g)) {
+    if (VIDEO_FILE.test(match[1]!)) found.push(match[1]!);
+  }
+  for (const match of body.matchAll(/^[ \t]*(https?:\/\/\S+)[ \t]*$/gm)) {
+    if (VIDEO_FILE.test(match[1]!) || GITHUB_UPLOAD.test(match[1]!)) found.push(match[1]!);
+  }
+  const sources = found.filter((src, index) => found.indexOf(src) === index);
+  return sources.map((src, index) => ({
+    src,
+    label: sources.length > 1 ? `Recording ${index + 1}` : 'Recording',
+  }));
+}
+
+/** The first image or recording of the newest proof that has one, as its text orders them. */
+export type FirstProofMedia =
+  | { kind: 'image'; images: ProofImage[] }
+  | { kind: 'recording'; recording: ProofRecording };
+
+export function firstProofMedia(proofs: readonly ReviewProof[]): FirstProofMedia | null {
+  const proof = proofs.find((p) => p.images.length > 0 || p.recordings.length > 0);
+  if (!proof) return null;
+  const image = proof.images[0];
+  const recording = proof.recordings[0];
+  if (!recording) return { kind: 'image', images: proof.images };
+  if (!image) return { kind: 'recording', recording };
+  const body = proof.entry.body ?? '';
+  const at = (src: string) => {
+    const index = body.indexOf(src);
+    return index < 0 ? Number.POSITIVE_INFINITY : index;
+  };
+  return at(recording.src) < at(image.src)
+    ? { kind: 'recording', recording }
+    : { kind: 'image', images: proof.images };
+}
+
 export function reviewProofs(
   entries: readonly ConversationEntry[],
   headSha?: string,
@@ -60,10 +123,12 @@ export function reviewProofs(
       const body = withoutBotFooters(entry.body ?? '');
       const source = withoutBotFooters(entry.sourceBody ?? body);
       const images = proofImages(body);
+      const recordings = proofRecordings(body);
+      const media = images.length + recordings.length;
       const text = `${source}\n${body}`;
       if (
         !/\b(proof|verification|verified|evidence)\b|\bvera\s+(cli|proof|verify)\b/i.test(text) &&
-        !(images.length && (entry.id === 'description' || /\bscreenshots?\b/i.test(text)))
+        !(media && (entry.id === 'description' || /\b(screenshots?|recordings?)\b/i.test(text)))
       )
         return [];
       const commits = [
@@ -93,6 +158,7 @@ export function reviewProofs(
         {
           entry,
           images,
+          recordings,
           excerpt,
           commit,
           freshness: matches === undefined ? 'unknown' : matches ? 'current' : 'outdated',
@@ -133,7 +199,8 @@ export function descriptionProof(
     return !!heading && PROOF_HEADING.test(heading[2]!);
   });
   const images = proofImages(body);
-  if (start < 0 && !images.length) return null;
+  const recordings = proofRecordings(body);
+  if (start < 0 && !images.length && !recordings.length) return null;
   const level = start < 0 ? 0 : /^\s{0,3}(#{1,6})/.exec(lines[start]!)![1]!.length;
   const end = lines.findIndex((line, index) => {
     const heading = /^\s{0,3}(#{1,6})\s/.exec(line);
@@ -148,7 +215,17 @@ export function descriptionProof(
         `<img src="${image.src.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" alt="${image.alt.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}">`,
     )
     .join('\n');
-  const proofBody = extraImages ? `${section}\n${extraImages}` : section;
+  const includedRecordings = new Set(proofRecordings(section).map((recording) => recording.src));
+  // A recording outside the proof section still counts; on its own line it reads as one.
+  const extraRecordings = recordings
+    .filter((recording) => !includedRecordings.has(recording.src))
+    .map((recording) =>
+      VIDEO_FILE.test(recording.src) || GITHUB_UPLOAD.test(recording.src)
+        ? recording.src
+        : `<video src="${recording.src.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"></video>`,
+    )
+    .join('\n');
+  const proofBody = [section, extraImages, extraRecordings].filter(Boolean).join('\n');
   return {
     kind: 'comment',
     id: 'description',
