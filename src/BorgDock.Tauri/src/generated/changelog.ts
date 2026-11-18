@@ -4,6 +4,35 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.15.0",
+    "date": "2026-11-18",
+    "summary": "Organize your notes in BorgDock and Read rendered files in Quick Review.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "Organize your notes in BorgDock",
+        "description": "Create and rename folders, add notes inside them, and move notes between folders or back to the vault root. Send notes and folders to the trash. Collapse all folders in one click, and BorgDock remembers which folders you leave open. In Notes settings, choose where Today opens or creates your daily note. New daily notes start without an automatic Activity list.",
+        "hero": {
+          "src": "/whats-new/4.15.0/notes-vault-controls.png",
+          "alt": "The Notes vault with the daily folder and its folder controls"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Read rendered files in Quick Review",
+        "description": "Open Markdown, HTML and SVG in their rendered form, or press E to see the diff. Jump between changes in Markdown and comment on the changed text. Compare the before and after versions of an HTML page side by side. You can also comment or request changes from the first file.",
+        "hero": {
+          "src": "/whats-new/4.15.0/quick-review-rendered-files.png",
+          "alt": "Quick Review showing rendered Markdown with inline change markers"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.14.0",
     "date": "2026-11-17",
     "summary": "Quick notes that save while you write.",
