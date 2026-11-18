@@ -26,8 +26,16 @@ import {
 import { checkCountsFor, prRowKey } from '@/components/pr/pr-card-data';
 import { DiffFileSection } from '@/components/pr-detail/diff/DiffFileSection';
 import { ImageDiff } from '@/components/pr-detail/diff/ImageDiff';
+import {
+  type HtmlView,
+  hasEarlierVersion,
+  RenderedHtml,
+  type RenderedHtmlHandle,
+} from '@/components/pr-detail/diff/RenderedHtml';
+import { RENDERED_STOP, RenderedMarkdown } from '@/components/pr-detail/diff/RenderedMarkdown';
 import { LinkedWorkItemBadge } from '@/components/pr-detail/LinkedWorkItemBadge';
 import { DetailDialog } from '@/components/shared/DetailDialog';
+import { ImageViewer } from '@/components/shared/ImageViewer';
 import { Button, checkBarSummary, IconButton, Seg2 } from '@/components/shared/primitives';
 import { usePrConversation } from '@/hooks/usePrConversation';
 import { usePrefetchReviewSnapshot } from '@/hooks/usePrefetchReviewSnapshot';
@@ -57,8 +65,10 @@ import {
   reviewProgress,
   unreviewedLabel,
 } from '@/services/quick-review';
+import { canRender } from '@/services/rendered-file';
 import { guideEntryFor, guideGroups } from '@/services/review-guide';
 import { classifyNoise } from '@/services/review-noise';
+import { firstProofMedia, type ProofImage } from '@/services/review-proof';
 import { reviewVerb } from '@/services/review-since';
 import type { RiskCitation, RiskReason } from '@/services/risk-assessment';
 import { useCiFailuresStore } from '@/stores/ci-failures-store';
@@ -92,6 +102,7 @@ import { QuickReviewNavigation } from './QuickReviewNavigation';
 import { noiseFolds } from './QuickReviewNoise';
 import { QuickReviewPrHeader } from './QuickReviewPrHeader';
 import { proofCount, proofsFor, QuickReviewProof } from './QuickReviewProof';
+import { RenderedHtmlStrip, RenderedMarkdownStrip } from './QuickReviewRendered';
 import {
   QuickReviewRiskSection,
   RiskFileStrip,
@@ -109,7 +120,8 @@ const FLING_MS = 420;
 const PEEKS = 2;
 const FULLSCREEN_KEY = 'borgdock-quick-review-fullscreen';
 const WRAP_LINES_KEY = 'borgdock-quick-review-wrap-lines';
-const RICH_DIFF_KEY = 'borgdock-quick-review-rich-diff';
+const RENDERED_KEY = 'borgdock-quick-review-rendered';
+const HTML_FIT_KEY = 'borgdock-quick-review-html-fit';
 const SPLIT_DIFF_KEY = 'borgdock-quick-review-split-diff';
 const CONTEXT_OPEN_KEY = 'borgdock-quick-review-context-open';
 const TREE_WIDTH_KEY = 'borgdock-quick-review-tree-width';
@@ -659,7 +671,18 @@ function QuickReviewWorkspace({
   const heldApproval = useHeldApproval();
   const [mode, setMode] = useState<Mode>(startInWalk ? 'walk' : 'card');
   const [wrapLines, setWrapLines] = useState(() => readReviewPreference(WRAP_LINES_KEY));
-  const [richDiff, setRichDiff] = useState(() => readReviewPreference(RICH_DIFF_KEY, true));
+  /** Markdown, HTML and SVG files open as the page they are; `E` shows their diff. */
+  const [rendered, setRendered] = useState(() => readReviewPreference(RENDERED_KEY, true));
+  const [htmlView, setHtmlView] = useState<HtmlView>('after');
+  const [htmlFit, setHtmlFit] = useState(() => readReviewPreference(HTML_FIT_KEY, true));
+  /** Files that could not be rendered, with the reason: they show their diff. */
+  const [unrenderable, setUnrenderable] = useState<Record<string, string>>({});
+  /** A file a draft was jumped to: its diff shows once, whatever the preference. */
+  const [diffOnce, setDiffOnce] = useState<string | null>(null);
+  /** The changes a rendered Markdown file marks, and the one last stepped to. */
+  const [stops, setStops] = useState<{ key: string; count: number; at: number } | null>(null);
+  const [proofViewer, setProofViewer] = useState<ProofImage[] | null>(null);
+  const htmlRef = useRef<RenderedHtmlHandle>(null);
   const [splitDiff, setSplitDiff] = useState(() => readReviewPreference(SPLIT_DIFF_KEY));
   const [contextOpen, setContextOpen] = useState(
     () => !narrowWindow() && readReviewPreference(CONTEXT_OPEN_KEY, true),
@@ -770,8 +793,17 @@ function QuickReviewWorkspace({
     ? (sinceFile && since?.files ? classifyNoise(since.files) : noise).get(file.filename)
     : undefined;
   const chapter = guided && prFile ? guideEntryFor(guide, prFile.filename) : null;
-  const imageFile = !!file && isImagePath(file.filename);
-  const richDiffVisible = imageFile && richDiff && !commitsView;
+  const renderKind = file && !commitsView ? canRender(file) : null;
+  /** A picture with no text to read: always drawn, never as a diff. */
+  const rasterImage = !!file && !commitsView && isImagePath(file.filename) && renderKind !== 'svg';
+  const renderKey = file ? `${file.filename}:${doc.headSha}` : '';
+  const renderFailure = renderKind ? unrenderable[renderKey] : undefined;
+  const renderedVisible =
+    !!renderKind && rendered && !renderFailure && !!doc.headSha && diffOnce !== file?.filename;
+  /** Something other than the text diff is on screen: no lines to wrap, split or comment on. */
+  const richDiffVisible = rasterImage || renderedVisible;
+  const htmlVisible = renderedVisible && renderKind === 'html';
+  const proofMedia = firstProofMedia(proofs);
   // Reasons whose cited lines end on a line of the shown diff; not on an
   // interdiff or an older head's assessment, whose line numbers differ.
   const riskMarks = new Map<string, RiskReason[]>();
@@ -970,11 +1002,50 @@ function QuickReviewWorkspace({
     if (target) go(target.filename);
   }
   function scrollFile(delta: number) {
-    mainRef.current?.scrollBy?.(0, delta * 72);
+    // A rendered page scrolls inside its own frame.
+    if (htmlVisible) htmlRef.current?.scrollBy(0, delta * 72);
+    else mainRef.current?.scrollBy?.(0, delta * 72);
   }
   function scrollFileHorizontally(delta: number) {
+    if (htmlVisible) {
+      htmlRef.current?.scrollBy(delta * 72, 0);
+      return;
+    }
     if (wrapLines) return;
     mainRef.current?.querySelector<HTMLElement>('[data-diff-scroll]')?.scrollBy?.(delta * 72, 0);
+  }
+  function chooseRendered(next: boolean) {
+    if (!renderKind) return;
+    setRendered(next);
+    writeReviewPreference(RENDERED_KEY, next);
+    setDiffOnce(null);
+    // Asking again is how a file that failed to render gets another try.
+    if (next) setUnrenderable(({ [renderKey]: _failed, ...rest }) => rest);
+  }
+  function chooseHtmlFit(next: boolean) {
+    setHtmlFit(next);
+    writeReviewPreference(HTML_FIT_KEY, next);
+  }
+  /** Scrolls a rendered Markdown file to its next or previous marked change. */
+  function stepChange(delta: number) {
+    const marked = [...(mainRef.current?.querySelectorAll<HTMLElement>(RENDERED_STOP) ?? [])];
+    if (!marked.length) return;
+    const from = stops?.key === renderKey ? stops.at : -1;
+    const at = (from + delta + marked.length) % marked.length;
+    marked[at]?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    setStops({ key: renderKey, count: marked.length, at });
+  }
+  /** Opens the first screenshot of the proof in the viewer, or its recording in the browser. */
+  function openFirstProof() {
+    if (!proofMedia) {
+      setNotice('This PR has no proof image or recording.');
+      return;
+    }
+    if (proofMedia.kind === 'image') setProofViewer(proofMedia.images);
+    else
+      void openUrl(proofMedia.recording.src).catch(() =>
+        setNotice('Could not open the recording.'),
+      );
   }
   function toggleWrapLines() {
     if (richDiffVisible) return;
@@ -1155,9 +1226,25 @@ function QuickReviewWorkspace({
     setEndNotice('');
     void submit(event);
   }
+  /**
+   * `C` and `R` from the keyboard. While files are left, `C` alone posts
+   * nothing: GitHub cannot take a review back, and a stray key in the middle
+   * of the walk would send the drafts. The button still does.
+   */
+  function decideByKey(event: Exclude<ReviewEvent, 'APPROVE'>) {
+    if (event === 'COMMENT' && !allReviewed && !doc.body.trim() && doc.comments.length > 0) {
+      setEndNotice('Write an overall comment first, or click Comment to post only the drafts.');
+      endBodyRef.current?.focus();
+      return;
+    }
+    decide(event);
+  }
   function jumpTo(comment: ReviewCommentDraft) {
     if (sinceScoped && !changed?.has(comment.path)) setScope('all');
     go(comment.path);
+    // A rendered page or picture has no lines: the draft is on the diff.
+    const kind = canRender({ filename: comment.path, status: 'modified' });
+    if (kind === 'html' || kind === 'svg') setDiffOnce(comment.path);
   }
 
   const keymap: QuickReviewKeymap | undefined = closing
@@ -1173,6 +1260,8 @@ function QuickReviewWorkspace({
           h: () => scrollFileHorizontally(-1),
           l: () => scrollFileHorizontally(1),
           w: toggleWrapLines,
+          ...(renderKind ? { e: () => chooseRendered(!renderedVisible) } : {}),
+          i: openFirstProof,
           d: () => setDescribing((v) => !v),
           ']': toggleContext,
           '1': () => openContext('proof'),
@@ -1181,15 +1270,13 @@ function QuickReviewWorkspace({
           '4': () => openContext('comments'),
           z: undoHeldApproval,
           ...(changed ? { s: () => chooseScope(scope === 'since' ? 'all' : 'since') } : {}),
+          // Commenting and asking for changes need no file marked.
+          c: () => decideByKey('COMMENT'),
+          ...(own ? {} : { r: () => decideByKey('REQUEST_CHANGES') }),
           ...(allReviewed && own
-            ? { Enter: finishWalk, c: () => decide('COMMENT') }
+            ? { Enter: finishWalk }
             : allReviewed
-              ? {
-                  a: () => approve(false),
-                  Enter: () => approve(),
-                  r: () => decide('REQUEST_CHANGES'),
-                  c: () => decide('COMMENT'),
-                }
+              ? { a: () => approve(false), Enter: () => approve() }
               : {}),
           Escape: toCard,
         }
@@ -1202,6 +1289,7 @@ function QuickReviewWorkspace({
               // Enter opens the files until every one is read, then ends the walk-through.
               Enter: allReviewed ? finishWalk : openWalk,
               w: () => setMode('compose'),
+              i: openFirstProof,
               Escape: onClose,
             }
           : {
@@ -1212,6 +1300,7 @@ function QuickReviewWorkspace({
               Enter: approveIssue ? openWalk : () => approve(),
               a: () => approve(),
               w: () => setMode('compose'),
+              i: openFirstProof,
               z: undoHeldApproval,
               Escape: onClose,
             };
@@ -1442,6 +1531,8 @@ function QuickReviewWorkspace({
             ['D', 'description'],
             [']', 'context panel'],
             ['1–4', 'panel tab'],
+            ...(proofMedia ? [['I', 'first proof'] as const] : []),
+            ...(renderKind ? [['E', renderedVisible ? 'diff' : 'rendered'] as const] : []),
             ...(richDiffVisible ? [] : [['W', 'wrap lines'] as const]),
             ...(changed ? [['S', 'since my review / all'] as const] : []),
             ['Esc', 'overview'],
@@ -1458,6 +1549,7 @@ function QuickReviewWorkspace({
                 : (['Enter', 'walk through files'] as const),
               ...(allReviewed ? [] : [['→', 'done'] as const]),
               ['W', 'write comment'] as const,
+              ...(proofMedia ? [['I', 'first proof'] as const] : []),
               ['←', 'later'] as const,
               ['Esc', 'close'] as const,
             ]
@@ -1467,6 +1559,7 @@ function QuickReviewWorkspace({
                 ? (['Enter', 'review files'] as const)
                 : (['Enter/A/→', autoMergeLabel] as const),
               ['W', 'write review'] as const,
+              ...(proofMedia ? [['I', 'first proof'] as const] : []),
               ['←', 'review later'] as const,
               ['Esc', 'close'] as const,
             ]),
@@ -1521,6 +1614,7 @@ function QuickReviewWorkspace({
           <QuickReviewDiscussion pr={detail} enabled conversation={conversation} />
         </DetailDialog>
       )}
+      {proofViewer && <ImageViewer images={proofViewer} onClose={() => setProofViewer(null)} />}
       <div className="qr-body">
         <div
           ref={stageRef}
@@ -1765,6 +1859,18 @@ function QuickReviewWorkspace({
                   </span>
                 )}
                 <span className="qr-spacer" />
+                {renderKind && (
+                  <Seg2
+                    size="sm"
+                    ariaLabel="File view"
+                    value={renderedVisible ? 'rendered' : 'diff'}
+                    onChange={(value) => chooseRendered(value === 'rendered')}
+                    options={[
+                      { value: 'diff', label: 'Diff' },
+                      { value: 'rendered', label: 'Rendered' },
+                    ]}
+                  />
+                )}
                 {!richDiffVisible && (
                   <Seg2
                     size="sm"
@@ -1789,20 +1895,6 @@ function QuickReviewWorkspace({
                 >
                   Wrap
                 </Button>
-                {imageFile && !commitsView && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-pressed={richDiff}
-                    className="qr-rich-diff"
-                    onClick={() => {
-                      setRichDiff(!richDiff);
-                      writeReviewPreference(RICH_DIFF_KEY, !richDiff);
-                    }}
-                  >
-                    Rich diff
-                  </Button>
-                )}
                 {prFile && !commitsView && (
                   <label
                     className="qr-pane__check"
@@ -1857,11 +1949,36 @@ function QuickReviewWorkspace({
                   </span>
                 </div>
               )}
+              {renderedVisible && renderKind === 'markdown' && file && (
+                <RenderedMarkdownStrip
+                  headSha={doc.headSha}
+                  newFile={file.status === 'added'}
+                  changes={stops?.key === renderKey ? stops.count : 0}
+                  at={stops?.key === renderKey ? stops.at : 0}
+                  onStep={stepChange}
+                />
+              )}
+              {htmlVisible && prFile && (
+                <RenderedHtmlStrip
+                  headSha={doc.headSha}
+                  earlier={hasEarlierVersion(prFile)}
+                  view={htmlView}
+                  onView={setHtmlView}
+                  fit={htmlFit}
+                  onFit={chooseHtmlFit}
+                />
+              )}
+              {renderFailure && (
+                <div className="qr-rendered-strip" role="status">
+                  {renderFailure}
+                </div>
+              )}
               <div
                 className="qr-main"
                 ref={mainRef}
                 data-quick-review-content
                 data-wrap-lines={wrapLines}
+                data-rendered={renderedVisible ? (renderKind ?? undefined) : undefined}
               >
                 {commitsView ? (
                   <CommitDiff
@@ -1875,6 +1992,22 @@ function QuickReviewWorkspace({
                       void writeText(path).catch(() => setNotice('Could not copy file path.'))
                     }
                   />
+                ) : htmlVisible && prFile ? (
+                  <RenderedHtml
+                    key={renderKey}
+                    ref={htmlRef}
+                    owner={detail.repoOwner}
+                    repo={detail.repoName}
+                    file={prFile}
+                    baseSha={doc.baseSha}
+                    headSha={doc.headSha}
+                    view={htmlView}
+                    fit={htmlFit}
+                    onUnavailable={(reason) =>
+                      setUnrenderable((before) => ({ ...before, [renderKey]: reason }))
+                    }
+                    onLeave={() => focusCurrentFile(walkRef.current)}
+                  />
                 ) : (
                   file && (
                     <div key={file.filename} className="qr-diff">
@@ -1884,7 +2017,31 @@ function QuickReviewWorkspace({
                         header={false}
                         viewMode={splitDiff && !richDiffVisible ? 'split' : 'unified'}
                         richContent={
-                          richDiffVisible ? (
+                          renderedVisible && renderKind === 'markdown' ? (
+                            <RenderedMarkdown
+                              key={renderKey}
+                              file={{
+                                owner: detail.repoOwner,
+                                repo: detail.repoName,
+                                path: file.filename,
+                                ref: doc.headSha,
+                              }}
+                              diff={file}
+                              newFile={file.status === 'added'}
+                              drafts={fileDrafts}
+                              renderDraft={commentView}
+                              onAddComment={
+                                ready && !sinceFile
+                                  ? (line) =>
+                                      addComment({ type: 'add', content: '', newLineNumber: line })
+                                  : undefined
+                              }
+                              onStops={(count) => setStops({ key: renderKey, count, at: 0 })}
+                              onUnavailable={(reason) =>
+                                setUnrenderable((before) => ({ ...before, [renderKey]: reason }))
+                              }
+                            />
+                          ) : richDiffVisible ? (
                             <ImageDiff
                               key={`${file.filename}:${doc.headSha}:${doc.baseSha}`}
                               file={file}
@@ -1955,13 +2112,17 @@ function QuickReviewWorkspace({
                         </p>
                       ) : (
                         <p className="qr-notice qr-muted">
-                          {richDiffVisible
-                            ? 'Check both image revisions, then mark the file reviewed.'
-                            : sinceFile
-                              ? 'End of the changes since your review. Press S for the whole PR to comment on a line.'
-                              : splitDiff
-                                ? 'End of file. Switch to Unified to comment on a line.'
-                                : 'End of file. Use + beside a line to add a draft comment.'}
+                          {renderedVisible && renderKind === 'markdown'
+                            ? sinceFile
+                              ? 'End of file. Press S for the whole PR to comment on a block.'
+                              : 'End of file. Use + beside a changed block to add a draft comment.'
+                            : richDiffVisible
+                              ? 'Check both image revisions, then mark the file reviewed.'
+                              : sinceFile
+                                ? 'End of the changes since your review. Press S for the whole PR to comment on a line.'
+                                : splitDiff
+                                  ? 'End of file. Switch to Unified to comment on a line.'
+                                  : 'End of file. Use + beside a line to add a draft comment.'}
                         </p>
                       )}
                     </div>

@@ -1,0 +1,260 @@
+/* A changed file drawn as the page it is: Markdown as a document with the
+   pull request's changes in the margin, HTML in a sandboxed frame. */
+.bd-rendered-status {
+  margin: 0;
+  padding: 24px 20px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+/* The document. `.markdown-body` is tuned for comments (12px, headings as
+   section labels); a file reads as a page. `div.` lifts these rules over
+   Quick Review's own `.qr-overlay .markdown-body` ones. */
+div.bd-rendered-markdown.markdown-body {
+  max-width: 860px;
+  padding: 20px 28px 12px 52px;
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+}
+div.bd-rendered-markdown.markdown-body :is(h1, h2, h3, h4, h5, h6) {
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+div.bd-rendered-markdown.markdown-body h1 {
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-separator);
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+div.bd-rendered-markdown.markdown-body h2 {
+  margin: 22px 0 8px;
+  font-size: 17px;
+}
+div.bd-rendered-markdown.markdown-body h3 {
+  margin: 18px 0 6px;
+  font-size: 14.5px;
+}
+div.bd-rendered-markdown.markdown-body :is(h4, h5, h6) {
+  margin: 16px 0 6px;
+  font-size: 13.5px;
+}
+div.bd-rendered-markdown.markdown-body li {
+  font-size: inherit;
+  color: inherit;
+}
+div.bd-rendered-markdown.markdown-body :is(code, pre code) {
+  font-size: 12px;
+}
+div.bd-rendered-markdown.markdown-body code {
+  color: var(--color-text-primary);
+}
+div.bd-rendered-markdown.markdown-body table {
+  font-size: 12.5px;
+}
+div.bd-rendered-markdown.markdown-body th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+div.bd-rendered-markdown.markdown-body blockquote {
+  color: var(--color-text-secondary);
+}
+.bd-rendered-image {
+  max-width: 100%;
+}
+span.bd-rendered-image {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+/* A block the pull request touched: a bar in the margin, green when every
+   line of it is new, amber when it was edited. */
+.bd-rendered-change,
+.bd-rendered-removed {
+  position: relative;
+  margin: 0 -12px 12px -14px;
+  border-radius: 0 7px 7px 0;
+}
+.bd-rendered-change {
+  padding: 8px 12px 8px 14px;
+}
+.bd-rendered-change::before,
+.bd-rendered-removed::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 3px;
+  border-radius: 2px;
+}
+div.bd-rendered-markdown.markdown-body .bd-rendered-change > * {
+  margin-top: 0;
+}
+div.bd-rendered-markdown.markdown-body .bd-rendered-change > :last-child {
+  margin-bottom: 0;
+}
+.bd-rendered-change[data-rendered-change="added"] {
+  background: var(--color-diff-added-bg);
+}
+.bd-rendered-change[data-rendered-change="added"]::before {
+  background: var(--color-status-green);
+}
+.bd-rendered-change[data-rendered-change="changed"] {
+  background: var(--color-warning-badge-bg);
+}
+.bd-rendered-change[data-rendered-change="changed"]::before {
+  background: var(--color-status-yellow);
+}
+/* In an edited list or table, the rows that are new. */
+.bd-rendered-markdown li[data-rendered-row],
+.bd-rendered-markdown tr[data-rendered-row] > td {
+  background: var(--color-diff-added-bg-highlight);
+}
+.bd-rendered-markdown li[data-rendered-row] {
+  border-radius: 4px;
+  box-shadow: -4px 0 0 var(--color-diff-added-bg-highlight);
+}
+/* A new file is new throughout: its blocks take comments but carry no marks. */
+.bd-rendered-markdown[data-new-file] .bd-rendered-change {
+  background: none;
+}
+.bd-rendered-markdown[data-new-file] .bd-rendered-change::before {
+  display: none;
+}
+.bd-rendered-markdown[data-new-file] .bd-rendered-change:hover {
+  background: var(--color-surface-hover);
+}
+.bd-rendered-change__add {
+  position: absolute;
+  top: 7px;
+  left: -34px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--motion-fast, 120ms) var(--ease-std, ease);
+}
+.bd-rendered-change:hover > .bd-rendered-change__add,
+.bd-rendered-change__add:focus-visible {
+  opacity: 1;
+}
+.bd-rendered-markdown .qr-comment {
+  margin: 0 0 14px;
+}
+
+/* Text the pull request removed leaves a marker where it stood. */
+.bd-rendered-removed {
+  background: var(--color-diff-deleted-bg);
+}
+.bd-rendered-removed::before {
+  background: var(--color-status-red);
+}
+.bd-rendered-removed > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px 6px 14px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  color: var(--color-status-red);
+  cursor: pointer;
+}
+.bd-rendered-removed > button b {
+  font-weight: 600;
+}
+.bd-rendered-removed__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--color-accent);
+}
+div.bd-rendered-markdown.markdown-body .bd-rendered-removed pre {
+  margin: 0;
+  padding: 2px 12px 10px 14px;
+  background: none;
+  font: 12px / 1.55 var(--font-code);
+  white-space: pre-wrap;
+  color: var(--color-text-secondary);
+}
+.bd-rendered-others {
+  max-width: 860px;
+  padding: 4px 28px 8px 38px;
+}
+.bd-rendered-others h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* The page of an HTML file, in its own frame. */
+.bd-rendered-html {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 12px 12px 0;
+  background: var(--color-review-rail-bg);
+}
+.bd-rendered-html[data-view="both"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.bd-rendered-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+}
+.bd-rendered-side figcaption {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--color-text-primary);
+}
+.bd-rendered-side__commit {
+  font-family: var(--font-code);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+/* A page without a background of its own expects the browser's white. */
+.bd-rendered-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-strong-border);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  background: #fff;
+}
+.bd-rendered-frame iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  background: #fff;
+  transform-origin: 0 0;
+}

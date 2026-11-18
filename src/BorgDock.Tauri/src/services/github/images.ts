@@ -87,6 +87,18 @@ async function getRevisionImage(
   return { src: `data:${mime};base64,${encoded}`, path, ref, size: content.size };
 }
 
+/** An image of the repository as it is at `ref`, as a data URL. */
+export function getImageAtRef(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  path: string,
+  ref: string,
+): Promise<RevisionImage> {
+  const repository = `repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  return getRevisionImage(client, repository, path, ref);
+}
+
 function imageResult(result: PromiseSettledResult<RevisionImage | null>): ImageRevision {
   if (result.status === 'rejected') {
     return {

@@ -10,11 +10,13 @@ import { useQuickReviewStore } from '@/stores/quick-review-store';
  *   a review.
  * - In the file walk: `v` mark reviewed and next, `n` / `p` change files,
  *   `j` / `k` scroll vertically, `h` / `l` scroll horizontally, `w` wraps
- *   lines, `d` opens the description, `]` folds the context panel, `1`–`4`
- *   pick its tab, `s` switches between changes since the last review and
- *   all files, `Escape` back to the card. Once every file is reviewed:
- *   `Enter` / `a` approve, `r` request changes, `c` comment.
- * - Anywhere: `z` takes back an approval while its Undo toast is up.
+ *   lines, `e` switches a Markdown, HTML or SVG file between its rendered
+ *   page and its diff, `d` opens the description, `]` folds the context
+ *   panel, `1`–`4` pick its tab, `s` switches between changes since the last
+ *   review and all files, `r` request changes, `c` comment, `Escape` back to
+ *   the card. Once every file is reviewed: `Enter` / `a` approve.
+ * - Anywhere: `i` opens the first proof image or recording, `z` takes back
+ *   an approval while its Undo toast is up.
  */
 export type QuickReviewKey =
   | 'ArrowRight'
@@ -30,6 +32,8 @@ export type QuickReviewKey =
   | 'l'
   | 'a'
   | 'w'
+  | 'e'
+  | 'i'
   | 'd'
   | ']'
   | '1'

@@ -7,6 +7,7 @@ pub mod auth;
 pub mod cache;
 pub mod ci_failures;
 pub mod content_search;
+pub mod file_preview;
 pub mod flyout;
 pub mod git;
 mod http;
@@ -236,6 +237,8 @@ macro_rules! app_commands {
             ado::ado_fetch,
             // Full-text search
             content_search::search_content,
+            file_preview::file_preview_publish,
+            file_preview::file_preview_release,
             // Activity journal
             activity::commands::activity_open_source,
             activity::commands::activity_sources,
@@ -393,6 +396,7 @@ pub fn run() {
         .manage(ci_failures::store::CiStore::default())
         .manage(activity::ActivityDb::default())
         .manage(sql::SqlQueries::default())
+        .manage(file_preview::FilePreviews::default())
         .manage(t3::commands::T3Sessions::default())
         .manage(platform::flyout_cache::FlyoutCache {
             data: Mutex::new(None),

@@ -1,7 +1,7 @@
 import { type ComponentProps, type MouseEvent, useCallback } from 'react';
-import ReactMarkdown, { type Components } from 'react-markdown';
+import ReactMarkdown, { type Components, type Options } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { WorkItemRef } from '@/components/work-items/WorkItemRef';
 import { rehypeWorkItemRefs, workItemIdFromHref } from '@/services/work-item-peek';
@@ -68,12 +68,40 @@ const PREVIEW_COMPONENTS: Components = {
   ),
 };
 
+type SanitizeSchema = typeof defaultSchema;
+const SCHEMAS = new WeakMap<readonly string[], SanitizeSchema>();
+
+/** The standard sanitizer, letting `attributes` (hast property names) through on any element. */
+function schemaWith(attributes: readonly string[]): SanitizeSchema {
+  let schema = SCHEMAS.get(attributes);
+  if (!schema) {
+    schema = {
+      ...defaultSchema,
+      attributes: {
+        ...defaultSchema.attributes,
+        '*': [...(defaultSchema.attributes?.['*'] ?? []), ...attributes],
+      },
+    };
+    SCHEMAS.set(attributes, schema);
+  }
+  return schema;
+}
+
 interface MarkdownProps {
   children: string;
   /** Allow raw HTML embedded in the markdown (rehype-raw). Defaults to true. */
   allowRawHtml?: boolean;
   previewImages?: boolean;
   onImagePreview?: (src: string) => void;
+  /** Remark plugins run after GFM, on the markdown tree, where every node has its source lines. */
+  remarkPlugins?: Options['remarkPlugins'];
+  /** Renderers that replace or add to the standard ones. Keep the object's identity stable. */
+  components?: Components;
+  /**
+   * Data attributes (hast names, `dataFoo`) a remark plugin sets and a
+   * renderer reads: the sanitizer drops every other one. Pass a constant.
+   */
+  dataAttributes?: readonly string[];
 }
 
 /**
@@ -87,33 +115,36 @@ export function Markdown({
   allowRawHtml = true,
   previewImages = false,
   onImagePreview,
+  remarkPlugins,
+  components,
+  dataAttributes,
 }: MarkdownProps) {
+  const sanitize: NonNullable<Options['rehypePlugins']>[number] = dataAttributes
+    ? [rehypeSanitize, schemaWith(dataAttributes)]
+    : rehypeSanitize;
+  const standard: Components = onImagePreview
+    ? {
+        ...PREVIEW_COMPONENTS,
+        img: ({ src, alt }) =>
+          typeof src === 'string' && /^https?:\/\//i.test(src) ? (
+            <ImagePreview
+              image={{ src, alt: alt || 'Screenshot' }}
+              onOpen={() => onImagePreview(src)}
+            />
+          ) : (
+            <span>{alt || 'Image unavailable'}</span>
+          ),
+      }
+    : previewImages
+      ? PREVIEW_COMPONENTS
+      : MARKDOWN_COMPONENTS;
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={remarkPlugins ? [remarkGfm, ...remarkPlugins] : [remarkGfm]}
       rehypePlugins={
-        allowRawHtml
-          ? [rehypeRaw, rehypeWorkItemRefs, rehypeSanitize]
-          : [rehypeWorkItemRefs, rehypeSanitize]
+        allowRawHtml ? [rehypeRaw, rehypeWorkItemRefs, sanitize] : [rehypeWorkItemRefs, sanitize]
       }
-      components={
-        onImagePreview
-          ? {
-              ...PREVIEW_COMPONENTS,
-              img: ({ src, alt }) =>
-                typeof src === 'string' && /^https?:\/\//i.test(src) ? (
-                  <ImagePreview
-                    image={{ src, alt: alt || 'Screenshot' }}
-                    onOpen={() => onImagePreview(src)}
-                  />
-                ) : (
-                  <span>{alt || 'Image unavailable'}</span>
-                ),
-            }
-          : previewImages
-            ? PREVIEW_COMPONENTS
-            : MARKDOWN_COMPONENTS
-      }
+      components={components ? { ...standard, ...components } : standard}
     >
       {children}
     </ReactMarkdown>

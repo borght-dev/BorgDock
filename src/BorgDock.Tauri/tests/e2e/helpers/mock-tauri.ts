@@ -231,6 +231,16 @@ export const DEFAULT_HANDLERS: MockHandlers = {
     unreadCapacity: 5000,
   },
   set_taskbar_badge: null,
+  // File previews: the app hands a page to its sandboxed frame from a loopback
+  // server. Here the page becomes a blob, which runs because the dev server
+  // sends no CSP.
+  file_preview_publish: (args: Record<string, unknown>) => {
+    const files = args.files as Array<{ path: string; base64: string }>;
+    const page = files.find((file) => file.path === args.entry);
+    const bytes = Uint8Array.from(atob(page?.base64 ?? ''), (c) => c.charCodeAt(0));
+    return URL.createObjectURL(new Blob([bytes], { type: 'text/html' }));
+  },
+  file_preview_release: null,
   // Workstreams: an in-page folder (window.__wsFiles) with the same revision
   // rule as the Rust storage, so specs can create, edit and reload them.
   workstreams_folder_path: 'memory',

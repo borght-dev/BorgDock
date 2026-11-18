@@ -339,6 +339,13 @@ export const commands = {
 	ciStoreInfo: () => typedError<CiStoreInfo, string>(__TAURI_INVOKE("ci_store_info")),
 	adoFetch: (request: AdoFetchRequest_Deserialize) => typedError<AdoFetchResponse_Serialize, string>(__TAURI_INVOKE("ado_fetch", { request })),
 	searchContent: (root: string, pattern: string, cancelToken: number) => typedError<ContentFileResult[], string>(__TAURI_INVOKE("search_content", { root, pattern, cancelToken })),
+	/**
+	 *  Puts `files` on offer and returns the address of `entry`, the page itself.
+	 *  The address holds a random token; only a frame given it can read the files.
+	 */
+	filePreviewPublish: (entry: string, files: PreviewFile[]) => typedError<string, string>(__TAURI_INVOKE("file_preview_publish", { entry, files })),
+	/**  Takes a preview off offer once its frame is gone. */
+	filePreviewRelease: (url: string) => typedError<null, string>(__TAURI_INVOKE("file_preview_release", { url })),
 	activityOpenSource: (source: ActivitySourceRequest) => typedError<ActivitySourceState_Serialize, string>(__TAURI_INVOKE("activity_open_source", { source })),
 	activitySources: () => typedError<ActivitySourceState_Serialize[], string>(__TAURI_INVOKE("activity_sources")),
 	/**  Settings dropped the source: its entries stay, with actions disabled. */
@@ -2556,6 +2563,12 @@ export type PrWorkspace_Serialize =
 { type: "root" } |
 /**  The checkout another thread works in. */
 { type: "existingWorktree"; worktreePath: string; branch: string | null };
+
+/**  One file of a preview: its path in the repository and its bytes. */
+export type PreviewFile = {
+	path: string,
+	base64: string,
+};
 
 export type ProjectDto = ProjectDto_Serialize | ProjectDto_Deserialize;
 
