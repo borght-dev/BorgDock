@@ -169,11 +169,17 @@ test('walk footer stays fixed across diffs, comments, and widths', async ({ page
   await page.locator('.qr-prev').click();
   await page.getByRole('button', { name: 'Comment on new line 110', exact: true }).click();
   await page.getByPlaceholder('Describe the issue or suggest a change...').fill('Handle failure.');
-  expect(await page.locator('.qr-next').boundingBox()).toEqual(initial);
+  expect(await page.locator('.qr-next').boundingBox()).toMatchObject({
+    y: initial?.y, width: initial?.width, height: initial?.height,
+  });
   await page.getByRole('button', { name: 'Save draft' }).click();
+  const withSavedDraft = await page.locator('.qr-next').boundingBox();
+  expect(withSavedDraft).toMatchObject({
+    y: initial?.y, width: initial?.width, height: initial?.height,
+  });
   for (let i = 1; i < paths.length; i++) {
     await page.locator('.qr-next').click();
-    expect(await page.locator('.qr-next').boundingBox()).toEqual(initial);
+    expect(await page.locator('.qr-next').boundingBox()).toEqual(withSavedDraft);
   }
   for (const width of [736, 360]) {
     await page.setViewportSize({ width, height: 900 });

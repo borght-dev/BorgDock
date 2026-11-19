@@ -231,6 +231,7 @@ for (const alreadyEnabled of [false, true]) {
     // Approvals wait 5 s for Undo before they are posted.
     test.slow();
     const reviews = await bootList(page, undefined, alreadyEnabled);
+    await seedMainWindow(page, { settings: { ui: { quickReviewRequireAllFiles: true } } });
     const mutations: unknown[] = [];
     await page.route('https://api.github.com/graphql', (route) => {
       const { query, variables } = route.request().postDataJSON();
@@ -258,6 +259,7 @@ for (const alreadyEnabled of [false, true]) {
     const primary = dialog.getByRole('button', {
       name: alreadyEnabled ? 'Approve' : 'Approve & auto-merge', exact: true,
     });
+    await expect(dialog.locator('.qr-act-note')).toHaveText('3 files not reviewed yet');
     await expect(primary).toBeDisabled();
     // A blocked Approve offers no keys.
     await expect(primary).not.toHaveAttribute('aria-keyshortcuts');
