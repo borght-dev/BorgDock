@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.16.0 — 2026-11-19
+
+### Improvements
+
+- **Approve and maximize from Quick Review** — Approve a pull request while files are still unread. If you prefer to review every non-generated file first, turn on Require file review before approving in Settings → Appearance → Quick Review. Use the square button in the Quick Review title bar to maximize or restore the whole BorgDock window. ![Quick Review with unread files and the Approve and maximize controls](whats-new/4.16.0/quick-review-controls.png)
+
 ## 4.15.0 — 2026-11-18
 
 ### Improvements
