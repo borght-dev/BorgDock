@@ -93,6 +93,7 @@ interface Props {
   ready: boolean;
   /** Why Approve is not possible, or null. */
   approveIssue: string | null;
+  missingFileReview: boolean;
   /** The approve that merges too (auto-merge, or merge as admin), or null. */
   merge: { label: string; hint?: string } | null;
   canGoBack: boolean;
@@ -127,9 +128,8 @@ interface Props {
  * The file walk's footer. The overall comment, Request changes and Comment
  * are there from the first file: a review that finds its blocker in the
  * second file does not have to mark the rest. While files are left it also
- * has Previous, Next file, Mark reviewed & next, and Approve held back with
- * how many files are left. Once every file is reviewed the stepping buttons
- * go and Approve opens, with the approve that merges too (auto-merge, or
+ * has Previous, Next file, and Mark reviewed & next. Once every file is
+ * reviewed the stepping buttons go, and the approve that merges (auto-merge, or
  * merge as admin past failures that are not the PR's). Its primary button
  * (`.qr-decide--go`) takes focus when the last file is marked.
  */
@@ -138,6 +138,7 @@ export function QuickReviewDecisionBar({
   drafts,
   ready,
   approveIssue,
+  missingFileReview,
   merge,
   canGoBack,
   canGoOn,
@@ -331,11 +332,21 @@ export function QuickReviewDecisionBar({
           variant="secondary"
           size="md"
           className="qr-foot__approve"
-          aria-disabled="true"
+          aria-disabled={approveIssue ? true : undefined}
+          aria-keyshortcuts={approveIssue ? undefined : 'A'}
           title={approveIssue ?? undefined}
-          leading={<Lock size={13} strokeWidth={2.25} aria-hidden="true" />}
+          leading={
+            approveIssue ? <Lock size={13} strokeWidth={2.25} aria-hidden="true" /> : undefined
+          }
+          onClick={() => onApprove(false)}
         >
-          Approve · {progress.left} left
+          {missingFileReview ? `Approve · ${progress.left} left` : 'Approve'}
+          {!approveIssue && (
+            <>
+              {' '}
+              <Key>A</Key>
+            </>
+          )}
         </Button>
       )}
     </div>

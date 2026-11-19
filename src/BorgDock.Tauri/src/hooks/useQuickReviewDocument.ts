@@ -13,6 +13,7 @@ import {
   reviewProgress,
 } from '@/services/quick-review';
 import { type ReviewDecision, useQuickReviewStore } from '@/stores/quick-review-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { toastError } from '@/stores/toast-store';
 import type { PullRequest } from '@/types';
 import { parseError } from '@/utils/parse-error';
@@ -63,7 +64,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
    * The review as it would be posted now, as a function that posts it, or
    * null when it cannot be posted yet. `event` overrides the document's
    * decision for this submission only (the card's Approve); it is never
-   * persisted. Approving waits until every non-generated file is reviewed.
+   * persisted.
    * The function captures everything it needs, so it can run after this PR
    * is no longer on screen (an approval held for Undo); it throws when
    * GitHub refuses, and resolves to the decision to record.
@@ -77,6 +78,7 @@ export function useQuickReviewDocument(pr: PullRequest) {
     if (!doc || doc.comments.some((c) => !c.saved || c.outdated || !c.body.trim())) return null;
     if (
       doc.event === 'APPROVE' &&
+      useSettingsStore.getState().settings.ui.quickReviewRequireAllFiles &&
       reviewProgress(
         snapshot.files.map((f) => f.filename),
         doc.reviewed,

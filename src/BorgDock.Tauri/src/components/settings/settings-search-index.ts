@@ -145,6 +145,12 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
   },
   { sectionId: 'appearance', anchorId: 'flyout-hotkey', label: 'Flyout hotkey' },
   { sectionId: 'appearance', anchorId: 'quick-review-hotkey', label: 'Quick review hotkey' },
+  {
+    sectionId: 'appearance',
+    anchorId: 'quick-review-require-all-files',
+    label: 'Require file review before approving',
+    keywords: ['quick review', 'approve', 'all files'],
+  },
   { sectionId: 'appearance', anchorId: 'wt-profile', label: 'Windows Terminal profile' },
   { sectionId: 'appearance', anchorId: 'run-at-startup', label: 'Run at startup' },
   { sectionId: 'appearance', anchorId: 'start-minimized', label: 'Start minimized to tray' },

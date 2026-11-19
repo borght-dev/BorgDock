@@ -98,6 +98,7 @@ beforeEach(() => {
   useSettingsStore.setState({
     settings: {
       ...DEFAULT_SETTINGS,
+      ui: { ...DEFAULT_SETTINGS.ui, quickReviewRequireAllFiles: true },
       summaries: { ...DEFAULT_SETTINGS.summaries!, autoRiskAssessment: false },
     },
   });
@@ -232,7 +233,7 @@ describe('the overall comment while files are left', () => {
     );
   });
 
-  it('still does not approve with files left', async () => {
+  it('does not approve with files left when file review is required', async () => {
     await openWalk();
     press('a');
     press('Enter');

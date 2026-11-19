@@ -151,6 +151,12 @@ function expectApproveOpen() {
   expect(approveButton()).not.toHaveAttribute('aria-disabled');
   expect(approveButton()).toBeEnabled();
 }
+function requireFileReview() {
+  const { settings } = useSettingsStore.getState();
+  useSettingsStore.setState({
+    settings: { ...settings, ui: { ...settings.ui, quickReviewRequireAllFiles: true } },
+  });
+}
 function press(key: string) {
   fireEvent.keyDown(document, { key });
 }
@@ -300,6 +306,7 @@ describe('Quick review card', () => {
   });
 
   it('keeps Approve disabled, with the reason, until every non-generated file is reviewed', async () => {
+    requireFileReview();
     await start();
     expectApproveBlocked();
     expect(approveButton()).toHaveAccessibleDescription('3 files not reviewed yet');
@@ -351,7 +358,7 @@ describe('Quick review card', () => {
     await waitFor(() => expect(useQuickReviewStore.getState().currentIndex).toBe(1));
     expect(useQuickReviewStore.getState().decisions.get(prRowKey(pr.pullRequest))).toBe('approved');
     expect(screen.getByText('PR 2 / 2')).toBeInTheDocument();
-    expectApproveBlocked();
+    await waitFor(expectApproveOpen);
   });
 
   it('opens Write review with W and approves with A after finishing the files', async () => {
@@ -496,6 +503,7 @@ describe('Quick review file walk', () => {
   });
 
   it('mark and next skips files already reviewed; the last mark turns the footer into the decision bar', async () => {
+    requireFileReview();
     await start();
     openFiles();
     fireEvent.click(screen.getByRole('button', { name: 'Skip generated' }));
@@ -683,6 +691,7 @@ describe('Quick review composer', () => {
   });
 
   it('requires an overall explanation for request changes and blocks A before files are reviewed', async () => {
+    requireFileReview();
     await start();
     press('a');
     expect(submitReview).not.toHaveBeenCalled();
@@ -729,6 +738,7 @@ describe('Quick review composer', () => {
   });
 
   it('holds an approval from the composer until the files are reviewed', async () => {
+    requireFileReview();
     vi.mocked(getPRReviewDetails).mockResolvedValue({
       pr: { ...pr.pullRequest, state: 'OPEN' },
       baseSha: 'base',

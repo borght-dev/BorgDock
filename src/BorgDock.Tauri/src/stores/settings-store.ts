@@ -35,6 +35,7 @@ const defaultSettings: AppSettings = {
     editorCommand: 'code',
     runAtStartup: false,
     quickReviewHotkey: '',
+    quickReviewRequireAllFiles: false,
     startMinimizedToTray: false,
     restoreLastSelection: true,
     reduceMotion: false,

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import type { PullRequestWithChecks } from '../../src/types';
 import { SAMPLE_PRS } from './helpers/seed';
-import { bootApp } from './helpers/test-utils';
+import { bootApp, seedMainWindow } from './helpers/test-utils';
 
 const paths = [
   'src/orders/handler.ts',
@@ -90,13 +90,18 @@ async function setup(page: Page, state = detail.state, open = true) {
 test('reviews every file in the walk, then approves from the card', async ({ page }) => {
   // Approvals wait 5 s for Undo before they are posted.
   test.slow();
-  const reviews = await setup(page, 'OPEN');
+  const reviews = await setup(page, 'OPEN', false);
+  await seedMainWindow(page, { settings: { ui: { quickReviewRequireAllFiles: true } } });
+  await openReview(page);
   const approve = page.getByRole('button', { name: 'Approve', exact: true });
   await expect(approve).toBeDisabled();
   await expect(page.getByText('5 of 5 to review, 0 generated')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('card-unreviewed.png') });
 
   await openWalk(page);
+  const locked = page.getByRole('button', { name: 'Approve · 5 left' });
+  await expect(locked).toBeDisabled();
+  await page.locator('.qr-foot').screenshot({ path: test.info().outputPath('walk-approval-locked.png') });
   for (let i = 0; i < paths.length; i++) await page.keyboard.press('v');
   await expect(page.locator('[data-quick-review-progress]')).toHaveText('5 of 5 revieweddone');
   await expect(page.getByText('All 5 files reviewed')).toBeVisible();
@@ -123,6 +128,33 @@ test('reviews every file in the walk, then approves from the card', async ({ pag
     .toEqual([{ event: 'APPROVE', body: '', commit_id: 'sha42', comments: [] }]);
 });
 
+test('can approve with unread files by default', async ({ page }) => {
+  const reviews = await setup(page, 'open', false);
+  await seedMainWindow(page, {
+    settings: { summaries: { autoReviewGuide: false, autoRiskAssessment: false } },
+  });
+  await openReview(page);
+  await expect(page.getByRole('button', { name: 'Approve', exact: true })).toBeEnabled();
+  await expect(page.getByText('5 of 5 to review, 0 generated')).toBeVisible();
+  await page.getByRole('dialog', { name: 'Quick Review' }).screenshot({
+    path: test.info().outputPath('card-approval-available.png'),
+  });
+  await page.getByRole('button', { name: 'Write review' }).click();
+  await page.getByRole('group', { name: 'Review decision' }).getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByRole('button', { name: 'Submit approval' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+
+  await openWalk(page);
+  const approve = page.getByRole('button', { name: 'Approve', exact: true });
+  await expect(approve).toBeEnabled();
+  await expect(page.locator('[data-quick-review-progress]')).toHaveText('0 of 5 reviewed5 left');
+  await page.locator('.qr-foot').screenshot({ path: test.info().outputPath('walk-approval-available.png') });
+  await approve.click();
+  await expect.poll(() => reviews, { timeout: 10_000 }).toEqual([
+    expect.objectContaining({ event: 'APPROVE', commit_id: 'sha42' }),
+  ]);
+});
+
 test('walk footer stays fixed across diffs, comments, and widths', async ({ page }) => {
   await setup(page);
   await openWalk(page);
@@ -137,11 +169,17 @@ test('walk footer stays fixed across diffs, comments, and widths', async ({ page
   await page.locator('.qr-prev').click();
   await page.getByRole('button', { name: 'Comment on new line 110', exact: true }).click();
   await page.getByPlaceholder('Describe the issue or suggest a change...').fill('Handle failure.');
-  expect(await page.locator('.qr-next').boundingBox()).toEqual(initial);
+  expect(await page.locator('.qr-next').boundingBox()).toMatchObject({
+    y: initial?.y, width: initial?.width, height: initial?.height,
+  });
   await page.getByRole('button', { name: 'Save draft' }).click();
+  const withSavedDraft = await page.locator('.qr-next').boundingBox();
+  expect(withSavedDraft).toMatchObject({
+    y: initial?.y, width: initial?.width, height: initial?.height,
+  });
   for (let i = 1; i < paths.length; i++) {
     await page.locator('.qr-next').click();
-    expect(await page.locator('.qr-next').boundingBox()).toEqual(initial);
+    expect(await page.locator('.qr-next').boundingBox()).toEqual(withSavedDraft);
   }
   for (const width of [736, 360]) {
     await page.setViewportSize({ width, height: 900 });

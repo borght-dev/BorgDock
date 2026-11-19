@@ -190,6 +190,8 @@ pub struct UiSettings {
     #[serde(default)]
     pub quick_review_hotkey: String,
     #[serde(default)]
+    pub quick_review_require_all_files: bool,
+    #[serde(default)]
     pub start_minimized_to_tray: bool,
     #[serde(default = "default_true")]
     pub restore_last_selection: bool,
@@ -234,6 +236,7 @@ impl Default for UiSettings {
             worktree_palette_favorites_only: false,
             windows_terminal_profile: None,
             quick_review_hotkey: String::new(),
+            quick_review_require_all_files: false,
             start_minimized_to_tray: false,
             restore_last_selection: true,
             pr_density: None,
@@ -885,6 +888,7 @@ mod redesign_field_tests {
         assert!(s.azure_dev_ops.show_work_item_state_on_pr_card);
         assert!(!s.azure_dev_ops.update_pr_status_when_wi_done);
         assert_eq!(s.ui.quick_review_hotkey, "");
+        assert!(!s.ui.quick_review_require_all_files);
         assert!(!s.ui.start_minimized_to_tray);
         assert!(s.ui.restore_last_selection);
         assert!(s.sql.default_connection_name.is_none());
@@ -902,6 +906,7 @@ mod redesign_field_tests {
         let mut s = AppSettings::default();
         s.azure_dev_ops.link_match_by = "both".to_string();
         s.ui.quick_review_hotkey = "Ctrl+Alt+R".to_string();
+        s.ui.quick_review_require_all_files = true;
         s.ui.start_minimized_to_tray = true;
         s.ui.reduce_motion = Some(true);
         s.ui.focus_layout = Some("board".to_string());
@@ -924,6 +929,7 @@ mod redesign_field_tests {
         let back: AppSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(back.azure_dev_ops.link_match_by, "both");
         assert_eq!(back.ui.quick_review_hotkey, "Ctrl+Alt+R");
+        assert!(back.ui.quick_review_require_all_files);
         assert!(back.ui.start_minimized_to_tray);
         assert_eq!(back.ui.reduce_motion, Some(true));
         assert!(json.contains("\"reduceMotion\":true"));

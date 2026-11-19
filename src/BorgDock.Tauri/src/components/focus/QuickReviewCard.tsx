@@ -168,6 +168,7 @@ export interface ApproveButtonProps {
   onApprove: () => void;
   label?: string;
   shortcut?: boolean;
+  enterShortcut?: boolean;
   /** Id of the visible line that says why, for `aria-describedby`. */
   reasonId?: string;
   /** What the button does beyond approving, shown on hover while it isn't blocked. */
@@ -175,8 +176,7 @@ export interface ApproveButtonProps {
 }
 
 /**
- * Approve, blocked until every non-generated file is marked reviewed (and
- * the review can be submitted). Blocked means `aria-disabled`, not
+ * Blocked means `aria-disabled`, not
  * `disabled`: the button stays focusable, so a keyboard user reaches it and
  * hears the reason (`reasonId`, the line under the actions); a click does
  * nothing. A blocked button is dashed with a lock and stays that way on
@@ -189,6 +189,7 @@ export function ApproveButton({
   reasonId,
   label = 'Approve',
   shortcut = true,
+  enterShortcut = true,
   hint,
 }: ApproveButtonProps) {
   const hintId = useId();
@@ -205,7 +206,9 @@ export function ApproveButton({
         aria-disabled={issue ? true : undefined}
         loading={busy}
         aria-describedby={issue ? reasonId : hint ? hintId : undefined}
-        aria-keyshortcuts={shortcut && !issue ? 'Enter A ArrowRight' : undefined}
+        aria-keyshortcuts={
+          shortcut && !issue ? (enterShortcut ? 'Enter A ArrowRight' : 'A ArrowRight') : undefined
+        }
         leading={issue ? <Lock size={13} strokeWidth={2.25} aria-hidden="true" /> : undefined}
         onClick={() => {
           if (!issue) onApprove();

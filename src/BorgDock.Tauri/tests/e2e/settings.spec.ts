@@ -37,6 +37,21 @@ test('theme toggle calls save_settings', async ({ page }) => {
   await expectInvoked(page, 'save_settings');
 });
 
+test('Quick Review file requirement defaults off and saves when enabled', async ({ page }) => {
+  await bootApp(page, 'settings.html', 'happy-path');
+  await page.getByRole('button', { name: 'Appearance', exact: true }).click();
+  const toggle = page.getByRole('switch', { name: 'Require file review before approving' });
+  await expect(toggle).not.toBeChecked();
+  await page.locator('#field-quick-review-require-all-files').screenshot({
+    path: test.info().outputPath('quick-review-approval-setting.png'),
+  });
+  await toggle.click();
+  await expect(toggle).toBeChecked();
+  await expect.poll(async () => (await getInvokeLog(page)).some(
+    ({ cmd, args }) => cmd === 'save_settings' && JSON.stringify(args).includes('"quickReviewRequireAllFiles":true'),
+  )).toBe(true);
+});
+
 test('Notes settings saves the daily note folder', async ({ page }) => {
   await bootApp(page, 'settings.html', 'happy-path', {
     notes_list: { notes: [], folders: ['00 - Home', '02 - Daily'] },
