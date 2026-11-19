@@ -1,12 +1,13 @@
 import { expect, type Page, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { getInvokeLog } from './helpers/mock-tauri';
 import { bootApp, seedMainWindow } from './helpers/test-utils';
 import type { PullRequestWithChecks } from '../../src/types';
 
 /**
  * Quick Review from the pull request list (plans/ui-overhaul-workbench.md,
  * phase 4): the row's Review action opens Quick Review
- * on the card; Approve waits until every non-generated file is marked in the
+ * on the card; with file review required, Approve waits for every non-generated file in the
  * file walk; Skip generated and V mark them; Approve submits, flings the card
  * right and the next one rises.
  *
@@ -152,6 +153,7 @@ test('the row Review action opens Quick Review; Approve waits for the files', as
   // Approvals wait 5 s for Undo before they are posted.
   test.slow();
   const reviews = await bootList(page);
+  await seedMainWindow(page, { settings: { ui: { quickReviewRequireAllFiles: true } } });
 
   // Only review and merge shapes get the slot: my PR and someone else's do not.
   await expect(page.locator('.bd-wb-rowwrap[data-key="test-org/borgdock#1"] .bd-row-action')).toHaveCount(0);
@@ -292,11 +294,24 @@ test('full screen preserves the file walk and remembers the size across reloads'
   const fullBounds = { x: 0, y: 0, width: 1920, height: 1080 };
   await expect.poll(() => dialog.boundingBox()).toEqual(fullBounds);
   await expect(dialog.getByRole('button', { name: 'Exit full screen' })).toHaveAttribute('aria-pressed', 'true');
+  expect((await getInvokeLog(page)).filter(({ cmd }) => cmd === 'plugin:window|toggle_maximize')).toHaveLength(0);
   await dialog.getByRole('button', { name: 'Review files', exact: true }).click();
   await dialog.focus();
   await page.keyboard.press('v');
   await expect(dialog.getByText('2 of 5', { exact: true })).toBeVisible();
   const currentPath = await dialog.locator('.qr-file[aria-current]').getAttribute('title');
+  const maximize = dialog.getByRole('button', { name: 'Maximize or restore BorgDock window' });
+  const nativeToggles = async () => (await getInvokeLog(page)).filter(
+    ({ cmd }) => cmd === 'plugin:window|toggle_maximize',
+  );
+  await maximize.click();
+  await expect.poll(nativeToggles).toEqual([
+    { cmd: 'plugin:window|toggle_maximize', args: { label: 'main' } },
+  ]);
+  await maximize.click();
+  await expect.poll(async () => (await nativeToggles()).length).toBe(2);
+  await expect(dialog.getByRole('button', { name: 'Exit full screen' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(dialog.locator('.qr-file[aria-current]')).toHaveAttribute('title', currentPath!);
   await dialog.getByRole('button', { name: 'Exit full screen' }).click();
   await expect.poll(() => dialog.boundingBox()).toEqual(normalBounds);
   await expect(dialog.locator('.qr-file[aria-current]')).toHaveAttribute('title', currentPath!);
@@ -459,6 +474,7 @@ test('approving the top card of a queue flings it right and the next card rises'
   // Approvals wait 5 s for Undo before they are posted.
   test.slow();
   const reviews = await bootList(page);
+  await seedMainWindow(page, { settings: { ui: { quickReviewRequireAllFiles: true } } });
   // Shift+R: every review waiting on me.
   await page.keyboard.press('Shift+R');
   const dialog = page.getByRole('dialog', { name: 'Quick Review' });

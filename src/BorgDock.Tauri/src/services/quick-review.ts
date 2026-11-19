@@ -211,7 +211,7 @@ export interface ReviewProgress {
   generated: number;
   /** Changed files a reviewer has to read: `total - generated`. */
   toReview: number;
-  /** Of those, the ones not marked reviewed yet. Approve waits for this to reach 0. */
+  /** Of those, the ones not marked reviewed yet. */
   left: number;
   /** Generated files not marked reviewed yet (what "Skip generated" marks). */
   generatedLeft: number;

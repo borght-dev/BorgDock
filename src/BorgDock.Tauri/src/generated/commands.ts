@@ -3339,6 +3339,7 @@ export type UiSettings_Deserialize = {
 	 */
 	windowsTerminalProfile?: string | null,
 	quickReviewHotkey?: string,
+	quickReviewRequireAllFiles?: boolean,
 	startMinimizedToTray?: boolean,
 	restoreLastSelection?: boolean,
 	/**  Main-window PR list layout ("comfortable" | "compact"). */
@@ -3364,6 +3365,7 @@ export type UiSettings_Serialize = {
 	 */
 	windowsTerminalProfile?: string,
 	quickReviewHotkey: string,
+	quickReviewRequireAllFiles: boolean,
 	startMinimizedToTray: boolean,
 	restoreLastSelection: boolean,
 	/**  Main-window PR list layout ("comfortable" | "compact"). */

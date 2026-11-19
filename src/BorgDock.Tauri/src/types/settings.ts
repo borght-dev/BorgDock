@@ -56,6 +56,7 @@ export interface UiSettings {
   /** Override for the Windows Terminal profile used when launching "Claude". Empty = auto-detect. */
   windowsTerminalProfile?: string;
   quickReviewHotkey: string;
+  quickReviewRequireAllFiles?: boolean;
   startMinimizedToTray: boolean;
   restoreLastSelection: boolean;
   /** PR list row layout in the main window. comfortable = two-line rows, compact = single-line table. */

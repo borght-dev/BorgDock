@@ -180,6 +180,19 @@ export function AppearanceSection({ ui, onChange }: Props) {
         </Field>
       </Card>
 
+      <Card variant="default" padding="md" id="field-quick-review-require-all-files">
+        <h3 className="text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
+          Quick Review
+        </h3>
+        <ToggleRow
+          label="Require file review before approving"
+          hint="Mark every non-generated file as reviewed before you can approve."
+          on={ui.quickReviewRequireAllFiles ?? false}
+          onChange={(quickReviewRequireAllFiles) => update({ quickReviewRequireAllFiles })}
+          last
+        />
+      </Card>
+
       <Card variant="default" padding="md">
         <h3 className="mb-3 text-[13px] font-semibold tracking-tight text-[var(--color-text-primary)]">
           Terminal & startup

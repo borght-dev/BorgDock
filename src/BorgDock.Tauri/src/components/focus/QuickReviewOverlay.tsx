@@ -1,3 +1,4 @@
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import clsx from 'clsx';
@@ -10,6 +11,7 @@ import {
   History,
   Maximize2,
   Minimize2,
+  Square,
   UserRound,
   X,
 } from 'lucide-react';
@@ -76,6 +78,7 @@ import { usePrStore } from '@/stores/pr-store';
 import { type ReviewDecision, useQuickReviewStore } from '@/stores/quick-review-store';
 import { ensureReviewGuide, guideKey, useReviewGuideStore } from '@/stores/review-guide-store';
 import { ensureRiskAssessment, useRiskView } from '@/stores/risk-assessment-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { toastError } from '@/stores/toast-store';
 import type { DiffLine, PullRequest, PullRequestWithChecks } from '@/types';
 import { motionMs, motionOK } from '@/utils/motion';
@@ -176,6 +179,14 @@ function FullscreenButton({ fullscreen, onToggle }: { fullscreen: boolean; onTog
       onClick={onToggle}
     />
   );
+}
+
+async function toggleWindowMaximize() {
+  try {
+    await getCurrentWindow().toggleMaximize();
+  } catch (error) {
+    console.error('Could not maximize or restore the BorgDock window', error);
+  }
 }
 
 type FlingDirection = 'left' | 'right';
@@ -521,6 +532,12 @@ export function QuickReviewOverlay() {
             )}
             <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
             <IconButton
+              icon={<Square size={12} strokeWidth={2.25} aria-hidden="true" />}
+              tooltip="Maximize or restore BorgDock window"
+              aria-label="Maximize or restore BorgDock window"
+              onClick={toggleWindowMaximize}
+            />
+            <IconButton
               icon={<X size={12} strokeWidth={2.25} aria-hidden="true" />}
               tooltip="Close"
               aria-label="Close"
@@ -668,6 +685,9 @@ function QuickReviewWorkspace({
   } = useQuickReviewDocument(pr.pullRequest);
   const state = useQuickReviewStore((s) => s.state);
   const error = useQuickReviewStore((s) => s.error);
+  const requireAllFiles = useSettingsStore(
+    (s) => s.settings.ui.quickReviewRequireAllFiles ?? false,
+  );
   const heldApproval = useHeldApproval();
   const [mode, setMode] = useState<Mode>(startInWalk ? 'walk' : 'card');
   const [wrapLines, setWrapLines] = useState(() => readReviewPreference(WRAP_LINES_KEY));
@@ -847,6 +867,7 @@ function QuickReviewWorkspace({
   const busy = state === 'submitting';
   const ready = !!snapshot && !loading && !loadError && !stale;
   const allReviewed = ready && progress.left === 0;
+  const missingFileReview = requireAllFiles && progress.left > 0;
   const unreadyComments = doc.comments.some((c) => !c.saved || c.outdated || !c.body.trim());
   const checks = checkBarSummary(checkCountsFor(pr)).state;
 
@@ -855,7 +876,7 @@ function QuickReviewWorkspace({
     if (!snapshot || loading) return 'Wait for the latest files to finish loading.';
     if (loadError) return 'Reload the files before submitting.';
     if (stale) return 'Reload files before submitting this review.';
-    if (event === 'APPROVE' && progress.left > 0) return unreviewedLabel(progress.left);
+    if (event === 'APPROVE' && missingFileReview) return unreviewedLabel(progress.left);
     if (unreadyComments)
       return 'Save or delete unfinished drafts and reattach outdated comments before submitting.';
     if (event === 'REQUEST_CHANGES' && !doc.body.trim())
@@ -877,12 +898,13 @@ function QuickReviewWorkspace({
     if (loadError) return "Files didn't load";
     if (!snapshot || loading) return 'Files are still loading';
     if (stale) return 'New changes: reload the files';
-    if (progress.left > 0) return unreviewedLabel(progress.left);
+    if (missingFileReview) return unreviewedLabel(progress.left);
     if (unreadyComments) return 'Unsaved or outdated drafts';
     if (detail.state.toLowerCase() !== 'open') return 'PR is not open';
     return null;
   }
   const approveIssue = approveBlocker();
+  const filesFirst = !allReviewed || (!own && !!approveIssue);
 
   useEffect(() => onWalkingChange(mode === 'walk'), [mode, onWalkingChange]);
 
@@ -1275,9 +1297,9 @@ function QuickReviewWorkspace({
           ...(own ? {} : { r: () => decideByKey('REQUEST_CHANGES') }),
           ...(allReviewed && own
             ? { Enter: finishWalk }
-            : allReviewed
-              ? { a: () => approve(false), Enter: () => approve() }
-              : {}),
+            : own || approveIssue
+              ? {}
+              : { a: () => approve(false), ...(allReviewed ? { Enter: () => approve() } : {}) }),
           Escape: toCard,
         }
       : mode === 'compose'
@@ -1293,12 +1315,10 @@ function QuickReviewWorkspace({
               Escape: onClose,
             }
           : {
-              ArrowRight: () => approve(),
+              ArrowRight: () => approve(allReviewed),
               ArrowLeft: later,
-              // Once Approve can go it is the card's next step, so Enter takes
-              // it, as in the walk's decision bar.
-              Enter: approveIssue ? openWalk : () => approve(),
-              a: () => approve(),
+              Enter: filesFirst ? openWalk : () => approve(),
+              a: () => approve(allReviewed),
               w: () => setMode('compose'),
               i: openFirstProof,
               z: undoHeldApproval,
@@ -1398,7 +1418,6 @@ function QuickReviewWorkspace({
       : progress.left > 0
         ? `Continue reviewing · ${progress.left} left`
         : 'Review files again';
-  const filesFirst = own ? !allReviewed : !!approveIssue;
   const submitLabel = own
     ? 'Post comment'
     : doc.event === 'APPROVE'
@@ -1474,7 +1493,8 @@ function QuickReviewWorkspace({
               issue={approveIssue}
               busy={busy}
               onApprove={() => approve(false)}
-              shortcut={!mergeOffer}
+              shortcut={!mergeOffer || !allReviewed}
+              enterShortcut={!filesFirst}
               reasonId={approveReasonId}
             />
             {mergeOffer && (
@@ -1535,6 +1555,7 @@ function QuickReviewWorkspace({
             ...(renderKind ? [['E', renderedVisible ? 'diff' : 'rendered'] as const] : []),
             ...(richDiffVisible ? [] : [['W', 'wrap lines'] as const]),
             ...(changed ? [['S', 'since my review / all'] as const] : []),
+            ...(!own && !approveIssue ? [['A', 'approve'] as const] : []),
             ['Esc', 'overview'],
           ];
   const shortcuts: Array<readonly [string, string]> = [
@@ -1554,10 +1575,14 @@ function QuickReviewWorkspace({
               ['Esc', 'close'] as const,
             ]
           : [
-              // While Approve is blocked its keys do nothing, so they are not offered.
-              approveIssue
-                ? (['Enter', 'review files'] as const)
-                : (['Enter/A/→', autoMergeLabel] as const),
+              ...(filesFirst ? [['Enter', 'review files'] as const] : []),
+              ...(!approveIssue
+                ? [
+                    filesFirst
+                      ? (['A/→', 'approve'] as const)
+                      : (['Enter/A/→', autoMergeLabel] as const),
+                  ]
+                : []),
               ['W', 'write review'] as const,
               ...(proofMedia ? [['I', 'first proof'] as const] : []),
               ['←', 'review later'] as const,
@@ -2154,6 +2179,7 @@ function QuickReviewWorkspace({
               onJump={jumpTo}
               ready={ready}
               approveIssue={approveIssue}
+              missingFileReview={ready && missingFileReview}
               merge={mergeOffer}
               unit={commitsView ? 'commit' : 'file'}
               canGoBack={commitsView ? commitIndex > 0 : fileIndex > 0}
