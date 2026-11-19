@@ -4,6 +4,25 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.16.0",
+    "date": "2026-11-19",
+    "summary": "Approve and maximize from Quick Review.",
+    "highlights": [
+      {
+        "kind": "improved",
+        "title": "Approve and maximize from Quick Review",
+        "description": "Approve a pull request while files are still unread. If you prefer to review every non-generated file first, turn on Require file review before approving in Settings → Appearance → Quick Review. Use the square button in the Quick Review title bar to maximize or restore the whole BorgDock window.",
+        "hero": {
+          "src": "/whats-new/4.16.0/quick-review-controls.png",
+          "alt": "Quick Review with unread files and the Approve and maximize controls"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.15.0",
     "date": "2026-11-18",
     "summary": "Organize your notes in BorgDock and Read rendered files in Quick Review.",
