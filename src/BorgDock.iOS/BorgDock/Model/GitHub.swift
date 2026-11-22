@@ -111,6 +111,9 @@ struct PrSummary: Codable, Hashable, Sendable, Identifiable {
     let priorityScore: Int?
     /// The head commit's failed checks, one per check: what E2E reports and shared CI failures are judged by.
     let failedChecks: [FailedCheck]?
+    /// When the review that is still open was asked: yours while it waits on you, else the first of the reviewers
+    /// still pending. BorgDock Review's overview shows it as how long a row has waited; the server doesn't send it.
+    var reviewRequestedAt: String? = nil
 
     var id: String { key }
     var prKey: PrKey { PrKey(owner: owner, repo: repo, number: number) }
@@ -139,6 +142,8 @@ struct PrLatestReview: Codable, Hashable, Sendable {
     let login: String
     let state: State
     let commitSha: String?
+    /// When it was submitted; the server doesn't send it.
+    var submittedAt: String? = nil
 }
 
 struct AgentWaiting: Codable, Hashable, Sendable, Identifiable {

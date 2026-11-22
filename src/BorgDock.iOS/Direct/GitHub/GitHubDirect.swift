@@ -346,10 +346,23 @@ actor GitHubDirect: PullRequestBackend {
             reviewedHeadSha: pr.myReview(pr.account)?.commitSha,
             requestedReviewerLogins: pr.requestedReviewers,
             requestedTeams: pr.requestedTeams,
-            latestReviews: pr.latestReviews.map { PrLatestReview(login: $0.login, state: $0.state, commitSha: $0.commitSha) },
+            latestReviews: pr.latestReviews.map { PrLatestReview(login: $0.login, state: $0.state, commitSha: $0.commitSha, submittedAt: $0.submittedAt) },
             priorityScore: FocusRules.score(of: pr, context),
-            failedChecks: FocusRules.failedChecks(pr.checks)
+            failedChecks: FocusRules.failedChecks(pr.checks),
+            reviewRequestedAt: reviewRequestedAt(pr, context)
         )
+    }
+
+    /// Since when the open review is asked: yours while it waits on you (GitHub's request, else when this phone first
+    /// saw it), else the first of the reviewers still pending.
+    private func reviewRequestedAt(_ pr: PrRecord, _ context: FocusContext) -> String? {
+        let times = pr.reviewRequestTimes
+        if pr.isWaitingOnMe(context.login, teams: context.teams) {
+            let mine = [PrRecord.reviewerKey(login: context.login)] + FocusRules.matchedTeams(pr.requestedTeams, mine: context.teams).map(PrRecord.reviewerKey(team:))
+            return mine.compactMap { times[$0] }.min() ?? context.reviewRequestedAt(pr.key)
+        }
+        let pending = pr.requestedReviewers.map(PrRecord.reviewerKey(login:)) + pr.requestedTeams.map(PrRecord.reviewerKey(team:))
+        return pending.compactMap { times[$0] }.min()
     }
 
     private func buildFocus() -> Focus {
