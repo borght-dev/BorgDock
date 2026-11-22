@@ -39,6 +39,8 @@ targets:
           - Info.plist
           - BorgDock.entitlements
       - path: Shared
+      # GitHub and Azure DevOps read straight from the phone (also the core package, Package.swift).
+      - path: Direct
     dependencies:
       - target: BorgDockWidgets
       - target: BorgDockNotificationContent
@@ -166,6 +168,8 @@ targets:
     platform: iOS
     sources:
       - path: BorgDockTests
+      # Also run by `swift test` on the Mac, without a simulator.
+      - path: DirectTests
     dependencies:
       - target: BorgDock
     settings:

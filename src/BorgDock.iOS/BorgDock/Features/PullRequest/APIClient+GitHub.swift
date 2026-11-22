@@ -2,6 +2,8 @@ import Foundation
 
 // MARK: - GitHub and CI endpoints (shared/src/borgdock.ts)
 
+extension APIClient: PullRequestBackend, WorkItemBackend {}
+
 extension APIClient {
     func focus() async throws -> Focus { try await get("/api/focus") }
 
@@ -58,6 +60,11 @@ extension APIClient {
         let preferences: FaceIdPreference = try await get("/api/preferences")
         return preferences.faceIdForActions
     }
+}
+
+private extension PrKey {
+    /// "/api/prs/owner/repo/12"
+    var apiPath: String { "/api/prs/\(APIClient.pathComponent(owner))/\(APIClient.pathComponent(repo))/\(number)" }
 }
 
 private struct FaceIdPreference: Decodable {

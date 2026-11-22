@@ -5,6 +5,12 @@ enum CheckState: String, Codable, Sendable, CaseIterable {
     case success, failure, pending, neutral, skipped
 }
 
+/// How alarming something is. The same five tones as the desktop's verdicts (`services/dispatch/verdict.ts`); their
+/// colours are in `BDTokens.swift`.
+enum Tone: String, Codable, Sendable, CaseIterable {
+    case bad, warn, ok, run, mute
+}
+
 /// Identifiers shared by the app and its extensions.
 enum AppGroup {
     /// From Info.plist (`BorgDockAppGroup`), so the app and every extension agree with the entitlements.
