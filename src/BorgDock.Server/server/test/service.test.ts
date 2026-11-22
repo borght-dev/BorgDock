@@ -120,7 +120,7 @@ test('launch, answer, settle and links use the selected remote host, with raw T3
   source.status.ok = true;
   source.projects.set('p1', { id: 'p1', title: 'W4' });
   source.threads.set('t1', { id: 't1', projectId: 'p1', questionRequestId: 'q1', questions: [{ id: 'q', question: 'Where?', options: [], recommended: null, allowCustomAnswer: true, multiSelect: false }] } as any);
-  fleet.hosts.push({ config, client, source, prefix: 'windows:', providers: [], modelsAt: 0 });
+  fleet.hosts.push({ config, client, source, prefix: 'windows:', providers: [], modelsAt: 0, readAt: 0 });
   const response = await s.startThread({ ...start, worktree: 'windows:p1', mode: 'default' });
   assert.equal(sent.length, 0);
   assert.equal(remoteSent[0].bootstrap.createThread.projectId, 'p1');

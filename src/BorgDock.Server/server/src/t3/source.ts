@@ -73,6 +73,8 @@ type Detail = {
 
 const RECOMMENDED = /\s*\(Recommended\)\s*$/i;
 const RECENT_DAYS = 60;
+/** The snapshot kept for an offline host is megabytes of JSON: rewriting it on every shell change cost more than the poll. */
+const SNAPSHOT_SAVE_EVERY_MS = 60_000;
 
 function prState(snapshot: ShellPr['snapshot']): PullRequestState {
   if (!snapshot) return 'unknown';
@@ -135,6 +137,9 @@ export class T3Source extends EventEmitter {
   private lastSequence = -1;
   private protocolV2 = false;
   private detailVersion = new Map<string, string>();
+  /** Threads whose first user message has been looked for, found or not: a thread without one is read once, not on every change. */
+  private firstMessageSought = new Set<string>();
+  private snapshotSavedAt = 0;
   private timer: NodeJS.Timeout | null = null;
   private inFlight: Promise<void> | null = null;
   private readonly cacheKey?: string;
@@ -200,7 +205,10 @@ export class T3Source extends EventEmitter {
         await this.apply(shell);
         this.lastSequence = shell.snapshotSequence;
         this.status = { ok: true, at: new Date().toISOString(), error: null };
-        if (this.cacheKey) this.db.prepare('INSERT OR REPLACE INTO t3_snapshots VALUES (?, ?, ?)').run(this.cacheKey, JSON.stringify({ threads: [...this.threads.values()], projects: [...this.projects.values()] }), this.status.at);
+        if (this.cacheKey && (force || wasOffline || Date.now() - this.snapshotSavedAt >= SNAPSHOT_SAVE_EVERY_MS)) {
+          this.db.prepare('INSERT OR REPLACE INTO t3_snapshots VALUES (?, ?, ?)').run(this.cacheKey, JSON.stringify({ threads: [...this.threads.values()], projects: [...this.projects.values()] }), this.status.at);
+          this.snapshotSavedAt = Date.now();
+        }
         this.emit('change');
       }
       this.status = { ok: true, at: new Date().toISOString(), error: null };
@@ -255,20 +263,21 @@ export class T3Source extends EventEmitter {
     this.emit('change');
 
     // Detail (questions, latest agent message) only for open threads whose turn moved on.
-    const stale = [...next.values()].filter((t) => !t.firstUserMessage || (t.open && this.detailVersion.get(t.id) !== `${t.lastActivityAt}|${t.status}`));
+    const stale = [...next.values()].filter((t) => !this.firstMessageSought.has(t.id) || (t.open && this.detailVersion.get(t.id) !== `${t.lastActivityAt}|${t.status}`));
     for (let i = 0; i < stale.length; i += 4) await Promise.all(stale.slice(i, i + 4).map((t) => this.loadDetail(t)));
   }
 
   private async loadDetail(thread: T3Thread) {
     try {
-      const detail = await this.client.get<Detail>(`${threadPath(thread.id)}${this.protocolV2 ? (thread.firstUserMessage ? '/bounded' : '') : '?turnLimit=1'}`);
+      const sought = this.firstMessageSought.has(thread.id);
+      const detail = await this.client.get<Detail>(`${threadPath(thread.id)}${this.protocolV2 ? (sought ? '/bounded' : '') : '?turnLimit=1'}`);
       const messages = detail.projection?.messages ?? detail.thread?.messages ?? [];
-      if (!thread.firstUserMessage) {
-        const first = messages.find((m) => m.role === 'user' && m.text?.trim());
-        if (first) {
-          thread.firstUserMessage = first.text.slice(0, 4000);
-          this.db.prepare('INSERT OR REPLACE INTO first_messages VALUES (?, ?)').run(this.messageKey(thread.id), thread.firstUserMessage);
-        }
+      const first = sought ? undefined : messages.find((m) => m.role === 'user' && m.text?.trim());
+      // An open thread may still get its first message; a settled one without it never will.
+      if (first || (!sought && !thread.open)) {
+        thread.firstUserMessage = first ? first.text.slice(0, 4000) : '';
+        this.db.prepare('INSERT OR REPLACE INTO first_messages VALUES (?, ?)').run(this.messageKey(thread.id), thread.firstUserMessage);
+        this.firstMessageSought.add(thread.id);
       }
       const activities = detail.thread?.activities ?? [];
       const agentMessage = [...messages].reverse().find((m) => m.role === 'assistant' && m.text?.trim());
@@ -303,8 +312,10 @@ export class T3Source extends EventEmitter {
     const missing: string[] = [];
     for (const id of threadIds) {
       const row = select.get(this.messageKey(id)) as { text: string } | undefined;
-      if (row) cached.set(id, row.text);
-      else missing.push(id);
+      if (row) {
+        cached.set(id, row.text);
+        this.firstMessageSought.add(id);
+      } else missing.push(id);
     }
     if (!missing.length || !this.stateDb) return cached;
     try {
@@ -320,6 +331,7 @@ export class T3Source extends EventEmitter {
           const text = row.text.slice(0, 4000);
           insert.run(this.messageKey(id), text);
           cached.set(id, text);
+          this.firstMessageSought.add(id);
         }
       } finally {
         t3db.close();

@@ -16,7 +16,11 @@ export type T3Host = {
   prefix: string;
   providers: LiveProvider[];
   modelsAt: number;
+  readAt: number;
 };
+
+/** An offline host is asked again this often instead of on every poll: each try opens a socket and waits out a timeout. */
+const OFFLINE_RETRY_MS = 30_000;
 
 export class T3Fleet extends EventEmitter {
   readonly hosts: T3Host[];
@@ -40,7 +44,7 @@ export class T3Fleet extends EventEmitter {
     const prefix = kind === 'local' ? '' : `${environment.environmentId}:`;
     const source = new T3Source({ client, db: this.db, stateDb: environment.stateDb, cacheKey: environment.environmentId, messagePrefix: prefix });
     source.on('change', () => this.emit('change'));
-    return { config: environment, client, kind, source, prefix, providers: [], modelsAt: 0 };
+    return { config: environment, client, kind, source, prefix, providers: [], modelsAt: 0, readAt: 0 };
   }
 
   /** A connector's machine joins the fleet; its last snapshot shows (unavailable) until it answers. */
@@ -125,6 +129,8 @@ export class T3Fleet extends EventEmitter {
   }
 
   private async readHost(host: T3Host, force: boolean) {
+    if (!force && !host.source.status.ok && Date.now() - host.readAt < OFFLINE_RETRY_MS) return;
+    host.readAt = Date.now();
     if (force || Date.now() - host.modelsAt >= 60_000) try {
       const config = await host.client.rpc<{ environment: { environmentId: string }; providers: LiveProvider[] }>('server.getConfig', {});
       if (config.environment.environmentId !== host.config.environmentId) throw new Error('T3 environment identity changed; update its connection');

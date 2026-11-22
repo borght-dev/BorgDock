@@ -155,3 +155,56 @@ test("a question's option keeps the agent's reason for the notification card", (
   ]);
   assert.equal(question.recommended, 0);
 });
+
+test('a settled thread without a user message is read once, not on every shell change', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'dispatch-t3-'));
+  writeFileSync(join(dataDir, 't3-session.json'), JSON.stringify({ token: 'test-only', expiresAt: '2099-01-01' }));
+  let sequence = 1;
+  const reads: string[] = [];
+  const server = createServer((req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    if (req.url === '/api/orchestration/shell') {
+      res.end(JSON.stringify({ schemaVersion: 2, snapshotSequence: sequence, projects: [{ id: 'p1', title: 'M0' }], threads: [thread({ id: 'sub', settledAt: at, status: 'completed' })] }));
+      return;
+    }
+    reads.push(req.url!);
+    res.end(JSON.stringify({ projection: { messages: [{ role: 'assistant', text: 'Done.' }], runtimeRequests: [], turnItems: [] } }));
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const baseUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  const db = openDb(dataDir);
+  const source = new T3Source({ client: new T3Client({ baseUrl, app: '/unused', dataDir }), db, stateDb: '' });
+  try {
+    await source.poll();
+    sequence = 2;
+    await source.poll();
+    assert.deepEqual(reads, ['/api/orchestration/threads/sub']);
+    const restarted = new T3Source({ client: new T3Client({ baseUrl, app: '/unused', dataDir }), db, stateDb: '' });
+    sequence = 3;
+    await restarted.poll();
+    assert.deepEqual(reads, ['/api/orchestration/threads/sub']);
+  } finally { db.close(); await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('an offline host is asked again after a pause, unless someone pulls to refresh', async () => {
+  const { loadConfig } = await import('../src/config.ts');
+  const { T3Fleet } = await import('../src/t3/fleet.ts');
+  const dataDir = mkdtempSync(join(tmpdir(), 'dispatch-fleet-'));
+  writeFileSync(join(dataDir, 't3-session.json'), JSON.stringify({ token: 'test-only', expiresAt: '2099-01-01' }));
+  const config = loadConfig({ DISPATCH_DATA_DIR: dataDir });
+  config.t3 = { ...config.t3, environmentId: 'mac', baseUrl: 'http://127.0.0.1:9', stateDb: '' };
+  const db = openDb(dataDir);
+  const fleet = new T3Fleet(config, db);
+  let tries = 0;
+  fleet.hosts[0].client.rpc = async () => { tries++; throw new Error('Offline'); };
+  try {
+    await fleet.poll();
+    await fleet.poll();
+    assert.equal(tries, 1);
+    await fleet.poll(true);
+    assert.equal(tries, 2);
+    fleet.hosts[0].readAt -= 30_000;
+    await fleet.poll();
+    assert.equal(tries, 3);
+  } finally { fleet.stop(); db.close(); }
+});
