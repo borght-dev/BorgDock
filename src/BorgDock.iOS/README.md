@@ -24,7 +24,8 @@ xcodebuild -project BorgDock.xcodeproj -scheme BorgDock -configuration Debug -de
 xcrun devicectl device install app --device <device> build/Build/Products/Debug-iphoneos/BorgDock.app
 
 # TestFlight (internal group "Internal", automatic distribution)
-./testflight.sh
+./testflight.sh            # BorgDock
+./testflight.sh review     # BorgDock Review
 ```
 
 - **Signing:** team `2YU6RWHUWX`, automatic, through the App Store Connect API key (Xcode on the Mac mini has no
@@ -70,6 +71,10 @@ DevOps straight from the phone, so it needs no BorgDock server, and has no agent
   launch <id> dev.borght.borgdock.review`; add `BORGDOCK_ADO_ORGANIZATION`, `BORGDOCK_ADO_PROJECT` and
   `BORGDOCK_ADO_TOKEN` (or `BORGDOCK_ADO_BEARER`) for Azure DevOps. Build for a simulator with signing on: an
   unsigned build (`CODE_SIGNING_ALLOWED=NO`) can't use the Keychain. Never post screenshots of real work.
+
+- **TestFlight:** `./testflight.sh review`. Its App Store Connect record ("BorgDock Review", bundle
+  `dev.borght.borgdock.review`) had to be made on the website: the App Store Connect API registers bundle IDs, groups
+  and testers, but answers `apps` "does not allow CREATE".
 
 ```sh
 swift test                                   # Direct/ on the Mac
