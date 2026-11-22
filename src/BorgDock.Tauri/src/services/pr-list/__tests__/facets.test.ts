@@ -213,6 +213,16 @@ describe('sanitizeSavedViews', () => {
       ]),
     ).toEqual([{ id: 'view-9', name: 'Mine', filter: 'all', query: '', display: DEFAULT_DISPLAY }]);
   });
+  it("keeps display fields this version doesn't know, and repairs the ones it does", () => {
+    const [view] = sanitizeSavedViews([
+      { ...valid, display: { ...valid.display, layout: 'kanban', phoneOnly: { pinned: true } } },
+    ]);
+    expect(view?.display).toEqual({
+      ...valid.display,
+      layout: DEFAULT_DISPLAY.layout,
+      phoneOnly: { pinned: true },
+    });
+  });
 });
 
 describe('isViewEdited', () => {

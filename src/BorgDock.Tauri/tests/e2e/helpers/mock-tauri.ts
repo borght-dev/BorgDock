@@ -216,6 +216,7 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   activity_restore: 0,
   activity_read_since: [],
   phone_link_state: { linked: false, server: null, serverName: null },
+  phone_link_pr_views_get: null,
   activity_outbox_take: [],
   activity_outbox_ack: 0,
   activity_prune: 0,

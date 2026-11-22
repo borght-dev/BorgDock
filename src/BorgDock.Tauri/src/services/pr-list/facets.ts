@@ -1,4 +1,4 @@
-import { type PrDisplay, sameDisplay, sanitizeDisplay } from './display';
+import { type PrDisplay, sameDisplay, sanitizeViewDisplay } from './display';
 import {
   AGE_LABEL,
   AGE_ORDER,
@@ -184,24 +184,31 @@ export function newViewId(): string {
   return `view-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** Saved views read back from disk; malformed entries are dropped. */
+/** One saved view read back from disk or the server; null when it has no id or name. */
+export function sanitizeSavedView(raw: unknown): SavedPrView | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const v = raw as Record<string, unknown>;
+  if (typeof v.id !== 'string') return null;
+  if (typeof v.name !== 'string' || v.name.trim() === '') return null;
+  return {
+    id: v.id,
+    name: v.name.trim(),
+    filter: isPrViewKey(v.filter) ? v.filter : 'all',
+    query: typeof v.query === 'string' ? v.query : '',
+    display: sanitizeViewDisplay(v.display),
+  };
+}
+
+/** Saved views read back from disk or the server; malformed entries and repeated ids are dropped. */
 export function sanitizeSavedViews(value: unknown): SavedPrView[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   const views: SavedPrView[] = [];
   for (const raw of value) {
-    if (!raw || typeof raw !== 'object') continue;
-    const v = raw as Record<string, unknown>;
-    if (typeof v.id !== 'string' || seen.has(v.id)) continue;
-    if (typeof v.name !== 'string' || v.name.trim() === '') continue;
-    seen.add(v.id);
-    views.push({
-      id: v.id,
-      name: v.name.trim(),
-      filter: isPrViewKey(v.filter) ? v.filter : 'all',
-      query: typeof v.query === 'string' ? v.query : '',
-      display: sanitizeDisplay(v.display),
-    });
+    const view = sanitizeSavedView(raw);
+    if (!view || seen.has(view.id)) continue;
+    seen.add(view.id);
+    views.push(view);
   }
   return views;
 }

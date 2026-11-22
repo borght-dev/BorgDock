@@ -385,6 +385,10 @@ export const commands = {
 	phoneLinkUnlink: () => typedError<null, string>(__TAURI_INVOKE("phone_link_unlink")),
 	phoneLinkSendReads: (targets: PhoneActivityTarget_Deserialize[], before: string) => typedError<null, string>(__TAURI_INVOKE("phone_link_send_reads", { targets, before })),
 	phoneLinkReadsSince: (since: string) => typedError<PhoneReadsSince_Serialize, string>(__TAURI_INVOKE("phone_link_reads_since", { since })),
+	/**  The saved pull request views on the server; `None` while this desktop isn't linked. */
+	phoneLinkPrViewsGet: () => typedError<PhonePrViews_Serialize | null, string>(__TAURI_INVOKE("phone_link_pr_views_get")),
+	/**  Writes the whole list over `base_revision`, the revision this desktop last read. */
+	phoneLinkPrViewsPut: (baseRevision: number, views: PhoneSavedPrView[]) => typedError<PhonePrViewsWrite_Serialize, string>(__TAURI_INVOKE("phone_link_pr_views_put", { baseRevision, views })),
 	/**
 	 *  Show `count` on the main window's taskbar icon; 0 clears it. Runs on the
 	 *  GUI thread with the shared timeout, like every window command.
@@ -2502,6 +2506,41 @@ export type PhoneLinkState_Serialize = {
 	serverName: string | null,
 };
 
+/**  The server's one list of saved views; `revision` is 0 before the first write. */
+export type PhonePrViews = PhonePrViews_Serialize | PhonePrViews_Deserialize;
+
+/**
+ *  A write over a revision: saved, or refused because another device wrote
+ *  first (`current` is the list to merge with).
+ */
+export type PhonePrViewsWrite = PhonePrViewsWrite_Serialize | PhonePrViewsWrite_Deserialize;
+
+/**
+ *  A write over a revision: saved, or refused because another device wrote
+ *  first (`current` is the list to merge with).
+ */
+export type PhonePrViewsWrite_Deserialize = { status: "saved"; saved: PhonePrViews_Deserialize } | { status: "conflict"; current: PhonePrViews_Deserialize };
+
+/**
+ *  A write over a revision: saved, or refused because another device wrote
+ *  first (`current` is the list to merge with).
+ */
+export type PhonePrViewsWrite_Serialize = { status: "saved"; saved: PhonePrViews_Serialize } | { status: "conflict"; current: PhonePrViews_Serialize };
+
+/**  The server's one list of saved views; `revision` is 0 before the first write. */
+export type PhonePrViews_Deserialize = {
+	revision: number,
+	views: PhoneSavedPrView[],
+	updatedAt?: string | null,
+};
+
+/**  The server's one list of saved views; `revision` is 0 before the first write. */
+export type PhonePrViews_Serialize = {
+	revision: number,
+	views: PhoneSavedPrView[],
+	updatedAt: string | null,
+};
+
 export type PhoneReadsSince = PhoneReadsSince_Serialize | PhoneReadsSince_Deserialize;
 
 export type PhoneReadsSince_Deserialize = {
@@ -2512,6 +2551,19 @@ export type PhoneReadsSince_Deserialize = {
 export type PhoneReadsSince_Serialize = {
 	until: string,
 	targets: PhoneActivityTarget_Serialize[],
+};
+
+/**
+ *  A saved pull request view as the server keeps it (`SavedPrView`). `display`
+ *  stays whole, so the phone's fields and ones this version doesn't know go
+ *  back as they came.
+ */
+export type PhoneSavedPrView = {
+	id: string,
+	name: string,
+	filter: string,
+	query: string,
+	display: Value,
 };
 
 export type PrDetailSettings = Record<string, never>;
