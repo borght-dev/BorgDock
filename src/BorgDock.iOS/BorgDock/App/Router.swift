@@ -104,6 +104,10 @@ final class Router {
     }
 
     var tab: Tab = .today
+    /// An app with one stack (BorgDock Review) shows every route on it, whichever tab the route names.
+    var onlyTab: Tab? {
+        didSet { if let onlyTab { tab = onlyTab } }
+    }
     var todayPath: [Route] = []
     var pullRequestsPath: [Route] = []
     var workPath: [Route] = []
@@ -131,6 +135,7 @@ final class Router {
     }
 
     func open(_ path: [Route], in tab: Tab) {
+        let tab = onlyTab ?? tab
         sheet = nil
         cover = nil
         self.tab = tab
@@ -192,7 +197,7 @@ final class Router {
     }
 
     func reset() {
-        tab = .today
+        tab = onlyTab ?? .today
         todayPath = []
         pullRequestsPath = []
         workPath = []
@@ -239,7 +244,7 @@ final class Router {
             guard let tab = Tab(link: parts[1]) else { return false }
             sheet = nil
             cover = nil
-            self.tab = tab
+            self.tab = onlyTab ?? tab
         default:
             return false
         }

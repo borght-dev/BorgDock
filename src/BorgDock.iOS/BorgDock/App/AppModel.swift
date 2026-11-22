@@ -18,6 +18,9 @@ final class AppModel {
     let sprint = SprintStore()
     let prList = PrListStore()
 
+    /// Set in BorgDock Review: this phone reads GitHub and Azure DevOps itself, and there is no BorgDock server.
+    let direct: DirectSession?
+
     private(set) var serverURL: URL
     private(set) var token: String?
     private(set) var signedOutReason: String?
@@ -47,6 +50,22 @@ final class AppModel {
         self.serverURL = serverURL
         self.token = token
         self.session = session
+        direct = nil
+        connectStores()
+    }
+
+    /// BorgDock Review: no server and no session; signed in is having a GitHub account.
+    init(direct: DirectSession) {
+        serverURL = ServerSettings.defaultURL
+        token = nil
+        session = .shared
+        self.direct = direct
+        connectStores()
+        router.onlyTab = .pullRequests
+        focus.restore(direct.gitHub.lastFocus())
+    }
+
+    private func connectStores() {
         focus.app = self
         activity.app = self
         account.app = self
@@ -95,7 +114,16 @@ final class AppModel {
         }
     }
 
-    var isSignedIn: Bool { token != nil }
+    var isSignedIn: Bool { direct?.hasGitHub ?? (token != nil) }
+
+    /// Whoever reads GitHub for the pull request screens: this phone, or the server.
+    var pullRequests: any PullRequestBackend { direct?.gitHub ?? api }
+
+    /// Whoever reads Azure DevOps for the work item page.
+    var workItems: any WorkItemBackend { direct?.workItems ?? api }
+
+    /// Agents run on machines with T3 Code, which only the server reaches.
+    var canStartAgents: Bool { direct == nil }
 
     /// Agents waiting on you, for the Work tab's badge.
     var dispatchBadge: Int { overview.map { $0.walk?.briefing.needYou ?? OverviewSummary($0).waiting } ?? 0 }
@@ -157,7 +185,8 @@ final class AppModel {
     @discardableResult
     func report(_ error: Error) -> String? {
         if error is CancellationError { return nil }
-        if let error = error as? APIError, error.isUnauthorized {
+        // A token GitHub or Azure DevOps refuses is fixed in Settings; only a server session ends here.
+        if let error = error as? APIError, error.isUnauthorized, direct == nil {
             endSession(reason: "Your session ended. Sign in again.")
             return nil
         }
@@ -225,9 +254,9 @@ final class AppModel {
     /// Pull to refresh on an item: fresh sources and the item's ADO text, fetched in parallel.
     /// Returns the new detail, or nil when it couldn't be read (the error is shown as a toast).
     func refreshItem(_ id: Int) async -> ItemDetail? {
-        let api = self.api
-        async let detail = Result { try await api.item(id) }
-        await refreshFromSources()
+        let workItems = self.workItems
+        async let detail = Result { try await workItems.item(id) }
+        if direct == nil { await refreshFromSources() }
         switch await detail {
         case .success(let detail):
             return detail

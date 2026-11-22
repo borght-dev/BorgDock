@@ -11,6 +11,7 @@ let package = Package(
         .target(
             name: "BorgDock",
             path: ".",
+            exclude: ["BorgDockWidgets", "BorgDockNotificationContent", "BorgDockTests", "BorgDockUITests", "BorgDockReview", "project.yml", "testflight.sh", "ExportOptions.plist", "README.md"],
             sources: [
                 "BorgDock/Model/API.swift",
                 "BorgDock/Model/Backends.swift",

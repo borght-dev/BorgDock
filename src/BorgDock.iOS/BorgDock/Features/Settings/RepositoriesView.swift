@@ -104,7 +104,7 @@ struct RepositoriesView: View {
 
     private func load() async {
         do {
-            repositories = try await app.api.repositories()
+            repositories = try await app.pullRequests.repositories()
             error = nil
         } catch is CancellationError {
             return
@@ -121,7 +121,7 @@ struct RepositoriesView: View {
         guard let current = repositories else { return }
         repositories = current.with(preferences)
         do {
-            repositories = try await app.api.setRepositoryPreferences(preferences)
+            repositories = try await app.pullRequests.setRepositoryPreferences(preferences)
             await app.focus.load()
         } catch {
             repositories = current

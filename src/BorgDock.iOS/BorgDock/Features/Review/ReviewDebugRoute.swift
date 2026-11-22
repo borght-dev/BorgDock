@@ -45,8 +45,8 @@ enum ReviewDebugRoute {
             let approved = queue[0]
             guard let files = await store.loadFiles(approved), let detail = await store.loadDetail(approved) else { return }
             // Approve and ask for auto-merge on the fixture, so the track reads what GitHub would say afterwards.
-            _ = try? await app.api.submitReview(approved, SubmitReviewRequest(event: .approve, body: sampleBody, headSha: files.headSha, comments: sampleDraft.lineComments))
-            _ = try? await app.api.merge(approved, MergeRequest(method: detail.defaultMergeMethod, commitTitle: detail.title, commitMessage: "", deleteBranch: true, headSha: files.headSha))
+            _ = try? await app.pullRequests.submitReview(approved, SubmitReviewRequest(event: .approve, body: sampleBody, headSha: files.headSha, comments: sampleDraft.lineComments))
+            _ = try? await app.pullRequests.merge(approved, MergeRequest(method: detail.defaultMergeMethod, commitTitle: detail.title, commitMessage: "", deleteBranch: true, headSha: files.headSha))
             await store.loadDetail(approved)
             ReviewedFiles().save(Set(files.files.map(\.path)), prKey: approved.key, headSha: files.headSha)
             store.markReviewOpened(approved)

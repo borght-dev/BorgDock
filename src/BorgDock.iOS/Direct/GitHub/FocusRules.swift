@@ -102,8 +102,11 @@ enum GitHubTime {
     }
 }
 
+/// The desktop's `overallStatus`: red when a check failed, yellow while one runs, gray without checks. The list's
+/// facts (`PrFacts`) use it too.
 enum OverallStatus: Sendable { case red, yellow, green, gray }
 
+/// The strongest of each reviewer's latest review (the desktop's `reviewStatus`).
 enum ReviewStatus: Sendable { case approved, changesRequested, commented, pending, none }
 
 private let hour: TimeInterval = 3600

@@ -72,7 +72,7 @@ struct ItemDetailView: View {
 
     private func load() async {
         do {
-            detail = try await app.api.item(route.id)
+            detail = try await app.workItems.item(route.id)
             posted = []
             loadError = nil
         } catch is CancellationError {
@@ -123,7 +123,8 @@ struct ItemDetailView: View {
             position.scrollTo(y: max(0, top - Self.jumpBarHeight))
         }
         .safeAreaInset(edge: .bottom) {
-            if selection == ItemSection.activity.id { composer(item) } else { bottomBar(item) }
+            // Moving an item and fixing it are agent runs; without agents the comment box is always at hand.
+            if selection == ItemSection.activity.id || !app.canStartAgents { composer(item) } else { bottomBar(item) }
         }
         .task(id: DebugJump(target: app.router.scrollTarget, ready: detail != nil && sectionTops[app.router.scrollTarget ?? ""] != nil)) {
             guard let target = app.router.scrollTarget, detail != nil, sectionTops[target] != nil else { return }
@@ -383,7 +384,7 @@ struct ItemDetailView: View {
         posting = true
         defer { posting = false }
         do {
-            posted.append(try await app.api.postItemComment(itemId: item.id, text: text))
+            posted.append(try await app.workItems.postItemComment(itemId: item.id, text: text))
             draft = ""
         } catch {
             app.report(error)

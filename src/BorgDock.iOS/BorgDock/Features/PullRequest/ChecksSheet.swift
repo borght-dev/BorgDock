@@ -69,9 +69,11 @@ struct ChecksActions: View {
             }
             .buttonStyle(.bd(.plain))
             .disabled(busy || detail.checks.failed == 0)
-            Button { handToClaude() } label: { Label("Hand to Claude", systemImage: "sparkle") }
-                .buttonStyle(.bdPrimary)
-                .disabled(detail.checks.failed == 0)
+            if app.canStartAgents {
+                Button { handToClaude() } label: { Label("Hand to Claude", systemImage: "sparkle") }
+                    .buttonStyle(.bdPrimary)
+                    .disabled(detail.checks.failed == 0)
+            }
         }
     }
 
@@ -214,7 +216,9 @@ struct FailedCheckCard: View {
     @ViewBuilder
     private var menu: some View {
         Button { Task { await app.focus.rerunFailed(detail.summary.prKey) } } label: { Label("Rerun failed checks", systemImage: "arrow.counterclockwise") }
-        Button { app.focus.fixWithClaude(detail.summary) } label: { Label("Hand to Claude", systemImage: "sparkle") }
+        if app.canStartAgents {
+            Button { app.focus.fixWithClaude(detail.summary) } label: { Label("Hand to Claude", systemImage: "sparkle") }
+        }
         if let url = URL(string: run.url) { Link(destination: url) { Label("Open the log", systemImage: "doc.plaintext") } }
         if let groupId = run.failure?.groupId {
             Button { app.router.sheet = nil; app.router.push(.ciGroup(groupId)) } label: { Label("Related CI failure", systemImage: "point.3.connected.trianglepath.dotted") }

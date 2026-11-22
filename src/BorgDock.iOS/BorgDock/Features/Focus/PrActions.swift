@@ -23,10 +23,14 @@ struct PrContextMenu: View {
                 Button { app.router.present(.merge(pr.prKey)) } label: { Label("Merge…", systemImage: "arrow.triangle.merge") }
             }
             if pr.checks.failed > 0 {
-                Button { focus.fixWithClaude(pr) } label: { Label("Fix with Claude", systemImage: "sparkle") }
+                if app.canStartAgents {
+                    Button { focus.fixWithClaude(pr) } label: { Label("Fix with Claude", systemImage: "sparkle") }
+                }
                 Button { Task { await focus.rerunFailed(pr.prKey) } } label: { Label("Rerun failed checks", systemImage: "arrow.counterclockwise") }
             }
-            Button { focus.openInT3(pr) } label: { Label("Open in T3…", systemImage: "apple.terminal") }
+            if app.canStartAgents {
+                Button { focus.openInT3(pr) } label: { Label("Open in T3…", systemImage: "apple.terminal") }
+            }
         }
         Section {
             Button { Task { await focus.snoozeUntilTomorrow(pr.prKey) } } label: { Label("Snooze until tomorrow", systemImage: "moon") }

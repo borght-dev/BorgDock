@@ -115,12 +115,6 @@ enum PrTime {
     static let week: TimeInterval = 7 * 86_400
 }
 
-/// The desktop's `overallStatus`: red when a check failed, yellow while one runs, gray without checks.
-enum OverallStatus: Sendable { case red, yellow, green, gray }
-
-/// The strongest of each reviewer's latest review (the desktop's `reviewStatus`).
-enum ReviewStatus: Sendable { case approved, changesRequested, commented, pending, none }
-
 /// What the related CI failures say about a red pull request (`CiLens`).
 struct PrCiFacts: Equatable, Sendable {
     /// Open pull requests the worst shared failure fails, this one included.
