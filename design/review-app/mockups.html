@@ -279,7 +279,7 @@
   .lgh .gp .ic { --s: 14px; }
   .lgh .col { font-size: 11px; font-weight: 500; color: var(--tx3); width: 40px; text-align: left; }
   .lgh .col + .col { width: 26px; text-align: right; }
-  .lg { background: var(--card); border-top: .5px solid var(--sep); border-bottom: .5px solid var(--sep); }
+  .ldg { background: var(--card); border-top: .5px solid var(--sep); border-bottom: .5px solid var(--sep); }
   .lgr { display: flex; align-items: center; gap: 10px; padding: 7px 16px 8px 11px; border-left: 3px solid var(--c, transparent); position: relative; min-height: 50px; background: var(--card); }
   .lgr + .lgr::before { content: ""; position: absolute; top: 0; left: 44px; right: 0; height: .5px; background: var(--sep); }
   .lgr .t { flex: 1; min-width: 0; }
@@ -305,7 +305,248 @@
   .code { font: 11.5px/18px "SF Mono", ui-monospace, Menlo, monospace; background: var(--fill); border-radius: 12px; padding: 9px 11px; color: var(--tx); white-space: pre; overflow: hidden; }
   .code .r { color: var(--rd); } .code .g { color: var(--gr); } .code .m { color: var(--tx3); }
 
-  /*KIT-MORE*/
+  /* sheets */
+  .dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); z-index: 45; }
+  .blurred { filter: blur(14px) saturate(1.2); transform: scale(1.04); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--sheet); border-radius: 40px 40px 0 0; padding-top: 7px; box-shadow: 0 -10px 40px rgba(0, 0, 0, .25); overflow: hidden; }
+  .phone:not(.light) .sheet { background: #151618; }
+  .grab { width: 38px; height: 5px; border-radius: 3px; background: var(--tx3); opacity: .45; margin: 0 auto 4px; }
+  .sh-h { display: flex; align-items: center; gap: 10px; padding: 6px 16px 8px; }
+  .sh-h h3 { flex: 1; margin: 0; text-align: center; font-size: 17px; font-weight: 600; }
+  .sh-h h3 small { display: block; font-size: 12.5px; font-weight: 500; color: var(--tx2); }
+  .opt-h { padding: 16px 28px 7px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+  .foot { padding: 10px 28px 0; font-size: 12.5px; color: var(--tx3); line-height: 1.45; }
+
+  /* diff */
+  .diff { font: 11px/19px "SF Mono", ui-monospace, Menlo, monospace; }
+  .dl { display: grid; grid-template-columns: 34px 16px 1fr; white-space: pre; overflow: hidden; }
+  .dl .n { color: var(--tx3); text-align: right; padding-right: 6px; }
+  .dl .m { color: var(--tx3); }
+  .dl.a { background: var(--gr-soft); }
+  .dl.a .n, .dl.a .m { color: var(--gr); }
+  .dl.d { background: var(--rd-soft); }
+  .dl.d .n, .dl.d .m { color: var(--rd); }
+  .dl.sel { background: var(--ac-soft); box-shadow: inset 3px 0 0 var(--ac); }
+  .dl.sel .n, .dl.sel .m { color: var(--ac-tx); }
+  .hk { padding: 3px 12px; background: var(--fill); color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .diff .k { color: var(--syk); } .diff .s { color: var(--sys); } .diff .f { color: var(--syf); } .diff .ty2 { color: var(--syt); } .diff .cm2 { color: var(--sycm); }
+  .dcm { margin: 7px 12px 9px 50px; padding: 9px 12px 10px; border-radius: 14px; background: var(--card); border: .5px solid var(--sep); font: 13.5px/1.42 -apple-system, "SF Pro Text", system-ui, sans-serif; letter-spacing: -.01em; white-space: normal; color: var(--tx); }
+  .light .dcm { box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+  .dcm .who { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; margin-bottom: 3px; }
+  .dcm .who span { font-weight: 400; color: var(--tx3); }
+  .dcm .who .chip { margin-left: auto; }
+  .dcm + .dcm { margin-top: -3px; }
+  .dcm .acts { display: flex; gap: 14px; margin-top: 7px; font-size: 13px; font-weight: 600; color: var(--ac-tx); }
+  .dcm.draft { border: 1px dashed color-mix(in srgb, var(--ac) 55%, transparent); background: var(--ac-soft); }
+
+  /* PR page */
+  .ph { padding: 4px 16px 0; }
+  .ph .rp { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--tx2); }
+  .ph .rp b { color: var(--tx); font-weight: 600; }
+  .ph .rp .ic { --s: 15px; color: var(--gr); }
+  .ph h1 { margin: 7px 0 0; font-size: 23px; line-height: 1.2; letter-spacing: -.025em; }
+  .ph .by { display: flex; align-items: center; gap: 7px; margin-top: 9px; font-size: 14px; color: var(--tx2); white-space: nowrap; overflow: hidden; }
+  .ph .trk { margin-top: 12px; font-size: 13px; gap: 6px; }
+  .ph .trk .tm { width: 17px; height: 17px; }
+  .ph .trk .tm .ic { --s: 10px; }
+  .ph .trk .ds { font-size: 12.5px; }
+  .wic { margin: 14px 16px 0; padding: 11px 12px 12px 14px; border-radius: 18px; background: var(--card); border: .5px solid var(--sep); display: flex; align-items: center; gap: 10px; }
+  .light .wic { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .wic .t { flex: 1; min-width: 0; }
+  .wic .tp { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--tx2); }
+  .wic .tp b { color: var(--ac-tx); font-weight: 600; }
+  .wic .tp .chip { margin-left: auto; }
+  .wic .tt { margin-top: 3px; font-size: 15px; font-weight: 600; letter-spacing: -.012em; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .jump { display: flex; gap: 6px; padding: 12px 16px 10px; overflow: hidden; position: relative; z-index: 30; }
+  .jump span { flex: none; display: inline-flex; align-items: center; height: 30px; padding: 0 11px; border-radius: 15px; background: var(--fill); font-size: 13px; font-weight: 600; color: var(--tx2); white-space: nowrap; }
+  .jump span.on { background: var(--tx); color: var(--bg); }
+  .jump.sticky { border-bottom: .5px solid var(--sep); background: var(--bg); }
+  .sl { display: flex; align-items: baseline; padding: 20px 20px 8px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+  .sl .sp + span { font-weight: 500; color: var(--tx3); }
+  .sl a { color: var(--ac-tx); font-weight: 600; }
+  .fc { margin: 0 16px 8px; background: var(--card); border-radius: 20px; border: .5px solid var(--sep); padding: 12px 14px 13px; }
+  .light .fc { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .fc .h { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+  .fc .h .ic { --s: 18px; color: var(--rd); }
+  .fc .h .sp + span { font-size: 12.5px; font-weight: 500; color: var(--tx3); }
+  .fc .stp { font-size: 12.5px; color: var(--tx2); margin: 2px 0 8px 26px; }
+  .fc .code { margin-left: 26px; font-size: 10.8px; line-height: 16px; white-space: pre-wrap; padding: 8px 10px; }
+  .fc .f { display: flex; gap: 6px; margin: 9px 0 0 26px; }
+  .pass { margin: 0 16px; display: flex; align-items: center; gap: 9px; padding: 12px 14px; border-radius: 16px; background: var(--card); font-size: 14px; color: var(--tx2); }
+  .pass .ic { --s: 17px; color: var(--gr); }
+  .pass .chev { margin-left: auto; color: var(--tx3); --s: 14px; }
+  .pfs { display: flex; gap: 10px; padding: 0 16px; overflow: hidden; }
+  .pf { flex: none; width: 108px; }
+  .pf .img { height: 186px; border-radius: 14px; border: .5px solid var(--sep); background: var(--card); overflow: hidden; padding: 12px 8px; display: flex; flex-direction: column; gap: 6px; }
+  .pf .img i { display: block; height: 7px; border-radius: 3px; background: var(--fill2); }
+  .pf .img i.w { width: 60%; } .pf .img i.ac { background: var(--ac); height: 16px; border-radius: 8px; margin-top: auto; } .pf .img i.gr { background: var(--gr-soft); height: 22px; }
+  .pf .img i.hd { height: 11px; width: 70%; background: var(--tx3); opacity: .5; }
+  .pf span { display: block; margin-top: 6px; font-size: 12px; color: var(--tx2); line-height: 1.3; }
+  .kbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; margin: 2px 0 8px; }
+  .kbar i { flex: var(--n) 0 0; background: var(--c); }
+  .klg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--tx2); }
+  .klg span { display: inline-flex; align-items: center; gap: 5px; }
+  .klg span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+
+  /* rendered markdown and rich text */
+  .md { font-size: 14.5px; line-height: 1.45; color: var(--tx); }
+  .md h5 { margin: 14px 0 3px; font-size: 15.5px; font-weight: 700; letter-spacing: -.01em; }
+  .md h5:first-child { margin-top: 0; }
+  .md p { margin: 5px 0; }
+  .md ul, .md ol { margin: 5px 0; padding-left: 20px; }
+  .md li { margin: 4px 0; }
+  .md ul.task { list-style: none; padding-left: 0; }
+  .md ul.task li { display: flex; gap: 8px; align-items: flex-start; }
+  .cb { width: 17px; height: 17px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--tx3); flex: none; margin-top: 2px; display: grid; place-items: center; color: var(--onac); }
+  .cb .ic { --s: 11px; --sw: 3.4; }
+  .cb.on { background: var(--ac); box-shadow: none; }
+  .md code { font: 12px "SF Mono", ui-monospace, monospace; padding: 1px 5px; border-radius: 5px; background: var(--fill); color: var(--ac-tx); }
+  .md table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 4px; }
+  .md th, .md td { text-align: left; padding: 6px 7px; border-bottom: .5px solid var(--sep); vertical-align: top; }
+  .md th { color: var(--tx2); font-weight: 600; }
+  .md blockquote { margin: 6px 0; padding-left: 11px; border-left: 3px solid var(--fill2); color: var(--tx2); }
+  .md.read { font-size: 16px; line-height: 1.5; }
+  .md.read table { font-size: 14px; }
+  .rc { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 7px; background: var(--fill); font-size: 13px; font-weight: 600; vertical-align: 1px; white-space: nowrap; color: var(--tx); }
+  .rc .ic { --s: 12px; --sw: 2.4; }
+  .desc { margin: 0 16px; padding: 14px 16px; border-radius: 20px; background: var(--card); border: .5px solid var(--sep); }
+  .light .desc { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .fade { position: relative; max-height: var(--h, 999px); overflow: hidden; }
+  .fade::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 44px; background: linear-gradient(transparent, var(--card)); }
+  .more { display: block; margin-top: 6px; font-size: 14.5px; font-weight: 600; color: var(--ac-tx); }
+  .simg { margin: 8px 0 2px; border-radius: 12px; border: .5px solid var(--sep); background: var(--card2); padding: 10px; display: grid; gap: 6px; }
+  .simg i { display: block; height: 7px; border-radius: 3px; background: var(--fill2); }
+  .simg i.w { width: 55%; } .simg i.r { background: var(--rd-soft); height: 16px; } .simg i.hd { height: 10px; width: 40%; background: var(--tx3); opacity: .45; }
+  .simg span { font-size: 11.5px; color: var(--tx3); display: flex; justify-content: space-between; }
+
+  /* comments */
+  .cm { margin: 0 16px 10px; background: var(--card); border-radius: 20px; overflow: hidden; border: .5px solid var(--sep); }
+  .light .cm { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .cm .fp { display: flex; gap: 8px; align-items: center; padding: 10px 14px; font: 12px "SF Mono", ui-monospace, monospace; color: var(--tx2); border-bottom: .5px solid var(--sep); }
+  .cm .fp .ic { --s: 13px; }
+  .cm .bd { padding: 11px 14px 12px; display: flex; gap: 10px; }
+  .cm .bd + .bd { border-top: .5px solid var(--sep); }
+  .cm .bd .av { margin-top: 1px; }
+  .cm .who { display: flex; align-items: baseline; gap: 6px; font-size: 14.5px; font-weight: 600; }
+  .cm .who span { font-size: 12.5px; font-weight: 400; color: var(--tx3); }
+  .cm .who .chip { align-self: center; }
+  .cm .bd .md { margin-top: 2px; font-size: 14px; }
+  .cm .acts { display: flex; border-top: .5px solid var(--sep); }
+  .cm .acts span { flex: 1; text-align: center; padding: 11px 0; font-size: 15px; font-weight: 600; color: var(--ac-tx); }
+  .cm .acts span + span { border-left: .5px solid var(--sep); }
+  .cm.bot .bd { align-items: center; padding: 11px 14px; }
+  .cm.bot .ic.b { --s: 18px; color: var(--tx2); }
+  .cm.bot .t { flex: 1; min-width: 0; font-size: 14px; }
+  .cm.bot .t b { font-weight: 600; }
+  .cm.bot .t span { display: block; color: var(--tx2); font-size: 12.5px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .compose { position: absolute; left: 16px; right: 16px; bottom: 30px; z-index: 40; height: 54px; border-radius: 27px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 20px; color: var(--tx3); font-size: 16px; }
+  .compose .snd { margin-left: auto; width: 42px; height: 42px; border-radius: 50%; background: var(--tx3); display: grid; place-items: center; color: #fff; }
+  .compose .snd .ic { --s: 18px; --sw: 2.6; }
+  .tl-ev { display: flex; gap: 10px; align-items: center; margin: 0 16px; padding: 4px 4px 12px 14px; font-size: 13px; color: var(--tx2); }
+  .tl-ev .dot { width: 7px; height: 7px; }
+  .tl-ev b { color: var(--tx); font-weight: 500; }
+  .tl-ev .sp + span { color: var(--tx3); font-size: 12px; }
+
+  /* the walk */
+  .wn { flex: 1; text-align: center; min-width: 0; }
+  .wn small { display: block; font: 500 11.5px/1.3 "SF Mono", ui-monospace, monospace; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wn b { display: inline-flex; align-items: center; gap: 4px; font-size: 16.5px; font-weight: 650; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wn b .ic { --s: 13px; --sw: 2.6; color: var(--tx3); }
+  .pb { width: 128px; height: 4px; border-radius: 2px; background: var(--fill2); margin: 5px auto 0; overflow: hidden; display: flex; gap: 1px; }
+  .pb i { display: block; height: 100%; background: var(--gr); flex: var(--n) 0 0; }
+  .pb i.o { background: transparent; }
+  .meta { display: flex; align-items: center; gap: 8px; padding: 6px 16px 10px; font-size: 13px; color: var(--tx2); border-bottom: .5px solid var(--sep); }
+  .meta .ds { margin-left: auto; font-size: 12.5px; }
+  .wb { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 16px 26px; background: linear-gradient(to bottom, transparent, var(--bg) 38%); z-index: 40; }
+  .wb .r3 { display: flex; gap: 12px; align-items: center; }
+  .wb .gb { width: 52px; height: 52px; }
+  .wb .cap { text-align: center; font-size: 13px; color: var(--tx2); margin-top: 11px; font-variant-numeric: tabular-nums; }
+  .wb .cap b { color: var(--tx); font-weight: 600; }
+  .wb .cap span { color: var(--tx3); }
+  .lock { height: 44px; padding: 0 13px; border-radius: 22px; display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; color: var(--tx3); flex: none; }
+  .lock .ic { --s: 16px; }
+  .toast { position: absolute; left: 14px; right: 14px; z-index: 80; height: 54px; border-radius: 27px; display: flex; align-items: center; gap: 11px; padding: 0 7px 0 14px; font-size: 14.5px; font-weight: 600; }
+  .toast .rg { width: 26px; height: 26px; border-radius: 50%; background: conic-gradient(var(--gr) 0 72%, var(--fill2) 0); display: grid; place-items: center; flex: none; }
+  .toast .rg::after { content: "4"; width: 20px; height: 20px; border-radius: 50%; background: var(--card); display: grid; place-items: center; font-size: 11px; color: var(--tx); }
+  .toast .t { flex: 1; min-width: 0; }
+  .toast .t span { display: block; font-size: 12px; font-weight: 500; color: var(--tx2); }
+  .toast .u { height: 40px; padding: 0 15px; border-radius: 20px; background: var(--fill2); display: inline-flex; align-items: center; gap: 6px; }
+  .toast .u .ic { --s: 15px; }
+  .bn { margin: 12px 16px 0; padding: 12px 14px; border-radius: 16px; background: var(--gr-soft); display: flex; gap: 10px; font-size: 14px; line-height: 1.42; color: var(--tx); }
+  .bn > .ic { --s: 18px; color: var(--gr); margin-top: 1px; }
+  .bn.bad { background: var(--rd-soft); } .bn.bad > .ic { color: var(--rd); }
+  .bn.warn { background: var(--yl-soft); } .bn.warn > .ic { color: var(--yl); }
+  .bn.ac { background: var(--ac-soft); } .bn.ac > .ic { color: var(--ac-tx); }
+  .bn b { font-weight: 600; }
+  .bn span { color: var(--tx2); }
+  .bn .go2 { display: inline-block; margin-top: 6px; font-weight: 600; color: var(--ac-tx); }
+  .ta { margin: 0 16px; padding: 12px 14px; border-radius: 18px; background: var(--card); border: .5px solid var(--sep); font-size: 15.5px; line-height: 1.42; min-height: var(--h, 76px); }
+  .light .ta { border-color: transparent; }
+  .ta .ph2 { color: var(--tx3); }
+  .ta .caret { display: inline-block; width: 2px; height: 19px; background: var(--ac); vertical-align: -4px; margin-left: 1px; border-radius: 1px; }
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 292px; z-index: 70; padding: 9px 3px 0; background: color-mix(in srgb, var(--bg) 82%, var(--tx3)); }
+  .kb .kr { display: flex; justify-content: center; gap: 6px; margin-bottom: 11px; }
+  .kb i { width: 33px; height: 42px; border-radius: 6px; background: var(--card); display: grid; place-items: center; font-style: normal; font-size: 21px; font-weight: 400; color: var(--tx); box-shadow: 0 1px 0 rgba(0, 0, 0, .3); }
+  .phone:not(.light) .kb i { background: #5a5b61; }
+  .kb i.fn { width: 43px; background: color-mix(in srgb, var(--card) 60%, var(--tx3)); font-size: 14px; }
+  .kb i.spc { flex: 1; font-size: 15px; }
+  .kb i.ret { width: 88px; background: var(--ac); color: var(--onac); font-size: 15px; font-weight: 600; }
+  .qdone { text-align: center; padding: 26px 28px 0; }
+  .qdone .big { width: 60px; height: 60px; border-radius: 50%; background: var(--gr-soft); color: var(--gr); display: grid; place-items: center; margin: 0 auto 14px; }
+  .qdone .big .ic { --s: 28px; --sw: 2.6; }
+  .qdone h3 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
+  .qdone p { margin: 6px 0 0; color: var(--tx2); font-size: 14.5px; line-height: 1.45; }
+  .tally { display: flex; justify-content: center; gap: 6px; margin-top: 14px; }
+
+  /* work item */
+  .ih { padding: 4px 16px 0; }
+  .ih .tp { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--tx2); }
+  .ih .tp .chip { margin-left: auto; }
+  .ih h1 { margin: 7px 0 0; font-size: 23px; line-height: 1.2; letter-spacing: -.025em; }
+  .ih .by { display: flex; align-items: center; gap: 7px; margin-top: 9px; font-size: 14px; color: var(--tx2); }
+  .wf { margin: 14px 16px 0; }
+  .wf .bar { display: flex; gap: 3px; }
+  .wf .bar i { flex: 1; height: 5px; border-radius: 3px; background: var(--fill2); }
+  .wf .bar i.d { background: var(--ac); }
+  .wf .lb { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; color: var(--tx3); }
+  .wf .lb b { color: var(--ac-tx); font-weight: 600; }
+  .dg { margin: 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: .5px; background: var(--sep); border-radius: 20px; overflow: hidden; border: .5px solid var(--sep); }
+  .dg > div { background: var(--card); padding: 9px 14px 10px; min-width: 0; }
+  .dg small { display: block; font-size: 12px; color: var(--tx3); }
+  .dg b { display: flex; align-items: center; gap: 6px; font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .dg .wide { grid-column: span 2; }
+
+  /* setup and settings */
+  .fld { display: flex; align-items: center; gap: 10px; padding: 0 8px 0 16px; min-height: 52px; position: relative; font-size: 16px; }
+  .fld + .fld::before, .fld + .cell::before, .cell + .fld::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: .5px; background: var(--sep); }
+  .fld label { width: 108px; flex: none; color: var(--tx); }
+  .fld .val { flex: 1; min-width: 0; color: var(--tx); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fld .val.mono { font-size: 13.5px; }
+  .fld .val small { color: var(--tx3); font-size: 13px; }
+  .okline { display: flex; align-items: center; gap: 7px; padding: 9px 30px 0; font-size: 13px; color: var(--gr); font-weight: 600; }
+  .okline .ic { --s: 15px; }
+  .okline span { color: var(--tx2); font-weight: 400; }
+  .stepn { width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 14px; font-weight: 700; background: var(--fill2); color: var(--tx); }
+  .stepn.on { background: var(--ac); color: var(--onac); }
+  .welcome { text-align: center; padding: 56px 32px 0; }
+  .welcome .tile { width: 84px; height: 84px; border-radius: 21px; margin: 0 auto 22px; box-shadow: 0 18px 44px -10px rgba(127, 126, 255, .45); }
+  .welcome .tile svg { width: 54px; height: 54px; }
+  .welcome h3 { margin: 0; font-size: 30px; letter-spacing: -.025em; }
+  .welcome p { margin: 10px 0 0; color: var(--tx2); font-size: 16px; line-height: 1.45; }
+  .srch { margin: 12px 16px 0; height: 38px; border-radius: 12px; background: var(--fill); display: flex; align-items: center; gap: 7px; padding: 0 11px; color: var(--tx3); font-size: 16px; }
+  .srch .ic { --s: 16px; }
+  .phone.crop { height: 430px; border-radius: 55px 55px 28px 28px; }
+  .phone.crop .hi { display: none; }
+  .tlink { text-align: center; padding: 14px 24px 0; font-size: 15px; font-weight: 600; color: var(--ac-tx); }
+  .tlink small { display: block; font-weight: 400; color: var(--tx3); font-size: 12.5px; margin-top: 2px; }
+
+  .rules { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 56px; }
+  .rule { padding: 20px 22px; border-radius: 20px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .rule h4 { margin: 0 0 8px; font-size: 16px; color: #ededef; }
+  .rule ul { margin: 6px 0 0; padding-left: 18px; }
+  .rule li { margin: 4px 0; }
+  .rule code { color: #c9c8ff; font-size: 12.5px; }
+  @media (max-width: 1100px) { .rules { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -394,13 +635,17 @@
   <div class="dbox open">
     <h2>Open, for Koen</h2>
     <ul>
-      <li><b>Which overview: A, B or C?</b> <span class="why">Section "Overview" below. The other screens are drawn for A and change little with another pick.</span></li>
+      <li><b>Which overview: A, B or C?</b> <span class="why">My pick is A. The other screens are drawn for A; only the way into them changes with B or C.</span></li>
+      <li><b>The work item as a sheet over the pull request,</b> <span class="why">as drawn, or a pushed page as in today's app?</span></li>
+      <li><b>Rerun failed checks from the phone?</b> <span class="why">It needs Actions write on the token. Drawn as a permission you may leave out.</span></li>
+      <li><b>Auto-merge as a switch on the decision sheet,</b> <span class="why">as drawn, or not on the phone at all?</span></li>
     </ul>
+    <p style="margin:10px 0 0;color:#8e8f96;font-size:13px">Everything below is a proposal until it is listed under Decided.</p>
   </div>
 </div>
 
 <nav class="toc">
-  <a href="#overview">Overview: three directions</a>
+  <a href="#overview">Overview: three directions</a><a href="#pr">A pull request</a><a href="#review">Quick Review</a><a href="#item">A work item</a><a href="#setup">First run and Settings</a><a href="#kcd">Keep, change, drop</a>
 </nav>
 
 <!-- ============================== OVERVIEW ============================== -->
@@ -658,7 +903,7 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
           <div class="view">
             <div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div>
             <div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div>
-            <div class="lg">
+            <div class="ldg">
               <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span>shop #412 · <i>AB#61021</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div>
               <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span>shop #405 · <i>AB#61002</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div>
               <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span>payments #88 · <i>AB#60871</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div>
@@ -667,13 +912,13 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
               <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span>printfarm #31 · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div>
             </div>
             <div class="lgh">Yours, needs you<span class="n">3</span></div>
-            <div class="lg">
+            <div class="ldg">
               <div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span>shop #409 · <i>AB#61055</i> · <em>e2e, lint fail</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div>
               <div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span>storefront #371 · <i>AB#61012</i> · <em>Changes asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div>
               <div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span>payments #90 · <i>AB#60955</i> · <em>1 question</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div>
             </div>
             <div class="lgh">Ready to merge<span class="n">2</span></div>
-            <div class="lg">
+            <div class="ldg">
               <div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span>shop #401 · <i>AB#60987</i> · <em>Tom approved</em></span></div><span class="gp go sm">Merge</span></div>
               <div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span>payments #91 · <em>Ines approved</em></span></div><span class="gp go sm">Merge</span></div>
             </div>
@@ -694,7 +939,7 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
           <div class="view">
             <div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div>
             <div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div>
-            <div class="lg">
+            <div class="ldg">
               <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span>shop #412 · <i>AB#61021</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div>
               <div class="swp"><span class="swa"><i class="ic" data-i="eye"></i>Review</span><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span>shop #405 · <i>AB#61002</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div></div>
               <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span>payments #88 · <i>AB#60871</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div>
@@ -703,13 +948,13 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
               <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span>printfarm #31 · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div>
             </div>
             <div class="lgh">Yours, needs you<span class="n">3</span></div>
-            <div class="lg">
+            <div class="ldg">
               <div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span>shop #409 · <i>AB#61055</i> · <em>e2e, lint fail</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div>
               <div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span>storefront #371 · <i>AB#61012</i> · <em>Changes asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div>
               <div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span>payments #90 · <i>AB#60955</i> · <em>1 question</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div>
             </div>
             <div class="lgh">Ready to merge<span class="n">2</span></div>
-            <div class="lg">
+            <div class="ldg">
               <div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span>shop #401 · <i>AB#60987</i> · <em>Tom approved</em></span></div><span class="gp go sm">Merge</span></div>
               <div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span>payments #91 · <em>Ines approved</em></span></div><span class="gp go sm">Merge</span></div>
             </div>
@@ -738,6 +983,737 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
   </table>
 </section>
 
+<!-- ============================== PULL REQUEST ============================== -->
+<section class="sec" id="pr">
+  <div class="sec-h"><h2>A pull request: why, what, who, then the two actions</h2></div>
+  <p class="sec-lead">Still one scrolling page with jump chips. The work item moves up under the title, because it answers "what is this for" before the description does. Reviewers get their own section. Review and Merge sit in the bar on every pull request; the one that is yours to do is the filled one.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="share"></i></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="ph">
+            <div class="rp"><i class="ic" data-i="pr"></i><b>acme/shop</b>#412 · Open</div>
+            <h1>Checkout: round totals per line instead of per order</h1>
+            <div class="by"><span class="av" style="--h:20">PS</span>Priya Shah · 6 commits · <span class="br">priya/round-lines</span></div>
+            <div class="trk"><span class="s" style="--c:var(--rd)"><i class="tm"><i class="ic" data-i="x"></i></i>2 of 24 fail</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Merge</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div>
+          </div>
+          <div class="wic"><div class="t"><div class="tp"><span class="ty bug"></span>Bug · <b>AB#61021</b><span class="chip sm run">Code Review</span></div><div class="tt">Totals off by a cent on invoices with three or more lines</div></div><i class="ic chev" data-i="chev-r"></i></div>
+          <div class="jump"><span class="on">Checks</span><span>Proof 3</span><span>Description</span><span>Reviewers 3</span><span>Conversation 8</span><span>Files 52</span></div>
+          <div class="sl" style="padding-top:8px">Checks<span class="sp"></span><span>2 of 24 failing</span></div>
+          <div class="fc">
+            <div class="h"><i class="ic" data-i="fail"></i>e2e · chromium 2/4<span class="sp"></span><span>4 min</span></div>
+            <div class="stp">Run Playwright tests</div>
+            <div class="code">checkout.spec.ts:88 › totals round per line
+<span class="r">Expected: "€ 12,40"</span>
+<span class="g">Received: "€ 12,39"</span></div>
+            <div class="f"><span class="chip ac sm">This PR changes the spec</span></div>
+          </div>
+          <div class="fc">
+            <div class="h"><i class="ic" data-i="fail"></i>lint<span class="sp"></span><span>1 min</span></div>
+            <div class="stp">biome lint</div>
+            <div class="code">src/cart/total.ts:14:7 <span class="m">lint/style/useConst</span></div>
+            <div class="f"><span class="chip warn sm">Also failing on main</span></div>
+          </div>
+          <div class="pass"><i class="ic" data-i="ok"></i>22 checks passed<i class="ic chev" data-i="chev-r"></i></div>
+        </div>
+        <div class="edge"></div>
+        <div class="actbar"><span class="gp" style="height:52px;border-radius:26px;padding:0 20px;font-size:17px"><i class="ic" data-i="merge" style="--s:18px"></i>Merge</span><span class="btn pri"><i class="ic" data-i="eye"></i>Start review</span></div>
+      </div>
+      <figcaption><b>Someone else's, checks failing</b>
+        <ul>
+          <li>The track under the author is the same one as on the overview row: checks, review, merge.</li>
+          <li>The work item is a card of its own with its type, state and title. It opens the item as a sheet.</li>
+          <li>Failing checks come first, each with the step and the error from the end of its log. "Also failing on main" comes from the default branch's own check runs.</li>
+          <li>Start review is filled because the review is yours to do. Merge opens the merge sheet, which says what's still missing.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Round totals per line</b><span>acme/shop #412</span></div><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="jump sticky" style="padding-top:2px"><span>Checks</span><span>Proof 3</span><span class="on">Description</span><span>Reviewers 3</span><span>Conversation 8</span><span>Files 52</span></div>
+          <div class="sl" style="padding-top:14px">Proof<span class="sp"></span><span>3 images</span></div>
+          <div class="pfs">
+            <div class="pf"><div class="img"><i class="hd"></i><i></i><i class="w"></i><i></i><i class="w"></i><i class="ac"></i></div><span>Basket with three lines</span></div>
+            <div class="pf"><div class="img"><i class="hd"></i><i class="gr"></i><i class="w"></i><i class="gr"></i><i></i><i class="ac"></i></div><span>Totals per line</span></div>
+            <div class="pf"><div class="img"><i class="hd"></i><i></i><i></i><i class="w"></i><i></i><i class="w"></i><i></i></div><span>Receipt PDF</span></div>
+          </div>
+          <div class="sl">Description</div>
+          <div class="desc md">
+            <h5>What</h5>
+            <p>Totals were rounded once per order, so three lines of € 4,133 came to € 12,39. Each line now rounds on its own, like the receipt. <span class="rc"><span class="ty bug" style="width:9px;height:9px"></span>AB#61021</span></p>
+            <h5>How to test</h5>
+            <ul class="task">
+              <li><span class="cb on"><i class="ic" data-i="check"></i></span>Three lines of € 4,133 show € 12,40</li>
+              <li><span class="cb on"><i class="ic" data-i="check"></i></span>The receipt matches the basket</li>
+              <li><span class="cb"></span>Invoice export (needs staging)</li>
+            </ul>
+            <table><tr><th>Basket</th><th>Before</th><th>After</th></tr><tr><td>3 × € 4,133</td><td>€ 12,39</td><td>€ 12,40</td></tr></table>
+          </div>
+          <div class="sl">What changed<span class="sp"></span><a>52 files</a></div>
+          <div class="desc">
+            <div class="kbar"><i style="--n:12;--c:var(--ac)"></i><i style="--n:31;--c:var(--bl)"></i><i style="--n:9;--c:var(--tx3)"></i></div>
+            <div class="klg"><span style="--c:var(--ac)">12 source</span><span style="--c:var(--bl)">31 tests</span><span style="--c:var(--tx3)">9 generated</span></div>
+          </div>
+        </div>
+        <div class="edge"></div>
+        <div class="actbar"><span class="gp" style="height:52px;border-radius:26px;padding:0 20px;font-size:17px"><i class="ic" data-i="merge" style="--s:18px"></i>Merge</span><span class="btn pri"><i class="ic" data-i="eye"></i>Start review</span></div>
+      </div>
+      <figcaption><b>Proof, description, what changed</b>
+        <ul>
+          <li>Proof is the pull request's screenshots as a row; a tap opens them full screen.</li>
+          <li>The description renders as GitHub renders it, AB# references included.</li>
+          <li>What changed says how much there is to read before you start: 12 files, the rest is tests and generated.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Round totals per line</b><span>acme/shop #412</span></div><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="jump sticky" style="padding-top:2px"><span>Proof 3</span><span>Description</span><span>Reviewers 3</span><span class="on">Conversation 8</span><span>Files 52</span></div>
+          <div class="sl" style="padding-top:14px">Reviewers<span class="sp"></span><span>1 of 3 approved</span></div>
+          <div class="grp">
+            <div class="cell"><span class="av lg me2">KV</span><div class="t"><b>You</b><span>Asked by Priya, 4 days ago</span></div><span class="chip ac">Your review</span></div>
+            <div class="cell"><span class="av lg" style="--h:200">TB</span><div class="t"><b>Tom Berg</b><span>2 days ago · <span style="color:var(--yl)">2 commits since</span></span></div><span class="chip ok"><i class="ic" data-i="check"></i>Approved</span></div>
+            <div class="cell"><span class="ico soft r" style="--c:var(--tx2)"><i class="ic" data-i="users"></i></span><div class="t"><b>acme/checkout</b><span>Team, anyone of 5</span></div><span class="chip">Waiting</span></div>
+          </div>
+          <div class="sl">Conversation<span class="sp"></span><span>1 thread open</span></div>
+          <div class="cm">
+            <div class="fp"><i class="ic" data-i="file"></i>src/cart/total.ts<span class="sp"></span>L15</div>
+            <div class="diff" style="padding:3px 0">
+              <div class="dl a"><span class="n">14</span><span class="m">+</span><span><span class="k">export function</span> <span class="f">orderTotal</span>(lines: <span class="ty2">Line</span>[]) {</span></div>
+              <div class="dl a"><span class="n">15</span><span class="m">+</span><span>  <span class="k">let</span> total = Money.zero;</span></div>
+            </div>
+            <div class="bd"><span class="av lg" style="--h:200">TB</span><div style="flex:1;min-width:0"><div class="who">Tom Berg<span>2 d</span></div>
+              <div class="md"><p><b>Nit:</b> <code>const</code> with a <code>reduce</code> here? Then lint stops failing.</p></div></div></div>
+            <div class="bd"><span class="av lg" style="--h:20">PS</span><div style="flex:1;min-width:0"><div class="who">Priya Shah<span>1 d</span></div>
+              <div class="md"><p>Will do after the e2e fix.</p></div></div></div>
+            <div class="acts"><span>Resolve</span><span>Reply</span></div>
+          </div>
+          <div class="cm bot">
+            <div class="bd"><i class="ic b" data-i="bot"></i><div class="t"><b>E2E Test Results</b><span>1 failed, 311 passed · run #2214</span></div><span class="chip">Show</span></div>
+          </div>
+          <div class="cm">
+            <div class="bd"><span class="av lg" style="--h:150">SO</span><div style="flex:1;min-width:0"><div class="who">Sam Okafor<span>5 h</span></div>
+              <div class="md"><p>Does the invoice export use <code>lineTotal</code> too?</p></div></div></div>
+          </div>
+        </div>
+        <div class="edge" style="height:110px"></div>
+        <div class="compose glass">Comment on #412…<span class="snd"><i class="ic" data-i="up"></i></span></div>
+      </div>
+      <figcaption><b>Reviewers and conversation</b>
+        <ul>
+          <li>Reviewers: who was asked, who answered, and whether commits came after an approval.</li>
+          <li>Threads keep the lines they were left on. Bot reports fold to one line.</li>
+          <li>While the conversation is on screen the bar becomes the comment box, as today.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone">
+        <div class="view blurred">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="ph">
+            <div class="rp"><i class="ic" data-i="pr"></i><b>acme/shop</b>#401 · Open</div>
+            <h1>Price list import accepts semicolons</h1>
+          </div>
+          <div class="grp" style="margin-top:20px;height:300px"></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:604px">
+          <div class="grab"></div>
+          <div class="sh-h"><span class="gb" style="visibility:hidden"></span><h3>Merge #401<small>into main</small></h3><span class="gb"><i class="ic" data-i="x"></i></span></div>
+          <div class="grp" style="margin-top:6px;--indent:50px">
+            <div class="cell" style="min-height:46px;padding-top:8px;padding-bottom:8px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr)"></i><div class="t"><b>24 checks passed</b></div></div>
+            <div class="cell" style="min-height:46px;padding-top:8px;padding-bottom:8px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr)"></i><div class="t"><b>Approved by Tom Berg</b></div></div>
+            <div class="cell" style="min-height:46px;padding-top:8px;padding-bottom:8px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr)"></i><div class="t"><b>No conflicts with main</b></div></div>
+          </div>
+          <div style="padding:16px 16px 0"><div class="segc"><span class="on">Squash</span><span>Merge commit</span><span>Rebase</span></div></div>
+          <div class="grp" style="margin-top:14px;--indent:16px">
+            <div class="cell"><div class="t"><span style="margin:0 0 2px">Commit title</span><b>Price list import accepts semicolons (#401)</b></div></div>
+            <div class="cell"><div class="t"><b>Delete the branch</b><span>kv/import-semicolons</span></div><span class="tg"></span></div>
+          </div>
+          <div class="btns" style="margin-top:18px"><span class="btn go"><i class="ic" data-i="merge"></i>Squash and merge</span></div>
+          <div class="foot" style="text-align:center;display:flex;justify-content:center;align-items:center;gap:6px"><i class="ic" data-i="face" style="--s:15px"></i>Confirms with Face ID</div>
+        </div>
+      </div>
+      <figcaption><b>Merge</b>The sheet from today's app, unchanged: the three facts that allow the merge, the method, the commit title, and whether the branch goes. When something is missing its row turns red and the button says what it waits for ("Merge when checks pass" turns on GitHub's auto-merge).</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== QUICK REVIEW ============================== -->
+<section class="sec" id="review">
+  <div class="sec-h"><h2>Quick Review: read, comment, decide, next</h2></div>
+  <p class="sec-lead">The walk keeps its shape from today's iPhone app: a brief first, source files one at a time, tests and generated files as one step each, the decision, five seconds of Undo, then the next pull request. New here: other people's threads show on the line they belong to, a comment can cover several lines and carry a suggestion, a re-review shows only what changed since yours, and the end card leads on to your own pull requests.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="wn"><small>src/cart/</small><b>total.ts<i class="ic" data-i="chev-d"></i></b><div class="pb"><i style="--n:3"></i><i class="o" style="--n:9"></i><i style="--n:2;background:var(--tx3);opacity:.5"></i></div></div><span class="lock glass"><i class="ic" data-i="lock"></i>11 left</span></div>
+          <div class="meta"><span class="chip sm">Modified</span>1 thread, 1 draft<span class="ds"><span class="a">+31</span> <span class="d">−8</span></span></div>
+          <div class="diff" style="margin-top:4px">
+            <div class="hk">@@ -8,14 +8,18 @@ export function orderTotal</div>
+            <div class="dl"><span class="n">8</span><span class="m"> </span><span><span class="k">import</span> { Money } <span class="k">from</span> <span class="s">'../money'</span>;</span></div>
+            <div class="dl"><span class="n">9</span><span class="m"> </span><span></span></div>
+            <div class="dl d"><span class="n">10</span><span class="m">−</span><span><span class="k">export function</span> <span class="f">orderTotal</span>(lines: <span class="ty2">Line</span>[]) {</span></div>
+            <div class="dl d"><span class="n">11</span><span class="m">−</span><span>  <span class="k">const</span> raw = lines.<span class="f">reduce</span>((s, l) =&gt; s + l.qty * l.price, 0);</span></div>
+            <div class="dl d"><span class="n">12</span><span class="m">−</span><span>  <span class="k">return</span> Money.<span class="f">round</span>(raw);</span></div>
+            <div class="dl a"><span class="n">10</span><span class="m">+</span><span><span class="k">export function</span> <span class="f">lineTotal</span>(line: <span class="ty2">Line</span>) {</span></div>
+            <div class="dl a"><span class="n">11</span><span class="m">+</span><span>  <span class="k">return</span> Money.<span class="f">round</span>(line.qty * line.price);</span></div>
+            <div class="dl a"><span class="n">12</span><span class="m">+</span><span>}</span></div>
+            <div class="dl a"><span class="n">13</span><span class="m">+</span><span></span></div>
+            <div class="dl a"><span class="n">14</span><span class="m">+</span><span><span class="k">export function</span> <span class="f">orderTotal</span>(lines: <span class="ty2">Line</span>[]) {</span></div>
+            <div class="dl a"><span class="n">15</span><span class="m">+</span><span>  <span class="k">let</span> total = Money.zero;</span></div>
+            <div class="dcm"><div class="who"><span class="av" style="--h:200">TB</span>Tom Berg<span>2 d</span><span class="chip sm">1 reply</span></div><b>Nit:</b> const with a reduce here? Then lint stops failing.</div>
+            <div class="dl a"><span class="n">16</span><span class="m">+</span><span>  <span class="k">for</span> (<span class="k">const</span> line <span class="k">of</span> lines)</span></div>
+            <div class="dl a"><span class="n">17</span><span class="m">+</span><span>    total = total.<span class="f">add</span>(<span class="f">lineTotal</span>(line));</span></div>
+            <div class="dl a"><span class="n">18</span><span class="m">+</span><span>  <span class="k">return</span> total;</span></div>
+            <div class="dcm draft"><div class="who"><span class="av me2">KV</span>You<span class="chip sm ac">Draft</span></div>Agree with Tom. A reduce over lineTotal keeps this to one expression.</div>
+            <div class="dl"><span class="n">19</span><span class="m"> </span><span>}</span></div>
+            <div class="dl"><span class="n">20</span><span class="m"> </span><span></span></div>
+            <div class="hk">@@ -41,6 +45,9 @@ export function receiptLines</div>
+            <div class="dl"><span class="n">45</span><span class="m"> </span><span>  <span class="k">return</span> lines.<span class="f">map</span>((line) =&gt; ({</span></div>
+            <div class="dl d"><span class="n">46</span><span class="m">−</span><span>    total: line.qty * line.price,</span></div>
+            <div class="dl a"><span class="n">46</span><span class="m">+</span><span>    total: <span class="f">lineTotal</span>(line),</span></div>
+          </div>
+        </div>
+        <div class="wb">
+          <div class="r3"><span class="gb glass"><i class="ic" data-i="chev-l"></i></span><span class="btn go"><i class="ic" data-i="check"></i>Mark reviewed</span><span class="gb glass"><i class="ic" data-i="chev-r"></i></span></div>
+          <div class="cap"><b>File 4 of 12</b> <span>· then tests and generated, one step each</span></div>
+        </div>
+      </div>
+      <figcaption><b>A file in the walk</b>
+        <ul>
+          <li>Kept: the bar names the file, the progress bar has a part for the source files and one for each step after them, Mark reviewed opens the next unread file.</li>
+          <li>New: a thread someone else left shows under its line, so you don't repeat it. Your own drafts are dashed until the review posts.</li>
+          <li>Long lines scroll sideways; a two-finger pinch changes the type size.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="wn"><small>src/cart/</small><b>total.ts<i class="ic" data-i="chev-d"></i></b><div class="pb"><i style="--n:3"></i><i class="o" style="--n:9"></i><i style="--n:2;background:var(--tx3);opacity:.5"></i></div></div><span class="lock glass"><i class="ic" data-i="lock"></i>11 left</span></div>
+          <div class="meta"><span class="chip sm">Modified</span>1 thread, 1 draft<span class="ds"><span class="a">+31</span> <span class="d">−8</span></span></div>
+          <div class="diff" style="margin-top:4px">
+            <div class="dl a"><span class="n">13</span><span class="m">+</span><span></span></div>
+            <div class="dl a"><span class="n">14</span><span class="m">+</span><span><span class="k">export function</span> <span class="f">orderTotal</span>(lines: <span class="ty2">Line</span>[]) {</span></div>
+            <div class="dl a sel"><span class="n">15</span><span class="m">+</span><span>  <span class="k">let</span> total = Money.zero;</span></div>
+            <div class="dl a sel"><span class="n">16</span><span class="m">+</span><span>  <span class="k">for</span> (<span class="k">const</span> line <span class="k">of</span> lines)</span></div>
+            <div class="dl a sel"><span class="n">17</span><span class="m">+</span><span>    total = total.<span class="f">add</span>(<span class="f">lineTotal</span>(line));</span></div>
+            <div class="dl a"><span class="n">18</span><span class="m">+</span><span>  <span class="k">return</span> total;</span></div>
+            <div class="dl"><span class="n">19</span><span class="m"> </span><span>}</span></div>
+          </div>
+        </div>
+        <div class="sheet" style="height:532px">
+          <div class="grab"></div>
+          <div class="sh-h"><span class="gp sm">Cancel</span><h3>total.ts<small>lines 15 to 17</small></h3><span class="gp pri sm">Save</span></div>
+          <div class="ta" style="--h:92px">Agree with Tom. A reduce over lineTotal keeps this to one expression.<span class="caret"></span></div>
+          <div style="display:flex;gap:8px;padding:10px 16px 0;align-items:center"><span class="chip"><i class="ic" data-i="file"></i>Suggest a change</span><span class="chip">Nit</span><span class="sp"></span><span style="font-size:12.5px;color:var(--tx3)">Posts with your review</span></div>
+          <div class="kb" data-kb></div>
+        </div>
+      </div>
+      <figcaption><b>Comment on a line, or several</b>
+        <ul>
+          <li>Tap a line to comment on it, as today. New: drag from the line number to take more lines.</li>
+          <li>Suggest a change puts the selected lines in the box as a GitHub suggestion, ready to edit; the author applies it with one tap on GitHub.</li>
+          <li>Comments stay drafts on the phone and post together with your decision.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="wn"><small>src/product/</small><b>StockTable.tsx<i class="ic" data-i="chev-d"></i></b><div class="pb" style="width:72px"><i style="--n:0"></i><i class="o" style="--n:3"></i></div></div><span class="lock glass"><i class="ic" data-i="lock"></i>3 left</span></div>
+          <div class="bn ac" style="margin-top:4px"><i class="ic" data-i="rerun"></i><div><b>Re-review.</b> <span>Tom pushed 2 commits since your review, 1 day ago. They touch 3 of the 14 files.</span></div></div>
+          <div style="padding:10px 16px 10px"><div class="segc"><span class="on">Since your review</span><span>All 14 files</span></div></div>
+          <div class="diff">
+            <div class="hk">@@ -22,9 +22,11 @@ export function StockTable</div>
+            <div class="dl"><span class="n">22</span><span class="m"> </span><span>  <span class="k">const</span> rows = stock.<span class="f">filter</span>((s) =&gt; s.qty &gt; 0);</span></div>
+            <div class="dl d"><span class="n">23</span><span class="m">−</span><span>  rows.<span class="f">sort</span>(byName);</span></div>
+            <div class="dl a"><span class="n">23</span><span class="m">+</span><span>  <span class="k">const</span> near = <span class="f">byDistance</span>(customer.address);</span></div>
+            <div class="dl a"><span class="n">24</span><span class="m">+</span><span>  rows.<span class="f">sort</span>(near);</span></div>
+            <div class="dcm"><div class="who"><span class="av me2">KV</span>You<span>2 d</span><span class="chip sm ok"><i class="ic" data-i="check"></i>Changed since</span></div>Sort by distance to the customer, not by name? The nearest warehouse is the one that ships.</div>
+            <div class="dcm"><div class="who"><span class="av" style="--h:200">TB</span>Tom Berg<span>1 d</span></div>Done, and the nearest one gets a label.<div class="acts"><span>Resolve</span><span>Reply</span></div></div>
+            <div class="dl"><span class="n">25</span><span class="m"> </span><span></span></div>
+            <div class="dl"><span class="n">26</span><span class="m"> </span><span>  <span class="k">return</span> (</span></div>
+            <div class="dl"><span class="n">27</span><span class="m"> </span><span>    &lt;<span class="ty2">Table</span> rows={rows}&gt;</span></div>
+            <div class="dl a"><span class="n">28</span><span class="m">+</span><span>      {rows[0] &amp;&amp; &lt;<span class="ty2">Nearest</span> row={rows[0]} /&gt;}</span></div>
+            <div class="dl"><span class="n">29</span><span class="m"> </span><span>      &lt;<span class="ty2">Column</span> field=<span class="s">"warehouse"</span> /&gt;</span></div>
+            <div class="dl"><span class="n">30</span><span class="m"> </span><span>      &lt;<span class="ty2">Column</span> field=<span class="s">"qty"</span> /&gt;</span></div>
+            <div class="dl a"><span class="n">31</span><span class="m">+</span><span>      &lt;<span class="ty2">Column</span> field=<span class="s">"distance"</span> unit=<span class="s">"km"</span> /&gt;</span></div>
+            <div class="dl"><span class="n">32</span><span class="m"> </span><span>    &lt;/<span class="ty2">Table</span>&gt;</span></div>
+            <div class="dl"><span class="n">33</span><span class="m"> </span><span>  );</span></div>
+            <div class="dl"><span class="n">34</span><span class="m"> </span><span>}</span></div>
+          </div>
+        </div>
+        <div class="wb">
+          <div class="r3"><span class="gb glass"><i class="ic" data-i="chev-l"></i></span><span class="btn go"><i class="ic" data-i="check"></i>Mark reviewed</span><span class="gb glass"><i class="ic" data-i="chev-r"></i></span></div>
+          <div class="cap"><b>File 1 of 3</b> <span>· changed since your review</span></div>
+        </div>
+      </div>
+      <figcaption><b>A re-review shows what changed since yours</b>
+        <ul>
+          <li>The diff is between the commit you reviewed and the head, so 14 files become 3. All 14 files is one tap away.</li>
+          <li>Your earlier comment sits on the lines that changed in answer to it, with the reply. Resolve it right there.</li>
+          <li>The desktop's "Re-review since last review" frame, on the phone.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone">
+        <div class="view blurred">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="wn"><small>one step</small><b>Generated · 9 files</b></div><span class="lock glass">Done</span></div>
+          <div class="grp" style="margin-top:20px;height:200px"></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:664px">
+          <div class="grab"></div>
+          <div class="sh-h" style="padding-bottom:12px"><span class="gb" style="visibility:hidden"></span><h3>All 12 files reviewed<small>and both steps · your decision on #412</small></h3><span class="gb"><i class="ic" data-i="x"></i></span></div>
+          <div class="ta">Nice catch on the receipt. One nit inline.<span class="caret"></span></div>
+          <div class="opt-h">Your line comments</div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell"><div class="t"><b>Agree with Tom. A reduce over lineTotal…</b><span class="mono" style="font-size:12px">src/cart/total.ts · 15 to 17</span></div><span class="chip">Jump</span></div>
+          </div>
+          <div class="grp" style="margin-top:12px;--indent:16px">
+            <div class="cell"><div class="t"><b>Merge when checks pass</b><span>GitHub's auto-merge, once you approve</span></div><span class="tg off"></span></div>
+          </div>
+          <div class="btns" style="margin-top:18px"><span class="btn go"><i class="ic" data-i="check"></i>Approve</span></div>
+          <div class="btns" style="margin-top:10px"><span class="btn bad sm">Request changes</span><span class="btn sm">Comment</span></div>
+          <div class="foot" style="text-align:center">Approve posts after 5 seconds. Until then you can undo it.</div>
+        </div>
+      </div>
+      <figcaption><b>The decision</b>
+        <ul>
+          <li>Opens by itself when the last file or step is marked, or any time from the top right.</li>
+          <li>Your overall comment, the line comments that go with it, and the three decisions.</li>
+          <li>Changed: auto-merge is a switch, not a fourth button. Before every file is read the sheet says "9 left to review" and Approve follows the setting that requires reading them all.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="x"></i></span><div class="nav-t"><b>Review · 2 of 6</b><span>Up next: payments #88</span></div><span class="gb" style="visibility:hidden"></span></div>
+          <div class="ph">
+            <div class="rp"><i class="ic" data-i="pr"></i><b>acme/shop</b>#405 · Open</div>
+            <h1>Webhook retries back off exponentially</h1>
+            <div class="by"><span class="av" style="--h:150">SO</span>Sam Okafor · 4 commits · <span class="br">sam/webhook-backoff</span></div>
+            <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Merge</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div>
+          </div>
+          <div class="wic"><div class="t"><div class="tp"><span class="ty pbi"></span>Product Backlog Item · <b>AB#61002</b><span class="chip sm run">Code Review</span></div><div class="tt">Webhooks stop hammering a shop that is down</div></div><i class="ic chev" data-i="chev-r"></i></div>
+          <div class="sl">Proof<span class="sp"></span><span>2 images</span></div>
+          <div class="pfs">
+            <div class="pf" style="width:150px"><div class="img" style="height:70px;padding:9px 8px;gap:5px"><i class="hd"></i><i class="gr"></i><i class="w"></i></div><span>Retry schedule in the log</span></div>
+            <div class="pf" style="width:150px"><div class="img" style="height:70px;padding:9px 8px;gap:5px"><i class="hd"></i><i></i><i class="w"></i><i></i></div><span>Gives up after 12 tries</span></div>
+          </div>
+          <div class="sl">Description</div>
+          <div class="desc md"><div class="fade" style="--h:112px">
+            <p>Failed webhooks were retried every 10 s, forever. They now back off 10 s, 30 s, 90 s and so on up to an hour, and stop after 12 tries.</p>
+            <ul><li>Retry state lives on the delivery row</li><li>A dead delivery shows in the admin's webhook log</li></ul>
+          </div><span class="more">Read all</span></div>
+        </div>
+        <div class="toast glass" style="bottom:98px"><span class="rg"></span><div class="t">Approving #412<span>Posts in 4 s</span></div><span class="u"><i class="ic" data-i="undo"></i>Undo</span></div>
+        <div class="wb" style="padding-top:20px">
+          <div class="r3"><span class="gb glass"><i class="ic" data-i="chev-l"></i></span><span class="btn pri" style="font-size:16px"><i class="ic" data-i="eye"></i>Start with retry.ts</span></div>
+        </div>
+      </div>
+      <figcaption><b>Five seconds of Undo, on the next brief</b>
+        <ul>
+          <li>Kept as it is: Approve moves on at once and the approval waits out its Undo here. Undo brings the decision sheet back with your comments.</li>
+          <li>The brief is the top of the pull request page: work item, proof, description and what changed. Start names the first file.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gp" style="visibility:hidden">Done</span><div class="nav-t"><b>Review</b></div><span class="gp">Done</span></div>
+          <div class="qdone"><span class="big"><i class="ic" data-i="check"></i></span><h3>Queue done</h3><p>6 pull requests in 38 minutes. The last approval posts when its Undo runs out.</p>
+            <div class="tally"><span class="chip ok">4 approved</span><span class="chip bad">1 changes requested</span><span class="chip">1 commented</span></div>
+          </div>
+          <div class="grp" style="margin-top:20px">
+            <div class="cell"><span class="av lg" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line…</b><span>shop #412</span></div><span class="chip ok sm">Approved</span></div>
+            <div class="cell"><span class="av lg" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span>shop #405</span></div><span class="chip bad sm">Changes requested</span></div>
+            <div class="cell" style="min-height:44px"><div class="t" style="padding-left:42px"><b style="color:var(--ac-tx);font-size:15px">4 more</b></div><i class="ic chev" data-i="chev-d"></i></div>
+          </div>
+          <div class="grp-h">Next, your own</div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell"><div class="t"><b>Price list import accepts semicolons</b><span>shop #401 · Tom approved, checks pass</span></div><span class="gp go sm">Merge</span></div>
+            <div class="cell"><div class="t"><b>Bump the payment SDK to 7.2</b><span>payments #91 · Ines approved, checks pass</span></div><span class="gp go sm">Merge</span></div>
+            <div class="cell"><div class="t"><b>3 need you</b><span>Failing checks, changes asked, a question</span></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+        </div>
+        <div class="edge" style="height:110px"></div>
+        <div class="actbar"><span class="btn">Back to the overview</span></div>
+      </div>
+      <figcaption><b>The end card</b>
+        <ul>
+          <li>Kept: what you decided, per pull request, and what was left out of the run.</li>
+          <li>Changed: "What's next" is your own pull requests, ready-to-merge first, because the review queue is empty. After a single review it offers the next in the queue, or the same author's next, as today.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== WORK ITEM ============================== -->
+<section class="sec" id="item">
+  <div class="sec-h"><h2>A work item: a reading page over the pull request</h2></div>
+  <p class="sec-lead">You open an item to learn what a pull request is for, so it comes up as a sheet: close it and you are back on the line you were reading. The order is fixed for reading, top to bottom: what is wrong or wanted, how to tell it is done, which pull requests belong to it, and the discussion. The only thing you can write is a comment.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view blurred">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+          <div class="ph"><div class="rp"><b>acme/shop</b>#412</div></div>
+        </div>
+        <div class="dim" style="background:rgba(0,0,0,.3)"></div>
+        <div class="sheet" style="height:786px">
+          <div class="grab"></div>
+          <div class="nav" style="height:50px"><span class="gb"><i class="ic" data-i="x"></i></span><span class="sp"></span><span class="gp"><i class="ic" data-i="ext"></i>Azure DevOps</span></div>
+          <div class="ih">
+            <div class="tp"><span class="ty bug"></span>Bug · AB#61021<span class="chip run">Code Review</span></div>
+            <h1>Totals off by a cent on invoices with three or more lines</h1>
+            <div class="by"><span class="av" style="--h:20">PS</span>Priya Shah · Sprint 23 · Priority 2</div>
+          </div>
+          <div class="wf">
+            <div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><i></i><i></i></div>
+            <div class="lb"><span>New</span><span>In Progress</span><b>Code Review</b><span>Testing</span><span>Done</span></div>
+          </div>
+          <div class="sl">Description</div>
+          <div class="desc md read">
+            <p>An order with three lines of € 4,133 shows <b>€ 12,39</b> on the invoice and <b>€ 12,40</b> in the basket. Customers pay the basket amount, so bookkeeping is a cent off per order.</p>
+            <p>The basket rounds each line; the invoice rounds the order total once.</p>
+          </div>
+          <div class="sl">Repro steps</div>
+          <div class="desc md read">
+            <ol><li>Add three lines of € 4,133 to a basket</li><li>Check out and pay</li><li>Open <b>Orders → Invoice</b></li></ol>
+            <table><tr><th></th><th>Expected</th><th>Actual</th></tr><tr><td>Basket</td><td>€ 12,40</td><td>€ 12,40</td></tr><tr><td>Invoice</td><td>€ 12,40</td><td style="color:var(--rd)">€ 12,39</td></tr></table>
+          </div>
+        </div>
+        <div class="edge" style="z-index:55;height:110px;background:linear-gradient(to bottom, transparent, var(--sheet) 72%)"></div>
+        <div class="compose glass" style="z-index:60">Comment on AB#61021…<span class="snd"><i class="ic" data-i="up"></i></span></div>
+      </div>
+      <figcaption><b>Opened from the AB# chip</b>
+        <ul>
+          <li>A sheet over the pull request or the walk. Swipe down and you're back where you were.</li>
+          <li>Type, number, state and title, then who has it. The bar shows where the item is in its own workflow, read from the item type's states.</li>
+          <li>Body text is a size up from the rest of the app, and lists, tables and screenshots survive.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view blurred">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+        </div>
+        <div class="dim" style="background:rgba(0,0,0,.3)"></div>
+        <div class="sheet" style="height:786px">
+          <div class="grab"></div>
+          <div class="nav" style="height:50px"><span class="gb"><i class="ic" data-i="x"></i></span><div class="nav-t"><b>Totals off by a cent</b><span>Bug AB#61021 · Code Review</span></div><span class="gb"><i class="ic" data-i="ext"></i></span></div>
+          <div class="jump sticky" style="padding-top:4px;background:var(--sheet)"><span>Description</span><span>Repro steps</span><span class="on">Acceptance</span><span>Pull requests 2</span><span>Discussion 4</span></div>
+          <div class="sl" style="padding-top:14px">Acceptance criteria</div>
+          <div class="desc md read">
+            <ul><li>Every total rounds per line: basket, receipt and invoice</li><li>Invoices that already exist keep their totals</li><li>The invoice export matches the invoice on screen</li></ul>
+          </div>
+          <div class="sl">Pull requests<span class="sp"></span><span>2</span></div>
+          <div class="grp" style="--indent:16px">
+            <div class="pl"><div class="t"><div class="pr-h"><b>shop</b>#412 · Priya Shah<span class="sp"></span><span class="chip sm ac">You're here</span></div><h4 style="-webkit-line-clamp:1">Checkout: round totals per line instead of per order</h4>
+              <div class="trk"><span class="s" style="--c:var(--rd)"><i class="tm"><i class="ic" data-i="x"></i></i>2 of 24 fail</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Merge</span></div></div></div>
+            <div class="pl"><div class="t"><div class="pr-h"><b>shop</b>#388 · Priya Shah<span class="sp"></span><span class="age">2 w</span></div><h4 style="-webkit-line-clamp:1">Receipt prints the line totals</h4>
+              <div class="trk"><span class="s" style="--c:var(--mg)"><i class="tm"><i class="ic" data-i="check"></i></i>Merged</span></div></div></div>
+          </div>
+          <div class="sl">Details</div>
+          <div class="dg">
+            <div><small>Assigned to</small><b><span class="av" style="--h:20">PS</span>Priya Shah</b></div>
+            <div><small>Sprint</small><b>Sprint 23</b></div>
+            <div><small>Priority</small><b>2</b></div>
+            <div><small>Severity</small><b>3 - Medium</b></div>
+            <div class="wide"><small>Parent</small><b><span class="ty epic"></span>AB#60990 Checkout totals</b></div>
+            <div class="wide"><small>Tags</small><b><span class="chip sm">invoice</span><span class="chip sm">rounding</span></b></div>
+          </div>
+        </div>
+        <div class="edge" style="z-index:55;height:110px;background:linear-gradient(to bottom, transparent, var(--sheet) 72%)"></div>
+        <div class="compose glass" style="z-index:60">Comment on AB#61021…<span class="snd"><i class="ic" data-i="up"></i></span></div>
+      </div>
+      <figcaption><b>What proves it done, and its pull requests</b>
+        <ul>
+          <li>Acceptance criteria for a backlog item, repro steps for a bug: whichever the type has, in the form's own order.</li>
+          <li>Every linked pull request with the same track as everywhere else. The one you came from is marked; another one opens in place.</li>
+          <li>Fields come last. The header already has the ones you look for.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone">
+        <div class="view blurred">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><span class="sp"></span><span class="gb"><i class="ic" data-i="more"></i></span></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:786px">
+          <div class="grab"></div>
+          <div class="nav" style="height:50px"><span class="gb"><i class="ic" data-i="x"></i></span><div class="nav-t"><b>Totals off by a cent</b><span>Bug AB#61021 · Code Review</span></div><span class="gb"><i class="ic" data-i="ext"></i></span></div>
+          <div class="jump sticky" style="padding-top:4px;background:#151618"><span>Repro steps</span><span>Acceptance</span><span>Pull requests 2</span><span class="on">Discussion 4</span></div>
+          <div style="height:14px"></div>
+          <div class="cm">
+            <div class="bd"><span class="av lg" style="--h:330">LV</span><div style="flex:1;min-width:0"><div class="who">Lena Vos<span>QA · 1 d</span></div>
+              <div class="md"><p>Basket and receipt are right on staging. The <b>invoice export</b> still says € 12,39.</p><div class="simg"><i class="hd"></i><i></i><i class="w"></i><i class="r"></i><span><b style="color:var(--tx2);font-weight:500">invoice-export.png</b>240 KB</span></div></div></div></div>
+          </div>
+          <div class="tl-ev"><span class="dot" style="color:var(--ac)"></span><span><b>In Progress → Code Review</b> · Priya</span><span class="sp"></span><span>4 d</span></div>
+          <div class="cm">
+            <div class="bd"><span class="av lg" style="--h:20">PS</span><div style="flex:1;min-width:0"><div class="who">Priya Shah<span>4 d</span></div>
+              <div class="md"><p>Fix is in <span class="rc"><i class="ic" data-i="pr"></i>#412</span>. It rounds per line everywhere, the export included.</p></div></div></div>
+          </div>
+          <div class="cm">
+            <div class="bd"><span class="av lg me2">KV</span><div style="flex:1;min-width:0"><div class="who">You<span>6 d</span></div>
+              <div class="md"><p>Probably <code>Order.roundTotal()</code>. The basket has its own rounding.</p></div></div></div>
+          </div>
+          <div class="tl-ev"><span class="dot" style="color:var(--tx3)"></span><span><b>Created</b> · Lena Vos</span><span class="sp"></span><span>1 w</span></div>
+        </div>
+        <div class="edge" style="z-index:55;height:110px;background:linear-gradient(to bottom, transparent, #151618 72%)"></div>
+        <div class="compose glass" style="z-index:60">Comment on AB#61021…<span class="snd"><i class="ic" data-i="up"></i></span></div>
+      </div>
+      <figcaption><b>Discussion</b>
+        <ul>
+          <li>Comments newest first, with the state changes between them, so you can see how the item got here.</li>
+          <li>Screenshots load with your Azure DevOps token.</li>
+          <li>The comment box is always there. It posts to the item as you.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== SETUP ============================== -->
+<section class="sec" id="setup">
+  <div class="sec-h"><h2>First run and Settings: your tokens, your repositories</h2></div>
+  <p class="sec-lead">Three steps: a GitHub token per account, Azure DevOps for the work items, and the repositories to watch. A token is checked the moment you paste it, and the screen says what it can and can't do before you go on. Tokens stay in this iPhone's keychain.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone">
+        <div class="view">
+          <div class="welcome">
+            <div class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></div>
+            <h3>BorgDock Review</h3>
+            <p>Your pull requests, straight from GitHub and Azure DevOps. No server and no sign-up: your tokens stay on this iPhone.</p>
+          </div>
+          <div class="grp" style="margin-top:34px;--indent:58px">
+            <div class="cell"><span class="stepn on">1</span><div class="t"><b>GitHub</b><span>A token for each account you review with</span></div><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell"><span class="stepn">2</span><div class="t"><b>Azure DevOps</b><span>The work item behind an AB# chip</span></div><span class="chip sm">Optional</span></div>
+            <div class="cell"><span class="stepn">3</span><div class="t"><b>Repositories</b><span>Which ones to watch</span></div></div>
+          </div>
+        </div>
+        <div class="actbar"><span class="btn pri"><i class="ic" data-i="git"></i>Connect GitHub</span></div>
+      </div>
+      <figcaption><b>Welcome</b>What the app does and what it needs, in the order you'll do it. Azure DevOps can wait: without it an AB# chip opens the item in the browser.</figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>GitHub account</b><span>Step 1 of 3</span></div><span class="gb" style="visibility:hidden"></span></div>
+          <div class="opt-h" style="padding-top:8px">Token</div>
+          <div class="grp">
+            <div class="fld"><span class="val mono">github_pat_11ACME•••••••••••••••••</span><span class="gp sm"><i class="ic" data-i="clip"></i>Paste</span></div>
+            <div class="cell" style="--indent:16px"><div class="t"><b style="color:var(--ac-tx)">Create a token on github.com</b><span>Opens with the right permissions ticked</span></div><i class="ic chev" data-i="ext" style="color:var(--ac-tx)"></i></div>
+          </div>
+          <div class="foot">Make it on your Mac, copy it, and Paste picks it up from the shared clipboard.</div>
+          <div class="opt-h">This token</div>
+          <div class="grp" style="--indent:58px">
+            <div class="cell"><span class="av lg me2">KV</span><div class="t"><b>kv-acme</b><span>acme · reads 41 repositories</span></div><span class="chip ok"><i class="ic" data-i="check"></i>Works</span></div>
+            <div class="cell" style="min-height:44px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr);margin:0 5px"></i><div class="t"><b style="font-size:15px">Pull requests: read and write</b><span>Reviews, comments, merging</span></div></div>
+            <div class="cell" style="min-height:44px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr);margin:0 5px"></i><div class="t"><b style="font-size:15px">Contents: read and write</b><span>Diffs, and the merge itself</span></div></div>
+            <div class="cell" style="min-height:44px"><i class="ic" data-i="alert" style="--s:20px;color:var(--yl);margin:0 5px"></i><div class="t"><b style="font-size:15px">Checks and Actions: not granted</b><span>Checks show, their logs and Rerun won't</span></div></div>
+            <div class="cell" style="min-height:44px"><i class="ic" data-i="clock" style="--s:20px;color:var(--tx2);margin:0 5px"></i><div class="t"><b style="font-size:15px">Expires 20 February 2027</b></div></div>
+          </div>
+          <div class="opt-h">Show it as</div>
+          <div style="padding:0 16px"><div class="segc"><span class="on">Work</span><span>Personal</span><span>Other…</span></div></div>
+        </div>
+        <div class="actbar"><span class="btn pri">Add kv-acme</span></div>
+      </div>
+      <figcaption><b>A GitHub token, checked as you paste it</b>
+        <ul>
+          <li>One account per token. Add your personal account the same way, here or later in Settings.</li>
+          <li>The app reads what the token may do and says what a missing permission costs, instead of failing later.</li>
+          <li>The label is only for you: it groups repositories and names the account when its token runs out.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Azure DevOps</b><span>Step 2 of 3</span></div><span class="gp">Skip</span></div>
+          <div class="opt-h" style="padding-top:8px">Where your work items live</div>
+          <div class="grp">
+            <div class="fld"><label>Organization</label><span class="val">acme <small>dev.azure.com/acme</small></span></div>
+            <div class="fld"><label>Token</label><span class="val mono">••••••••••••••••4f2a</span><span class="gp sm"><i class="ic" data-i="clip"></i>Paste</span></div>
+            <div class="fld"><label>Project</label><span class="val">Shop</span><i class="ic chev" data-i="chev-d" style="margin-right:8px"></i></div>
+          </div>
+          <div class="okline"><i class="ic" data-i="ok"></i>Signed in as KV<span>· sees 3 projects</span></div>
+          <div class="grp" style="margin-top:18px;--indent:16px">
+            <div class="cell"><div class="t"><b style="color:var(--ac-tx)">Create a token on dev.azure.com</b><span>Scope: Work Items, read and write</span></div><i class="ic chev" data-i="ext" style="color:var(--ac-tx)"></i></div>
+          </div>
+          <div class="opt-h">What it's used for</div>
+          <div class="grp" style="--indent:58px">
+            <div class="cell"><span class="ico soft" style="--c:var(--ac-tx)"><i class="ic" data-i="tasks"></i></span><div class="t"><b>The item behind an AB# chip</b><span>Title, state, description, discussion</span></div></div>
+            <div class="cell"><span class="ico soft" style="--c:var(--ac-tx)"><i class="ic" data-i="msg"></i></span><div class="t"><b>Comments you post on an item</b><span>Nothing else is written</span></div></div>
+          </div>
+          <div class="foot">BorgDock Review never changes an item's state or fields.</div>
+        </div>
+        <div class="actbar"><span class="btn pri">Connect acme</span></div>
+      </div>
+      <figcaption><b>Azure DevOps</b>Organization and token first; the project list then comes from the token, so there's nothing to mistype. Skip is in the corner, and the screen says what the token is and isn't used for.</figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav"><span class="gb"><i class="ic" data-i="chev-l"></i></span><div class="nav-t"><b>Repositories</b><span>Step 3 of 3</span></div><span class="gb" style="visibility:hidden"></span></div>
+          <div class="srch"><i class="ic" data-i="search"></i>Search 43 repositories</div>
+          <div class="opt-h">kv-acme · Work<span style="float:right;font-weight:500;color:var(--tx3)">11 of 41 on</span></div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell"><div class="t"><b>acme/shop</b><span>38 open · you reviewed 12 here this quarter</span></div><span class="tg"></span></div>
+            <div class="cell"><div class="t"><b>acme/storefront</b><span>21 open · you reviewed 7</span></div><span class="tg"></span></div>
+            <div class="cell"><div class="t"><b>acme/payments</b><span>9 open · you reviewed 5</span></div><span class="tg"></span></div>
+            <div class="cell"><div class="t"><b>acme/infra</b><span>14 open · none of them yours</span></div><span class="tg off"></span></div>
+            <div class="cell" style="min-height:44px"><div class="t"><b style="color:var(--ac-tx);font-size:15px">37 more</b></div><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="opt-h">kv-labs · Personal<span style="float:right;font-weight:500;color:var(--tx3)">1 of 2 on</span></div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell"><div class="t"><b>kv-labs/printfarm</b><span>3 open</span></div><span class="tg"></span></div>
+            <div class="cell"><div class="t"><b>kv-labs/dotfiles</b><span>None open</span></div><span class="tg off"></span></div>
+          </div>
+          <div class="opt-h">Also read</div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell"><div class="t"><b>Pull requests that involve you elsewhere</b></div><span class="tg"></span></div>
+            <div class="cell"><div class="t"><b>Review requests for your teams</b></div><span class="tg"></span></div>
+          </div>
+        </div>
+        <div class="edge"></div>
+        <div class="actbar"><span class="btn pri">Show my pull requests</span></div>
+      </div>
+      <figcaption><b>Repositories</b>
+        <ul>
+          <li>Grouped by account. The ones where you reviewed or opened pull requests lately start switched on.</li>
+          <li>"Also read" is kept from today's Repositories screen: a review request from a repository you don't watch still reaches the queue.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone">
+        <div class="view">
+          <div class="nav"><span class="gb" style="visibility:hidden"></span><div class="nav-t"><b>Settings</b></div><span class="gp">Done</span></div>
+          <div class="opt-h" style="padding-top:6px">GitHub</div>
+          <div class="grp">
+            <div class="cell"><span class="av lg me2">KV</span><div class="t"><b>kv-acme</b><span>Work · 11 repositories</span></div><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell"><span class="av lg" style="--h:265">KV</span><div class="t"><b>kv-labs</b><span style="color:var(--yl)">Personal · token expires in 6 days</span></div><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell" style="min-height:46px"><span class="ico soft r" style="--c:var(--ac-tx)"><i class="ic" data-i="plus"></i></span><div class="t"><b style="color:var(--ac-tx)">Add an account</b></div></div>
+          </div>
+          <div class="opt-h">Azure DevOps</div>
+          <div class="grp">
+            <div class="cell"><span class="ico" style="background:var(--bl)"><i class="ic" data-i="tasks"></i></span><div class="t"><b>acme</b><span>Project Shop</span></div><span class="chip ok sm">Connected</span><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="opt-h">Pull requests</div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell"><div class="t"><b>Repositories</b></div><span class="v">12 of 43</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell"><div class="t"><b>Refresh</b></div><span class="v">Every 2 min while open</span><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+          <div class="opt-h">Review</div>
+          <div class="grp" style="--indent:16px">
+            <div class="cell"><div class="t"><b>Read every file before approving</b></div><span class="tg"></span></div>
+            <div class="cell"><div class="t"><b>Tests and generated files</b></div><span class="v">One step each</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="cell"><div class="t"><b>Face ID for approvals and merges</b></div><span class="tg"></span></div>
+          </div>
+          <div class="foot">Tokens are stored in this iPhone's keychain and go only to github.com and dev.azure.com.</div>
+        </div>
+      </div>
+      <figcaption><b>Settings, from your avatar</b>
+        <ul>
+          <li>Accounts first, each with its label, its repositories and when its token runs out.</li>
+          <li>Kept from today: Repositories, Face ID, and which paths count as tests or generated.</li>
+          <li>Gone: sign-in, server, machines, desktop link, notifications and devices. None of them exist without a server.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light crop">
+        <div class="view">
+          <div class="nav"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><span class="upd">Updated 2 min ago</span><span class="sp"></span><span class="gb me">KV</span></div>
+          <div class="lt">5 to review</div>
+          <div class="sub">Oldest ask 4 days ago · 1 re-review</div>
+          <div class="bn warn"><i class="ic" data-i="key"></i><div><b>kv-labs isn't being read.</b> <span>Its token expired yesterday, so pull requests from your personal account are missing here.</span><br><span class="go2">Replace the token</span></div></div>
+          <div class="pills"><span class="lb">Yours</span><span class="pill"><span class="dot" style="color:var(--rd)"></span>3 need you</span><span class="pill"><span class="dot" style="color:var(--gr)"></span>2 ready</span><span class="pill">5 waiting</span></div>
+          <div class="qr" style="--rail-end:0px">
+            <div class="qh">
+              <span class="qn on">1</span>
+              <div class="t">
+                <div class="pr-h"><span class="av" style="--h:20">PS</span><b>shop</b>#412 · Priya Shah<span class="sp"></span><span class="age">4 d</span></div>
+                <h3>Checkout: round totals per line instead of per order</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>When a token stops working</b>The overview says which account is missing and what that hides, and keeps showing the rest. The same goes for a token that lost a permission, or Azure DevOps being unreachable: AB# chips then show the number only.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== KEEP CHANGE DROP ============================== -->
+<section class="sec" id="kcd">
+  <div class="sec-h"><h2>Against today's iPhone app: keep, change, drop</h2></div>
+  <p class="sec-lead">The screens above evolve the ones in <code>src/BorgDock.iOS/BorgDock/Features</code>. What stays, what changes and what goes, with the reason.</p>
+  <table class="tbl" style="margin-top:0">
+    <tr><th></th><th>Keep</th><th>Change</th><th>Drop</th></tr>
+    <tr><td>Overview<br><span style="font-weight:400;color:#8e8f96">Focus, PullRequests</span></td>
+      <td>Start review runs the queue, oldest ask first. The checks, review, merge track. Swipe right to review, left to merge or snooze. The full list with filters, groupings and saved views, behind "All pull requests".</td>
+      <td>Focus's queue card and Your turn list become the queue itself. Your own pull requests are grouped by what they need. Snooze is kept on the phone, since no server remembers it.</td>
+      <td>The tab bar, Agents, the Work and Sprint tiles, the bell and Notes: the app has one stack. Long-press items Fix with Claude and Open in T3. Saved-view sync, which went through the server.</td></tr>
+    <tr><td>Pull request<br><span style="font-weight:400;color:#8e8f96">PullRequest</span></td>
+      <td>One page with jump chips. Checks first when they fail, with the error from the log. Proof row, rendered markdown, threads on their lines, the reply box, the merge sheet with Face ID.</td>
+      <td>The work item moves from a chip to a card under the title. Reviewers get a section. Review and Merge are both in the bar on every pull request.</td>
+      <td>Agent rows, Fix, Hand to Claude. Shared CI failure groups across pull requests need the desktop's store; "Also failing on main" stays because GitHub answers it.</td></tr>
+    <tr><td>Quick Review<br><span style="font-weight:400;color:#8e8f96">Review</span></td>
+      <td>The brief, the walk by file path, tests and generated as one step each, tap a line to comment, the decision sheet, five seconds of Undo, the decided page, the end card, author runs.</td>
+      <td>Other people's threads show under their line. A comment can cover several lines and carry a suggestion. A re-review shows only what changed since yours. Auto-merge is a switch. The end card leads to your own pull requests.</td>
+      <td>Nothing a reviewer would miss. "Approve &amp; merge" past red checks stays desktop-only for now: it needs the E2E report rules to be trusted on the phone first.</td></tr>
+    <tr><td>Work item<br><span style="font-weight:400;color:#8e8f96">ItemDetail</span></td>
+      <td>The header, the workflow bar, rich text with lists, tables and images, linked pull requests with their track, activity with a comment box.</td>
+      <td>It opens as a sheet. The order is fixed for reading (description, repro or acceptance, pull requests, discussion) and no longer led by what decides the next step, which is the owner's question and not the reviewer's.</td>
+      <td>Agents, Fix with agent, Move to…, Add to Up next, Settle thread, QA notes as a lead section (they read as discussion here).</td></tr>
+    <tr><td>Setup<br><span style="font-weight:400;color:#8e8f96">SignIn, Settings</span></td>
+      <td>The Repositories screen with "Also read". Face ID. Which paths count as tests or generated.</td>
+      <td>Sign-in becomes a token per GitHub account and one for Azure DevOps, each checked on paste. Settings lead with the accounts.</td>
+      <td>Clerk sign-in, the server address, Machines, Desktop link, Notifications, Devices.</td></tr>
+  </table>
+</section>
+
 <!--SECTIONS-->
 
 </div>
@@ -748,6 +1724,10 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
     const statusBar = `<div class="sb"><span>${time}</span><span class="sb-r"><svg viewBox="0 0 18 12"><use href="#sb-sig"/></svg><svg viewBox="0 0 16 12"><use href="#sb-wifi"/></svg><svg class="bat" viewBox="0 0 27 13"><use href="#sb-bat"/></svg></span></div>`;
     if (!phone.classList.contains('nosb')) phone.insertAdjacentHTML('afterbegin', statusBar + '<div class="di"></div>');
     phone.insertAdjacentHTML('beforeend', '<div class="hi"></div>');
+  }
+  const keys = (letters) => [...letters].map((letter) => `<i>${letter}</i>`).join('');
+  for (const keyboard of document.querySelectorAll('[data-kb]')) {
+    keyboard.innerHTML = `<div class="kr">${keys('qwertyuiop')}</div><div class="kr">${keys('asdfghjkl')}</div><div class="kr"><i class="fn">⇧</i>${keys('zxcvbnm')}<i class="fn">⌫</i></div><div class="kr" style="padding:0 3px"><i class="fn">123</i><i class="spc">space</i><i class="ret">return</i></div>`;
   }
   for (const el of document.querySelectorAll('[data-i]')) {
     el.innerHTML = `<svg viewBox="0 0 24 24"><use href="#i-${el.dataset.i}"/></svg>`;
