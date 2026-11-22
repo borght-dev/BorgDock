@@ -113,26 +113,68 @@ actor GitHubClient {
         return data
     }
 
+    // MARK: Job logs
+
+    /// The last `maxBytes` of a job's log, or nil when GitHub has none. `repository` is `owner/repo`. The redirect
+    /// is followed by hand so the token never reaches the storage host, and storage is asked for the tail only.
+    func logTail(repository: String, jobId: Int, maxBytes: Int = 65_536) async throws -> String? {
+        let address = "\(Self.api)/repos/\(repository)/actions/jobs/\(jobId)/logs"
+        let (body, response) = try await send("GET", url: address, body: nil, followingRedirects: false)
+        var (log, status) = (body, response.statusCode)
+        if (300..<400).contains(status) {
+            guard let location = response.value(forHTTPHeaderField: "Location") else {
+                throw GitHubError(status: 502, message: "GitHub redirected the log without a location.")
+            }
+            var storage = try request("GET", location)
+            storage.setValue("bytes=-\(maxBytes)", forHTTPHeaderField: "Range")
+            let (tail, answer) = try await perform(storage)
+            // An empty log has no last bytes to give.
+            if answer.statusCode == 416 { return "" }
+            if answer.statusCode == 404 { return nil }
+            (log, status) = (tail, answer.statusCode)
+        } else if status == 404 || status == 410 {
+            return nil
+        }
+        guard (200..<300).contains(status) else { throw GitHubError(status: status, message: "Reading the log failed (\(status)).") }
+        let cutOff = status == 206 || log.count > maxBytes
+        var tail = log.suffix(maxBytes)
+        // A tail starts mid-line; that first part of a line is noise.
+        if cutOff, let newline = tail.firstIndex(of: UInt8(ascii: "\n")) { tail = tail[tail.index(after: newline)...] }
+        return String(decoding: tail, as: UTF8.self)
+    }
+
     // MARK: Transport
 
-    private func send(_ method: String, url: String, body: Data?, headers: [String: String] = [:]) async throws -> (Data, HTTPURLResponse) {
+    private func send(
+        _ method: String, url: String, body: Data?, headers: [String: String] = [:], followingRedirects: Bool = true
+    ) async throws -> (Data, HTTPURLResponse) {
+        var request = try request(method, url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
+        if let body {
+            request.httpBody = body
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        return try await perform(request, followingRedirects: followingRedirects)
+    }
+
+    /// A request that carries nothing of this account: the token is `send`'s to add.
+    private func request(_ method: String, _ url: String) throws -> URLRequest {
         guard let url = URL(string: url) else { throw GitHubError(status: 400, message: "GitHub: \(url) is not an address.") }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.timeoutInterval = 30
         // ETags are this client's own; URLCache must never answer for GitHub.
         request.cachePolicy = .reloadIgnoringLocalCacheData
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("BorgDock", forHTTPHeaderField: "User-Agent")
-        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
-        if let body {
-            request.httpBody = body
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
+        return request
+    }
+
+    private func perform(_ request: URLRequest, followingRedirects: Bool = true) async throws -> (Data, HTTPURLResponse) {
         do {
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await session.data(for: request, delegate: followingRedirects ? nil : RedirectsHandedBack())
             guard let http = response as? HTTPURLResponse else { throw GitHubError(status: 502, message: "GitHub sent something that isn't HTTP.") }
             return (data, http)
         } catch let error as URLError where error.code == .cancelled {
@@ -149,6 +191,15 @@ actor GitHubClient {
             return GitHubError(status: status, message: "GitHub's rate limit is used up. Try again in a few minutes.")
         }
         return GitHubError(status: status, message: "GitHub: \(message ?? "answered \(status)")")
+    }
+}
+
+/// Answers a redirect with the redirect itself, so whoever asked decides what the next host is told.
+private final class RedirectsHandedBack: NSObject, URLSessionTaskDelegate {
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest
+    ) async -> URLRequest? {
+        nil
     }
 }
 

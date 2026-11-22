@@ -2,7 +2,8 @@ import XCTest
 @testable import BorgDock
 
 /// The server's `test/github-service.test.ts` and `github-repositories.test.ts` against the phone's own reader, plus
-/// what only the phone does: answer from the last read, read again after a write, keep the list for the next launch.
+/// what only the phone does: answer from the last read, read again after a write, keep the list and what job logs
+/// said for the next launch.
 final class GitHubDirectTests: XCTestCase {
     private var world = GitHubWorld()
 
@@ -10,6 +11,11 @@ final class GitHubDirectTests: XCTestCase {
         GitHubFake.reset()
         world = GitHubWorld()
         world.install()
+    }
+
+    /// A read of the list starts reading job logs behind it; they finish before the next test begins.
+    override func tearDown() async throws {
+        await world.settle()
     }
 
     private func status(_ error: Error) -> Int? {
@@ -360,6 +366,105 @@ final class GitHubDirectTests: XCTestCase {
         _ = try await service.postComment(GitHubWorld.one, PostCommentRequest(body: "Thanks"))
         _ = try await service.focus(fresh: false)
         XCTAssertGreaterThan(GitHubFake.operations("FocusSearch").count, searches)
+    }
+
+    // MARK: Failed jobs
+
+    func testFailedJobsTheLogTailThroughTheRedirectAndAGroupWithTheBaseBranch() async throws {
+        let service = world.service()
+        _ = try await service.refresh()
+        await service.ciSettled()
+
+        let storage = GitHubFake.requests("GET", #"storage\.example"#)
+        XCTAssertEqual(storage.count, 2, "one tail for the PR job, one for main")
+        for request in storage {
+            XCTAssertEqual(request.headers["Range"], "bytes=-65536")
+            XCTAssertNil(request.headers["Authorization"], "the token never reaches log storage")
+        }
+
+        let groups = await service.ciGroups()
+        XCTAssertEqual(groups.count, 1)
+        let group = try XCTUnwrap(groups.first)
+        XCTAssertEqual(group.branches.map { $0.prKey ?? $0.branch }, ["main", "acme/shop#1"])
+        XCTAssertEqual(group.branches.first?.suspect, CiSuspect(sha: "m1", message: "Round totals"))
+
+        let detail = try await service.pullRequest(GitHubWorld.one)
+        let failed = try XCTUnwrap(detail.checkRuns.first)
+        XCTAssertEqual(failed.name, "e2e")
+        XCTAssertEqual(failed.jobId, 501)
+        XCTAssertEqual(failed.failure?.step, "Run bun run test")
+        XCTAssertEqual(failed.failure?.summary, "AssertionError: expected 100 to be 90 // Object.is equality")
+        XCTAssertEqual(failed.failure?.groupId, group.id)
+        XCTAssertEqual(failed.failure?.newInThisPr, false)
+        XCTAssertEqual(failed.failure?.alsoOnBase?.since, Fake.ago(Fake.days(1)), "main is red since its run on m1")
+
+        // Read once: the next poll leaves the logs alone.
+        _ = try await service.refresh()
+        await service.ciSettled()
+        XCTAssertEqual(GitHubFake.requests("GET", #"storage\.example"#).count, 2)
+
+        let claimed = try await service.claimCiGroup(group.id, note: " on it ")
+        XCTAssertEqual(claimed.claim?.note, "on it")
+        XCTAssertEqual(claimed.claim?.by.login, "koen")
+        let released = try await service.releaseCiGroup(group.id)
+        XCTAssertNil(released.claim)
+        await assertFails(404) { try await service.ciGroup("nope") }
+    }
+
+    func testDetailAnswersBeforeTheFailedJobsLogIsReadTheNextReadCarriesTheReason() async throws {
+        let storage = GitHubFake.Gate()
+        GitHubFake.onRest("GET", #"^https://storage\.example/logs/"#) { _ in GitHubWorld.storedLog.held(by: storage) }
+        let service = world.service()
+        let first = try await service.pullRequest(GitHubWorld.one)
+        XCTAssertEqual(first.checkRuns.first?.name, "e2e")
+        XCTAssertNil(first.checkRuns.first?.failure, "answered while the log is still on its way")
+        _ = try await service.pullRequest(GitHubWorld.one)
+
+        storage.open()
+        await service.ciSettled()
+        XCTAssertEqual(GitHubFake.requests("GET", "actions/jobs/501$").count, 1, "the second read joined the one in flight")
+        let read = try await service.pullRequest(GitHubWorld.one)
+        XCTAssertEqual(read.checkRuns.first?.failure?.step, "Run bun run test")
+    }
+
+    func testAJobThatCantBeReadSaysWhyAndIsTriedAgainOnlyLater() async throws {
+        GitHubFake.onRest("GET", #"^https://storage\.example/logs/"#) { _ in .status(500, message: "Server Error") }
+        let service = world.service()
+        _ = try await service.refresh()
+        await service.ciSettled()
+        let detail = try await service.pullRequest(GitHubWorld.one)
+        XCTAssertEqual(detail.checkRuns.first?.failure?.summary, "Reading the log failed (500).")
+        XCTAssertEqual(detail.checkRuns.first?.failure?.step, "Run bun run test")
+        let groups = await service.ciGroups()
+        XCTAssertTrue(groups.isEmpty, "nothing was read, so nothing groups")
+
+        let asked = GitHubFake.requests("GET", "actions/jobs/501/logs$").count
+        _ = try await service.refresh()
+        await service.ciSettled()
+        XCTAssertEqual(GitHubFake.requests("GET", "actions/jobs/501/logs$").count, asked, "tried a moment ago: it waits ten minutes")
+    }
+
+    func testWhatTheLogsSaidIsKeptForTheNextLaunch() async throws {
+        let service = world.service()
+        _ = try await service.refresh()
+        await service.ciSettled()
+        let read = await service.ciGroups()
+        let group = try XCTUnwrap(read.first)
+        _ = try await service.claimCiGroup(group.id, note: "on it")
+        let logs = GitHubFake.requests("GET", #"storage\.example"#).count
+
+        let relaunched = world.service()
+        let kept = await relaunched.ciGroups()
+        XCTAssertEqual(kept.map(\.id), [group.id], "the groups show while the first read runs")
+        XCTAssertEqual(kept.first?.claim?.note, "on it")
+        let detail = try await relaunched.pullRequest(GitHubWorld.one)
+        XCTAssertEqual(detail.checkRuns.first?.failure?.groupId, group.id)
+        XCTAssertEqual(detail.checkRuns.first?.failure?.newInThisPr, false)
+        _ = try await relaunched.refresh()
+        await relaunched.ciSettled()
+        XCTAssertEqual(GitHubFake.requests("GET", #"storage\.example"#).count, logs, "no log is read twice")
+        let afterPoll = await relaunched.ciGroups()
+        XCTAssertEqual(afterPoll.first?.claim?.note, "on it")
     }
 
     func testATokenSaysWhoItBelongsTo() async throws {

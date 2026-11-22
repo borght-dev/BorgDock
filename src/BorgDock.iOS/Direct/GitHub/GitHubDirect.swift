@@ -5,8 +5,9 @@ import Foundation
 typealias WorkItemLookup = @Sendable (_ ids: [Int]) async -> [WorkItemSummary]
 
 /// Everything the pull request screens read from GitHub, read from this phone: the open pull requests with their
-/// Focus buckets, details, files, conversations, and the writes. The Swift port of the server's `github/service.ts`;
-/// what the server polls on a timer, this reads when a screen asks and the last read has gone old.
+/// Focus buckets, details, files, conversations, why a check is red, related CI failures, and the writes. The Swift
+/// port of the server's `github/service.ts`; what the server polls on a timer, this reads when a screen asks and the
+/// last read has gone old.
 actor GitHubDirect: PullRequestBackend {
     /// What one search last found; a search that fails keeps its previous answer.
     struct SearchResult: Sendable {
@@ -76,6 +77,8 @@ actor GitHubDirect: PullRequestBackend {
     /// Detail reads in flight per pull request, so a detail and its files read at once ask GitHub once.
     var detailReads: [String: Task<(raw: RawDetail, account: String), Error>] = [:]
     var workItemCache: [Int: WorkItemSummary] = [:]
+    /// What the logs of failed jobs said, and what is being read of them (`Ci/GitHubDirect+CiFailures.swift`).
+    var ci: CiReads
 
     init(
         accounts: [GitHubAccount], store: any DirectStore, session: URLSession = .shared,
@@ -90,6 +93,7 @@ actor GitHubDirect: PullRequestBackend {
         clients = Dictionary(uniqueKeysWithValues: self.accounts.map { ($0.login, GitHubClient(account: $0, session: session)) })
         settings = store.value(forKey: GitHubSettings.storeKey) ?? GitHubSettings()
         memory = store.value(forKey: GitHubMemory.storeKey) ?? GitHubMemory()
+        ci = CiReads(memory: CiMemory.kept(in: store))
     }
 
     /// Who a token belongs to; how Settings checks a token before it keeps it.
@@ -150,7 +154,10 @@ actor GitHubDirect: PullRequestBackend {
         memory.syncReviewRequests(waiting, at: GitHubTime.iso(clock()))
         memory.prune(now: clock())
         store.set(memory, forKey: GitHubMemory.storeKey)
-        return publishFocus()
+        let focus = publishFocus()
+        // Job logs and base branches take longer than the searches; the list doesn't wait for them.
+        readFailuresAfterPoll()
+        return focus
     }
 
     /// Why the read failed, when no account and no watched repository answered: the list on screen is then old, and
@@ -431,19 +438,4 @@ actor GitHubDirect: PullRequestBackend {
         repositoriesDue = true
         polledAt = nil
     }
-
-    // MARK: - Related CI failures
-
-    // Reading job logs and grouping their failures is the server's `github/ci/`; not on the phone yet, so no pull
-    // request is cleared as "red, but not by its own doing".
-
-    func ciGroups() -> [CiFailureGroup] { [] }
-
-    func ciGroup(_ id: String) throws -> CiFailureGroup {
-        throw directError(404, "No such CI failure group. It may have passed since.")
-    }
-
-    func claimCiGroup(_ id: String, note: String?) throws -> CiFailureGroup { try ciGroup(id) }
-
-    func releaseCiGroup(_ id: String) throws -> CiFailureGroup { try ciGroup(id) }
 }
