@@ -222,6 +222,21 @@ test('rerun failed restarts each red workflow run once', async () => {
   assert.deepEqual(gh.requests('POST', /rerun-failed-jobs$/).map((r) => /runs\/(\d+)/.exec(r.url)![1]), ['50', '51']);
 });
 
+test('a summary names each failed check with its job and run, so the phone can judge E2E reports and shared failures', async () => {
+  const { service, prs } = githubWorld();
+  prs[1].head.nodes[0].commit.statusCheckRollup!.contexts.nodes = [
+    checkRun({ name: 'Deploy & Test / E2E Shard 1/4', conclusion: 'FAILURE', id: 601, runId: 60, runNumber: 15271, completedAt: '2026-10-31T10:00:00Z' }),
+    checkRun({ name: 'lint', id: 602, runId: 61 }),
+    { __typename: 'StatusContext', context: 'ci/legacy', state: 'ERROR', targetUrl: 'https://ci.example.com/1', createdAt: '2026-10-31T09:00:00Z' },
+  ] as never[];
+  await service.refresh();
+  const summary = service.focus!.pullRequests.find((p) => p.key === 'acme/shop#1')!;
+  assert.deepEqual(summary.failedChecks, [
+    { name: 'Deploy & Test / E2E Shard 1/4', jobId: 601, runId: 60, runNumber: 15271, completedAt: '2026-10-31T10:00:00Z' },
+    { name: 'ci/legacy', jobId: null, runId: null, runNumber: null, completedAt: null },
+  ]);
+});
+
 test('a snooze moves a review out of Needs you until it runs out', async () => {
   const { service } = githubWorld();
   await service.refresh();

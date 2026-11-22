@@ -134,6 +134,21 @@ export type CheckSummary = {
   segments: CheckState[];
 };
 
+/**
+ * A failed check on the head commit, as GitHub reports it (the desktop's `failedCheckNames` and `ciJobs`). The phone
+ * judges it from these: whether an E2E report covers it (its run) and is new enough (`completedAt`), and whether a
+ * shared CI failure holds it (`jobId`).
+ */
+export type FailedCheck = {
+  name: string;
+  /** The Actions job id; null for a commit status. */
+  jobId: number | null;
+  runId: number | null;
+  /** The workflow run's number (`#15274`), which an E2E report names. */
+  runNumber: number | null;
+  completedAt: string | null;
+};
+
 /** Why a pull request is in its bucket: "Sanne asked for your review", "3 new commits since your review". */
 export type PrReason = { text: string; tone: Tone; icon: 'review' | 'rerun' | 'comment' | 'approved' | 'failing' | 'clock' | 'conflict' | 'merge' };
 
@@ -159,6 +174,8 @@ export type PrSummary = PrRef & {
   changedFiles: number;
   labels: PrLabel[];
   checks: CheckSummary;
+  /** The head commit's failed checks, one per check. */
+  failedChecks: FailedCheck[];
   reviewDecision: 'approved' | 'changes_requested' | 'review_required' | null;
   approvedBy: string[];
   mergeable: 'mergeable' | 'conflicting' | 'unknown';
@@ -379,6 +396,31 @@ export type CiBranchHit = {
   suspect: { sha: string; message: string } | null;
 };
 
+/**
+ * What the desktop's CI failure store knows about a group, over every failure the server keeps (30 days), not only the
+ * live ones in `branches`. The phone decides from it whether the group is shared and whether it is a pull request's
+ * doing, as the desktop's `ci-failures/lens.ts` does (`CiLens.swift`).
+ */
+export type CiGroupFacts = {
+  /** `high` when any failure's fingerprint is: only high-tier groups clear a pull request. */
+  tier: 'high' | 'medium';
+  /** `owner/repo` of each failure. */
+  repos: string[];
+  /** The pull requests it failed on, open or not (`owner/repo#n`). */
+  prKeys: string[];
+  /** The Actions job ids of its pull request failures. */
+  prJobIds: number[];
+  /** The base-branch runs it failed in. */
+  baseRuns: number[];
+  /** Distinct runs it failed in. */
+  runCount: number;
+  /** Failures whose check passed when it ran again on the same commit. */
+  passedOnRetry: number;
+  /** Known infrastructure faults it matched (the catalog's ids). */
+  catalogIds: string[];
+  failedSteps: string[];
+};
+
 export type CiFailureGroup = {
   id: string;
   /** "e2e / checkout › keeps the basket on timeout" */
@@ -391,6 +433,7 @@ export type CiFailureGroup = {
   failures: number;
   branches: CiBranchHit[];
   claim: { by: Person; at: string; note: string | null } | null;
+  facts: CiGroupFacts;
 };
 
 /** GET /api/ci/groups → CiFailureGroup[] (newest first). GET /api/ci/groups/:id → CiFailureGroup. */

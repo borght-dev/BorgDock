@@ -121,12 +121,18 @@ enum OverallStatus: Sendable { case red, yellow, green, gray }
 /// The strongest of each reviewer's latest review (the desktop's `reviewStatus`).
 enum ReviewStatus: Sendable { case approved, changesRequested, commented, pending, none }
 
-/// What the CI failure store says about a red pull request. The phone has none yet: always nil.
+/// What the related CI failures say about a red pull request (`CiLens`).
 struct PrCiFacts: Equatable, Sendable {
     /// Open pull requests the worst shared failure fails, this one included.
     let blocked: Int
     /// Every failed check sits in a shared failure that is not the pull request's doing.
     let outside: Bool
+
+    /// The desktop's compact marker: "not this PR", "shared ×4" or "also on main".
+    func markerText(base: String) -> String {
+        if outside { return "not this PR" }
+        return blocked > 1 ? "shared ×\(blocked)" : "also on \(base)"
+    }
 }
 
 struct PrFactsContext {

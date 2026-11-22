@@ -1,7 +1,7 @@
 // Related CI failures: one group per fingerprint across open pull requests and base branches. Groups own
 // fingerprints and claims bind to the group id, which is the fingerprint's hash, so a claim survives re-reading.
 
-import type { CheckFailure, CiBranchHit, CiFailureGroup } from '../../../../shared/src/api.ts';
+import type { CheckFailure, CiBranchHit, CiFailureGroup, CiGroupFacts } from '../../../../shared/src/api.ts';
 import type { Claim, JobFailure } from '../store.ts';
 import { extract, type Signal } from './extract.ts';
 import { fingerprintOf, hashText } from './fingerprint.ts';
@@ -28,18 +28,45 @@ export function signalText(s: Signal): string {
 }
 
 export type GroupContext = {
-  /** Open pull requests by key, with the jobs failing on their head now (a fixed or rerun job no longer counts). */
-  openPrs: ReadonlyMap<string, { title: string; failingJobs: ReadonlySet<number> }>;
+  /**
+   * Open pull requests by key, with the jobs failing on their head now (a fixed or rerun job no longer counts), and
+   * the head and its passing checks, so a failure that passed when rerun on the same commit counts as flaky.
+   */
+  openPrs: ReadonlyMap<string, { title: string; failingJobs: ReadonlySet<number>; headSha?: string; passingChecks?: ReadonlySet<string> }>;
   /** `owner/repo:branch` of the base branches that are red now: the first red commit and the red runs. */
   baseBranches: ReadonlyMap<string, { suspect: { sha: string; message: string } | null; runIds: ReadonlySet<number> }>;
   claims: ReadonlyMap<string, Claim>;
 };
 
+const distinct = <T>(values: readonly (T | null)[]) => [...new Set(values.filter((v): v is T => v !== null))];
+
+/** What the desktop's CI failure store tallies per group (its `Tally`), over every failure kept with the fingerprint. */
+function factsOf(rows: readonly JobFailure[], ctx: GroupContext): CiGroupFacts {
+  const onPr = rows.filter((r) => r.prKey !== null);
+  const passedOnRetry = onPr.filter((r) => {
+    const pr = ctx.openPrs.get(r.prKey!);
+    return !!pr && pr.headSha === r.headSha && !pr.failingJobs.has(r.jobId) && (pr.passingChecks?.has(r.checkName) ?? false);
+  }).length;
+  return {
+    tier: rows.some((r) => r.tier === 'high') ? 'high' : 'medium',
+    repos: distinct(rows.map((r) => r.repo)),
+    prKeys: distinct(onPr.map((r) => r.prKey)),
+    prJobIds: distinct(onPr.map((r) => r.jobId)),
+    baseRuns: distinct(rows.filter((r) => r.prKey === null).map((r) => r.runId)),
+    runCount: new Set(rows.map((r) => (r.runId !== null ? `run:${r.runId}` : `job:${r.jobId}`))).size,
+    passedOnRetry,
+    catalogIds: distinct(rows.map((r) => /^infra:([^:]+):/.exec(r.fingerprint ?? '')?.[1] ?? null)),
+    failedSteps: distinct(rows.map((r) => r.failedStep)),
+  };
+}
+
 /** Every group with a live failure: on an open pull request or a watched base branch. Newest first. */
 export function buildGroups(jobs: readonly JobFailure[], ctx: GroupContext): CiFailureGroup[] {
+  const kept = new Map<string, JobFailure[]>();
   const byFingerprint = new Map<string, JobFailure[]>();
   for (const job of jobs) {
     if (!job.fingerprint || job.tier === 'low') continue;
+    kept.set(job.fingerprint, [...(kept.get(job.fingerprint) ?? []), job]);
     const live = job.prKey ? (ctx.openPrs.get(job.prKey)?.failingJobs.has(job.jobId) ?? false) : job.runId !== null && (ctx.baseBranches.get(`${job.repo}:${job.branch}`)?.runIds.has(job.runId) ?? false);
     if (!live) continue;
     byFingerprint.set(job.fingerprint, [...(byFingerprint.get(job.fingerprint) ?? []), job]);
@@ -79,6 +106,7 @@ export function buildGroups(jobs: readonly JobFailure[], ctx: GroupContext): CiF
       failures: rows.length,
       branches,
       claim: ctx.claims.get(id) ?? null,
+      facts: factsOf(kept.get(fingerprint) ?? rows, ctx),
     });
   }
   return groups.sort((a, b) => b.lastFailedAt.localeCompare(a.lastFailedAt));

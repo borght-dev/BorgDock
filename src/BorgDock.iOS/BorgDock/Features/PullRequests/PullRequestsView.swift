@@ -33,7 +33,7 @@ struct PullRequestsView: View {
         let list = app.prList
         List {
             if let focus = store.focus {
-                let context = PrListContext(focus: focus, list: list, logins: store.myLogins)
+                let context = PrListContext(focus: focus, list: list, logins: store.myLogins, ciGroups: store.ciGroups)
                 let model = context.model
                 Section {
                     if model.rows.isEmpty { empty(model).listRowBackground(Color.clear).listRowSeparator(.hidden) }
@@ -138,7 +138,7 @@ struct PullRequestsView: View {
     @ViewBuilder
     private var suggestions: some View {
         if let focus = app.focus.focus {
-            let context = PrListContext(focus: focus, list: app.prList, logins: app.focus.myLogins)
+            let context = PrListContext(focus: focus, list: app.prList, logins: app.focus.myLogins, ciGroups: app.focus.ciGroups)
             ForEach(PrSearchTyping.suggestions(searchText, facts: context.tabFacts, ctx: context.ctx)) { suggestion in
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {
@@ -208,7 +208,7 @@ struct PullRequestsView: View {
         return ForEach(facts) { f in
             let pr = f.pr
             Button { app.router.push(.pullRequest(pr.prKey)) } label: {
-                PrListRow(pr: pr, showsAuthor: !namesAuthor, age: ShortTime.age(sortBy == .updated ? pr.updatedAt : pr.createdAt))
+                PrListRow(pr: pr, showsAuthor: !namesAuthor, age: ShortTime.age(sortBy == .updated ? pr.updatedAt : pr.createdAt), ci: f.ci)
             }
             .buttonStyle(.plain)
             .listRowInsets(EdgeInsets())
@@ -220,13 +220,16 @@ struct PullRequestsView: View {
         }
     }
 
-    /// Review all: the author's run, when the group is someone else's and the run has anything in it.
+    /// Review all: the author's run (the same as the long-press item), when the group is someone else's and the run
+    /// may have anything in it. Pull requests whose E2E report isn't read yet count until the run reads it.
     private func reviewAll(_ group: PrGroupNode, all: [PrSummary]) -> OpenGroupHeader.ReviewAll? {
         guard group.kind == .author, !group.pinned, !group.authorIsMe, let author = group.author else { return nil }
-        let queue = AuthorRun.queue(all, author: author.login, myLogins: app.focus.myLogins)
-        guard !queue.isEmpty else { return nil }
-        let title = queue.count == group.facts.count ? "Review all \(queue.count)" : "Review \(queue.count)"
-        return OpenGroupHeader.ReviewAll(title: title) { app.router.review(queue.map(\.prKey)) }
+        let world = app.focus.runWorld
+        let plan = AuthorRun.plan(AuthorRun.candidates(all, author: author.login, myLogins: app.focus.myLogins), fit: world.fit)
+        let count = plan.queue.count + plan.checking.count
+        guard count > 0 else { return nil }
+        let title = count == group.facts.count ? "Review all \(count)" : "Review \(count)"
+        return OpenGroupHeader.ReviewAll(title: title) { app.router.reviewAuthor(author.login) }
     }
 
     // MARK: - Header
@@ -434,9 +437,9 @@ struct PrListContext {
     let list: PrListStore
     private let people: [String: Person]
 
-    init(focus: Focus, list: PrListStore, logins: Set<String>, now: Date = .now) {
+    init(focus: Focus, list: PrListStore, logins: Set<String>, ciGroups: [CiFailureGroup] = [], now: Date = .now) {
         let lower = Set(logins.map { $0.lowercased() })
-        facts = PrListModel.facts(focus, logins: lower, now: now)
+        facts = PrListModel.facts(focus, logins: lower, now: now, ciGroups: ciGroups)
         ctx = PrQuery.Context(logins: lower, now: now)
         self.list = list
         people = Dictionary(focus.pullRequests.map { ($0.author.login.lowercased(), $0.author) }, uniquingKeysWith: { a, _ in a })
@@ -770,6 +773,8 @@ struct PrListRow: View {
     var showsAuthor = true
     /// "9 d": how long by the list's order, so the age explains the sort.
     var age: String
+    /// What the related CI failures say about its red checks: the desktop's shared-failure marker.
+    var ci: PrCiFacts?
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -798,7 +803,10 @@ struct PrListRow: View {
                     statusRow(workItem: true, diff: true)
                     statusRow(workItem: false, diff: true)
                     statusRow(workItem: false, diff: false)
-                    PrTrackView(steps: pr.track, compact: true)
+                    HStack(spacing: 8) {
+                        PrTrackView(steps: pr.track, compact: true)
+                        sharedMarker
+                    }
                 }
                 .padding(.top, 7)
             }
@@ -811,9 +819,15 @@ struct PrListRow: View {
         .accessibilityElement(children: .combine)
     }
 
+    @ViewBuilder
+    private var sharedMarker: some View {
+        if let ci { ToneChip(text: ci.markerText(base: pr.baseRef), tone: ci.outside ? .warn : .bad, small: true) }
+    }
+
     private func statusRow(workItem: Bool, diff: Bool) -> some View {
         HStack(spacing: 8) {
             PrTrackView(steps: pr.track)
+            sharedMarker
             if workItem, let id = pr.workItemIds.first { ToneChip(text: "AB#\(id)", small: true, accent: true) }
             Spacer(minLength: 4)
             if diff { DiffStat(additions: pr.additions, deletions: pr.deletions) }
@@ -921,7 +935,7 @@ enum PrListDebugRoute {
         case let value where value.hasPrefix("open/"):
             for _ in 0..<40 where app.focus.focus == nil { try? await Task.sleep(for: .milliseconds(250)) }
             guard let focus = app.focus.focus else { return }
-            let keys = PrListContext(focus: focus, list: app.prList, logins: app.focus.myLogins).model.groups.map(\.key)
+            let keys = PrListContext(focus: focus, list: app.prList, logins: app.focus.myLogins, ciGroups: app.focus.ciGroups).model.groups.map(\.key)
             let open = String(value.dropFirst(5))
             UserDefaults.standard.set(GroupFolds(folded: Set(keys).subtracting([open]), opened: [open]).rawValue, forKey: PrListStore.Keys.folded)
             app.router.tab = .pullRequests

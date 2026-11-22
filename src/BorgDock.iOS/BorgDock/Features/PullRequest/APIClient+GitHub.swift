@@ -40,6 +40,9 @@ extension APIClient {
         try await put("/api/github/repositories/preferences", body: preferences)
     }
 
+    /// Every related CI failure with a live failure, newest first.
+    func ciGroups() async throws -> [CiFailureGroup] { try await get("/api/ci/groups") }
+
     func ciGroup(_ id: String) async throws -> CiFailureGroup { try await get("/api/ci/groups/\(Self.pathComponent(id))") }
 
     func claimCiGroup(_ id: String, note: String?) async throws -> CiFailureGroup {

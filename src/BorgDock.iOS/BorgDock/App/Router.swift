@@ -101,12 +101,12 @@ enum SheetRoute: Identifiable {
 
 /// Full-screen flows.
 enum CoverRoute: Identifiable, Hashable {
-    /// Quick Review of one pull request, or a queue of them.
-    case review([PrKey])
+    /// Quick Review of one pull request, a queue of them, or an author's run.
+    case review(ReviewRequest)
 
     var id: String {
         switch self {
-        case .review(let keys): "review-" + keys.map(\.key).joined(separator: ",")
+        case .review(let request): "review-" + (request.author.map { "author:\($0)," } ?? "") + request.keys.map(\.key).joined(separator: ",")
         }
     }
 }
@@ -209,7 +209,13 @@ final class Router {
 
     func review(_ keys: [PrKey]) {
         sheet = nil
-        cover = .review(keys)
+        cover = .review(ReviewRequest(keys: keys))
+    }
+
+    /// The desktop's author run: `author`'s open pull requests you can merge, oldest first, with `first` at once.
+    func reviewAuthor(_ author: String, first: PrKey? = nil) {
+        sheet = nil
+        cover = .review(ReviewRequest(keys: first.map { [$0] } ?? [], author: author))
     }
 
     func reset() {

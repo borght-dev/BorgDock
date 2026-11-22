@@ -4,19 +4,21 @@ import SwiftUI
 /// Start review goes straight to the first file you haven't reviewed. Approve stays locked until every file and step
 /// is reviewed, an approval waits out its Undo before GitHub hears about it, and going back to a decided PR shows the
 /// decision. Skip (on the brief, in the walk's lock menu) moves on without a decision, like the desktop's Review later.
-/// Mockup: design/ios-flow/mockups.html, sections 05 and 06.
+/// The end card offers what's next (`ReviewEndCard`). Mockups: design/ios-flow/mockups.html, sections 05 and 06;
+/// design/ios-pr-list/mockups.html, section 05.
 struct QuickReviewView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
-    let keys: [PrKey]
+    let request: ReviewRequest
 
-    @State private var queue: [PrKey] = []
+    @State private var run: ReviewRun?
     @State private var position = 0
     @State private var sessions: [String: ReviewSession] = [:]
     @State private var deciding = false
     @State private var showsFiles = false
     @State private var lineDraft: LineDraftTarget?
 
+    private var queue: [PrKey] { run?.queue ?? [] }
     private var key: PrKey? { queue.indices.contains(position) ? queue[position] : nil }
     private var session: ReviewSession? { key.flatMap { sessions[$0.key] } }
     private var nextKey: PrKey? { queue.indices.contains(position + 1) ? queue[position + 1] : nil }
@@ -27,7 +29,7 @@ struct QuickReviewView: View {
     }
 
     private var page: Page {
-        guard let key, let session else { return queue.isEmpty ? .loading(failure: nil) : .finished }
+        guard let key, let session else { return queue.isEmpty && run?.filling != false ? .loading(failure: nil) : .finished }
         switch session.loadState {
         case .loading: return .loading(failure: nil)
         case .failed(let message): return .loading(failure: message)
@@ -54,7 +56,7 @@ struct QuickReviewView: View {
         }
         .tint(BD.text)
         .sheet(isPresented: $deciding) {
-            if let key, let session { DecideSheet(session: session, draft: draftBinding(key), onDecided: advance, onJump: jump) }
+            if let key, let session { DecideSheet(session: session, draft: draftBinding(key), onDecided: advance, onWalked: walked, onJump: jump) }
         }
         .sheet(item: $lineDraft) { target in
             if let key { LineDraftSheet(target: target, draft: draftBinding(key)) }
@@ -63,15 +65,18 @@ struct QuickReviewView: View {
             if let session { ReviewFilesSheet(session: session) }
         }
         .onAppear {
-            guard queue.isEmpty else { return }
-            queue = keys
+            guard run == nil else { return }
+            let run = ReviewRun(request)
+            self.run = run
             #if DEBUG
             if let start = app.focus.debugReviewPosition { position = start }
             app.focus.debugReviewPosition = nil
             #endif
             prepare()
+            if request.author != nil { Task { await run.fill(focus: app.focus) } }
         }
         .onChange(of: position) { prepare() }
+        .onChange(of: queue) { prepare() }
         .onChange(of: app.focus.reopenDecision) { reopenIfAsked() }
     }
 
@@ -86,7 +91,7 @@ struct QuickReviewView: View {
                 ProgressView()
             }
         case .brief:
-            if let session { ReviewBrief(session: session) }
+            if let session { ReviewBrief(session: session, bypass: key.flatMap { run?.bypass[$0.key] }) }
         case .walk:
             if let key, let session {
                 WalkPager(session: session) { position in
@@ -104,7 +109,16 @@ struct QuickReviewView: View {
         case .decided(let decision):
             if let session { ReviewDecisionPage(session: session, decision: decision) }
         case .finished:
-            finished
+            if let run {
+                ReviewEndCard(run: run, onAuthorNext: { first in
+                    run.startAuthorRun(first: first)
+                    position = 0
+                    Task { await run.fill(focus: app.focus) }
+                }, onNext: { key in
+                    run.startSingle(key)
+                    position = 0
+                })
+            }
         }
     }
 
@@ -178,6 +192,12 @@ struct QuickReviewView: View {
         position += 1
     }
 
+    /// One of your own pull requests read through: nothing goes to GitHub.
+    private func walked() {
+        if let key { run?.walked.insert(key.key) }
+        advance()
+    }
+
     private func jump(_ path: String) {
         deciding = false
         session?.revisiting = true
@@ -198,10 +218,17 @@ struct QuickReviewView: View {
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Close")
+        if case .finished = page {
+            ToolbarItem(placement: .principal) { endTitle }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") { dismiss() }.fontWeight(.semibold).accessibilityIdentifier("review-done")
+            }
+        } else {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Close")
+            }
+            ToolbarItem(placement: .principal) { title }
         }
-        ToolbarItem(placement: .principal) { title }
         if case .walk = page, let session {
             ToolbarItem(placement: .topBarTrailing) { lockButton(session) }
         } else if case .brief = page {
@@ -220,6 +247,16 @@ struct QuickReviewView: View {
         }
         .accessibilityLabel(skipTitle)
         .accessibilityIdentifier("review-skip")
+    }
+
+    /// "Review" over the last pull request it showed.
+    private var endTitle: some View {
+        VStack(spacing: 1) {
+            Text("Review").font(.system(size: 16, weight: .semibold)).foregroundStyle(BD.text)
+            if let last = queue.last {
+                Text(verbatim: "\(last.owner)/\(last.repo) #\(last.number)").font(.system(size: 12)).foregroundStyle(BD.text2)
+            }
+        }
     }
 
     @ViewBuilder
@@ -342,17 +379,6 @@ struct QuickReviewView: View {
         case .file(let path): path.splitPath.name
         case .step(let group): "the \(group.stepName)"
         case nil: "the files"
-        }
-    }
-
-    private var finished: some View {
-        VStack(spacing: 14) {
-            let decided = queue.filter { app.focus.reviewDecisions[$0.key] != nil }.count
-            Image(systemName: decided > 0 ? "checkmark.circle" : "forward.circle").font(.system(size: 52, weight: .light))
-                .foregroundStyle(decided > 0 ? BD.green : BD.text3)
-            Text(ReviewRunSummary.title(total: queue.count, decided: decided)).font(.title2.bold()).foregroundStyle(BD.text)
-            Text(ReviewRunSummary.detail(decided: decided)).font(.subheadline).foregroundStyle(BD.text2)
-            Button("Back to Focus") { dismiss() }.buttonStyle(.bd(.plain, height: 46)).frame(width: 200).padding(.top, 8)
         }
     }
 }

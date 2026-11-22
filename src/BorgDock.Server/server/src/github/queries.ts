@@ -9,7 +9,7 @@ const CHECK_CONTEXTS = /* GraphQL */ `
     __typename
     ... on CheckRun {
       databaseId name status conclusion startedAt completedAt detailsUrl
-      checkSuite { workflowRun { databaseId workflow { name } } }
+      checkSuite { workflowRun { databaseId runNumber workflow { name } } }
     }
     ... on StatusContext { context state targetUrl createdAt }
   }`;
@@ -103,7 +103,7 @@ type RawActor = { login: string; avatarUrl?: string; name?: string | null } | nu
 type RawContext = {
   __typename: 'CheckRun' | 'StatusContext';
   databaseId?: number; name?: string; status?: string; conclusion?: string | null; startedAt?: string | null; completedAt?: string | null; detailsUrl?: string | null;
-  checkSuite?: { workflowRun: { databaseId: number; workflow: { name: string } | null } | null } | null;
+  checkSuite?: { workflowRun: { databaseId: number; runNumber?: number; workflow: { name: string } | null } | null } | null;
   context?: string; state?: string; targetUrl?: string | null; createdAt?: string;
 };
 export type RawPr = {
@@ -133,7 +133,7 @@ export function mapContexts(nodes: readonly RawContext[]): CheckContext[] {
   const contexts = nodes.map((node): CheckContext => {
     if (node.__typename === 'StatusContext') {
       return {
-        id: 0, kind: 'status', name: node.context ?? 'status', workflow: null, runId: null,
+        id: 0, kind: 'status', name: node.context ?? 'status', workflow: null, runId: null, runNumber: null,
         state: STATUS_STATE[(node.state ?? '').toLowerCase()] ?? 'pending', conclusion: (node.state ?? '').toLowerCase() || null,
         startedAt: node.createdAt ?? null, completedAt: null, url: node.targetUrl ?? '',
       };
@@ -142,7 +142,7 @@ export function mapContexts(nodes: readonly RawContext[]): CheckContext[] {
     const done = (node.status ?? '').toUpperCase() === 'COMPLETED';
     return {
       id: node.databaseId ?? 0, kind: 'check', name: node.name ?? 'check', workflow: node.checkSuite?.workflowRun?.workflow?.name ?? null,
-      runId: node.checkSuite?.workflowRun?.databaseId ?? null,
+      runId: node.checkSuite?.workflowRun?.databaseId ?? null, runNumber: node.checkSuite?.workflowRun?.runNumber ?? null,
       state: done ? (CONCLUSION[conclusion ?? ''] ?? 'neutral') : 'pending', conclusion,
       startedAt: node.startedAt ?? null, completedAt: node.completedAt ?? null, url: node.detailsUrl ?? '',
     };

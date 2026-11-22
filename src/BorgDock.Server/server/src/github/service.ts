@@ -11,7 +11,7 @@ import { buildGroups, checkFailureOf, readFailure } from './ci/groups.ts';
 import { fileCategory } from './file-category.ts';
 import { GhTokens, GithubClient, GithubError, type TokenSource } from './client.ts';
 import {
-  bucketFor, checkSummary, compareFocus, FOCUS_BUCKETS, isMine, isNeedsYou, isWaitingOnMe, myReview, prKey, reasonFor, scoreOf,
+  bucketFor, checkSummary, compareFocus, failedChecksOf, FOCUS_BUCKETS, isMine, isNeedsYou, isWaitingOnMe, myReview, prKey, reasonFor, scoreOf,
   workItemIdsOf, type CheckContext, type FocusContext, type PrRecord,
 } from './focus.ts';
 import {
@@ -359,6 +359,7 @@ export class GithubService extends EventEmitter {
       changedFiles: pr.changedFiles,
       labels: pr.labels,
       checks: checkSummary(pr.checks),
+      failedChecks: failedChecksOf(pr.checks),
       reviewDecision: pr.reviewDecision,
       approvedBy: pr.latestReviews.filter((r) => r.state === 'approved').map((r) => r.login),
       mergeable: pr.mergeable,
@@ -583,6 +584,7 @@ export class GithubService extends EventEmitter {
   private rebuildGroups() {
     const openPrs = new Map([...this.records.values()].filter((pr) => pr.state === 'open').map((pr) => [prKey(pr), {
       title: pr.title, failingJobs: new Set(pr.checks.filter((c) => c.state === 'failure').map((c) => c.id)),
+      headSha: pr.headSha, passingChecks: new Set(pr.checks.filter((c) => c.state === 'success').map((c) => c.name)),
     }]));
     const baseBranches = new Map([...this.bases.values()].filter((b) => b.failing.length).map((b) => [`${b.repo}:${b.branch}`, {
       suspect: b.failing[0].suspect, runIds: new Set(b.failing.map((f) => f.runId)),

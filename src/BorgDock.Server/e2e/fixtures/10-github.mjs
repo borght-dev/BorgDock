@@ -596,6 +596,11 @@ const pr = (owner, repo, number, fields) => {
   };
 };
 const reason = (text, tone, icon) => ({ text, tone, icon });
+/** A failed check as the summary names it: the Actions job, its run and when it finished. */
+const failedCheck = (name, jobId, runId, completedAt, runNumber = null) => ({ name, jobId, runId, runNumber, completedAt });
+/** Failed checks for a sample that names none: lint first, then the unit tests and the build. */
+const failedChecksOf = (p) => Array.from({ length: p.checks.failed }, (_, i) =>
+  failedCheck(['lint', 'unit / node 24', 'build / linux'][i] ?? `check ${i + 1}`, p.number * 100 + i, p.number * 10, at(1)));
 
 const pullRequests = [
   pr('acme', 'shop', 3712, {
@@ -610,6 +615,7 @@ const pullRequests = [
     changedFiles: shopFiles.length,
     labels: [{ name: 'checkout', color: 'e8743b' }, { name: 'bug', color: 'e5484d' }, { name: 'needs-qa', color: '3e7bfa' }],
     checks: { ...checks(15, 2, 1), segments: ['success', 'success', 'success', 'failure', 'success', 'failure', 'success', 'success'] },
+    failedChecks: [failedCheck('e2e / checkout', 901, 1, at(1.13)), failedCheck('build / windows', 902, 2, at(1.17))],
     approvedBy: ['tompeeters'],
     bucket: 'you',
     reason: reason('Sanne asked for your review', 'run', 'review'),
@@ -773,6 +779,7 @@ const pullRequests = [
     deletions: sum(roundLines.files, 'deletions'),
     changedFiles: roundLines.files.length,
     checks: checks(22, 2),
+    failedChecks: [failedCheck('e2e · chromium 2/4', 4121, 2214, at(1.1)), failedCheck('lint', 4122, 2215, at(1.1))],
     bucket: 'you',
     reason: reason('Priya asked for your review', 'run', 'review'),
     workItemIds: [61021],
@@ -854,12 +861,14 @@ pullRequests.push(
   }),
   pr('acme', 'storefront', 370, {
     title: 'Wishlist: share a list by link', author: focusPeople.priya, headRef: 'wishlist-share',
-    createdAt: at(days(5)), updatedAt: at(days(1) + 4), additions: 230, deletions: 18, changedFiles: 11, checks: checks(9),
+    createdAt: at(days(5)), updatedAt: at(days(1) + 4), additions: 230, deletions: 18, changedFiles: 11, checks: checks(8, 1),
+    failedChecks: [failedCheck('build / web', 37001, 3700, at(days(1) + 4), 812)],
     bucket: 'wait', reason: reason('Waiting for a review', 'mute', 'clock'),
   }),
   pr('acme', 'payments', 84, {
     title: 'Retry failed payouts at night', author: focusPeople.priya, headRef: 'payout-retries',
-    createdAt: at(days(3) + 1), updatedAt: at(days(1) + 1), additions: 76, deletions: 22, checks: checks(14),
+    createdAt: at(days(3) + 1), updatedAt: at(days(1) + 1), additions: 76, deletions: 22, checks: checks(13, 1),
+    failedChecks: [failedCheck('Deploy & Test (staging-2) / E2E Shard 2/4', 8401, 84100, at(days(1) + 1), 15274)],
     bucket: 'wait', reason: reason('Waiting for a review', 'mute', 'clock'),
   }),
   pr('acme', 'infra', 49, {
@@ -873,6 +882,8 @@ pullRequests.push(
     bucket: 'wait', reason: reason('Has merge conflicts', 'warn', 'conflict'),
   }),
 );
+
+for (const p of pullRequests) p.failedChecks ??= failedChecksOf(p);
 
 /** Open pull requests per repository, for the Repositories screen (15-repositories.mjs). */
 export function openByRepository() {
@@ -1012,8 +1023,25 @@ function detail(summary) {
   return base;
 }
 
+const e2eBot = person('github-actions[bot]', null);
 const conversations = {
   [roundLines.key]: roundLines.conversation,
+  'acme/payments#84': {
+    threads: [],
+    comments: [
+      { id: 'c84-old', author: e2eBot, at: at(days(4)), reactions: [], body: '## E2E Test Results\n\n**Smoke:** Passed | **E2E:** 3 failed\n**Run:** #15120\n\n### Failed Tests\n| File | Test | Error |\n|---|---|---|\n| `payouts/retry.spec.ts` | retries at night | `Expected 1 retry` |' },
+      {
+        id: 'c84-e2e', author: e2eBot, at: at(days(1)), reactions: [],
+        body: [
+          '## E2E Test Results', '',
+          '**Environment:** https://staging-2.example.com | **Smoke:** Passed | **E2E:** 1 failed | **Flaky:** 0',
+          '**Run:** #15274 | [workflow run](https://github.com/acme/payments/actions/runs/84100)', '',
+          '### Failed Tests', '| File | Test | Error |', '|------|------|-------|',
+          '| `orders/order-history.spec.ts` | shows the last 20 orders | `Timeout 15000ms exceeded` |',
+        ].join('\n'),
+      },
+    ],
+  },
   'acme/shop#3712': {
     threads: [
       {
@@ -1072,6 +1100,27 @@ const ciGroups = {
   },
 };
 
+// The server's group facts (CiGroupFacts) only on the group that clears a pull request: #370 fails the same build step
+// as master, so its red is not its doing. The two groups above send none, like an older server, and clear nothing.
+ciGroups['ci-storefront-build'] = {
+  id: 'ci-storefront-build',
+  title: 'build / web › Module not found: @acme/ui/tokens',
+  signal: "Module not found: Error: Can't resolve '@acme/ui/tokens' in 'src/theme'",
+  location: 'src/theme/index.ts:3',
+  firstFailedAt: at(days(2)),
+  lastFailedAt: at(days(1) + 4),
+  failures: 3,
+  branches: [
+    { branch: 'master', prKey: null, title: null, failures: 2, sha: 'b71c0e2a9f', suspect: { sha: 'b71c0e2a9f', message: 'Bump @acme/ui to 5.0' } },
+    { branch: 'wishlist-share', prKey: 'acme/storefront#370', title: 'Wishlist: share a list by link', failures: 1, sha: '370a91c3d0' },
+  ],
+  claim: null,
+  facts: {
+    tier: 'high', repos: ['acme/storefront'], prKeys: ['acme/storefront#370'], prJobIds: [37001], baseRuns: [8812, 8815],
+    runCount: 3, passedOnRetry: 0, catalogIds: [], failedSteps: ['Run npm run build'],
+  },
+};
+
 const agentsWaiting = [
   { itemId: 61050, threadId: 't-offline', title: 'Offline basket for the mobile app', detail: 'Plan ready · waiting 2 d', tone: 'run' },
   { itemId: 61060, threadId: 't-refund', title: 'Refund email sent twice', detail: 'Asks: keep the retry queue?', tone: 'warn' },
@@ -1103,7 +1152,7 @@ function withReviewFacts(p, index) {
 function focus() {
   // 90-review-queue.mjs adds Quick Review's queue, where this file doesn't have those pull requests itself.
   const queue = (globalThis.borgdockReviewQueue ?? []).filter((q) => !pullRequests.some((p) => p.key === q.key));
-  const visible = [...pullRequests, ...queue].filter((p) => !snoozed.has(p.key)).map(withReviewFacts);
+  const visible = [...pullRequests, ...queue].filter((p) => !snoozed.has(p.key)).map(withReviewFacts).map((p) => ({ ...p, failedChecks: p.failedChecks ?? failedChecksOf(p) }));
   const counts = { you: 0, wait: 0, ready: 0, stale: 0 };
   for (const p of visible) counts[p.bucket] += 1;
   return {

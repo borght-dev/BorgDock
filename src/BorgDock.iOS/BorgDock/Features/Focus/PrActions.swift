@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The desktop card's buttons as a touch-and-hold menu, filtered to what applies to this pull request.
+/// The desktop card's buttons as a touch-and-hold menu, filtered to what applies to this pull request. Review reviews
+/// this pull request alone; the author's run reviews their others too, oldest first (the desktop's context menu).
 struct PrContextMenu: View {
     @Environment(AppModel.self) private var app
     let pr: PrSummary
@@ -8,7 +9,16 @@ struct PrContextMenu: View {
     var body: some View {
         let focus = app.focus
         Section {
-            Button { app.router.review(focus.reviewQueue(startingAt: pr)) } label: { Label("Review", systemImage: "eye") }
+            if pr.isMine {
+                Button { app.router.review([pr.prKey]) } label: { Label("Walk through this PR", systemImage: "eye") }
+                    .disabled(pr.state != .open)
+            } else {
+                Button { app.router.review([pr.prKey]) } label: { Label("Review", systemImage: "eye") }
+                Button { app.router.reviewAuthor(pr.author.login, first: pr.prKey) } label: {
+                    Label("Review \(pr.author.displayName)'s PRs, oldest first", systemImage: "list.bullet.indent")
+                }
+                .disabled(pr.isDraft)
+            }
             if pr.canMerge {
                 Button { app.router.present(.merge(pr.prKey)) } label: { Label("Merge…", systemImage: "arrow.triangle.merge") }
             }
@@ -29,15 +39,6 @@ struct PrContextMenu: View {
     }
 }
 
-extension FocusStore {
-    /// Review this PR, then the rest of Focus's review queue, the longest waiting first.
-    func reviewQueue(startingAt pr: PrSummary) -> [PrKey] {
-        let queue = FocusBoard(pullRequests: focus?.pullRequests ?? [], threads: [], myLogins: myLogins).reviews
-        let others = queue.filter { $0.key != pr.key }.map(\.prKey)
-        return [pr.prKey] + (pr.bucket == .you ? others : [])
-    }
-}
-
 /// The line under the pull request list that explains the swipes, until the first swipe.
 enum PrSwipeHint {
     static let key = "focus.swipeHintSeen"
@@ -52,8 +53,8 @@ extension View {
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button {
                     UserDefaults.standard.set(true, forKey: PrSwipeHint.key)
-                    app.router.review(app.focus.reviewQueue(startingAt: pr))
-                } label: { Label("Review", systemImage: "eye") }
+                    app.router.review([pr.prKey])
+                } label: { Label(pr.isMine ? "Walk through" : "Review", systemImage: "eye") }
                     .tint(BD.accent)
             }
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
