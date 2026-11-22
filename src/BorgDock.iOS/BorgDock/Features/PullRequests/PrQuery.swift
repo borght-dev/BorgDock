@@ -310,12 +310,20 @@ enum PrSearchTyping {
         for word in words.complete {
             if let term = ParsedQuery.term(word) { terms.append(term) } else { kept.append(word) }
         }
-        let pending = words.pending.map { ParsedQuery.term($0) == nil ? $0 : nil } ?? nil
+        let pending = words.pending.flatMap { startsQualifier($0) ? nil : $0 }
         let text = (kept + [pending].compactMap { $0 }).map { $0.replacingOccurrences(of: "\"", with: "") }.joined(separator: " ")
         guard !terms.isEmpty else { return Absorbed(terms: [], field: typed, text: text) }
         var field = (kept + [words.pending].compactMap { $0 }).joined(separator: " ")
         if words.pending == nil, !field.isEmpty { field += " " }
         return Absorbed(terms: terms, field: field, text: text)
+    }
+
+    /// `author:`, `-repo:sh`: a known field and its colon, the value maybe not typed yet.
+    static func startsQualifier(_ word: String) -> Bool {
+        var word = Substring(word)
+        if word.hasPrefix("-") { word = word.dropFirst() }
+        guard let colon = word.firstIndex(of: ":") else { return false }
+        return QueryField(rawValue: word[..<colon].lowercased()) != nil
     }
 
     /// Words followed by a space outside quotes, and the one still being typed.

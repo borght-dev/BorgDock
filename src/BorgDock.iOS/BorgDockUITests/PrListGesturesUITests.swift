@@ -9,6 +9,7 @@ final class PrListGesturesUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-BorgDockServer", "http://localhost:8801", "-BorgDockToken", "sample-token-for-fixture-only-123"]
         if let route { app.launchArguments += ["-BorgDockRoute", route] }
+        app.launchArguments += XCUIApplication.freshPullRequestList
         app.launch()
         return app
     }
@@ -48,8 +49,8 @@ final class PrListGesturesUITests: XCTestCase {
         let app = launch("tab/prs")
         app.unfoldEveryPullRequestGroup()
         let ready = app.buttons["pr-row-acme/shop#3698"]
-        XCTAssertTrue(ready.waitForExistence(timeout: 15))
-        for _ in 0..<4 where !ready.isHittable { app.swipeUp() }
+        for _ in 0..<10 where !ready.waitForExistence(timeout: 1) || !ready.isHittable { app.swipeUp() }
+        XCTAssertTrue(ready.isHittable)
         ready.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5))
             .press(forDuration: 0.05, thenDragTo: ready.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
         XCTAssertTrue(app.buttons["Merge"].waitForExistence(timeout: 5))
@@ -58,7 +59,7 @@ final class PrListGesturesUITests: XCTestCase {
         capture("swipe-trailing")
         ready.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).tap()
 
-        let other = app.buttons["pr-row-borght-dev/BorgDock#104"]
+        let other = app.buttons["pr-row-acme/shop#3701"]
         for _ in 0..<4 where !other.isHittable { app.swipeUp() }
         other.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5))
             .press(forDuration: 0.05, thenDragTo: other.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)))

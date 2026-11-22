@@ -91,7 +91,9 @@ private struct PrFilterShowButton: View {
         .tint(BD.accent)
         .foregroundStyle(BD.onAccent)
         .padding(.horizontal, 16)
+        .padding(.top, 28)
         .padding(.bottom, 8)
+        .background(LinearGradient(stops: [.init(color: BD.sheet.opacity(0), location: 0), .init(color: BD.sheet, location: 0.45)], startPoint: .top, endPoint: .bottom))
         .accessibilityIdentifier("prs-filter-show")
     }
 }
@@ -150,7 +152,7 @@ struct PrFilterValuesView: View {
         .background(BD.sheet)
         .navigationTitle(PrFacets.label(field))
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $find, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find \(PrFacets.label(field).lowercased())")
+        .modifier(FindField(text: $find, prompt: "Find \(PrFacets.label(field).lowercased())", shown: PrFacets.fixedValues(field) == nil))
         .safeAreaInset(edge: .bottom) { PrFilterShowButton() }
     }
 
@@ -189,5 +191,20 @@ struct PrFilterValuesView: View {
         guard !selected.isEmpty else { return }
         let list = app.prList
         list.setQuery(PrQuery.setTerm(list.query, field, selected, negate: negate))
+    }
+}
+
+/// A search field over the values, for the open-ended lists (authors, repositories, labels…); fixed lists are short.
+private struct FindField: ViewModifier {
+    @Binding var text: String
+    let prompt: String
+    let shown: Bool
+
+    func body(content: Content) -> some View {
+        if shown {
+            content.searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: prompt)
+        } else {
+            content
+        }
     }
 }

@@ -192,6 +192,7 @@ struct PullRequestsView: View {
                             .buttonStyle(.plain)
                             .listRowInsets(EdgeInsets())
                             .listRowBackground(BD.card)
+                            .listRowSeparator(folded ? .visible : .hidden, edges: .bottom)
                             .accessibilityIdentifier("prs-group-\(sub.key)")
                         if !folded { rows(sub.facts, namesAuthor: sub.kind == .author) }
                     }
@@ -233,7 +234,8 @@ struct PullRequestsView: View {
     /// The built-in tabs, then the saved views with a bookmark; a view's long-press renames, moves or deletes it.
     private func pills(_ model: PrListModel) -> some View {
         let list = app.prList
-        return ScrollView(.horizontal, showsIndicators: false) {
+        let selectedPill = list.activeViewId ?? list.view.rawValue
+        return ScrollViewReader { proxy in ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(PrViewKey.allCases) { key in
                     let selected = list.activeViewId == nil && list.view == key
@@ -243,6 +245,7 @@ struct PullRequestsView: View {
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(selected ? .isSelected : [])
                     .accessibilityIdentifier("prs-filter-\(key.rawValue)")
+                    .id(key.rawValue)
                 }
                 ForEach(Array(list.savedViews.enumerated()), id: \.element.id) { index, saved in
                     let selected = list.activeViewId == saved.id
@@ -261,11 +264,14 @@ struct PullRequestsView: View {
                     }
                     .accessibilityAddTraits(selected ? .isSelected : [])
                     .accessibilityIdentifier("prs-view-\(saved.id)")
+                    .id(saved.id)
                 }
             }
             .padding(.horizontal, 16)
         }
         .scrollClipDisabled()
+        .onChange(of: selectedPill, initial: true) { _, id in withAnimation(.snappy) { proxy.scrollTo(id, anchor: .center) } }
+        }
         .padding(.top, 14)
     }
 
@@ -318,16 +324,19 @@ struct PullRequestsView: View {
         } else if list.activeView == nil, !list.query.trimmingCharacters(in: .whitespaces).isEmpty {
             HStack(spacing: 14) {
                 Text("\(model.rows.count) of \(total)").monospacedDigit()
-                Button { sheet = .saveView } label: { Label("Save view", systemImage: "bookmark").labelStyle(TightLabelStyle(spacing: 4)) }
-                    .accessibilityIdentifier("prs-save-view")
-                Button("Clear") { withAnimation(.snappy) { list.setQuery(PrQuery.clearTerms(list.query)) } }
-                    .accessibilityIdentifier("prs-clear-filters")
+                Group {
+                    Button { sheet = .saveView } label: { Label("Save view", systemImage: "bookmark").labelStyle(TightLabelStyle(spacing: 4)) }
+                        .accessibilityIdentifier("prs-save-view")
+                    Button("Clear") { withAnimation(.snappy) { list.setQuery(PrQuery.clearTerms(list.query)) } }
+                        .accessibilityIdentifier("prs-clear-filters")
+                }
+                .fontWeight(.semibold)
+                .foregroundStyle(BD.accentText)
                 Spacer(minLength: 0)
             }
             .buttonStyle(.plain)
             .font(.system(size: 13))
             .foregroundStyle(BD.text2)
-            .tint(BD.accentText)
             .padding(.horizontal, 20)
             .padding(.top, 9)
         }
@@ -878,7 +887,7 @@ struct PrTrackView: View {
 
 #if DEBUG
 /// `-BorgDockRoute prs/display | prs/filter | prs/filter/<field> | prs/save | prs/repositories | prs/query/<query> |
-/// prs/open/<group key>`: the list's screenshot states.
+/// prs/view/<id>[/<added query>] | prs/open/<group key>`: the list's screenshot states.
 @MainActor
 enum PrListDebugRoute {
     static var opens: PullRequestsView.Sheet?
@@ -899,7 +908,14 @@ enum PrListDebugRoute {
             app.router.tab = .pullRequests
         case "repositories":
             app.router.open(.repositories, in: .pullRequests)
+        case let value where value.hasPrefix("view/"):
+            await app.prList.sync()
+            let parts = value.dropFirst(5).split(separator: "/", maxSplits: 1).map(String.init)
+            app.prList.showSaved(parts[0])
+            if parts.count > 1 { app.prList.setQuery(app.prList.query + " " + (parts[1].removingPercentEncoding ?? "")) }
+            app.router.tab = .pullRequests
         case let value where value.hasPrefix("query/"):
+            app.prList.showBuiltIn(.all)
             app.prList.setQuery(String(value.dropFirst(6)).removingPercentEncoding ?? "")
             app.router.tab = .pullRequests
         case let value where value.hasPrefix("open/"):

@@ -204,6 +204,8 @@ final class PrQueryTests: XCTestCase {
         XCTAssertEqual(pending.field, "grid author:pri", "the field keeps what you are typing")
         XCTAssertEqual(pending.text, "grid", "a qualifier being typed doesn't filter yet")
 
+        XCTAssertEqual(PrSearchTyping.absorb("grid author:").text, "grid", "nor does a field with no value yet")
+        XCTAssertEqual(PrSearchTyping.absorb("grid foo:").text, "grid foo:", "an unknown field is text")
         let quoted = PrSearchTyping.absorb("label:\"needs qa")
         XCTAssertEqual(quoted.terms, [], "a space inside quotes doesn't end the word")
         XCTAssertEqual(PrSearchTyping.absorb("label:\"needs qa\" ").terms, [QueryTerm(.label, ["needs qa"])])

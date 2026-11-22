@@ -181,7 +181,7 @@ final class PrListTests: XCTestCase {
     func testChipsReadInTheDesktopsWords() {
         let names = ["priya": "Priya Shah", "tom": "Tom Berg"]
         XCTAssertEqual(PrFacets.chip(QueryTerm(.checks, ["failing"], negate: true)).op, "is not")
-        XCTAssertEqual(PrFacets.chip(QueryTerm(.checks, ["failing"], negate: true)).values, "Failing")
+        XCTAssertEqual(PrFacets.chip(QueryTerm(.checks, ["failing"], negate: true)).values, "failing")
         let authors = PrFacets.chip(QueryTerm(.author, ["priya", "tom"], negate: true), name: { names[$0] })
         XCTAssertEqual("\(authors.field) \(authors.op) \(authors.values)", "Author is none of Priya Shah, Tom Berg")
         XCTAssertEqual(PrFacets.chip(QueryTerm(.repo, ["shop", "storefront"])).op, "is any of")

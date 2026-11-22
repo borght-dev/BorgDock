@@ -186,12 +186,13 @@ enum PrFacets {
         .sorted { a, b in a.count != b.count ? a.count > b.count : a.label.localizedCompare(b.label) == .orderedAscending }
     }
 
-    /// "Author", "is any of", "Priya Shah, Tom Berg" for a chip. `name` turns a login into a name where it can.
+    /// "Author", "is any of", "Priya Shah, Tom Berg"; "Checks", "is not", "failing" for a chip. `name` turns a login into
+    /// a name where it can.
     static func chip(_ term: QueryTerm, name: (String) -> String? = { _ in nil }) -> (field: String, op: String, values: String) {
         let fixed = fixedValues(term.field)
         let many = term.values.count > 1
         let values = term.values.map { value in
-            if let label = fixed?.first(where: { $0.0 == value })?.1 { return label }
+            if let label = fixed?.first(where: { $0.0 == value })?.1 { return label.lowercased() }
             switch term.field {
             case .ab: return "AB#\(value)"
             case .author, .reviewer: return name(value) ?? value
