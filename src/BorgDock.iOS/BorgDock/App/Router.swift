@@ -70,6 +70,8 @@ enum Route: Hashable {
     case sprintItems(SprintList)
     /// Which repositories the Pull requests list reads (Settings → Pull requests).
     case repositories
+    /// Focus's Waiting on others: yours under review and the ones you reviewed.
+    case waitingOnOthers
 }
 
 /// Sheets, presented over whatever tab is showing.

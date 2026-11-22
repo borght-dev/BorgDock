@@ -100,9 +100,32 @@ struct PrSummary: Codable, Hashable, Sendable, Identifiable {
     let autoMerge: Bool
     /// The head commit of your last review, for re-reviews; null if you never reviewed it.
     let reviewedHeadSha: String?
+    // The facts the list derives the desktop's buckets from. Optional so an older server still decodes.
+    /// Logins still asked to review.
+    let requestedReviewerLogins: [String]?
+    /// Team slugs still asked to review.
+    let requestedTeams: [String]?
+    /// Each reviewer's latest review.
+    let latestReviews: [PrLatestReview]?
+    /// Focus's priority score: the Priority order's tie-break within a status.
+    let priorityScore: Int?
 
     var id: String { key }
     var prKey: PrKey { PrKey(owner: owner, repo: repo, number: number) }
+}
+
+/// A reviewer's latest review of a pull request, at the commit it reviewed.
+struct PrLatestReview: Codable, Hashable, Sendable {
+    enum State: String, ResilientEnum {
+        case approved
+        case changesRequested = "changes_requested"
+        case commented, dismissed, pending
+        static let fallback = State.commented
+    }
+
+    let login: String
+    let state: State
+    let commitSha: String?
 }
 
 struct AgentWaiting: Codable, Hashable, Sendable, Identifiable {
@@ -122,6 +145,10 @@ struct Focus: Codable, Hashable, Sendable {
     /// Open pull requests that involve you, in bucket order, then most urgent first.
     let pullRequests: [PrSummary]
     let agentsWaiting: [AgentWaiting]
+    /// Your team slugs per GitHub account (lower-case login), for review requests sent to a team.
+    let teams: [String: [String]]?
+    /// A pull request not updated for this many days counts as stale.
+    let staleAfterDays: Int?
 
     func count(_ bucket: FocusBucket) -> Int { counts[bucket.rawValue] ?? 0 }
 }

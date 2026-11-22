@@ -4,7 +4,6 @@ import SwiftUI
 /// and your work. Mockup: design/ios-flow/mockups.html, section 02.
 struct FocusView: View {
     @Environment(AppModel.self) private var app
-    @AppStorage(PrListFilter.storageKey) private var pullRequestFilter: PrListFilter = .all
     @State private var now = Date.now
     @State private var showsEveryAgent = false
 
@@ -156,8 +155,7 @@ struct FocusView: View {
         if !board.waitingOnOthers.isEmpty {
             CellGroup {
                 Button {
-                    pullRequestFilter = .waiting
-                    app.router.tab = .pullRequests
+                    app.router.push(.waitingOnOthers)
                 } label: {
                     HStack(spacing: 10) {
                         CellIcon(systemImage: "clock", color: BD.text2, soft: true, round: true)

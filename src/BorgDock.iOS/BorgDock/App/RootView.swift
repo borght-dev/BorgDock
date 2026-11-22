@@ -81,6 +81,7 @@ struct RouteView: View {
         case .notes: NotesView()
         case .sprintItems(let list): SprintItemsView(list: list)
         case .repositories: RepositoriesView()
+        case .waitingOnOthers: WaitingOnOthersView()
         }
     }
 }

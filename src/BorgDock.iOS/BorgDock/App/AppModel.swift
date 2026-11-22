@@ -16,6 +16,7 @@ final class AppModel {
     let notes = NotesStore()
     let search = SearchStore()
     let sprint = SprintStore()
+    let prList = PrListStore()
 
     private(set) var serverURL: URL
     private(set) var token: String?
@@ -52,6 +53,7 @@ final class AppModel {
         notes.app = self
         search.app = self
         sprint.app = self
+        prList.app = self
         router.threadOpener = { [weak self] id in self?.openThread(id) }
     }
 
