@@ -10,18 +10,18 @@ final class AdoWorkItemsTests: XCTestCase {
     private struct Page {
         let items: AdoWorkItems
         let looked: AdoRecorder<String>
-        let store: AdoMemoryStore
+        let store: MemoryStore
     }
 
     /// GitHub has #398 open and knows #412 as merged; ADO links #412 and #380 by its own repository id.
     private func makePage(
         open: [PrSummary] = [AdoFixture.pullRequest(398, title: "Checkout totals plan", workItemIds: [61021, 61022])],
-        store: AdoMemoryStore = AdoMemoryStore(),
+        store: MemoryStore = MemoryStore(),
         knowsTheRepository: Bool = true,
         lookupTime: Duration = .seconds(8),
         lookup: (@Sendable (PrKey) async throws -> PrSummary)? = nil
     ) -> Page {
-        if knowsTheRepository { store.set(Data(#"{"\#(AdoFixture.shopRepositoryId)":"acme/shop"}"#.utf8), forKey: "ado.githubRepositories") }
+        if knowsTheRepository { store.set([AdoFixture.shopRepositoryId: "acme/shop"], forKey: "ado.githubRepositories") }
         let looked = AdoRecorder<String>()
         let source = AdoPullRequestSource(open: { open }, lookup: { key in
             looked.add(key.key)
@@ -112,7 +112,7 @@ final class AdoWorkItemsTests: XCTestCase {
         XCTAssertEqual(whileOpen.pullRequests.map(\.number), [412])
         XCTAssertEqual(whileOpen.pullRequests.map(\.state), [.open])
         XCTAssertEqual(first.looked.all, ["acme/shop#380"], "ADO's other link to the same repository")
-        let kept = first.store.data(forKey: "ado.githubRepositories").flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
+        let kept: [String: String]? = first.store.value(forKey: "ado.githubRepositories")
         XCTAssertEqual(kept, [AdoFixture.shopRepositoryId: "acme/shop"])
 
         let later = makePage(open: [], store: first.store, knowsTheRepository: false)
@@ -238,7 +238,7 @@ final class AdoWorkItemsTests: XCTestCase {
 
     func testWithoutAConnectionEveryCallSaysToConnect() async {
         AdoFixture.serve(AdoFixture.itemPage)
-        let items = AdoWorkItems(connection: nil, session: AdoStubURLProtocol.session(), store: AdoMemoryStore())
+        let items = AdoWorkItems(connection: nil, session: AdoStubURLProtocol.session(), store: MemoryStore())
         let connect = APIError.stillLoading("Connect Azure DevOps in Settings to open work items.")
         await assertThrows(connect) { _ = try await items.item(61021) }
         await assertThrows(connect) { _ = try await items.postItemComment(itemId: 61021, text: "Hello") }
@@ -289,7 +289,7 @@ final class AdoWorkItemsTests: XCTestCase {
 
     func testABearerTokenAndAnOrganizationOnItsOwnHostWorkTheSame() {
         let connection = AdoConnection(organizationURL: URL(string: "https://ado.example.com/tfs/Acme/")!, project: "Shop", credential: .bearer("entra-token"))
-        let items = AdoWorkItems(connection: connection, session: AdoStubURLProtocol.session(), store: AdoMemoryStore())
+        let items = AdoWorkItems(connection: connection, session: AdoStubURLProtocol.session(), store: MemoryStore())
         XCTAssertEqual(items.authorization(for: URL(string: "https://ado.example.com/tfs/Acme/Shop/_apis/wit/attachments/\(guid)")!), "Bearer entra-token")
         XCTAssertNil(items.authorization(for: URL(string: "https://ado.example.com/tfs/Other/_apis/wit/attachments/\(guid)")!))
         XCTAssertNil(items.authorization(for: URL(string: "https://ado.example.com/_apis/wit/attachments/\(guid)")!))

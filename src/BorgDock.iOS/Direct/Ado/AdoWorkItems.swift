@@ -1,5 +1,4 @@
 import Foundation
-import Synchronization
 
 /// What the item page asks of GitHub: its pull requests come from there, ADO only links them.
 struct AdoPullRequestSource: Sendable {
@@ -10,37 +9,6 @@ struct AdoPullRequestSource: Sendable {
 
     /// No GitHub: an item shows no pull requests.
     static let none = AdoPullRequestSource(open: { [] }, lookup: { key in throw directError(404, "\(key.key) can't be read without GitHub.") })
-}
-
-/// Where the little this folder remembers between launches is kept.
-protocol AdoKeyValueStore: Sendable {
-    func data(forKey key: String) -> Data?
-    func set(_ data: Data?, forKey key: String)
-}
-
-struct AdoUserDefaultsStore: AdoKeyValueStore {
-    /// The suite to keep it in (an app group's); nil for the app's own defaults.
-    let suiteName: String?
-
-    init(suiteName: String? = nil) {
-        self.suiteName = suiteName
-    }
-
-    // Looked up per call: `UserDefaults` is safe to use from any thread, but the SDK doesn't call it `Sendable`.
-    private var defaults: UserDefaults { suiteName.flatMap { UserDefaults(suiteName: $0) } ?? .standard }
-
-    func data(forKey key: String) -> Data? { defaults.data(forKey: key) }
-
-    func set(_ data: Data?, forKey key: String) { defaults.set(data, forKey: key) }
-}
-
-/// Remembers until the app quits: for tests and previews.
-final class AdoMemoryStore: AdoKeyValueStore {
-    private let values = Mutex<[String: Data]>([:])
-
-    func data(forKey key: String) -> Data? { values.withLock { $0[key] } }
-
-    func set(_ data: Data?, forKey key: String) { values.withLock { $0[key] = data } }
 }
 
 /// The work item page read straight from Azure DevOps, with the pull requests GitHub has for it: the server's
@@ -55,7 +23,7 @@ actor AdoWorkItems: WorkItemBackend {
     nonisolated let connection: AdoConnection?
     private let client: AdoClient?
     private let github: AdoPullRequestSource
-    private let store: AdoKeyValueStore
+    private let store: any DirectStore
     private let lookupTime: Duration
     /// Which GitHub repository each ADO repository id stands for, learned from items and kept in `store`.
     private var repositories: [String: String]
@@ -65,7 +33,7 @@ actor AdoWorkItems: WorkItemBackend {
         connection: AdoConnection?,
         session: URLSession = .shared,
         pullRequests: AdoPullRequestSource = .none,
-        store: AdoKeyValueStore = AdoUserDefaultsStore(),
+        store: any DirectStore = MemoryStore(),
         lookupTime: Duration = .seconds(8)
     ) {
         self.connection = connection
@@ -73,7 +41,7 @@ actor AdoWorkItems: WorkItemBackend {
         github = pullRequests
         self.store = store
         self.lookupTime = lookupTime
-        repositories = store.data(forKey: Self.repositoriesKey).flatMap { try? JSONDecoder().decode([String: String].self, from: $0) } ?? [:]
+        repositories = store.value(forKey: Self.repositoriesKey) ?? [:]
     }
 
     // MARK: WorkItemBackend
@@ -92,6 +60,11 @@ actor AdoWorkItems: WorkItemBackend {
         if AdoText.trim(text).isEmpty { throw directError(400, "The comment is empty.") }
         if text.utf16.count > Self.commentLimit { throw directError(400, "The comment is longer than 30,000 characters.") }
         return AdoItemPage.comment(try await client.addComment(itemId, text: text))
+    }
+
+    /// Asks Azure DevOps who the credential is; how Settings checks a connection before it keeps it.
+    func verify() async throws {
+        _ = try await connected().me()
     }
 
     /// Several items' summaries in the order asked, for the AB# chips of a pull request. An id that doesn't exist or
@@ -155,7 +128,7 @@ actor AdoWorkItems: WorkItemBackend {
     private func learn(_ learned: [String: String]) {
         if learned.isEmpty { return }
         repositories.merge(learned) { _, new in new }
-        store.set(try? JSONEncoder().encode(repositories), forKey: Self.repositoriesKey)
+        store.set(repositories, forKey: Self.repositoriesKey)
     }
 
     /// The pull requests GitHub answered for in time, in the order asked.

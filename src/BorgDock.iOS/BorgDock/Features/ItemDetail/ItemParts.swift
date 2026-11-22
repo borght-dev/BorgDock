@@ -228,7 +228,8 @@ struct ItemDetailsGrid: View {
                 Text(verbatim: "AB#\(parent.id) \(parent.title)")
             }
         case .tags(let tags):
-            HStack(spacing: 5) {
+            // Wrapping: a row of six tags is wider than the phone, and one too-wide row widens the whole page.
+            FlowLayout(spacing: 5) {
                 ForEach(tags, id: \.self) { ToneChip(text: $0, small: true) }
             }
         }

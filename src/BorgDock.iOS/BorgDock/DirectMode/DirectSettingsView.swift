@@ -96,6 +96,7 @@ struct DirectSettingsView: View {
         if session.hasGitHub {
             Task { await app.focus.load(reportErrors: true, fresh: true) }
         } else {
+            app.focus.forget()
             app.router.reset()
         }
     }

@@ -62,7 +62,7 @@ final class DirectFixtureProtocol: URLProtocol {
     override func startLoading() {
         guard let url = request.url else { return }
         if url.host() == Self.imageHost || AdoFixture.isAttachment(url) {
-            return answer(200, FixtureImage.png(named: url.query()?.contains("before") == true ? "before" : url.lastPathComponent), type: "image/png")
+            return answer(200, FixtureImage.png(named: url.query() ?? url.lastPathComponent), type: "image/png")
         }
         let body = request.httpBody ?? request.httpBodyStream.map(Self.read) ?? Data()
         let json = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any] ?? [:]
@@ -383,6 +383,7 @@ private enum AdoFixture {
         var title: String
         var state: String
         var assignedTo = "Sanne de Vries"
+        var tags = "checkout; payments"
         var description = ""
         var acceptance = ""
         var repro = ""
@@ -402,11 +403,39 @@ private enum AdoFixture {
             acceptance: "<ul><li>A timeout keeps every item in the basket</li><li>The customer sees <b>Try again</b></li><li>Trying again never charges twice</li></ul>"
         ),
         Item(
-            id: 60402, type: "Bug", title: "Totals are off by a cent on orders with a discount", state: "Testing", assignedTo: "Mira Jansen",
-            repro: "<ol><li>Add three items of € 3,33 to the basket</li><li>Apply the 10% code</li><li>Compare the basket total with the invoice</li></ol>"
+            id: 60402, type: "Bug", title: "Totals are off by a cent on orders with a discount", state: "Code Review", assignedTo: "Mira Jansen",
+            tags: "checkout; pricing; rounding; invoice-export; reported-by-support; regression",
+            description: longNotes,
+            repro: """
+            <ol><li>Add three items of € 3,33 to the basket</li><li>Apply the 10% code
+            <ol><li><img src="https://dev.azure.com/acme/_apis/wit/attachments/\(attachment)?fileName=invoice-wide.png"></li></ol></li>
+            <li>Compare the basket total with the invoice</li></ol>
+            """
         ),
         Item(id: 60388, title: "Suggest product names while searching", state: "Development In Progress", assignedTo: "Koen Example"),
         Item(id: 60300, type: "Epic", title: "Checkout that never loses an order", state: "In Progress", assignedTo: "Lena Visser"),
+    ]
+
+    /// Notes as an agent writes them: lists with quoted source lines, the shape that once pushed the page off screen.
+    private static let longNotes = """
+    <div><b>Risk: Medium</b> — The totals pipeline is shared by the basket, the invoice, the export and the dashboard tiles, so a fix touches many callers; it does not change stored orders.</div>
+    <ul><li>The code to change has many callers</li></ul>
+    <div>Intended behaviour, quoted from the source:</div>
+    <ul>
+    <li>doc <code>docs/pricing/rounding.md:300</code><blockquote>| `line.total` / `order.total` | `Totals.Line` (not `basket.sum` / `invoice.sum`) | rounded per line, then summed over every line of the order, never per order |<br><br>Each of them is rounded at its own place in the order, so it honours the discount of every<br>other line.</blockquote></li>
+    <li>test <code>shop/Shop.Core.Api.Tests/Features/Checkout/Pricing/Totals/RoundingPerLineWithDiscountTests.cs:1815</code><blockquote>[Fact]<br>public void Totals_RoundPerLine_AppliesToOrdersWithADiscount_AndKeepsTheInvoiceEqualToTheBasket()<br>{<br>// one discounted line + one normal line</blockquote></li>
+    </ul>
+    """
+
+    /// A process with many states, as teams that plan and verify with agents have.
+    private static let longWorkflow: [[String: String]] = [
+        ["name": "New", "category": "Proposed"], ["name": "Pick up by Agent", "category": "Proposed"], ["name": "Planning", "category": "InProgress"],
+        ["name": "Awaiting Answers", "category": "InProgress"], ["name": "Answers Ready", "category": "InProgress"], ["name": "Finalizing", "category": "InProgress"],
+        ["name": "Plan Review", "category": "InProgress"], ["name": "Plan Verification", "category": "InProgress"], ["name": "Ready For Development", "category": "InProgress"],
+        ["name": "Development In Progress", "category": "InProgress"], ["name": "On Hold", "category": "InProgress"], ["name": "Testing Failed", "category": "InProgress"],
+        ["name": "Fix Verification", "category": "InProgress"], ["name": "Needs Human", "category": "InProgress"], ["name": "Code Review", "category": "Resolved"],
+        ["name": "Ready For QA", "category": "Resolved"], ["name": "Post-Merge Smoke", "category": "Resolved"], ["name": "Test In Progress", "category": "Resolved"],
+        ["name": "Done", "category": "Completed"],
     ]
 
     private static let states: [[String: String]] = [
@@ -423,7 +452,7 @@ private enum AdoFixture {
         if path.hasSuffix("/_apis/connectiondata") {
             return ["authenticatedUser": ["providerDisplayName": "Koen Example", "properties": ["Account": ["$type": "System.String", "$value": "koen@example.com"]]]]
         }
-        if path.hasSuffix("/states") { return ["value": states] }
+        if path.hasSuffix("/states") { return ["value": path.contains("/bug/") ? longWorkflow : states] }
         if path.hasSuffix("/_apis/wit/workitemsbatch") {
             let wanted = body["ids"] as? [Int] ?? []
             return ["value": wanted.map { id in items.first { $0.id == id }.map(raw) ?? NSNull() as Any }]
@@ -442,7 +471,7 @@ private enum AdoFixture {
     private static func raw(_ item: Item) -> [String: Any] {
         ["id": item.id, "fields": [
             "System.Id": item.id, "System.TeamProject": "Shop", "System.WorkItemType": item.type, "System.Title": item.title, "System.State": item.state,
-            "System.IterationPath": "Shop\\Sprint 42", "System.AreaPath": "Shop\\Checkout", "System.Tags": "checkout; payments",
+            "System.IterationPath": "Shop\\Sprint 42", "System.AreaPath": "Shop\\Checkout", "System.Tags": item.tags,
             "System.AssignedTo": ["displayName": item.assignedTo, "uniqueName": "\(item.assignedTo.split(separator: " ")[0].lowercased())@example.com"],
             "System.ChangedDate": DirectFixture.ago(hours: 3), "Microsoft.VSTS.Common.Priority": 2, "Microsoft.VSTS.Scheduling.Effort": 5,
             "System.Description": item.description, "Microsoft.VSTS.Common.AcceptanceCriteria": item.acceptance, "Microsoft.VSTS.TCM.ReproSteps": item.repro,
@@ -490,6 +519,7 @@ private enum AdoFixture {
 /// A drawn stand-in for a screenshot, so proof images load without a network.
 private enum FixtureImage {
     static func png(named name: String) -> Data {
+        if name.contains("wide") { return desktopScreenshot() }
         let after = name.contains("after")
         let size = CGSize(width: 390, height: 700)
         return UIGraphicsImageRenderer(size: size).pngData { context in
@@ -505,6 +535,23 @@ private enum FixtureImage {
             UIBezierPath(roundedRect: CGRect(x: 20, y: 600, width: 350, height: 54), cornerRadius: 27).fill()
             ((after ? "Try again" : "Back to the shop") as NSString).draw(
                 at: CGPoint(x: 140, y: 615), withAttributes: [.font: UIFont.systemFont(ofSize: 18, weight: .semibold), .foregroundColor: UIColor.white]
+            )
+        }
+    }
+
+    /// A wide one, as a screenshot of a desktop page is.
+    private static func desktopScreenshot() -> Data {
+        let size = CGSize(width: 1600, height: 820)
+        return UIGraphicsImageRenderer(size: size).pngData { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            UIColor(red: 0.10, green: 0.13, blue: 0.27, alpha: 1).setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 96, height: size.height))
+            UIColor(white: 0.93, alpha: 1).setFill()
+            for row in 0..<9 { context.fill(CGRect(x: 130, y: 150 + CGFloat(row) * 66, width: 1430, height: 2)) }
+            ("Invoices" as NSString).draw(at: CGPoint(x: 130, y: 44), withAttributes: [.font: UIFont.systemFont(ofSize: 44, weight: .bold), .foregroundColor: UIColor.black])
+            ("Total  € 9,00   ·   Basket  € 8,99" as NSString).draw(
+                at: CGPoint(x: 130, y: 172), withAttributes: [.font: UIFont.systemFont(ofSize: 30, weight: .medium), .foregroundColor: UIColor.systemRed]
             )
         }
     }

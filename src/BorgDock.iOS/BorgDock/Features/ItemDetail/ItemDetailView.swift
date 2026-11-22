@@ -25,6 +25,15 @@ struct ItemDetailView: View {
     /// The section a chip jumped to stays under the bar for a few seconds while images above it load.
     @State private var pinned: String?
 
+    /// BorgDock Review's Connect Azure DevOps form, offered when the item can't be read for want of a connection.
+    @State private var connecting = false
+
+    /// What the page reads from: the item, and in BorgDock Review the Azure DevOps connection.
+    private struct Source: Equatable {
+        let id: Int
+        let azureDevOps: AdoConnection?
+    }
+
     private static let space = "item-page"
     private static let jumpBarHeight: CGFloat = 50
 
@@ -40,7 +49,19 @@ struct ItemDetailView: View {
             if let item {
                 page(item)
             } else if let loadError {
-                ScrollView { StatusCard(icon: "exclamationmark.triangle", text: loadError, tone: .warn) }
+                ScrollView {
+                    StatusCard(icon: "exclamationmark.triangle", text: loadError, tone: .warn)
+                    if let direct = app.direct, !direct.hasAzureDevOps {
+                        Button("Connect Azure DevOps") { connecting = true }
+                            .buttonStyle(.bdPrimary)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                            .accessibilityIdentifier("item-connect-ado")
+                            .sheet(isPresented: $connecting) {
+                                NavigationStack { AzureDevOpsForm(session: direct) { connecting = false } }
+                            }
+                    }
+                }
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -60,7 +81,8 @@ struct ItemDetailView: View {
             ToolbarItem(placement: .topBarTrailing) { moreMenu }
         }
         .tint(BD.text)
-        .task(id: route.id) { await load() }
+        // Connecting Azure DevOps (BorgDock Review) reads the item it couldn't read before.
+        .task(id: Source(id: route.id, azureDevOps: app.direct?.credentials.azureDevOps)) { await load() }
         .refreshable {
             if let fresh = await app.refreshItem(route.id) {
                 detail = fresh

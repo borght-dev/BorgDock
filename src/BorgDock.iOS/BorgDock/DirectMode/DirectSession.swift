@@ -70,7 +70,7 @@ final class DirectSession {
         var next = credentials
         next.gitHub.removeAll { $0.login.lowercased() == login.lowercased() }
         try? save(next)
-        if next.gitHub.isEmpty { store.set(nil, forKey: GitHubDirect.focusStoreKey) }
+        if next.gitHub.isEmpty { store.remove(forKey: GitHubDirect.focusStoreKey) }
     }
 
     /// `owner/repo` names to list every open pull request of.

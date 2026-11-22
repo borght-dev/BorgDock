@@ -5,16 +5,22 @@ import Foundation
 protocol DirectStore: Sendable {
     func data(forKey key: String) -> Data?
     /// Nil removes the key.
-    func set(_ data: Data?, forKey key: String)
+    func setData(_ data: Data?, forKey key: String)
 }
 
+/// Values go in and out as JSON. The raw requirement has its own name on purpose: a `set(Data)` beside a
+/// `set(some Encodable)` picks the wrong one for a non-optional `Data` and stores it encoded twice.
 extension DirectStore {
     func value<Value: Decodable>(_ type: Value.Type = Value.self, forKey key: String) -> Value? {
         data(forKey: key).flatMap { try? JSONDecoder().decode(Value.self, from: $0) }
     }
 
     func set(_ value: some Encodable, forKey key: String) {
-        set(try? JSONEncoder().encode(value), forKey: key)
+        setData(try? JSONEncoder().encode(value), forKey: key)
+    }
+
+    func remove(forKey key: String) {
+        setData(nil, forKey: key)
     }
 }
 
@@ -26,7 +32,7 @@ struct FileStore: DirectStore {
         try? Data(contentsOf: file(key))
     }
 
-    func set(_ data: Data?, forKey key: String) {
+    func setData(_ data: Data?, forKey key: String) {
         guard let data else {
             try? FileManager.default.removeItem(at: file(key))
             return
@@ -52,5 +58,5 @@ final class MemoryStore: DirectStore, @unchecked Sendable {
     private let lock = NSLock()
 
     func data(forKey key: String) -> Data? { lock.withLock { values[key] } }
-    func set(_ data: Data?, forKey key: String) { lock.withLock { values[key] = data } }
+    func setData(_ data: Data?, forKey key: String) { lock.withLock { values[key] = data } }
 }

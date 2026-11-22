@@ -60,6 +60,8 @@ final class FocusStore {
     #endif
 
     @ObservationIgnored private var loadGeneration = 0
+    /// The failure the last poll reported, so a poll that keeps failing says so once.
+    @ObservationIgnored private var reportedPollError: String?
     /// Quick Review's reads of a pull request's detail and files, in flight or done, so the next PR in the queue is
     /// read while you review the current one and both views share one request.
     @ObservationIgnored private var snapshotReads: [String: Task<ReviewSnapshot, Error>] = [:]
@@ -99,14 +101,18 @@ final class FocusStore {
             if let freshGroups { ciGroups = freshGroups }
             syncedAt = .now
             error = nil
+            reportedPollError = nil
         } catch is CancellationError {
             return
         } catch {
             guard generation == loadGeneration else { return }
+            let message = (error as? APIError)?.message ?? error.localizedDescription
             if reportErrors || focus != nil {
-                app?.report(error)
+                // Without a connection every poll fails the same way; the list on screen stays, and one toast is enough.
+                if reportErrors || message != reportedPollError { app?.report(error) }
+                reportedPollError = message
             } else {
-                self.error = (error as? APIError)?.message ?? error.localizedDescription
+                self.error = message
             }
         }
     }
@@ -131,6 +137,17 @@ final class FocusStore {
     /// The list as the last launch left it, shown while the first read runs.
     func restore(_ focus: Focus?) {
         if self.focus == nil { self.focus = focus }
+    }
+
+    /// Forgets what was read, when the last account it was read with is removed.
+    func forget() {
+        loadGeneration += 1
+        focus = nil
+        error = nil
+        details = [:]
+        files = [:]
+        conversations = [:]
+        ciGroups = []
     }
 
     @discardableResult
