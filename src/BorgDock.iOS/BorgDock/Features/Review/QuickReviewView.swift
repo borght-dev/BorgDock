@@ -249,7 +249,7 @@ struct QuickReviewView: View {
         .accessibilityIdentifier("review-skip")
     }
 
-    /// "Review" over the last pull request, or the author of the run.
+    /// "Review" over the last pull request it showed.
     private var endTitle: some View {
         VStack(spacing: 1) {
             Text("Review").font(.system(size: 16, weight: .semibold)).foregroundStyle(BD.text)
