@@ -131,13 +131,15 @@ The BorgDock desktop app links to the server so it shares read state and reports
 | POST | /api/desktop/links/approve | phone, **signed** | `{code}` | `{deviceName, sessionId}`. Case and dashes don't matter. 409 when the code expired (10 minutes) or was used |
 | GET | /api/desktop/links/:linkId?secret= | none | | `{status: 'pending'}`, `{status: 'expired'}`, or once `{status: 'approved', token, sessionId, serverName}`; then the link is gone (404, as for a wrong secret) |
 | PUT | /api/desktop/repositories | the desktop's | `DesktopRepositoriesRequest` | `{ok}`. The desktop's watched repositories (`owner/repo`; invalid names are dropped). It sends them after linking, at startup and within a minute of a change. 403 for any session that isn't a linked desktop's |
+| GET | /api/pr-views | phone or desktop | | `PrViews`: the saved pull request views both apps share, with their `revision` (0 before the first write) |
+| PUT | /api/pr-views | phone or desktop | `PutPrViewsRequest` | `PrViews`, the new revision. 409 `PrViewsConflict` with `current` when `baseRevision` is not the current one: merge (spec `docs/superpowers/specs/2026-11-22-ios-pr-list.md`) and send again. 400 for more than 100 views, an unknown tab, a missing name or id, or a duplicate id |
 
 - Links live in memory: a server restart drops the ones in progress. After an approval the desktop has at least two
   minutes to pick up its token; a token nobody picks up revokes its session.
 - The desktop's session is an app session named after `deviceName`, 180 days unused. It may only call `GET /api/server`,
   `GET /api/activity` (its reads never count as a visit for the away summary), `POST /api/activity/read`,
-  `POST /api/activity/read-targets`, `GET /api/activity/reads`, `POST /api/presence`, `PUT /api/desktop/repositories`
-  and `POST /api/auth/logout`. Anything else answers `403 {error}`.
+  `POST /api/activity/read-targets`, `GET /api/activity/reads`, `POST /api/presence`, `PUT /api/desktop/repositories`,
+  `GET`/`PUT /api/pr-views` and `POST /api/auth/logout`. Anything else answers `403 {error}`.
 - `GET /api/sources` lists linked desktops (`desktops: LinkedDesktop[]`, `atDesk` from its own presence reports), and
   `GET /api/account` marks each device `kind: 'desktop'` or `'phone'` (browsers leave it out). Signing the session out
   (`DELETE /api/auth/sessions/:id`, or the desktop's own logout) unlinks the desktop.

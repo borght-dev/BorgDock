@@ -7,6 +7,7 @@ final class FocusUITests: XCTestCase {
     private func launch(_ route: String) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-BorgDockServer", "http://localhost:8801", "-BorgDockToken", "sample-token-for-fixture-only-123", "-BorgDockRoute", route]
+        app.launchArguments += XCUIApplication.freshPullRequestList
         app.launch()
         return app
     }
@@ -92,6 +93,7 @@ final class FocusUITests: XCTestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         tab(app, "Pull requests")
+        app.groupPullRequests(by: "Author")
         app.foldEveryPullRequestGroup()
         let priya = app.buttons["prs-group-author:priyashah"]
         XCTAssertTrue(priya.waitForExistence(timeout: 5))
@@ -101,8 +103,9 @@ final class FocusUITests: XCTestCase {
         capture("prs-one-group-open")
 
         app.buttons["prs-display"].tap()
-        XCTAssertTrue(app.buttons["prs-sort-smallest"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["prs-display-group"].waitForExistence(timeout: 5))
         capture("prs-display")
+        app.buttons["Reset"].tap()
         app.buttons["Close"].tap()
         sleep(1)
 

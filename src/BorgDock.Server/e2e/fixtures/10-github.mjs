@@ -1082,13 +1082,35 @@ const agentsWaiting = [
 const prRoute = /^\/api\/prs\/([^/]+)\/([^/]+)\/(\d+)(?:\/(.*))?$/;
 const snoozed = new Map();
 
+const loginByFirstName = Object.fromEntries([...Object.values(people), ...Object.values(focusPeople)].map((p) => [(p.name ?? p.login).split(' ')[0], p.login]));
+
+/**
+ * What GitHub says about the reviews, read back from each sample's bucket and reason, so the phone derives the same
+ * buckets the server did: a review someone else's PR asks of you, the approvals, requested changes, your earlier review
+ * and who your own PR waits for. Focus's order stands in for its priority score.
+ */
+function withReviewFacts(p, index) {
+  if (p.requestedReviewerLogins) return p;
+  const me = p.account;
+  const latestReviews = p.approvedBy.map((login) => ({ login, state: 'approved', commitSha: null }));
+  if (p.reviewDecision === 'changes_requested') latestReviews.push({ login: p.author.login === 'larsj' ? 'tompeeters' : 'larsj', state: 'changes_requested', commitSha: null });
+  if (p.reviewedHeadSha && !latestReviews.some((r) => r.login === me)) latestReviews.push({ login: me, state: 'commented', commitSha: p.reviewedHeadSha });
+  const waitsFor = /Waiting for (\S+?)(?:’s|'s) review/.exec(p.reason?.text ?? '')?.[1];
+  const requestedReviewerLogins = p.bucket === 'you' && !p.isMine ? [me] : waitsFor && loginByFirstName[waitsFor] ? [loginByFirstName[waitsFor]] : [];
+  return { ...p, requestedReviewerLogins, requestedTeams: [], latestReviews, priorityScore: Math.max(0, 120 - index * 4) };
+}
+
 function focus() {
   // 90-review-queue.mjs adds Quick Review's queue, where this file doesn't have those pull requests itself.
   const queue = (globalThis.borgdockReviewQueue ?? []).filter((q) => !pullRequests.some((p) => p.key === q.key));
-  const visible = [...pullRequests, ...queue].filter((p) => !snoozed.has(p.key));
+  const visible = [...pullRequests, ...queue].filter((p) => !snoozed.has(p.key)).map(withReviewFacts);
   const counts = { you: 0, wait: 0, ready: 0, stale: 0 };
   for (const p of visible) counts[p.bucket] += 1;
-  return { generatedAt: at(0), counts, pullRequests: visible, agentsWaiting, accounts: [{ login: 'koenvdb', via: 'account', machine: null, ok: true, error: null, polledAt: at(0) }] };
+  return {
+    generatedAt: at(0), counts, pullRequests: visible, agentsWaiting,
+    accounts: [{ login: 'koenvdb', via: 'account', machine: null, ok: true, error: null, polledAt: at(0) }],
+    teams: { koenvdb: ['shop-team'] }, staleAfterDays: 7,
+  };
 }
 
 export function handle({ path, method, body, writes }) {

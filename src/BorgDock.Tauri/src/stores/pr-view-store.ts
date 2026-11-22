@@ -6,6 +6,7 @@ import {
   newViewId,
   type SavedPrView,
   sanitizeSavedViews,
+  viewName,
 } from '@/services/pr-list/facets';
 import { isGroupCollapsed } from '@/services/pr-list/groups';
 import type { PrViewKey } from '@/services/pr-list/model';
@@ -43,6 +44,8 @@ interface PrViewState {
    * is on. Session state, like `ui-store.collapsedGroups`.
    */
   expandedGroups: Set<string>;
+  /** `restore` has read the saved views from disk: before that the list is empty, not yours. */
+  restored: boolean;
 
   setDisplay: (patch: Partial<PrDisplay>) => void;
   resetDisplay: () => void;
@@ -58,6 +61,12 @@ interface PrViewState {
   revertActiveView: () => void;
   renameView: (id: string, name: string) => void;
   deleteView: (id: string) => void;
+  /**
+   * The saved views as another device left them (view sync). A view on
+   * screen that is gone goes back to All; one that changed shows its new
+   * version unless the list on screen differs from it.
+   */
+  replaceSavedViews: (views: SavedPrView[]) => void;
   restore: () => Promise<void>;
 }
 
@@ -74,6 +83,7 @@ export const usePrViewStore = create<PrViewState>()((set, get) => ({
   activeViewId: null,
   showCiSummary: true,
   expandedGroups: new Set(),
+  restored: false,
 
   setDisplay: (patch) => {
     const display = { ...get().display, ...patch };
@@ -117,7 +127,7 @@ export const usePrViewStore = create<PrViewState>()((set, get) => ({
     settleChange();
     const view: SavedPrView = {
       id: newViewId(),
-      name: name.trim() || 'Untitled view',
+      name: viewName(name) || 'Untitled view',
       ...currentList(get().display),
     };
     const savedViews = [...get().savedViews, view];
@@ -145,7 +155,9 @@ export const usePrViewStore = create<PrViewState>()((set, get) => ({
 
   renameView: (id, name) => {
     if (!name.trim()) return;
-    const savedViews = get().savedViews.map((v) => (v.id === id ? { ...v, name: name.trim() } : v));
+    const savedViews = get().savedViews.map((v) =>
+      v.id === id ? { ...v, name: viewName(name) } : v,
+    );
     set({ savedViews });
     persist(PR_SAVED_VIEWS_STORE_KEY, savedViews);
   },
@@ -156,6 +168,18 @@ export const usePrViewStore = create<PrViewState>()((set, get) => ({
     set({ savedViews });
     persist(PR_SAVED_VIEWS_STORE_KEY, savedViews);
     if (wasActive) get().showBuiltInView('all');
+  },
+
+  replaceSavedViews: (views) => {
+    const { activeViewId, savedViews: before, display } = get();
+    const shown = before.find((v) => v.id === activeViewId);
+    const untouched = shown !== undefined && !isViewEdited(shown, currentList(display));
+    set({ savedViews: views });
+    persist(PR_SAVED_VIEWS_STORE_KEY, views);
+    if (!activeViewId) return;
+    const next = views.find((v) => v.id === activeViewId);
+    if (!next) get().showBuiltInView('all');
+    else if (untouched && isViewEdited(next, currentList(display))) get().showSavedView(next.id);
   },
 
   restore: async () => {
@@ -171,6 +195,7 @@ export const usePrViewStore = create<PrViewState>()((set, get) => ({
       baseDisplay,
       display: get().activeViewId ? get().display : baseDisplay,
       savedViews,
+      restored: true,
       ...(typeof ciSummary === 'boolean' ? { showCiSummary: ciSummary } : {}),
     });
     if (typeof active === 'string' && savedViews.some((v) => v.id === active)) {

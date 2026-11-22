@@ -121,6 +121,9 @@ export type PrLabel = { name: string; color: string };
 
 export type PrRef = { owner: string; repo: string; number: number };
 
+/** A reviewer's latest review of a pull request, at the commit it reviewed. */
+export type PrLatestReview = { login: string; state: 'approved' | 'changes_requested' | 'commented' | 'dismissed' | 'pending'; commitSha: string | null };
+
 export type CheckSummary = {
   total: number;
   passed: number;
@@ -167,6 +170,20 @@ export type PrSummary = PrRef & {
   autoMerge: boolean;
   /** The head commit of your last review, for re-reviews; null if you never reviewed it. */
   reviewedHeadSha: string | null;
+  /** Logins still asked to review. Not `requestedReviewers`: PrDetail has that name for the people. */
+  requestedReviewerLogins: string[];
+  /** Team slugs still asked to review. */
+  requestedTeams: string[];
+  /**
+   * Each reviewer's latest review, so the phone derives review state the way the desktop does. Not `reviews`:
+   * PrDetail has that name for every review with its text.
+   */
+  latestReviews: PrLatestReview[];
+  /**
+   * Focus's priority score (the desktop's `computePriorityScores` total). The list's Priority order breaks ties within
+   * a status with it. Server-side for now: it needs when your review was first requested, which only a poller knows.
+   */
+  priorityScore: number;
 };
 
 export type AgentWaiting = { itemId: number | null; threadId: string; title: string; detail: string; tone: Tone };
@@ -180,7 +197,36 @@ export type Focus = {
   /** Agents waiting on you (from Dispatch), for the strip under the pull requests. */
   agentsWaiting: AgentWaiting[];
   accounts: GithubAccountStatus[];
+  /** Your team slugs per GitHub account (lower-case login), for review requests sent to a team. */
+  teams: Record<string, string[]>;
+  /** A pull request not updated for this many days counts as stale. */
+  staleAfterDays: number;
 };
+
+/* ======================================================================================
+ * Pull request list views, shared by the linked desktop and the phone
+ * ====================================================================================*/
+
+/** The pull request list's built-in tabs (the desktop's `PrViewKey`). */
+export type PrViewKey = 'all' | 'needsYou' | 'mine' | 'failing' | 'ready' | 'stale';
+
+/**
+ * A saved view: a tab that keeps its base tab, query and display (the desktop's `SavedPrView`). `display` is the
+ * desktop's `PrDisplay`. The server stores it as sent, and clients keep the fields they don't use (the phone has no
+ * layout or columns), so neither side drops the other's settings.
+ */
+export type SavedPrView = { id: string; name: string; filter: PrViewKey; query: string; display: Record<string, unknown> };
+
+/** GET /api/pr-views (phone or linked desktop). `revision` is 0 before the first write and goes up by one per write. */
+export type PrViews = { revision: number; views: SavedPrView[]; updatedAt: string | null };
+
+/**
+ * PUT /api/pr-views: the whole list, written only over `baseRevision` → PrViews. When another device wrote first the
+ * server answers 409 with `PrViewsConflict`: merge with `current` against the list you last saw, then send again over
+ * `current.revision`. At most 100 views; a name is at most 80 characters, a query at most 2000.
+ */
+export type PutPrViewsRequest = { baseRevision: number; views: SavedPrView[] };
+export type PrViewsConflict = { error: string; current: PrViews };
 
 export type CheckFailure = {
   step: string | null;
@@ -574,7 +620,8 @@ export type OwnerAllowlist = { emails: string[]; githubLogins: string[] };
  * 2. The phone calls `POST /api/desktop/links/approve` (signed) with the code; the server answers with the desktop's name.
  * 3. The desktop polls `GET /api/desktop/links/:linkId?secret=<pollSecret>` (no session) until it gets its token, once.
  * A desktop session may only read the server info and activity, mark read, sync reads, send presence, share its
- * watched repositories (`PUT /api/desktop/repositories`) and sign out; everything else answers 403. Links expire after
+ * watched repositories (`PUT /api/desktop/repositories`), read and write the saved pull request views
+ * (`GET`/`PUT /api/pr-views`) and sign out; everything else answers 403. Links expire after
  * 10 minutes; a code works once.
  */
 export type DesktopLinkRequest = { deviceName: string };

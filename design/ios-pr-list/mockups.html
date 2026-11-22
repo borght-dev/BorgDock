@@ -1,0 +1,1269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BorgDock iPhone pull requests like the desktop</title>
+<!-- Concept mockups. Shares the phone kit (tokens, phone frame, chips, cells) with design/ios-flow/mockups.html. Desktop reference: design/pr-overview/mockups.html, docs/superpowers/specs/2026-11-11-pr-overview.md. -->
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0c0d0f; color: #ededef; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono, code { font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace; }
+  code { font-size: .9em; }
+
+  /* ---------- page ---------- */
+  .wrap { max-width: 1820px; margin: 0 auto; padding: 72px 48px 140px; }
+  .hero { display: grid; grid-template-columns: auto 1fr; gap: 32px; align-items: center; }
+  .hero-icon { width: 112px; height: 112px; border-radius: 26px; background: #151618; border: 1px solid #2f3036; display: grid; place-items: center; box-shadow: 0 20px 50px -10px rgba(127, 126, 255, .35); }
+  .hero-icon svg { width: 72px; height: 72px; fill: #7f7eff; }
+  .hero h1 { margin: 0; font-size: 48px; letter-spacing: -.025em; font-weight: 700; }
+  .hero h1 span { color: #7f7eff; }
+  .hero p { margin: 10px 0 0; color: #9c9da4; font-size: 18px; max-width: 860px; line-height: 1.5; }
+  .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 44px; }
+  .principle { padding: 20px 22px; border-radius: 18px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); }
+  .principle b { display: block; font-size: 16px; margin-bottom: 6px; }
+  .principle span { color: #9c9da4; font-size: 14px; line-height: 1.55; }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+  .toc a { color: #c9c8ff; text-decoration: none; font-size: 13.5px; padding: 7px 13px; border-radius: 18px; background: rgba(127, 126, 255, .1); border: 1px solid rgba(127, 126, 255, .2); }
+  .sec { margin-top: 110px; }
+  .sec-h { display: flex; align-items: baseline; gap: 14px; border-top: 1px solid rgba(255, 255, 255, .08); padding-top: 30px; }
+  .sec-h .n { font: 600 13px/1 "SF Mono", ui-monospace, monospace; color: #7f7eff; }
+  .sec-h h2 { margin: 0; font-size: 30px; letter-spacing: -.02em; }
+  .sec-lead { margin: 12px 0 44px; color: #9c9da4; font-size: 16px; line-height: 1.6; max-width: 940px; }
+  .row { display: flex; flex-wrap: wrap; gap: 72px 44px; align-items: flex-start; }
+  figure.shot { margin: 0; width: 393px; }
+  figure.shot figcaption { margin-top: 34px; font-size: 14px; color: #9c9da4; line-height: 1.55; }
+  figure.shot figcaption b { display: block; color: #ededef; font-size: 16px; margin-bottom: 4px; }
+  figure.shot figcaption ul { margin: 8px 0 0; padding-left: 18px; }
+  figure.shot figcaption li { margin: 4px 0; }
+
+  /* ---------- the phone ---------- */
+  .phone {
+    --bg: #111214; --card: #1b1c1f; --card2: #232428; --sheet: #1b1c1f; --menu: rgba(44, 45, 50, .82);
+    --fill: rgba(255, 255, 255, .07); --fill2: rgba(255, 255, 255, .11); --sep: rgba(255, 255, 255, .08);
+    --tx: #ededef; --tx2: #9c9da4; --tx3: #6c6d74;
+    --ac: #7f7eff; --ac-soft: rgba(127, 126, 255, .16); --ac-tx: #b4b3ff; --onac: #12121a;
+    --gr: #5cc98f; --gr-soft: rgba(92, 201, 143, .14); --ongr: #0b2416;
+    --rd: #f0616d; --rd-soft: rgba(240, 97, 109, .15);
+    --yl: #e5b454; --yl-soft: rgba(229, 180, 84, .15);
+    --bl: #6fa8ff; --bl-soft: rgba(111, 168, 255, .15);
+    --mg: #a371f7; --mg-soft: rgba(163, 113, 247, .16);
+    --glass: rgba(52, 53, 58, .58); --glass-brd: rgba(255, 255, 255, .13);
+    --syk: #c4a7ff; --sys: #9ecbff; --syf: #dcbdfb; --syt: #7ee787; --sycm: #8b949e;
+    position: relative; width: 393px; height: 852px; border-radius: 55px; overflow: hidden; isolation: isolate;
+    background: var(--bg); color: var(--tx); font-size: 15px; line-height: 1.35; letter-spacing: -.01em;
+    box-shadow: 0 0 0 9px #050506, 0 0 0 10.5px #3a3b40, 0 46px 90px -24px rgba(0, 0, 0, .75);
+  }
+  .phone.light {
+    --bg: #f2f2f7; --card: #fff; --card2: #f7f7f9; --sheet: #f2f2f7; --menu: rgba(250, 250, 252, .86);
+    --fill: rgba(23, 24, 28, .055); --fill2: rgba(23, 24, 28, .09); --sep: #e3e4e8;
+    --tx: #17181c; --tx2: #5d606a; --tx3: #8f929c;
+    --ac: #4f46e5; --ac-soft: rgba(79, 70, 229, .1); --ac-tx: #4338ca; --onac: #fff;
+    --gr: #1f9d6b; --gr-soft: #e3f5ec; --ongr: #fff;
+    --rd: #d64560; --rd-soft: #fbe9ec;
+    --yl: #b07a0e; --yl-soft: #fbf1dc;
+    --bl: #2d6be4; --bl-soft: #e6eefc;
+    --mg: #8250df; --mg-soft: #f0e8fc;
+    --glass: rgba(255, 255, 255, .72); --glass-brd: rgba(0, 0, 0, .07);
+    --syk: #8250df; --sys: #0a3069; --syf: #6639ba; --syt: #116329; --sycm: #6e7781;
+  }
+  .sb { position: absolute; top: 0; left: 0; right: 0; height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 32px 0 54px; z-index: 90; font-weight: 600; font-size: 17px; letter-spacing: -.02em; color: var(--tx); pointer-events: none; }
+  .sb.w { color: #fff; }
+  .sb-r { display: flex; gap: 6px; align-items: center; }
+  .sb-r svg { height: 12px; width: auto; fill: currentColor; }
+  .sb-r svg.bat { height: 13px; }
+  .di { position: absolute; top: 11px; left: 50%; width: 125px; height: 37px; margin-left: -62.5px; border-radius: 19px; background: #000; z-index: 95; }
+  .hi { position: absolute; bottom: 8px; left: 50%; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: var(--tx); z-index: 99; }
+  .hi.w { background: #fff; }
+  .view { position: absolute; inset: 0; padding-top: 54px; overflow: hidden; }
+  .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 150px; background: linear-gradient(to bottom, transparent, var(--bg) 72%); z-index: 34; pointer-events: none; }
+
+  /* icons */
+  .ic { display: inline-grid; width: var(--s, 16px); height: var(--s, 16px); flex: none; }
+  .ic svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: var(--sw, 2); stroke-linecap: round; stroke-linejoin: round; }
+  .ic.fill svg { fill: currentColor; stroke: none; }
+
+  /* nav + titles */
+  .nav { height: 54px; display: flex; align-items: center; gap: 8px; padding: 0 16px; position: relative; z-index: 30; }
+  .sp { flex: 1; }
+  .gb, .gp { flex: none; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: var(--glass); border: .5px solid var(--glass-brd); backdrop-filter: blur(18px) saturate(1.7); -webkit-backdrop-filter: blur(18px) saturate(1.7); box-shadow: 0 2px 12px rgba(0, 0, 0, .1), inset 0 1px 0 rgba(255, 255, 255, .07); color: var(--tx); }
+  .gb { width: 44px; border-radius: 50%; }
+  .gb .ic { --s: 19px; }
+  .gp { border-radius: 22px; padding: 0 15px; gap: 6px; font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .gp .ic { --s: 16px; }
+  .gp.pri { background: var(--ac); color: var(--onac); border-color: transparent; }
+  .gp.dimmed { color: var(--tx3); }
+  .me { font-size: 14px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #7f7eff, #4f46e5); border-color: transparent; }
+  .nav-t { flex: 1; text-align: center; min-width: 0; }
+  .nav-t b { display: block; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-t span { display: block; font-size: 12px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lt { padding: 0 16px; font-size: 34px; font-weight: 700; letter-spacing: .005em; line-height: 41px; }
+  .sub { padding: 2px 16px 0; color: var(--tx2); font-size: 15px; }
+  .eyebrow { padding: 0 16px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+
+  /* pills, chips, dots */
+  .pills { display: flex; gap: 8px; padding: 14px 16px 4px; overflow: hidden; }
+  .pill { flex: none; height: 34px; padding: 0 13px; border-radius: 17px; display: inline-flex; align-items: center; gap: 6px; background: var(--fill); font-size: 14px; font-weight: 600; color: var(--tx); white-space: nowrap; }
+  .pill .c { color: var(--tx2); font-variant-numeric: tabular-nums; }
+  .pill.on { background: var(--tx); color: var(--bg); }
+  .pill.on .c { color: inherit; opacity: .6; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border-radius: 12px; font-size: 12.5px; font-weight: 600; background: var(--fill); color: var(--tx2); white-space: nowrap; flex: none; }
+  .chip .ic { --s: 13px; --sw: 2.4; }
+  .chip.bad { background: var(--rd-soft); color: var(--rd); }
+  .chip.ok { background: var(--gr-soft); color: var(--gr); }
+  .chip.warn { background: var(--yl-soft); color: var(--yl); }
+  .chip.run { background: var(--bl-soft); color: var(--bl); }
+  .chip.ac { background: var(--ac-soft); color: var(--ac-tx); }
+  .chip.mg { background: var(--mg-soft); color: var(--mg); }
+  .chip.sm { height: 21px; padding: 0 7px; font-size: 11.5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; display: inline-block; }
+  .pulse { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent); }
+  .unread { width: 9px; height: 9px; border-radius: 50%; background: var(--ac); flex: none; }
+  .av { width: 20px; height: 20px; border-radius: 50%; flex: none; display: inline-grid; place-items: center; font-size: 8.5px; font-weight: 700; color: #fff; background: hsl(var(--h, 245) 52% 50%); letter-spacing: 0; }
+  .av.lg { width: 30px; height: 30px; font-size: 11px; }
+  .lbl { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 11px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--c) 20%, transparent); color: color-mix(in srgb, var(--c) 60%, var(--tx)); border: .5px solid color-mix(in srgb, var(--c) 45%, transparent); }
+  .ty { width: 11px; height: 11px; border-radius: 3px; flex: none; display: inline-block; }
+  .ty.bug { background: #e5484d; } .ty.pbi { background: #3e7bfa; } .ty.task { background: #e5a33d; }
+  .br { font-family: "SF Mono", ui-monospace, monospace; font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--fill); color: var(--tx2); }
+
+  /* cards and lists */
+  .list { padding: 10px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .card { background: var(--card); border-radius: 22px; padding: 13px 16px 14px; border: .5px solid var(--sep); position: relative; }
+  .light .card { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .pr-h { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tx2); }
+  .pr-h b { color: var(--tx); font-weight: 600; }
+  .card h4 { margin: 5px 0 0; font-size: 16px; font-weight: 600; line-height: 1.3; letter-spacing: -.015em; }
+  .why { margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--tx2); }
+  .why .ic { --s: 14px; }
+  .why.ac { color: var(--ac-tx); } .why.bad { color: var(--rd); } .why.ok { color: var(--gr); } .why.warn { color: var(--yl); }
+  .pr-f { margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+  .cbar { display: flex; gap: 2px; width: 64px; height: 5px; flex: none; margin-right: 4px; }
+  .cbar i { flex: 1; border-radius: 2px; background: var(--gr); }
+  .cbar i.r { background: var(--rd); } .cbar i.y { background: var(--yl); } .cbar i.g { background: var(--tx3); opacity: .5; }
+  .ds { margin-left: auto; font: 500 12px "SF Mono", ui-monospace, monospace; color: var(--tx3); white-space: nowrap; }
+  .ds .a { color: var(--gr); } .ds .d { color: var(--rd); }
+  .grp-h { padding: 18px 32px 7px; font-size: 13px; color: var(--tx2); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .grp-h a { color: var(--ac-tx); font-weight: 500; text-decoration: none; }
+  .grp { margin: 0 16px; background: var(--card); border-radius: 22px; overflow: hidden; }
+  .dark .grp { border: .5px solid var(--sep); }
+  .cell { display: flex; align-items: center; gap: 12px; padding: 11px 16px; min-height: 50px; position: relative; }
+  .cell + .cell::before { content: ""; position: absolute; top: 0; left: var(--indent, 58px); right: 0; height: .5px; background: var(--sep); }
+  .cell .t { flex: 1; min-width: 0; }
+  .cell .t b { display: block; font-weight: 500; font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell .t > span { display: block; font-size: 13px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .cell .v { color: var(--tx2); font-size: 15px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+  .cell .chev { color: var(--tx3); --s: 15px; --sw: 2.4; }
+  .cell .when { font-size: 12.5px; color: var(--tx3); align-self: flex-start; margin-top: 2px; white-space: nowrap; }
+  .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; color: #fff; background: var(--ac); }
+  .ico .ic { --s: 17px; }
+  .ico.r { border-radius: 50%; }
+  .ico.soft { color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+
+  /* buttons, toggles, segmented */
+  .btn { height: 52px; border-radius: 26px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 17px; font-weight: 600; background: var(--fill2); color: var(--tx); flex: 1; white-space: nowrap; }
+  .btn .ic { --s: 18px; }
+  .btn.pri { background: var(--ac); color: var(--onac); }
+  .btn.go { background: var(--gr); color: var(--ongr); }
+  .btn.bad { background: var(--rd-soft); color: var(--rd); }
+  .btn.sm { height: 44px; font-size: 15.5px; }
+  .btns { display: flex; gap: 10px; padding: 0 16px; }
+  .tg { width: 52px; height: 31px; border-radius: 16px; background: var(--gr); position: relative; flex: none; }
+  .tg::after { content: ""; position: absolute; top: 2px; right: 2px; width: 35px; height: 27px; border-radius: 14px; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .18); }
+  .tg.off { background: var(--fill2); }
+  .tg.off::after { right: auto; left: 2px; }
+  .segc { display: flex; padding: 3px; border-radius: 13px; background: var(--fill); }
+  .segc span { flex: 1; text-align: center; padding: 7px 0; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: var(--tx2); }
+  .segc span.on { background: var(--card); color: var(--tx); box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
+  .dark .segc span.on { background: #3b3c42; }
+
+  /* tab bar (iOS 26 floating glass) */
+  .tabbar { position: absolute; left: 20px; right: 20px; bottom: 24px; display: flex; gap: 10px; z-index: 40; }
+  .tb-tabs { flex: 1; display: flex; height: 62px; padding: 4px; border-radius: 31px; }
+  .tb-tabs, .tb-search, .glass { background: var(--glass); border: .5px solid var(--glass-brd); backdrop-filter: blur(22px) saturate(1.8); -webkit-backdrop-filter: blur(22px) saturate(1.8); box-shadow: 0 10px 32px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .07); }
+  .tb-tab { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 27px; font-size: 10.5px; font-weight: 600; color: var(--tx); }
+  .tb-tab .ic { --s: 23px; --sw: 1.9; }
+  .tb-tab.on { background: var(--fill2); color: var(--ac); }
+  .tb-badge { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--rd); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  .tb-search { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .tb-search .ic { --s: 23px; }
+  .actbar { position: absolute; left: 16px; right: 16px; bottom: 30px; display: flex; gap: 10px; z-index: 40; align-items: center; }
+
+  /* sheets, menus, dim */
+  .dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); z-index: 45; }
+  .blurred { filter: blur(14px) saturate(1.2); transform: scale(1.04); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--sheet); border-radius: 40px 40px 0 0; padding-top: 7px; box-shadow: 0 -10px 40px rgba(0, 0, 0, .25); }
+  .sheet.float { left: 8px; right: 8px; bottom: 8px; border-radius: 46px; }
+  .grab { width: 38px; height: 5px; border-radius: 3px; background: var(--tx3); opacity: .45; margin: 0 auto 4px; }
+  .sh-h { display: flex; align-items: center; gap: 10px; padding: 6px 16px 8px; }
+  .sh-h h3 { flex: 1; margin: 0; text-align: center; font-size: 17px; font-weight: 600; }
+  .menu { position: absolute; z-index: 60; width: 262px; border-radius: 22px; overflow: hidden; background: var(--menu); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); box-shadow: 0 20px 60px rgba(0, 0, 0, .45); }
+  .mi { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 16px; position: relative; }
+  .mi + .mi::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: .5px; background: var(--sep); }
+  .mi span { flex: 1; }
+  .mi .ic { --s: 18px; }
+  .mi.gap { border-top: 7px solid rgba(0, 0, 0, .18); }
+  .mi.gap::before { display: none; }
+  .mi.bad { color: var(--rd); }
+
+  /* code */
+  .code { font: 11.5px/18px "SF Mono", ui-monospace, Menlo, monospace; background: var(--fill); border-radius: 12px; padding: 9px 11px; color: var(--tx); white-space: pre; overflow: hidden; }
+  .diff { font: 11px/19px "SF Mono", ui-monospace, Menlo, monospace; }
+  .dl { display: grid; grid-template-columns: 34px 16px 1fr; white-space: pre; overflow: hidden; }
+  .dl .n { color: var(--tx3); text-align: right; padding-right: 6px; }
+  .dl .m { color: var(--tx3); }
+  .dl.a { background: var(--gr-soft); }
+  .dl.a .n, .dl.a .m { color: var(--gr); }
+  .dl.d { background: var(--rd-soft); }
+  .dl.d .n, .dl.d .m { color: var(--rd); }
+  .hk { padding: 3px 12px; background: var(--fill); color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .diff .k { color: var(--syk); } .diff .s { color: var(--sys); } .diff .f { color: var(--syf); } .diff .ty2 { color: var(--syt); } .diff .cm { color: var(--sycm); }
+
+  /* reference chips inside prose (notes, comments) */
+  .rc { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 7px; background: var(--fill); font-size: 13px; font-weight: 600; vertical-align: 1px; white-space: nowrap; color: var(--tx); }
+  .rc .ic { --s: 12px; --sw: 2.4; }
+  .ud { position: absolute; left: 6px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--ac); }
+
+  /* wallpaper, lock screen, widgets, live activities */
+  .wall { background: radial-gradient(110% 70% at 15% 8%, #4a47b8 0%, transparent 55%), radial-gradient(90% 60% at 95% 85%, #1c6170 0%, transparent 60%), linear-gradient(165deg, #1b1a46, #0a0b12 72%); }
+  .wall-blur { position: absolute; inset: -30px; filter: blur(26px); }
+  .lk-date { text-align: center; color: rgba(255, 255, 255, .86); font-size: 20px; font-weight: 600; margin-top: 52px; }
+  .lk-time { text-align: center; color: rgba(255, 255, 255, .93); font-size: 104px; font-weight: 700; letter-spacing: -3px; line-height: 1; margin-top: 2px; text-shadow: 0 2px 30px rgba(127, 126, 255, .35); }
+  .lk-w { display: flex; justify-content: center; gap: 10px; margin-top: 14px; color: #fff; }
+  .lw-c { width: 70px; height: 70px; border-radius: 50%; background: rgba(255, 255, 255, .14); backdrop-filter: blur(10px); display: grid; place-items: center; text-align: center; position: relative; }
+  .lw-r { width: 156px; height: 70px; border-radius: 20px; background: rgba(255, 255, 255, .14); backdrop-filter: blur(10px); padding: 10px 12px; font-size: 13px; line-height: 1.3; }
+  .nt { border-radius: 26px; background: rgba(28, 29, 36, .62); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); color: #fff; padding: 12px 14px; display: flex; gap: 11px; border: .5px solid rgba(255, 255, 255, .1); }
+  .nt .app { width: 38px; height: 38px; border-radius: 10px; background: #151618; display: grid; place-items: center; flex: none; border: .5px solid rgba(255, 255, 255, .14); }
+  .nt .app svg { width: 24px; height: 24px; fill: #7f7eff; }
+  .nt .bd { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.33; }
+  .nt .bd b { font-weight: 600; }
+  .nt .hd { display: flex; justify-content: space-between; font-size: 14.5px; }
+  .nt .hd span { color: rgba(255, 255, 255, .55); font-size: 13px; }
+  .nt .tx { color: rgba(255, 255, 255, .82); }
+  .app-ic { width: 62px; height: 62px; border-radius: 15px; display: grid; place-items: center; color: #fff; margin: 0 auto; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+  .app-ic .ic { --s: 30px; --sw: 1.8; }
+  .app-lbl { text-align: center; color: #fff; font-size: 12px; margin-top: 5px; }
+  .wg { border-radius: 26px; background: rgba(24, 25, 30, .58); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); border: .5px solid rgba(255, 255, 255, .1); color: #fff; padding: 14px 15px; }
+  .crop { height: 270px; border-radius: 55px 55px 26px 26px; }
+  .crop .sb { padding: 6px 20px 0 40px; }
+  .key { width: 33px; height: 42px; border-radius: 8px; background: #6b6b70; display: grid; place-items: center; box-shadow: 0 1px 0 rgba(0, 0, 0, .35); font-weight: 400; }
+  .key.fn { background: #46464b; }
+  .crop.nosb .sb { display: none; }
+  .crop .sb-r { visibility: hidden; }
+  .wl { color: var(--ac-tx); font-weight: 500; }
+
+  /* how it works */
+  .arch { display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr; gap: 0; align-items: stretch; }
+  .arch-col { padding: 22px; border-radius: 22px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); display: grid; gap: 10px; align-content: start; }
+  .arch-col.accent { border-color: rgba(127, 126, 255, .4); background: linear-gradient(#18182a, #151618); }
+  .arch-col h4, .plan-col h4, .open h4 { margin: 0 0 4px; font-size: 17px; }
+  .arch-box { padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .06); font-size: 13.5px; line-height: 1.5; }
+  .arch-box b { display: block; font-size: 14.5px; margin-bottom: 2px; }
+  .arch-box span { color: #9c9da4; }
+  .arch-box code { color: #c9c8ff; }
+  .arch-arrow { display: grid; place-items: center; color: #7f7eff; font-size: 24px; }
+  .plan { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .plan-col { padding: 22px; border-radius: 22px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .plan-col h4 span, .open h4 span { display: block; font: 600 12px/1.4 "SF Mono", ui-monospace, monospace; color: #7f7eff; margin-bottom: 4px; }
+  .plan-col p { margin: 8px 0 0; }
+  .plan-col p.muted { color: #8e8f96; }
+  .plan-col ul, .open ul { margin: 8px 0 0; padding-left: 18px; }
+  .plan-col li, .open li { margin: 4px 0; }
+  .open { margin-top: 16px; padding: 22px 26px; border-radius: 22px; border: 1px dashed rgba(255, 255, 255, .14); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .open b { color: #ededef; }
+
+
+  /* ---------- this page ---------- */
+  .mk { position: absolute; z-index: 120; width: 26px; height: 26px; border-radius: 50%; background: #ff4d5e; color: #fff; font: 700 13px/26px -apple-system, system-ui, sans-serif; text-align: center; letter-spacing: 0; box-shadow: 0 0 0 4px rgba(255, 77, 94, .25); }
+  .principles { grid-template-columns: repeat(3, 1fr); }
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; margin-top: 8px; }
+  .flow .st { width: 210px; padding: 14px 16px; border-radius: 16px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 13.5px; line-height: 1.5; color: #9c9da4; }
+  .flow .st b { display: block; color: #ededef; font-size: 15px; margin-bottom: 2px; }
+  .flow .st.loop { border-color: rgba(127, 126, 255, .4); background: linear-gradient(#18182a, #151618); }
+  .flow .ar { display: grid; place-items: center; color: #7f7eff; font-size: 20px; }
+
+  /* agent rows: the row opens the PR, the pill opens T3 */
+  .ag { display: flex; align-items: center; gap: 11px; padding: 10px 10px 10px 16px; min-height: 62px; position: relative; }
+  .ag + .ag::before { content: ""; position: absolute; top: 0; left: 37px; right: 0; height: .5px; background: var(--sep); }
+  .ag .dot { margin-top: -16px; }
+  .ag .t { flex: 1; min-width: 0; }
+  .ag .t b { display: block; font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ag .t span { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--tx2); margin-top: 3px; white-space: nowrap; overflow: hidden; }
+  .ag .t span .ic { --s: 13px; flex: none; }
+  .ag .t span em { font-style: normal; color: var(--tx); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+  .t3 { flex: none; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill2); display: inline-flex; align-items: center; gap: 5px; font-size: 13.5px; font-weight: 600; color: var(--tx); }
+  .t3 .ic { --s: 14px; --sw: 2.2; }
+  .t3.ask { background: var(--yl-soft); color: var(--yl); }
+
+  /* review queue card on Focus */
+  .q { margin: 14px 16px 0; padding: 16px; border-radius: 24px; background: var(--card); border: .5px solid var(--sep); }
+  .light .q { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .q h3 { margin: 0; font-size: 21px; letter-spacing: -.02em; }
+  .q p { margin: 3px 0 12px; color: var(--tx2); font-size: 14px; }
+  .q .avs { display: flex; margin-left: auto; }
+  .q .avs .av { box-shadow: 0 0 0 2px var(--card); margin-left: -5px; }
+  .q .btn { height: 48px; }
+
+  /* compact PR rows */
+  .pl { display: flex; gap: 11px; padding: 11px 14px 12px; position: relative; }
+  .pl + .pl::before { content: ""; position: absolute; top: 0; left: var(--indent, 55px); right: 0; height: .5px; background: var(--sep); }
+  .pl .t { flex: 1; min-width: 0; }
+  .pl h4 { margin: 3px 0 0; font-size: 15.5px; font-weight: 600; line-height: 1.28; letter-spacing: -.015em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pl .why { margin-top: 4px; font-size: 13px; }
+  .trk { display: flex; align-items: center; gap: 4px; margin-top: 7px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .trk .s { display: inline-flex; align-items: center; gap: 4px; color: var(--c); }
+  .trk .tm { width: 15px; height: 15px; border-radius: 50%; background: var(--c); display: inline-grid; place-items: center; color: var(--card); flex: none; }
+  .trk .tm .ic { --s: 9px; --sw: 4; }
+  .trk .tm.ring { background: none; box-shadow: inset 0 0 0 2px var(--c); }
+  .trk .tm.ring::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--c); }
+  .trk .tm.hollow { background: none; box-shadow: inset 0 0 0 1.5px var(--c); }
+  .trk .ln { width: 9px; height: 2px; border-radius: 1px; background: var(--fill2); }
+  .trk .ln.on { background: var(--gr); }
+  .trk .ds { margin-left: auto; }
+
+  /* collapsible groups */
+  .gx { display: flex; align-items: center; gap: 10px; padding: 0 14px 0 16px; min-height: 54px; position: relative; }
+  .gx + .gx::before { content: ""; position: absolute; top: 0; left: 56px; right: 0; height: .5px; background: var(--sep); }
+  .gx .t { flex: 1; min-width: 0; }
+  .gx .t b { display: block; font-weight: 600; font-size: 15.5px; }
+  .gx .t > span { display: block; font-size: 12.5px; color: var(--tx2); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gx .t span .r { color: var(--rd); }
+  .gx .n { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--tx2); }
+  .gx .chev { --s: 15px; --sw: 2.4; color: var(--tx3); }
+  .gh { display: flex; align-items: center; gap: 8px; padding: 16px 20px 7px 22px; font-size: 13.5px; font-weight: 600; color: var(--tx2); }
+  .gh .chev { --s: 14px; --sw: 2.6; color: var(--tx3); }
+  .gh .n { color: var(--tx3); font-variant-numeric: tabular-nums; }
+  .gh a { margin-left: auto; color: var(--ac-tx); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .gh a .ic { --s: 13px; }
+  .listbar { display: flex; align-items: center; gap: 6px; padding: 10px 20px 0; font-size: 13px; color: var(--tx2); }
+  .listbar b { color: var(--tx); font-weight: 600; }
+  .listbar .ic { --s: 14px; }
+  .listbar a { margin-left: auto; color: var(--ac-tx); font-weight: 600; }
+  .foot { padding: 14px 24px 0; font-size: 12.5px; color: var(--tx3); line-height: 1.45; }
+  .foot b { color: var(--tx2); font-weight: 600; }
+
+  /* option sheet */
+  .opt-h { padding: 18px 28px 7px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+  .ck { color: var(--ac); --s: 18px; --sw: 2.6; }
+
+  /* PR detail */
+  .ph { padding: 4px 16px 0; }
+  .ph .rp { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--tx2); }
+  .ph .rp b { color: var(--tx); font-weight: 600; }
+  .ph .rp .ic { --s: 15px; color: var(--gr); }
+  .ph h1 { margin: 7px 0 0; font-size: 23px; line-height: 1.2; letter-spacing: -.025em; }
+  .ph .by { display: flex; align-items: center; gap: 7px; margin-top: 9px; font-size: 14px; color: var(--tx2); white-space: nowrap; overflow: hidden; }
+  .ph .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+  .jump { display: flex; gap: 6px; padding: 2px 16px 8px; overflow: hidden; position: relative; z-index: 30; }
+  .jump span { flex: none; display: inline-flex; align-items: center; height: 30px; padding: 0 11px; border-radius: 15px; background: var(--fill); font-size: 13px; font-weight: 600; color: var(--tx2); white-space: nowrap; }
+  .jump span.on { background: var(--tx); color: var(--bg); }
+  .jump.sticky { position: relative; padding-top: 12px; padding-bottom: 10px; border-bottom: .5px solid var(--sep); background: var(--bg); }
+  .sl { display: flex; align-items: baseline; padding: 20px 20px 8px; font-size: 13px; font-weight: 600; color: var(--tx2); }
+  .sl .sp + span { font-weight: 500; color: var(--tx3); }
+  .sl a { color: var(--ac-tx); font-weight: 600; }
+  .fc { margin: 0 16px 8px; background: var(--card); border-radius: 20px; border: .5px solid var(--sep); padding: 12px 14px 13px; }
+  .light .fc { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .fc .h { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+  .fc .h .ic { --s: 18px; color: var(--rd); }
+  .fc .h .sp + span { font-size: 12.5px; font-weight: 500; color: var(--tx3); }
+  .fc .stp { font-size: 12.5px; color: var(--tx2); margin: 2px 0 8px 26px; }
+  .fc .code { margin-left: 26px; font-size: 10.8px; line-height: 16px; white-space: pre-wrap; padding: 8px 10px; }
+  .fc .code .r { color: var(--rd); } .fc .code .g { color: var(--gr); } .fc .code .m { color: var(--tx3); }
+  .fc .f { display: flex; gap: 6px; margin: 9px 0 0 26px; }
+  .pass { margin: 0 16px; display: flex; align-items: center; gap: 9px; padding: 12px 14px; border-radius: 16px; background: var(--card); font-size: 14px; color: var(--tx2); }
+  .pass .ic { --s: 17px; color: var(--gr); }
+  .pass .chev { margin-left: auto; color: var(--tx3); --s: 14px; }
+  .pfs { display: flex; gap: 10px; padding: 0 16px; overflow: hidden; }
+  .pf { flex: none; width: 108px; }
+  .pf .img { height: 186px; border-radius: 14px; border: .5px solid var(--sep); background: var(--card); overflow: hidden; padding: 12px 8px; display: flex; flex-direction: column; gap: 6px; }
+  .pf .img i { display: block; height: 7px; border-radius: 3px; background: var(--fill2); }
+  .pf .img i.w { width: 60%; } .pf .img i.ac { background: var(--ac); height: 16px; border-radius: 8px; margin-top: auto; } .pf .img i.gr { background: var(--gr-soft); height: 22px; }
+  .pf .img i.hd { height: 11px; width: 70%; background: var(--tx3); opacity: .5; }
+  .pf span { display: block; margin-top: 6px; font-size: 12px; color: var(--tx2); line-height: 1.3; }
+
+  /* rendered GitHub markdown */
+  .md { font-size: 14.5px; line-height: 1.45; color: var(--tx); }
+  .md h5 { margin: 14px 0 3px; font-size: 15.5px; font-weight: 700; letter-spacing: -.01em; }
+  .md h5:first-child { margin-top: 0; }
+  .md p { margin: 5px 0; }
+  .md ul { margin: 5px 0; padding-left: 19px; }
+  .md li { margin: 3px 0; }
+  .md ul.task { list-style: none; padding-left: 0; }
+  .md ul.task li { display: flex; gap: 8px; align-items: flex-start; }
+  .cb { width: 17px; height: 17px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--tx3); flex: none; margin-top: 2px; display: grid; place-items: center; color: var(--onac); }
+  .cb .ic { --s: 11px; --sw: 3.4; }
+  .cb.on { background: var(--ac); box-shadow: none; }
+  .md code { font: 12px "SF Mono", ui-monospace, monospace; padding: 1px 5px; border-radius: 5px; background: var(--fill); color: var(--ac-tx); }
+  .md table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 4px; }
+  .md th, .md td { text-align: left; padding: 6px 7px; border-bottom: .5px solid var(--sep); vertical-align: top; }
+  .md th { color: var(--tx2); font-weight: 600; }
+  .md td.mono { font: 11px/1.4 "SF Mono", ui-monospace, monospace; }
+  .md blockquote { margin: 6px 0; padding-left: 11px; border-left: 3px solid var(--fill2); color: var(--tx2); }
+  .md .det { margin: 8px 0 0; padding: 9px 12px; border-radius: 12px; background: var(--fill); display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--tx2); }
+  .md .det .ic { --s: 13px; --sw: 2.6; }
+  .md .rc { font-size: 12px; height: 21px; }
+  .desc { margin: 0 16px; padding: 14px 16px; border-radius: 20px; background: var(--card); }
+  .fade { position: relative; max-height: var(--h, 999px); overflow: hidden; }
+  .fade::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 44px; background: linear-gradient(transparent, var(--card)); }
+  .more { display: block; margin-top: 6px; font-size: 14.5px; font-weight: 600; color: var(--ac-tx); }
+
+  /* comments */
+  .cm { margin: 0 16px 10px; background: var(--card); border-radius: 20px; overflow: hidden; border: .5px solid var(--sep); }
+  .light .cm { border-color: transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+  .cm .fp { display: flex; gap: 8px; align-items: center; padding: 10px 14px; font: 12px "SF Mono", ui-monospace, monospace; color: var(--tx2); border-bottom: .5px solid var(--sep); }
+  .cm .fp .ic { --s: 13px; }
+  .cm .bd { padding: 11px 14px 12px; display: flex; gap: 10px; }
+  .cm .bd .av { margin-top: 1px; }
+  .cm .who { display: flex; align-items: baseline; gap: 6px; font-size: 14.5px; font-weight: 600; }
+  .cm .who span { font-size: 12.5px; font-weight: 400; color: var(--tx3); }
+  .cm .who .chip { align-self: center; }
+  .cm .bd .md { margin-top: 2px; font-size: 14px; }
+  .cm .acts { display: flex; border-top: .5px solid var(--sep); }
+  .cm .acts span { flex: 1; text-align: center; padding: 11px 0; font-size: 15px; font-weight: 600; color: var(--ac-tx); }
+  .cm .acts span + span { border-left: .5px solid var(--sep); }
+  .cm.bot .bd { align-items: center; padding: 11px 14px; }
+  .cm.bot .ic.b { --s: 18px; color: var(--tx2); }
+  .cm.bot .t { flex: 1; min-width: 0; font-size: 14px; }
+  .cm.bot .t b { font-weight: 600; }
+  .cm.bot .t span { display: block; color: var(--tx2); font-size: 12.5px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .compose { position: absolute; left: 16px; right: 16px; bottom: 30px; z-index: 40; height: 54px; border-radius: 27px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 20px; color: var(--tx3); font-size: 16px; }
+  .compose .snd { margin-left: auto; width: 42px; height: 42px; border-radius: 50%; background: var(--tx3); display: grid; place-items: center; color: #fff; }
+  .compose .snd .ic { --s: 18px; --sw: 2.6; }
+
+  /* the walk */
+  .wn { flex: 1; text-align: center; min-width: 0; }
+  .wn small { display: block; font: 500 11.5px/1.3 "SF Mono", ui-monospace, monospace; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wn b { display: inline-flex; align-items: center; gap: 4px; font-size: 16.5px; font-weight: 650; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wn b .ic { --s: 13px; --sw: 2.6; color: var(--tx3); }
+  .pb { width: 128px; height: 4px; border-radius: 2px; background: var(--fill2); margin: 5px auto 0; overflow: hidden; display: flex; gap: 1px; }
+  .pb i { display: block; height: 100%; background: var(--gr); flex: var(--n) 0 0; }
+  .pb i.t { background: var(--fill2); } .pb i.o { background: transparent; }
+  .meta { display: flex; align-items: center; gap: 8px; padding: 6px 16px 10px; font-size: 13px; color: var(--tx2); border-bottom: .5px solid var(--sep); }
+  .meta .ds { margin-left: auto; font-size: 12.5px; }
+  .wb { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 16px 26px; background: linear-gradient(to bottom, transparent, var(--bg) 38%); z-index: 40; }
+  .wb .r3 { display: flex; gap: 12px; align-items: center; }
+  .wb .gb { width: 52px; height: 52px; }
+  .wb .cap { text-align: center; font-size: 13px; color: var(--tx2); margin-top: 11px; font-variant-numeric: tabular-nums; }
+  .wb .cap b { color: var(--tx); font-weight: 600; }
+  .wb .cap span { color: var(--tx3); }
+  .lock { height: 44px; padding: 0 13px; border-radius: 22px; display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; color: var(--tx3); flex: none; }
+  .lock .ic { --s: 16px; }
+  .kind { margin: 14px 16px 0; padding: 14px 16px; border-radius: 20px; background: var(--card); font-size: 14px; line-height: 1.45; color: var(--tx2); display: flex; gap: 12px; }
+  .kind .ico { --c: var(--bl); }
+  .kind b { color: var(--tx); display: block; font-size: 15px; }
+  .fr { display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 46px; position: relative; font: 12.5px "SF Mono", ui-monospace, monospace; }
+  .fr + .fr::before { content: ""; position: absolute; top: 0; left: 40px; right: 0; height: .5px; background: var(--sep); }
+  .fr .p { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fr .p span { color: var(--tx3); }
+  .fr .ds { margin-left: 0; font-size: 11.5px; }
+  .fr .ck2 { width: 16px; display: grid; place-items: center; flex: none; }
+  .fr .ck2 .ic { --s: 16px; --sw: 2.2; }
+  .fr .ck2 .dot { width: 7px; height: 7px; }
+  .fr.done .p { color: var(--tx3); }
+  .kbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; margin: 10px 0 8px; }
+  .kbar i { flex: var(--n) 0 0; background: var(--c); }
+  .klg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--tx2); }
+  .klg span { display: inline-flex; align-items: center; gap: 5px; }
+  .klg span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+  .toast { position: absolute; top: 60px; left: 14px; right: 14px; z-index: 80; height: 54px; border-radius: 27px; display: flex; align-items: center; gap: 11px; padding: 0 7px 0 14px; font-size: 14.5px; font-weight: 600; }
+  .toast .rg { width: 26px; height: 26px; border-radius: 50%; background: conic-gradient(var(--gr) 0 72%, var(--fill2) 0); display: grid; place-items: center; flex: none; }
+  .toast .rg::after { content: "4"; width: 20px; height: 20px; border-radius: 50%; background: var(--card); display: grid; place-items: center; font-size: 11px; color: var(--tx); }
+  .toast .t { flex: 1; min-width: 0; }
+  .toast .t span { display: block; font-size: 12px; font-weight: 500; color: var(--tx2); }
+  .toast .u { height: 40px; padding: 0 15px; border-radius: 20px; background: var(--fill2); display: inline-flex; align-items: center; gap: 6px; }
+  .toast .u .ic { --s: 15px; }
+  .bn { margin: 12px 16px 0; padding: 12px 14px; border-radius: 16px; background: var(--gr-soft); display: flex; gap: 10px; font-size: 14px; line-height: 1.42; color: var(--tx); }
+  .bn > .ic { --s: 18px; color: var(--gr); margin-top: 1px; }
+  .bn.bad { background: var(--rd-soft); } .bn.bad > .ic { color: var(--rd); }
+  .bn.warn { background: var(--yl-soft); } .bn.warn > .ic { color: var(--yl); }
+  .bn b { font-weight: 600; }
+  .bn span { color: var(--tx2); }
+  .center { position: absolute; left: 24px; right: 24px; top: 280px; text-align: center; }
+  .center .big { width: 64px; height: 64px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; margin: 0 auto 16px; color: var(--tx2); }
+  .center .big .ic { --s: 30px; --sw: 1.8; }
+  .center h3 { margin: 0; font-size: 21px; }
+  .center p { margin: 6px 0 0; color: var(--tx2); font-size: 14.5px; line-height: 1.45; }
+
+  /* what's broken and why */
+  .fixes { display: grid; gap: 10px; }
+  .fix { display: grid; grid-template-columns: 34px 1fr 1.25fr 1.25fr; gap: 0 22px; padding: 18px 22px; border-radius: 18px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 14px; line-height: 1.55; color: #c9cad0; }
+  .fix .k { font: 600 13px/22px "SF Mono", ui-monospace, monospace; color: #7f7eff; }
+  .fix b { display: block; color: #ededef; font-size: 15px; margin-bottom: 3px; line-height: 1.4; }
+  .fix h6 { margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #6c6d74; }
+  .fix code { color: #c9c8ff; font-size: 12.5px; }
+  .fix .conf { display: inline-block; margin-top: 6px; font-size: 12px; padding: 1px 8px; border-radius: 9px; background: rgba(92, 201, 143, .14); color: #5cc98f; font-weight: 600; }
+  .fix .conf.likely { background: rgba(229, 180, 84, .15); color: #e5b454; }
+  .plan { grid-template-columns: repeat(5, 1fr); }
+  @media (max-width: 1100px) {
+    .fix { grid-template-columns: 1fr; gap: 10px; }
+    .principles, .plan { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .wrap { padding: 40px 16px 80px; }
+    .hero { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 34px; }
+    figure.shot { width: 100%; overflow-x: auto; }
+  }
+
+  /* work: compact rows, lanes, swipe */
+  .wi { display: flex; gap: 11px; padding: 10px 14px 11px 16px; position: relative; align-items: flex-start; background: var(--card); }
+  .wi + .wi::before, .swp + .wi::before, .wi + .swp::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: .5px; background: var(--sep); z-index: 2; }
+  .wi .t { flex: 1; min-width: 0; }
+  .wi .h { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--tx2); white-space: nowrap; }
+  .wi .h .chip { margin-left: auto; }
+  .wi .ti { display: block; margin-top: 3px; font-size: 15.5px; font-weight: 600; letter-spacing: -.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wi .l1 { margin-top: 3px; font-size: 13px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wi .l1 b { color: var(--tx); font-weight: 500; }
+  .wi .evs { display: flex; gap: 5px; margin-top: 6px; overflow: hidden; }
+  .wi.one { align-items: center; padding-top: 12px; padding-bottom: 12px; }
+  .wi.one .ti { margin-top: 0; font-weight: 500; font-size: 15px; }
+  .wi.one .st { font-size: 12.5px; color: var(--tx3); white-space: nowrap; }
+  .swp { position: relative; overflow: hidden; }
+  .swp .wi { margin-right: 150px; box-shadow: 6px 0 12px -6px rgba(0, 0, 0, .18); }
+  .swa { position: absolute; top: 0; right: 0; bottom: 0; display: flex; }
+  .swa span { width: 75px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #fff; font-size: 12px; font-weight: 600; }
+  .swa span .ic { --s: 19px; }
+  .act-pills { display: flex; gap: 8px; padding: 12px 16px 0; }
+  .act-pills .pill.warn { background: var(--yl-soft); color: var(--yl); }
+  .act-pills .pill .ic { --s: 15px; }
+  .lane-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+  .grp.flat { border-radius: 22px; }
+
+  /* item detail */
+  .ih { padding: 4px 16px 0; }
+  .ih .tp { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--tx2); }
+  .ih .tp .chip { margin-left: auto; }
+  .ih h1 { margin: 7px 0 0; font-size: 23px; line-height: 1.2; letter-spacing: -.025em; }
+  .wf { margin: 14px 16px 0; }
+  .wf .bar { display: flex; gap: 3px; }
+  .wf .bar i { flex: 1; height: 5px; border-radius: 3px; background: var(--fill2); }
+  .wf .bar i.d { background: var(--ac); }
+  .wf .bar i.x { background: var(--rd); }
+  .wf .lb { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; color: var(--tx3); }
+  .wf .lb b { color: var(--rd); font-weight: 600; }
+  .wf .note { margin-top: 5px; font-size: 13px; color: var(--tx2); }
+  .md ol { margin: 5px 0; padding-left: 21px; }
+  .md ol li { margin: 4px 0; }
+  .simg { margin: 8px 0 2px; border-radius: 12px; border: .5px solid var(--sep); background: var(--card2); padding: 10px; display: grid; gap: 6px; }
+  .simg i { display: block; height: 7px; border-radius: 3px; background: var(--fill2); }
+  .simg i.w { width: 55%; } .simg i.r { background: var(--rd-soft); height: 16px; } .simg i.hd { height: 10px; width: 40%; background: var(--tx3); opacity: .45; }
+  .simg span { font-size: 11.5px; color: var(--tx3); display: flex; justify-content: space-between; }
+  .dg { margin: 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: .5px; background: var(--sep); border-radius: 20px; overflow: hidden; }
+  .dg > div { background: var(--card); padding: 9px 14px 10px; min-width: 0; }
+  .dg small { display: block; font-size: 12px; color: var(--tx3); }
+  .dg b { display: flex; align-items: center; gap: 6px; font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .dg .wide { grid-column: span 2; }
+  .tl-ev { display: flex; gap: 10px; align-items: center; margin: 0 16px; padding: 8px 4px 8px 14px; font-size: 13px; color: var(--tx2); }
+  .tl-ev .dot { width: 7px; height: 7px; }
+  .tl-ev b { color: var(--tx); font-weight: 500; }
+  .tl-ev .sp + span { color: var(--tx3); font-size: 12px; }
+  .cm .bd .att { margin-top: 8px; }
+  .vera { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: var(--mg-soft); color: var(--mg); }
+
+  /* the file rules */
+  .rules { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 56px; }
+  .rule { padding: 20px 22px; border-radius: 20px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .rule h4 { margin: 0 0 8px; font-size: 16px; color: #ededef; }
+  .rule h4 span { display: block; font: 600 12px/1.4 "SF Mono", ui-monospace, monospace; color: #7f7eff; margin-bottom: 4px; }
+  .rule ul { margin: 6px 0 0; padding-left: 18px; }
+  .rule li { margin: 4px 0; }
+  .rule code { color: #c9c8ff; font-size: 12.5px; }
+  .rule .new { display: inline-block; font: 700 10.5px/1 system-ui; padding: 3px 6px; border-radius: 6px; background: rgba(92, 201, 143, .14); color: #5cc98f; margin-left: 4px; vertical-align: 1px; }
+  .decided { margin-top: 16px; padding: 22px 26px; border-radius: 22px; background: #151618; border: 1px solid rgba(92, 201, 143, .3); font-size: 14px; line-height: 1.6; color: #c9cad0; }
+  .decided h4 { margin: 0 0 4px; font-size: 17px; color: #ededef; }
+  .decided h4 span { display: block; font: 600 12px/1.4 "SF Mono", ui-monospace, monospace; color: #5cc98f; margin-bottom: 4px; }
+  .decided ul { margin: 8px 0 0; padding-left: 18px; }
+  .decided li { margin: 4px 0; }
+  .decided b { color: #ededef; }
+  @media (max-width: 1100px) { .rules { grid-template-columns: 1fr; } }
+
+  /* ---------- this page: sort, group, filter ---------- */
+  .srch { margin: 10px 16px 0; height: 40px; border-radius: 20px; background: var(--fill); display: flex; align-items: center; gap: 6px; padding: 0 12px; color: var(--tx3); font-size: 16px; white-space: nowrap; overflow: hidden; }
+  .srch .ic { --s: 17px; flex: none; }
+  .srch.on { background: var(--card); color: var(--tx); box-shadow: 0 1px 3px rgba(0, 0, 0, .06); height: 44px; border-radius: 22px; }
+  .tok { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border-radius: 8px; background: var(--ac-soft); color: var(--ac-tx); font-size: 14.5px; font-weight: 600; flex: none; }
+  .tok .ic { --s: 13px; }
+  .caret { width: 2px; height: 21px; background: var(--ac); border-radius: 1px; flex: none; margin-left: -4px; }
+  .fchips { display: flex; gap: 6px; padding: 10px 16px 0; overflow: hidden; }
+  .fc2 { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 5px 0 11px; border-radius: 15px; background: var(--card); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); font-size: 13px; color: var(--tx2); white-space: nowrap; }
+  .fc2 b { color: var(--tx); font-weight: 600; }
+  .fc2 .x { width: 20px; height: 20px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; color: var(--tx2); margin-left: 2px; }
+  .fc2 .x .ic { --s: 10px; --sw: 3; }
+  .fc2.add { padding: 0 11px 0 9px; gap: 5px; color: var(--ac-tx); font-weight: 600; background: var(--ac-soft); box-shadow: none; }
+  .fc2.add .ic { --s: 15px; --sw: 2.4; }
+  .fc2.add .k { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--ac); color: var(--onac); font-size: 11px; display: grid; place-items: center; }
+  .mbar { display: flex; align-items: center; gap: 14px; padding: 8px 20px 0; font-size: 13px; color: var(--tx2); }
+  .mbar a { color: var(--ac-tx); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+  .mbar a .ic { --s: 13px; }
+  .mbar .sp + a { margin-left: 0; }
+  .pill .ic { --s: 14px; }
+  .pills.scrolled { margin-left: -64px; }
+  .gh .sg { --s: 15px; --sw: 2.3; }
+  .sgh { display: flex; align-items: center; gap: 6px; padding: 9px 14px 6px; font-size: 12.5px; font-weight: 600; color: var(--tx2); position: relative; }
+  .sgh .ic { --s: 12px; --sw: 2.8; color: var(--tx3); }
+  .sgh .n { color: var(--tx3); font-variant-numeric: tabular-nums; }
+  .sgh + .pl::before { display: none; }
+  .pl + .sgh { border-top: .5px solid var(--sep); }
+  .pl .av.lg { margin-top: 2px; }
+  .gx .ico .ic { --s: 16px; }
+  .txb { width: 84px; font-size: 16px; color: var(--ac-tx); font-weight: 500; flex: none; }
+  .txb.r { text-align: right; font-weight: 600; }
+  .sh-r { width: 84px; display: flex; justify-content: flex-end; flex: none; }
+  .shbtn { position: absolute; left: 16px; right: 16px; bottom: 30px; display: flex; z-index: 5; }
+  .shfade { position: absolute; left: 0; right: 0; bottom: 0; height: 130px; background: linear-gradient(transparent, var(--sheet) 45%); z-index: 4; }
+  .cell .v.set { color: var(--ac-tx); font-weight: 500; }
+  .cell .v.none { color: var(--tx3); }
+  .cell .v .ic { --s: 14px; --sw: 2.4; color: var(--tx3); }
+  .cell .v.mono { font: 12.5px "SF Mono", ui-monospace, monospace; }
+  .cell.off .t b, .cell.off .v { color: var(--tx3); }
+  .cell .num { color: var(--tx2); font-variant-numeric: tabular-nums; font-size: 15px; }
+  .cell .ckw { width: 20px; display: grid; place-items: center; flex: none; }
+  .menu .mi { padding: 10px 14px 10px 12px; gap: 8px; align-items: flex-start; font-size: 15.5px; }
+  .menu .mi .ckw { width: 18px; flex: none; color: var(--tx); padding-top: 2px; }
+  .menu .mi .ckw .ic { --s: 15px; --sw: 2.6; }
+  .menu .mi .tt { flex: 1; min-width: 0; }
+  .menu .mi .tt small { display: block; font-size: 12.5px; color: var(--tx2); margin-top: 1px; line-height: 1.3; }
+  .menu .mi.sep { border-top: 7px solid rgba(0, 0, 0, .06); }
+  .menu .mi.sep::before { display: none; }
+  .vbar { margin: 10px 16px 0; padding: 7px 7px 7px 14px; border-radius: 18px; background: var(--ac-soft); display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ac-tx); }
+  .vbar b { font-weight: 600; }
+  .vbar .sp { flex: 1; }
+  .vbar .sbtn { height: 32px; padding: 0 12px; border-radius: 16px; background: var(--ac); color: var(--onac); font-weight: 600; display: inline-flex; align-items: center; white-space: nowrap; }
+  .vbar .sbtn.alt { background: var(--card); color: var(--ac-tx); }
+  .field { margin: 8px 16px 0; height: 50px; border-radius: 16px; background: var(--card); display: flex; align-items: center; padding: 0 16px; font-size: 17px; }
+  .field .caret { margin-left: 1px; }
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 300px; background: #d3d5db; padding: 10px 4px 0; z-index: 40; }
+  .kb .kr { display: flex; justify-content: center; gap: 6px; margin-bottom: 11px; }
+  .kb .kk { width: 33px; height: 43px; border-radius: 6px; background: #fff; display: grid; place-items: center; font-size: 22px; color: #17181c; box-shadow: 0 1px 0 rgba(0, 0, 0, .3); }
+  .kb .kk.fn { background: #abb0ba; font-size: 15px; width: 44px; }
+  .kb .kk.wide { flex: 1; max-width: 186px; font-size: 15px; }
+  .kb .kk.go { background: #4f46e5; color: #fff; width: 88px; font-size: 15px; }
+  .cmp { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.5; color: #c9cad0; }
+  .cmp th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #6c6d74; padding: 0 16px 10px; }
+  .cmp td { padding: 14px 16px; border-top: 1px solid rgba(255, 255, 255, .07); vertical-align: top; }
+  .cmp td:first-child { color: #ededef; font-weight: 600; width: 150px; }
+  .cmp td.new { color: #ededef; }
+  .cmp td.new em { font-style: normal; color: #5cc98f; }
+  .cmp code { color: #c9c8ff; font-size: 12.5px; }
+  .cmp-wrap { padding: 22px 8px 8px; border-radius: 22px; background: #151618; border: 1px solid rgba(255, 255, 255, .07); overflow-x: auto; }
+  .qdone { text-align: center; padding: 8px 24px 0; }
+  .qdone .big { width: 58px; height: 58px; border-radius: 50%; background: var(--gr-soft); color: var(--gr); display: grid; place-items: center; margin: 0 auto 10px; }
+  .qdone .big .ic { --s: 28px; --sw: 2.6; }
+  .qdone h3 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+  .qdone p { margin: 4px 0 0; color: var(--tx2); font-size: 14px; }
+  .nx { margin: 0 16px 10px; padding: 13px 14px 14px; border-radius: 22px; background: var(--card); border: .5px solid var(--sep); }
+  .nx.on { box-shadow: inset 0 0 0 1.5px var(--ac); border-color: transparent; }
+  .nx-h { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--tx2); white-space: nowrap; }
+  .nx-h b { color: var(--tx); font-weight: 600; }
+  .nx-h .chip { margin-left: auto; }
+  .nx h4 { margin: 7px 0 0; font-size: 16px; font-weight: 600; line-height: 1.3; letter-spacing: -.015em; }
+  .nx-m { margin-top: 3px; font-size: 13px; color: var(--tx2); }
+  .nx .btn { margin-top: 12px; height: 44px; font-size: 15.5px; }
+  .plan { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 1100px) { .plan { grid-template-columns: 1fr; } }
+  figcaption code { white-space: nowrap; }
+  .cell .v.mono { display: block; white-space: normal; text-align: right; max-width: 220px; line-height: 1.35; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="mark" viewBox="0 0 32 32"><rect x="4" y="4" width="6" height="24" rx="1.5"/><path d="M14.5 4H22a6 6 0 0 1 6 6v1a4 4 0 0 1-4 4H14.5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 14.5 4ZM14.5 17H24a4 4 0 0 1 4 4v1a6 6 0 0 1-6 6h-7.5a1.5 1.5 0 0 1-1.5-1.5v-8a1.5 1.5 0 0 1 1.5-1.5Z"/></symbol>
+    <symbol id="sb-sig" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></symbol>
+    <symbol id="sb-wifi" viewBox="0 0 16 12"><path d="M8 2.4c2.3 0 4.4.9 6 2.4l1.2-1.2A10.3 10.3 0 0 0 8 .7C5.2.7 2.7 1.8.8 3.6L2 4.8a8.6 8.6 0 0 1 6-2.4Zm0 3.3c1.4 0 2.7.5 3.7 1.4l1.2-1.2A7 7 0 0 0 8 4c-1.9 0-3.6.7-4.9 1.9l1.2 1.2c1-.9 2.3-1.4 3.7-1.4Zm0 3.3c.6 0 1.2.2 1.6.6L8 11.3 6.4 9.6c.4-.4 1-.6 1.6-.6Z"/></symbol>
+    <symbol id="sb-bat" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.6" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2.2"/><path d="M25 4.5v4c.8-.3 1.4-1.1 1.4-2s-.6-1.7-1.4-2Z" opacity=".45"/></symbol>
+
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-pr" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7M6 9v12"/></symbol>
+    <symbol id="i-merge" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M16 13H8M16 17H8M10 9H8"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-rerun" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.13 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+    <symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-fail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></symbol>
+    <symbol id="i-pending" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-dasharray="3 3.3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 13l-2 2 2 2M14 17l2-2-2-2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+    <symbol id="i-hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4M12 2v13"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+    <symbol id="i-torch" viewBox="0 0 24 24"><path d="M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z"/><path d="M6 6h12M12 12v1"/></symbol>
+    <symbol id="i-face" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4M21 2l-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-git" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+    <symbol id="i-board" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7M12 7v4M16 7v9"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+    <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+    <symbol id="i-del" viewBox="0 0 24 24"><path d="M10 5a2 2 0 0 0-1.34.52l-6.33 5.9a.8.8 0 0 0 0 1.16l6.33 5.9A2 2 0 0 0 10 19h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6M18 9l-6 6"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/></symbol>
+    <symbol id="i-shift" viewBox="0 0 24 24"><path d="M9 18v-6H5l7-7 7 7h-4v6H9z"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 6 4.5Z"/></symbol>
+    <symbol id="i-queue" viewBox="0 0 24 24"><path d="M11 12H3M16 6H3M16 18H3M18 9v6M21 12h-6"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 6h18M7 12h10M10 18h4"/></symbol>
+    <symbol id="i-flask" viewBox="0 0 24 24"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2M6.453 15h11.094M8.5 2h7"/></symbol>
+    <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></symbol>
+    <symbol id="i-chev-u" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+    <symbol id="i-updown" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="hero-icon"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></div>
+  <div>
+    <h1>Pull requests on iPhone, <span>the way the desktop does them</span></h1>
+    <p>Concept mockups for the Pull requests tab and Quick Review. The phone gets the desktop's filters, groupings, orders and saved views, and its end card that offers the next pull request. A filter is the same query string on both (<code>repo:shop -checks:failing author:priya</code>), so a view means the same thing everywhere.</p>
+  </div>
+</header>
+
+<div class="principles">
+  <div class="principle"><b>One query, both apps</b><span>The filter is the desktop's query string. Chips show its qualifiers, the Filter sheet writes them, and typing <code>author:</code> in search does the same.</span></div>
+  <div class="principle"><b>Every desktop grouping</b><span>Eleven groupings instead of four, a second level (Then by), and five orders that each run either way.</span></div>
+  <div class="principle"><b>You pick the next PR</b><span>A finished review offers the same author's next pull request or the next one by priority, as the desktop's end card does.</span></div>
+</div>
+
+<nav class="toc">
+  <a href="#list">1 · The list</a><a href="#filter">2 · Filter</a><a href="#display">3 · Display</a><a href="#views">4 · Saved views</a><a href="#review">5 · Quick Review</a><a href="#parity">6 · Desktop and iPhone</a><a href="#build">7 · Build and open questions</a>
+</nav>
+
+<!-- ============================== 1 · LIST ============================== -->
+<section class="sec" id="list">
+  <div class="sec-h"><span class="n">01</span><h2>The list: filters as chips, groups inside groups</h2></div>
+  <p class="sec-lead">Tabs stay where they are and gain Stale, the desktop's sixth tab. Under them sits a chip row: Filter (with how many filters are on), then one chip per filter. The bar under the chips names the grouping and the order, and opens Display. Grouped by status, the groups are the desktop's five: Your turn, Failing, Waiting for review, Ready to merge and Draft.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light" data-tab="prs">
+        <div class="view">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">143 open in 16 repositories</div>
+          <div class="srch"><i class="ic" data-i="search"></i>Title, branch, author, AB#</div>
+          <div class="pills"><span class="pill on">All <span class="c">143</span></span><span class="pill">Your turn <span class="c">6</span></span><span class="pill">Mine <span class="c">9</span></span><span class="pill">Failing <span class="c">11</span></span><span class="pill">Ready <span class="c">8</span></span></div>
+          <div class="fchips">
+            <span class="fc2 add"><i class="ic" data-i="filter"></i>Filter<span class="k">2</span></span>
+            <span class="fc2"><b>Repository</b> is <b>shop, storefront</b><span class="x"><i class="ic" data-i="x"></i></span></span>
+            <span class="fc2"><b>Checks</b> is not <b>failing</b><span class="x"><i class="ic" data-i="x"></i></span></span>
+          </div>
+          <div class="mbar">37 of 143<a><i class="ic" data-i="bookmark"></i>Save view</a><a>Clear</a></div>
+          <div class="listbar"><i class="ic" data-i="layers"></i><span>By <b>status</b>, then <b>repository</b> · <b>priority</b></span><a>Fold all</a></div>
+          <div class="gh"><i class="ic chev" data-i="chev-d"></i><i class="ic sg" data-i="target" style="color:var(--ac-tx)"></i>Your turn <span class="n">3</span></div>
+          <div class="grp">
+            <div class="sgh"><i class="ic" data-i="chev-d"></i>acme/shop <span class="n">2</span></div>
+            <div class="pl"><span class="av lg" style="--h:20">PS</span><div class="t"><div class="pr-h"><b>shop</b>#412<span class="sp"></span>4 d</div><h4>Checkout: round totals per line instead of per order</h4>
+              <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Merge</span><span class="ds"><span class="a">+120</span> <span class="d">−36</span></span></div></div></div>
+            <div class="pl"><span class="av lg" style="--h:200">TB</span><div class="t"><div class="pr-h"><b>shop</b>#398<span class="sp"></span>2 d</div><h4>Address book: validate postcodes per country</h4>
+              <div class="trk"><span class="s" style="--c:var(--bl)"><i class="tm ring"></i>Running</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Merge</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span></div></div></div>
+            <div class="sgh"><i class="ic" data-i="chev-r"></i>acme/storefront <span class="n">1</span></div>
+          </div>
+          <div class="grp" style="margin-top:12px">
+            <div class="gx"><span class="ico soft" style="--c:var(--tx2)"><i class="ic" data-i="clock"></i></span><div class="t"><b>Waiting for review</b><span>1 asks you · oldest 12 d</span></div><span class="n">21</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="gx"><span class="ico soft" style="--c:var(--gr)"><i class="ic" data-i="merge"></i></span><div class="t"><b>Ready to merge</b><span>oldest 3 d</span></div><span class="n">6</span><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+        </div>
+        <span class="mk" style="top:289px;left:352px">1</span>
+        <span class="mk" style="top:319px;left:234px">2</span>
+        <span class="mk" style="top:347px;left:280px">3</span>
+        <span class="mk" style="top:415px;left:150px">4</span>
+      </div>
+      <figcaption><b>Two filters, grouped by status, then repository</b>
+        <ul>
+          <li>1 · Filter opens the Filter sheet; its badge counts the filters that are on. Then one chip per filter, in the desktop's words: "Checks is not failing". Tap a chip to change it, × to drop it.</li>
+          <li>2 · How many are left, Save view, and Clear (drops every filter, keeps the search text).</li>
+          <li>3 · Grouping and order, as today. It opens Display.</li>
+          <li>4 · Then by: a second level inside each group. Sub-groups fold too (storefront is folded).</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view">
+          <div class="nav" style="gap:10px"><div class="srch on" style="margin:0;flex:1"><i class="ic" data-i="search"></i><span class="tok"><i class="ic" data-i="user"></i>Priya Shah</span><span style="color:var(--tx)">checks:</span><i class="caret"></i></div><span class="gb"><i class="ic" data-i="x"></i></span></div>
+          <div class="grp-h" style="padding-top:14px">Checks<span style="font-weight:500">among Priya Shah's 7</span></div>
+          <div class="grp">
+            <div class="cell" style="--indent:44px;min-height:46px"><span class="dot" style="color:var(--rd)"></span><div class="t"><b>Failing</b></div><span class="num">2</span></div>
+            <div class="cell" style="--indent:44px;min-height:46px"><span class="dot" style="color:var(--bl)"></span><div class="t"><b>Running</b></div><span class="num">1</span></div>
+            <div class="cell" style="--indent:44px;min-height:46px"><span class="dot" style="color:var(--gr)"></span><div class="t"><b>Passing</b></div><span class="num">4</span></div>
+            <div class="cell off" style="--indent:44px;min-height:46px"><span class="dot" style="color:var(--tx3)"></span><div class="t"><b>No checks</b></div><span class="num" style="color:var(--tx3)">0</span></div>
+          </div>
+          <div class="grp-h">Leave out</div>
+          <div class="grp">
+            <div class="cell" style="--indent:44px;min-height:46px"><span class="ic" data-i="minus" style="--s:16px;color:var(--rd)"></span><div class="t"><b>Not failing</b><span class="mono">-checks:failing</span></div><span class="num">5</span></div>
+          </div>
+        </div>
+        <div class="kb">
+          <div class="kr"><span class="kk">q</span><span class="kk">w</span><span class="kk">e</span><span class="kk">r</span><span class="kk">t</span><span class="kk">y</span><span class="kk">u</span><span class="kk">i</span><span class="kk">o</span><span class="kk">p</span></div>
+          <div class="kr"><span class="kk">a</span><span class="kk">s</span><span class="kk">d</span><span class="kk">f</span><span class="kk">g</span><span class="kk">h</span><span class="kk">j</span><span class="kk">k</span><span class="kk">l</span></div>
+          <div class="kr"><span class="kk fn"><i class="ic" data-i="shift" style="--s:18px"></i></span><span class="kk">z</span><span class="kk">x</span><span class="kk">c</span><span class="kk">v</span><span class="kk">b</span><span class="kk">n</span><span class="kk">m</span><span class="kk fn"><i class="ic" data-i="del" style="--s:18px"></i></span></div>
+          <div class="kr"><span class="kk fn">123</span><span class="kk fn">:</span><span class="kk wide">space</span><span class="kk go">search</span></div>
+        </div>
+        <span class="mk" style="top:71px;left:238px">1</span>
+        <span class="mk" style="top:138px;left:322px">2</span>
+        <span class="mk" style="top:384px;left:300px">3</span>
+      </div>
+      <figcaption><b>Typing a filter</b>
+        <ul>
+          <li>1 · <code>author:priya</code> became a token when you typed the space. Tokens are the same filters as the chips: SwiftUI's search tokens, over one query string.</li>
+          <li>2 · After <code>checks:</code>, search suggests the values with how many PRs each matches, within your other filters.</li>
+          <li>3 · A leading minus leaves PRs out, as on the desktop. Commas match any of several values: <code>repo:shop,payments</code>.</li>
+        </ul>
+        The syntax is the desktop's: <code>is:draft</code>, <code>review:changes</code>, <code>waiting:author</code>, <code>label:"needs qa"</code>, <code>age:&gt;7d</code>, <code>size:&lt;100</code>, <code>ab:4120</code>, and <code>me</code> for you.
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 2 · FILTER ============================== -->
+<section class="sec" id="filter">
+  <div class="sec-h"><span class="n">02</span><h2>Filter: every field the desktop filters on, values with counts</h2></div>
+  <p class="sec-lead">The desktop's Filter menu as a sheet. Fields come in the desktop's order. A field you set shows its values in place of "Any". A field opens its values, each with how many PRs it matches within your other filters. Is and Is not switch between keeping and leaving out. Picking several values matches any of them.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view blurred">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">143 open in 16 repositories</div>
+          <div class="pills"><span class="pill on">All <span class="c">143</span></span><span class="pill">Your turn <span class="c">6</span></span><span class="pill">Mine <span class="c">9</span></span></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:792px">
+          <div class="grab"></div>
+          <div class="sh-h"><span class="txb">Clear all</span><h3>Filter</h3><span class="sh-r"><span class="gb"><i class="ic" data-i="x"></i></span></span></div>
+          <div class="grp" style="margin-top:6px">
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Repository</b></div><span class="v set">shop, storefront<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Author</b></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Requested reviewer</b></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Review state</b></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Checks</b></div><span class="v set">not failing<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Waiting on</b></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Status</b></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Label</b></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Base branch</b></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Work item</b></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Age</b></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>Size</b></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:44px"><div class="t"><b>State</b><span>Draft, conflicts, stale, auto-merge</span></div><span class="v none">Any<i class="ic" data-i="chev-r"></i></span></div>
+          </div>
+          <div class="shfade"></div>
+          <div class="shbtn"><span class="btn pri">Show 37 pull requests</span></div>
+        </div>
+        <span class="mk" style="top:128px;left:16px">1</span>
+        <span class="mk" style="top:152px;left:356px">2</span>
+        <span class="mk" style="top:746px;left:350px">3</span>
+      </div>
+      <figcaption><b>Filter</b>
+        <ul>
+          <li>1 · Clear all drops every filter and keeps the search text.</li>
+          <li>2 · A field you set shows what it holds: "shop, storefront", "not failing".</li>
+          <li>3 · The button says how many PRs the filters leave, before you close the sheet.</li>
+        </ul>
+        Requested reviewer, Review state and Waiting on need the reviewers asked and who commented. The server reads both already and starts sending them (section 07).
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view blurred">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">143 open in 16 repositories</div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:792px">
+          <div class="grab"></div>
+          <div class="sh-h"><span class="gb"><i class="ic" data-i="chev-l"></i></span><h3>Author</h3><span class="gb"><i class="ic" data-i="x"></i></span></div>
+          <div style="padding:4px 16px 0"><div class="segc"><span class="on">Is</span><span>Is not</span></div></div>
+          <div class="srch" style="margin-top:12px"><i class="ic" data-i="search"></i>Find author</div>
+          <div class="grp" style="margin-top:12px">
+            <div class="cell" style="--indent:58px;min-height:52px"><span class="av lg" style="--h:150">SV</span><div class="t"><b>Sanne de Vries</b></div><span class="num">9</span><span class="ckw"></span></div>
+            <div class="cell" style="--indent:58px;min-height:52px"><span class="av lg" style="--h:20">PS</span><div class="t"><b>Priya Shah</b></div><span class="num">7</span><span class="ckw"><i class="ic ck" data-i="check"></i></span></div>
+            <div class="cell" style="--indent:58px;min-height:52px"><span class="av lg" style="--h:200">TB</span><div class="t"><b>Tom Berg</b></div><span class="num">5</span><span class="ckw"><i class="ic ck" data-i="check"></i></span></div>
+            <div class="cell" style="--indent:58px;min-height:52px"><span class="av lg" style="background:linear-gradient(135deg,#7f7eff,#4f46e5)">KV</span><div class="t"><b>You</b></div><span class="num">4</span><span class="ckw"></span></div>
+            <div class="cell" style="--indent:58px;min-height:52px"><span class="av lg" style="--h:320">RI</span><div class="t"><b>Ravi Iyer</b></div><span class="num">3</span><span class="ckw"></span></div>
+            <div class="cell" style="--indent:58px;min-height:52px"><span class="av lg" style="--h:90">ML</span><div class="t"><b>Maria Lopez</b></div><span class="num">2</span><span class="ckw"></span></div>
+            <div class="cell" style="--indent:58px;min-height:52px"><span class="ico soft r" style="--c:var(--tx2)"><i class="ic" data-i="bot"></i></span><div class="t"><b>renovate</b></div><span class="num">2</span><span class="ckw"></span></div>
+          </div>
+          <div class="foot">Most pull requests first. Counts are within your other filters: shop and storefront, not failing.</div>
+          <div class="shfade"></div>
+          <div class="shbtn"><span class="btn pri">Show 12 pull requests</span></div>
+        </div>
+        <span class="mk" style="top:120px;left:300px">1</span>
+        <span class="mk" style="top:280px;left:356px">2</span>
+      </div>
+      <figcaption><b>A field's values</b>
+        <ul>
+          <li>1 · Is not turns the filter into a leave-out: <code>-author:priya,tom</code>. The chip reads "Author is none of Priya Shah, Tom Berg".</li>
+          <li>2 · Pick several: Priya and Tom gives one chip, "Author is any of Priya Shah, Tom Berg".</li>
+        </ul>
+        Fields with fixed values (Checks, Review state, Waiting on, Status, Age, Size, State) list all of them, in the desktop's order, with zero counts left in. The others list what the open PRs carry: their repositories, authors, labels, base branches and work items.
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 3 · DISPLAY ============================== -->
+<section class="sec" id="display">
+  <div class="sec-h"><span class="n">03</span><h2>Display: every grouping and order from the desktop</h2></div>
+  <p class="sec-lead">Eleven groupings don't fit a segmented control, so Group by, Then by and Order by become menu rows. Orders are the desktop's five, each with a direction. Today's Waiting longest is Created, oldest first. Smallest first is Size, smallest first. The switches are the desktop's group switches plus Dependency updates as one group, which only the phone has.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view blurred">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">143 open in 16 repositories</div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:792px">
+          <div class="grab"></div>
+          <div class="sh-h"><span class="txb">Reset</span><h3>Display</h3><span class="sh-r"><span class="gb"><i class="ic" data-i="x"></i></span></span></div>
+          <div class="opt-h" style="padding-top:8px">Group</div>
+          <div class="grp">
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Group by</b></div><span class="v">Status<i class="ic" data-i="updown"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Then by</b></div><span class="v">Repository<i class="ic" data-i="updown"></i></span></div>
+          </div>
+          <div class="opt-h">Order</div>
+          <div class="grp">
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Order by</b></div><span class="v">Priority<i class="ic" data-i="updown"></i></span></div>
+          </div>
+          <div style="padding:10px 16px 0"><div class="segc"><span class="on">Most urgent first</span><span>Least urgent first</span></div></div>
+          <div class="opt-h">Groups</div>
+          <div class="grp">
+            <div class="cell off" style="--indent:16px"><div class="t"><b>Pin Your turn above the groups</b><span>Not with Status, Author or no grouping</span></div><span class="tg off" style="opacity:.5"></span></div>
+            <div class="cell" style="--indent:16px"><div class="t"><b>Fold groups with nothing for you</b></div><span class="tg"></span></div>
+            <div class="cell" style="--indent:16px"><div class="t"><b>Show empty groups</b><span>Status, review, waiting on, age, size</span></div><span class="tg off"></span></div>
+            <div class="cell" style="--indent:16px"><div class="t"><b>Dependency updates as one group</b></div><span class="tg"></span></div>
+          </div>
+          <div class="opt-h">Failing pull requests</div>
+          <div style="padding:0 16px"><div class="segc"><span class="on">Show</span><span>Hide</span></div></div>
+          <div class="foot" style="padding-top:12px">Kept on this iPhone. Hide leaves failing PRs out of every tab but Failing.</div>
+        </div>
+        <span class="mk" style="top:146px;left:110px">1</span>
+        <span class="mk" style="top:280px;left:110px">2</span>
+        <span class="mk" style="top:454px;left:262px">3</span>
+        <span class="mk" style="top:519px;left:272px">4</span>
+      </div>
+      <figcaption><b>Display</b>
+        <ul>
+          <li>1 · Group by and Then by are menus (next screen). Then by offers "Nothing" first.</li>
+          <li>2 · The direction reads in the order's words: Most urgent first, Newest first, A to Z, Largest first.</li>
+          <li>3 · The desktop's Pin Your turn, greyed out where the desktop ignores it.</li>
+          <li>4 · Fold groups with nothing for you replaces today's rule that All opens with every group folded.</li>
+        </ul>
+        Your pull requests first goes: the Mine tab and the Author grouping (you first) cover it, and it overrode whatever order you chose. Drafts becomes a filter, <code>-is:draft</code>.
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view blurred">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:792px">
+          <div class="grab"></div>
+          <div class="sh-h"><span class="txb">Reset</span><h3>Display</h3><span class="sh-r"><span class="gb"><i class="ic" data-i="x"></i></span></span></div>
+          <div class="opt-h" style="padding-top:8px">Group</div>
+          <div class="grp">
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Group by</b></div><span class="v">Status<i class="ic" data-i="updown"></i></span></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Then by</b></div><span class="v">Repository<i class="ic" data-i="updown"></i></span></div>
+          </div>
+        </div>
+        <div class="dim" style="z-index:55;background:rgba(0,0,0,.12)"></div>
+        <div class="menu" style="top:196px;right:16px;width:300px">
+          <div class="mi"><span class="ckw"><i class="ic" data-i="check"></i></span><div class="tt">Status<small>Your turn, failing, waiting, ready, draft</small></div></div>
+          <div class="mi"><span class="ckw"></span><div class="tt">Author</div></div>
+          <div class="mi"><span class="ckw"></span><div class="tt">Repository</div></div>
+          <div class="mi"><span class="ckw"></span><div class="tt">Review state<small>Awaiting you, changes requested, approved…</small></div></div>
+          <div class="mi"><span class="ckw"></span><div class="tt">Waiting on<small>Who acts next: you, the author, reviewers, CI</small></div></div>
+          <div class="mi"><span class="ckw"></span><div class="tt">Work item<small>By the AB# it names</small></div></div>
+          <div class="mi"><span class="ckw"></span><div class="tt">Label</div></div>
+          <div class="mi"><span class="ckw"></span><div class="tt">Base branch</div></div>
+          <div class="mi"><span class="ckw"></span><div class="tt">Age<small>Opened today, this week, this month, older</small></div></div>
+          <div class="mi"><span class="ckw"></span><div class="tt">Size<small>XS to XL by lines changed</small></div></div>
+          <div class="mi sep"><span class="ckw"></span><div class="tt">No grouping</div></div>
+        </div>
+      </div>
+      <figcaption><b>Group by</b>The desktop's eleven, with its hints under the ones that need one. Group order follows the desktop too: fixed groupings keep their own order, Author puts you first and then whoever has most PRs, Repository puts repositories with your PRs first. A PR with several labels or work items is grouped once, under the first.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 4 · SAVED VIEWS ============================== -->
+<section class="sec" id="views">
+  <div class="sec-h"><span class="n">04</span><h2>Saved views: a tab that remembers its filters and display</h2></div>
+  <p class="sec-lead">Save view keeps the tab, the query and the display under a name. It becomes a pill after the built-in tabs, with its own count. Change anything while a view is open and a bar offers Update view or Save as new, as the desktop does. Leaving the view for a built-in tab brings back that tab's own display.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light" data-tab="prs">
+        <div class="view">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">143 open in 16 repositories</div>
+          <div class="srch"><i class="ic" data-i="search"></i>Title, branch, author, AB#</div>
+          <div class="pills scrolled"><span class="pill">Ready <span class="c">8</span></span><span class="pill">Stale <span class="c">14</span></span><span class="pill">Waiting <span class="c">12</span></span><span class="pill on"><i class="ic" data-i="bookmark"></i>Shop, green <span class="c">37</span></span><span class="pill"><i class="ic" data-i="bookmark"></i>Payments <span class="c">17</span></span></div>
+          <div class="fchips">
+            <span class="fc2 add"><i class="ic" data-i="filter"></i>Filter<span class="k">3</span></span>
+            <span class="fc2"><b>Author</b> is <b>Priya Shah</b><span class="x"><i class="ic" data-i="x"></i></span></span>
+            <span class="fc2"><b>Repository</b> is <b>shop, storefront</b><span class="x"><i class="ic" data-i="x"></i></span></span>
+          </div>
+          <div class="vbar"><b>Edited</b><span>· Author added</span><span class="sp"></span><span class="sbtn alt">Save as new</span><span class="sbtn">Update</span></div>
+          <div class="listbar"><i class="ic" data-i="layers"></i><span>By <b>status</b>, then <b>repository</b> · <b>priority</b></span><a>Fold all</a></div>
+          <div class="gh"><i class="ic chev" data-i="chev-d"></i><i class="ic sg" data-i="target" style="color:var(--ac-tx)"></i>Your turn <span class="n">1</span></div>
+          <div class="grp">
+            <div class="sgh"><i class="ic" data-i="chev-d"></i>acme/shop <span class="n">1</span></div>
+            <div class="pl"><span class="av lg" style="--h:20">PS</span><div class="t"><div class="pr-h"><b>shop</b>#412<span class="sp"></span>4 d</div><h4>Checkout: round totals per line instead of per order</h4>
+              <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><i class="ln"></i><span class="s" style="--c:var(--tx3)"><i class="tm hollow"></i>Merge</span><span class="ds"><span class="a">+120</span> <span class="d">−36</span></span></div></div></div>
+          </div>
+          <div class="grp" style="margin-top:12px">
+            <div class="gx"><span class="ico soft" style="--c:var(--tx2)"><i class="ic" data-i="clock"></i></span><div class="t"><b>Waiting for review</b><span>oldest 9 d</span></div><span class="n">4</span><i class="ic chev" data-i="chev-r"></i></div>
+            <div class="gx"><span class="ico soft" style="--c:var(--gr)"><i class="ic" data-i="merge"></i></span><div class="t"><b>Ready to merge</b><span>oldest 6 d</span></div><span class="n">2</span><i class="ic chev" data-i="chev-r"></i></div>
+          </div>
+        </div>
+        <span class="mk" style="top:246px;left:236px">1</span>
+        <span class="mk" style="top:347px;left:170px">2</span>
+      </div>
+      <figcaption><b>A saved view, changed</b>
+        <ul>
+          <li>1 · Saved views are pills after the built-in tabs (All, Your turn, Mine, Failing, Ready, Stale, Waiting), marked with a bookmark and counted with their own filters.</li>
+          <li>2 · Adding Author made the view differ from what it saved. Update writes the change into the view. Save as new keeps the view as it was.</li>
+        </ul>
+        Long-press a view's pill for Rename, Move left or right, and Delete.
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view blurred">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">143 open in 16 repositories</div>
+          <div class="pills"><span class="pill on">All <span class="c">143</span></span><span class="pill">Your turn <span class="c">6</span></span><span class="pill">Mine <span class="c">9</span></span></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet" style="height:520px">
+          <div class="grab"></div>
+          <div class="sh-h"><span class="txb">Cancel</span><h3>Save view</h3><span class="txb r">Save</span></div>
+          <div class="field">Shop, green<i class="caret"></i></div>
+          <div class="opt-h">It keeps</div>
+          <div class="grp">
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Tab</b></div><span class="v">All</span></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Filters</b></div><span class="v mono">repo:shop,storefront<br>-checks:failing</span></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Group</b></div><span class="v">Status, then repository</span></div>
+            <div class="cell" style="--indent:16px;min-height:46px"><div class="t"><b>Order</b></div><span class="v">Priority, most urgent first</span></div>
+          </div>
+          <div class="foot">The search text isn't kept, only the filters. Views stay on this iPhone.</div>
+        </div>
+      </div>
+      <figcaption><b>Save view</b>A name, and what the view will keep. The filters are shown as the query string the desktop stores, so you can read exactly what the view matches. Whether views should also come from the desktop is an open question in section 07.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 5 · QUICK REVIEW ============================== -->
+<section class="sec" id="review">
+  <div class="sec-h"><span class="n">05</span><h2>Quick Review: you choose what comes next</h2></div>
+  <p class="sec-lead">Review on a pull request reviews that pull request alone, as on the desktop. Today the phone carries on into the rest of Focus's queue. When the review is done, the desktop's end card offers what's next: the same author's next pull request, or the next one by priority from someone else. Long-press gets the desktop's author run, "Review Priya Shah's PRs, oldest first". Focus's Start review still runs the whole queue.</p>
+  <div class="row">
+
+    <figure class="shot">
+      <div class="phone light">
+        <div class="view blurred">
+          <div class="nav"><span class="sp"></span><span class="gb"><i class="ic" data-i="sliders"></i></span></div>
+          <div class="lt">Pull requests</div>
+          <div class="sub">143 open in 16 repositories</div>
+          <div class="pills"><span class="pill on">All <span class="c">143</span></span><span class="pill">Your turn <span class="c">6</span></span><span class="pill">Mine <span class="c">9</span></span></div>
+          <div class="grp" style="margin-top:40px;height:420px"></div>
+        </div>
+        <div class="dim" style="background:rgba(0,0,0,.22)"></div>
+        <div class="card" style="position:absolute;left:14px;right:14px;top:96px;z-index:60;box-shadow:0 24px 60px rgba(0,0,0,.28)">
+          <div class="pr-h"><span class="av" style="--h:20">PS</span><b>shop</b>#412 · Priya Shah<span class="sp"></span>4 d</div>
+          <h4>Checkout: round totals per line instead of per order</h4>
+          <div class="why ac"><i class="ic" data-i="eye"></i>Priya asked for your review</div>
+          <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i></span><span class="chip sm ac">AB#4120</span><span class="ds"><span class="a">+120</span> <span class="d">−36</span></span></div>
+        </div>
+        <div class="menu" style="top:268px;left:14px;width:292px">
+          <div class="mi"><span>Review</span><i class="ic" data-i="eye"></i></div>
+          <div class="mi"><span>Review Priya Shah's PRs, oldest first</span><i class="ic" data-i="queue"></i></div>
+          <div class="mi"><span>Open in T3…</span><i class="ic" data-i="term"></i></div>
+          <div class="mi gap"><span>Snooze until tomorrow</span><i class="ic" data-i="moon"></i></div>
+          <div class="mi"><span>Open AB#4120</span><i class="ic" data-i="tasks"></i></div>
+          <div class="mi"><span>Copy branch name</span><i class="ic" data-i="branch"></i></div>
+          <div class="mi"><span>Open on GitHub</span><i class="ic" data-i="ext"></i></div>
+        </div>
+        <span class="mk" style="top:280px;left:316px">1</span>
+        <span class="mk" style="top:326px;left:316px">2</span>
+      </div>
+      <figcaption><b>Long-press a pull request</b>
+        <ul>
+          <li>1 · Review: this pull request alone. The end card (next screen) offers what's next.</li>
+          <li>2 · The desktop's author run: Quick Review over Priya's open pull requests, oldest first, leaving out conflicts, requested changes and PRs failing their own checks. The same as Review all on an author group.</li>
+        </ul>
+        On your own pull request the item is "Walk through this PR", as on the desktop.
+      </figcaption>
+    </figure>
+
+    <figure class="shot">
+      <div class="phone dark">
+        <div class="view">
+          <div class="nav"><span class="gb" style="visibility:hidden"></span><div class="nav-t"><b>Review</b><span>acme/shop #412</span></div><span class="gp">Done</span></div>
+          <div class="qdone"><span class="big"><i class="ic" data-i="check"></i></span><h3>Review complete</h3><p>1 PR reviewed. The approval posts when its Undo runs out.</p></div>
+          <div class="grp" style="margin-top:16px">
+            <div class="cell" style="--indent:58px"><span class="av lg" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line…</b><span>acme/shop #412</span></div><span class="chip ok sm">Approved</span></div>
+          </div>
+          <div class="grp-h">What's next</div>
+          <div class="nx on">
+            <div class="nx-h"><span class="av" style="--h:20">PS</span>Next from <b>Priya Shah</b><span class="chip ok sm"><i class="ic" data-i="check"></i>passing</span></div>
+            <h4>Gift cards: partial refunds keep the remaining balance</h4>
+            <div class="nx-m">acme/shop #420 · opened 3 d ago</div>
+            <span class="btn pri">Next from Priya</span>
+          </div>
+          <div class="nx">
+            <div class="nx-h"><span class="av" style="--h:200">TB</span>Next from <b>Tom Berg</b><span class="chip run sm">checks running</span></div>
+            <h4>Address book: validate postcodes per country</h4>
+            <div class="nx-m">acme/shop #398 · asks you · 2 d</div>
+            <span class="btn">Review next from Tom</span>
+          </div>
+        </div>
+        <span class="mk" style="top:448px;left:330px">1</span>
+        <span class="mk" style="top:633px;left:330px">2</span>
+      </div>
+      <figcaption><b>The end card</b>
+        <ul>
+          <li>1 · The same author's next pull request: passing checks first, then the oldest without conflicts or requested changes. It starts Priya's run, so the next end card offers her next one again.</li>
+          <li>2 · The next pull request by priority from anyone else. The highlighted button goes to the same author, unless only this one has passing checks.</li>
+        </ul>
+        After a run of several, the card adds the desktop's counts (approved, commented, skipped), each PR with its decision, and "Left out of this run" with the reason per PR.
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============================== 6 · PARITY ============================== -->
+<section class="sec" id="parity">
+  <div class="sec-h"><span class="n">06</span><h2>Desktop, iPhone today, iPhone after</h2></div>
+  <p class="sec-lead">What the desktop's Pull requests list does (<code>services/pr-list/</code>) next to the phone's (<code>PrList.swift</code>, <code>QuickReviewView.swift</code>).</p>
+  <div class="cmp-wrap">
+    <table class="cmp">
+      <tr><th></th><th>Desktop</th><th>iPhone today</th><th>iPhone after</th></tr>
+      <tr><td>Tabs</td><td>All, Your turn, Mine, Failing, Ready to merge, Stale, then saved views</td><td>All, Your turn, Mine, Failing, Ready, Waiting</td><td class="new">The desktop's six, <em>plus Waiting</em> (Focus's Waiting on others row opens it), then saved views</td></tr>
+      <tr><td>Filters</td><td>Query with 14 qualifier fields; chips; Filter menu with counts; is / is not; any of several values</td><td>Free-text search only</td><td class="new">The same query: chips, the Filter sheet, and search tokens. Same parser rules, so a query string matches the same PRs on both</td></tr>
+      <tr><td>Group by</td><td>Status, Author, Repository, Review state, Waiting on, Work item, Label, Base branch, Age, Size, none; plus Then by</td><td>Author, Repository, Status (the server's four buckets), none</td><td class="new">The desktop's eleven and Then by. Status uses the desktop's five buckets</td></tr>
+      <tr><td>Order</td><td>Priority, Last updated, Created, Title, Size; either direction</td><td>Waiting longest, Recently updated, Newest, Smallest first, Title</td><td class="new">The desktop's five with a direction. A stored order moves to its match: Waiting longest → Created, oldest first</td></tr>
+      <tr><td>Switches</td><td>Pin Your turn, Collapse groups with nothing for you, Show empty groups, Hide failing (all / keep unrelated)</td><td>Your PRs first, Drafts, Dependency updates as one group</td><td class="new">The desktop's four (Hide failing without "keep unrelated") <em>plus Dependency updates as one group</em>. Drafts becomes <code>-is:draft</code></td></tr>
+      <tr><td>Saved views</td><td>Tab, query and display under a name; Update view</td><td>None</td><td class="new">The same, kept on the phone</td></tr>
+      <tr><td>Layout</td><td>Table, list or board; table columns; compact rows</td><td>List</td><td class="new">List. Columns don't fit a phone; Status grouping is the phone's board</td></tr>
+      <tr><td>Review a PR</td><td>That PR alone; the end card offers what's next</td><td>That PR, then the rest of Focus's review queue</td><td class="new">That PR alone, then the end card</td></tr>
+      <tr><td>Author run</td><td>Right-click: Review X's PRs, oldest first. Left-out PRs listed with the reason. An E2E report or a shared CI failure can clear a red PR</td><td>Review all on an author group. Any red PR is left out, silently</td><td class="new">Also on long-press, with the left-out list. Every red PR stays left out until the server reads E2E reports and shared failures</td></tr>
+      <tr><td>End of review</td><td>Counts, each PR with its decision, left out, Next from the author, Review next, Done</td><td>"All 3 reviewed", Back to Focus</td><td class="new">The desktop's end card</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============================== 7 · BUILD ============================== -->
+<section class="sec" id="build">
+  <div class="sec-h"><span class="n">07</span><h2>Build and open questions</h2></div>
+  <p class="sec-lead">Two pull requests. The list on <code>feat/ios-pr-sort-group-filter</code> in three parts, then Quick Review. The Swift model ports the desktop's pure functions one to one, and its tests reuse the desktop tests' query strings, so the two can't drift without a test noticing.</p>
+  <div class="plan">
+    <div class="plan-col"><h4><span>Server</span>Who was asked, who answered</h4><code>PrSummary</code> gains <code>requestedReviewers</code>, <code>requestedTeams</code> and a review status that includes <code>commented</code>. <code>focus.ts</code> reads all three from GitHub already; it only stops dropping them. Shared type, fixtures and Swift model follow.</div>
+    <div class="plan-col"><h4><span>iOS model</span>The desktop's list in Swift</h4><code>PrListQuery</code> grows into the desktop's model: facts (five buckets, review state, waiting on, age, size), the query parser with <code>setTerm</code> / <code>removeTerm</code>, facet values with counts, eleven groupings with Then by, five orders with a direction, saved views. Stored display choices migrate.</div>
+    <div class="plan-col"><h4><span>iOS screens</span>Chips, Filter, Display, views</h4>The chip row and match bar, search tokens and suggestions, the Filter sheet and its value lists, the new Display sheet, view pills with Update / Save as new, and the Save view sheet. Unit tests, plus UI tests and screenshots under <code>BorgDockVisual</code>.</div>
+    <div class="plan-col"><h4><span>iOS, second PR</span>Quick Review's next</h4>Review on a PR reviews it alone. The end card: counts, decisions, left out, Next from the author (the desktop's <code>nextFromAuthor</code>), Review next by priority, Done. The author run on long-press and Walk through on your own PRs.</div>
+  </div>
+  <div class="open">
+    <h4><span>Open questions</span>Yours to decide</h4>
+    <ul>
+      <li><b>Saved views from the desktop.</b> The mockup keeps views on the phone. The desktop link already shares the repositories; it could share saved views the same way, read-only on the phone. Phone only for now, or both?</li>
+      <li><b>Phone-only extras.</b> The Waiting tab and Dependency updates as one group have no desktop counterpart. The mockup keeps both. Keep, or drop them for strict parity?</li>
+      <li><b>E2E reports and shared CI failures.</b> The desktop clears a red pull request when the E2E report or a shared failure shows it isn't the PR's doing; the phone can't tell. Read them on the server so the phone's runs match, or leave red PRs out on the phone?</li>
+      <li><b>Default display.</b> The desktop starts grouped by status, by priority. The phone starts by author, waiting longest. New installs follow the desktop, or keep the phone's default?</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+  const TABS = [['focus', 'target', 'Focus'], ['prs', 'pr', 'Pull requests'], ['work', 'tasks', 'Work'], ['sprint', 'cal', 'Sprint']];
+  for (const phone of document.querySelectorAll('.phone')) {
+    const d = phone.dataset;
+    const time = d.time ?? '9:41';
+    const statusBar = `<div class="sb ${d.sb || ''}"><span>${time}</span><span class="sb-r"><svg viewBox="0 0 18 12"><use href="#sb-sig"/></svg><svg viewBox="0 0 16 12"><use href="#sb-wifi"/></svg><svg class="bat" viewBox="0 0 27 13"><use href="#sb-bat"/></svg></span></div>`;
+    phone.insertAdjacentHTML('afterbegin', statusBar + '<div class="di"></div>');
+    if (d.tab) {
+      const tabs = TABS.map(([id, icon, label]) => {
+        const badge = { prs: '6', work: '5' }[id] ? `<span class="tb-badge">${{ prs: '6', work: '5' }[id]}</span>` : '';
+        return `<div class="tb-tab${id === d.tab ? ' on' : ''}"><i class="ic" data-i="${icon}"></i>${label}${badge}</div>`;
+      }).join('');
+      phone.insertAdjacentHTML('beforeend', `<div class="edge"></div><div class="tabbar"><div class="tb-tabs">${tabs}</div><div class="tb-search"><i class="ic" data-i="search"></i></div></div>`);
+    }
+    phone.insertAdjacentHTML('beforeend', '<div class="hi"></div>');
+  }
+  for (const el of document.querySelectorAll('[data-i]')) {
+    el.innerHTML = `<svg viewBox="0 0 24 24"><use href="#i-${el.dataset.i}"/></svg>`;
+  }
+</script>
+</body>
+</html>

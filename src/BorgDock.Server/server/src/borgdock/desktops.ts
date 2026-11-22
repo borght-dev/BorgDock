@@ -22,6 +22,8 @@ export const DESKTOP_ROUTES = new Set([
   'GET /api/activity/reads',
   'POST /api/presence',
   'PUT /api/desktop/repositories',
+  'GET /api/pr-views',
+  'PUT /api/pr-views',
   'POST /api/auth/logout',
 ]);
 

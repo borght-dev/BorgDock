@@ -266,6 +266,8 @@ macro_rules! app_commands {
             phone_link::phone_link_unlink,
             phone_link::phone_link_send_reads,
             phone_link::phone_link_reads_since,
+            phone_link::phone_link_pr_views_get,
+            phone_link::phone_link_pr_views_put,
             platform::taskbar::set_taskbar_badge,
             // Workstreams
             // Notes vault

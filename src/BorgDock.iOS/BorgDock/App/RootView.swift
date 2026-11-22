@@ -81,6 +81,7 @@ struct RouteView: View {
         case .notes: NotesView()
         case .sprintItems(let list): SprintItemsView(list: list)
         case .repositories: RepositoriesView()
+        case .waitingOnOthers: WaitingOnOthersView()
         }
     }
 }
@@ -114,7 +115,7 @@ struct CoverHost: View {
     }
 }
 
-/// `-BorgDockRoute item/59657 | item/59657/<details|activity|…> | start/59463 | start/59463/qa | tab/<today|prs|work|sprint|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<lane|show> | focus/ready | prs/<display|repositories|open/<group id>> | review/…` (DEBUG only; review/… is ReviewDebugRoute).
+/// `-BorgDockRoute item/59657 | item/59657/<details|activity|…> | start/59463 | start/59463/qa | tab/<today|prs|work|sprint|activity|notes|search> | sheet/<settings|capture|machine|desktop> | url/<borgdock url> | scroll/<lane|show> | focus/ready | prs/<display|filter[/<field>]|save|repositories|query/<query>|open/<group key>> | review/…` (DEBUG only; review/… is ReviewDebugRoute).
 enum DebugRoute {
     @MainActor
     static func apply(to app: AppModel) async {
