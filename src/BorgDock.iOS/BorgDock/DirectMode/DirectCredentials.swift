@@ -19,7 +19,13 @@ struct DirectCredentials: Codable, Equatable, Sendable {
 
 /// One Keychain item holding the credentials as JSON.
 struct DirectCredentialStore: Sendable {
-    private let keychain = KeychainTokenStore(service: "dev.borght.borgdock.direct")
+    private let keychain: KeychainTokenStore
+
+    /// Tests name their own service, so they never read or replace the app's item.
+    init(service: String = "dev.borght.borgdock.direct") {
+        keychain = KeychainTokenStore(service: service)
+    }
+
     /// The Keychain stores by address; this one names the item.
     private static let item = URL(string: "borgdock-review://credentials")!
 

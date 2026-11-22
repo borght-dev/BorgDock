@@ -22,7 +22,8 @@ struct ImageLoader: Sendable {
         return image
     }
 
-    private func data(from url: URL) async throws -> Data {
+    /// The bytes at an address, asked with each token its rules name until one is let in.
+    func data(from url: URL) async throws -> Data {
         let candidates = rules.flatMap { $0.authorizations(url) }
         guard !candidates.isEmpty else { return try await answered(URLRequest(url: url)) }
         var failure: Error = URLError(.userAuthenticationRequired)

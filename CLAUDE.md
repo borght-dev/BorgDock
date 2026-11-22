@@ -84,6 +84,18 @@ src/BorgDock.Server/        # Its server and Dispatch's web app (Node 24, own np
 - **Swift 6 and `@MainActor` stores**: a pure helper on a `@MainActor` class (`E2eReports.lookup`) must be `nonisolated` or pure code can't call it, and task group children that share a mutable queue on the main actor fail with "pattern that the region-based isolation checker does not understand". Let the children read and return; the parent applies the results.
 - **iOS UI tests run only under the `BorgDockVisual` scheme**, against the fixture server (`e2e/ui-fixture.mjs`). Fixture modules in `e2e/fixtures/` answer in file-name order, first match wins: `05-…` runs before `10-github.mjs`, and `20-platform.mjs` serves `/api/overview` (the overview in `ui-fixture.mjs` itself is never reached). Give each simulator run its own port; `pkill -f ui-fixture.mjs` stops other sessions' servers too.
 
+## BorgDock Review: the iPhone app without a server
+
+A second iPhone app (target `BorgDockReview`) that reads GitHub and Azure DevOps straight from the phone. How it is built, its accounts and its debug launch arguments: `src/BorgDock.iOS/README.md`, "BorgDock Review".
+
+- **`Direct/` ports the server.** `Direct/GitHub` follows `server/src/github/`, `Direct/Ado` follows `server/src/ado/` and `borgdock/item-detail.ts`, and `DirectTests/` reuses the server tests' cases. Change a rule on both sides together.
+- **Verify `Direct/` with `swift test` in `src/BorgDock.iOS`**: seconds on the Mac, no simulator. The package compiles it because it is Foundation only; UIKit and SwiftUI belong in `BorgDock/DirectMode/`.
+- **Both apps compile `BorgDock/` and `Direct/` as one module**, so a type name declared in both collides (`OverallStatus` sat in `PrFacts.swift` and `FocusRules.swift`). Keep the one definition in `Direct/`.
+- **Shared screens ask `app.pullRequests` and `app.workItems`** for pull requests and work items (`app.api` is the server only), and show what needs T3 only when `app.canStartAgents`.
+- **Images load through `LoadedImage` / `ImageLoader`.** `AsyncImage` sends no token and ignores `URLProtocol.registerClass`, so Azure DevOps attachments and uploads in private repositories stay grey with it.
+- **A simulator run with real accounts needs a signed build.** With `CODE_SIGNING_ALLOWED=NO` the Keychain refuses the tokens and the app stays on its connect screen. `-BorgDockFixture` (made-up data) needs no Keychain.
+- **A new Swift file needs `xcodegen generate`** before `xcodebuild` sees it ("cannot find … in scope"); `swift build` finds it by itself.
+
 ## Implementation Status (Legacy WPF — completed before Tauri rewrite)
 
 - **Phase 1 COMPLETE**: Core skeleton (sidebar, DI, settings, tray, hotkey, themes, work area)

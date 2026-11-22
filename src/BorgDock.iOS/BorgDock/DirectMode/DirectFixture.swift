@@ -25,6 +25,28 @@ enum DirectFixture {
     static func ago(hours: Double) -> String { now.addingTimeInterval(-hours * 3600).formatted(.iso8601) }
 }
 
+/// Signing in without typing, for a simulator run against the real GitHub and Azure DevOps: the environment names the
+/// tokens (`SIMCTL_CHILD_BORGDOCK_GITHUB_TOKENS=a,b xcrun simctl launch …`). Debug builds only.
+enum DirectDebugAccounts {
+    @MainActor
+    static func connect(_ session: DirectSession) async {
+        let environment = ProcessInfo.processInfo.environment
+        for token in (environment["BORGDOCK_GITHUB_TOKENS"] ?? "").split(separator: ",") {
+            do { try await session.addGitHubAccount(token: String(token)) } catch { print("Debug GitHub account not added: \(error.localizedDescription)") }
+        }
+        guard let organization = environment["BORGDOCK_ADO_ORGANIZATION"].flatMap(AzureDevOpsAddress.organizationURL),
+              let project = environment["BORGDOCK_ADO_PROJECT"]
+        else { return }
+        let credential: AdoCredential? = environment["BORGDOCK_ADO_BEARER"].map(AdoCredential.bearer) ?? environment["BORGDOCK_ADO_TOKEN"].map(AdoCredential.personalAccessToken)
+        guard let credential else { return }
+        do {
+            try await session.connectAzureDevOps(AdoConnection(organizationURL: organization, project: project, credential: credential))
+        } catch {
+            print("Debug Azure DevOps not connected: \(error.localizedDescription)")
+        }
+    }
+}
+
 /// Answers api.github.com, dev.azure.com/acme and the fixture's own image host.
 final class DirectFixtureProtocol: URLProtocol {
     private static let imageHost = "fixture.acme.example"
@@ -39,8 +61,8 @@ final class DirectFixtureProtocol: URLProtocol {
 
     override func startLoading() {
         guard let url = request.url else { return }
-        if url.host() == Self.imageHost {
-            return answer(200, FixtureImage.png(named: url.lastPathComponent), type: "image/png")
+        if url.host() == Self.imageHost || AdoFixture.isAttachment(url) {
+            return answer(200, FixtureImage.png(named: url.query()?.contains("before") == true ? "before" : url.lastPathComponent), type: "image/png")
         }
         let body = request.httpBody ?? request.httpBodyStream.map(Self.read) ?? Data()
         let json = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any] ?? [:]
@@ -353,9 +375,114 @@ private enum GitHubFixture {
 
 // MARK: - Azure DevOps
 
-/// The work items the fixture's pull requests name. Filled in with the Azure DevOps port.
+/// The work items the fixture's pull requests name, in the JSON Azure DevOps sends.
 private enum AdoFixture {
-    static func answer(method: String, url: URL, body: [String: Any]) -> Any? { nil }
+    struct Item {
+        var id: Int
+        var type = "Product Backlog Item"
+        var title: String
+        var state: String
+        var assignedTo = "Sanne de Vries"
+        var description = ""
+        var acceptance = ""
+        var repro = ""
+    }
+
+    static let attachment = "1b4e28ba-2fa1-11d2-883f-0016d3cca427"
+    static let shopRepository = "a1b2c3d4-0000-4000-8000-000000000001"
+
+    static let items: [Item] = [
+        Item(
+            id: 60379, title: "Keep the basket when the payment page times out", state: "Code Review",
+            description: """
+            <div>When the payment provider is slow, checkout gives up after 20 seconds and <b>empties the basket</b>. Customers have to start over.</div>
+            <div><br></div><div>Keep the basket and offer to try again with the same payment.</div>
+            <div><img src="https://dev.azure.com/acme/_apis/wit/attachments/\(attachment)?fileName=basket-before.png"></div>
+            """,
+            acceptance: "<ul><li>A timeout keeps every item in the basket</li><li>The customer sees <b>Try again</b></li><li>Trying again never charges twice</li></ul>"
+        ),
+        Item(
+            id: 60402, type: "Bug", title: "Totals are off by a cent on orders with a discount", state: "Testing", assignedTo: "Mira Jansen",
+            repro: "<ol><li>Add three items of € 3,33 to the basket</li><li>Apply the 10% code</li><li>Compare the basket total with the invoice</li></ol>"
+        ),
+        Item(id: 60388, title: "Suggest product names while searching", state: "Development In Progress", assignedTo: "Koen Example"),
+        Item(id: 60300, type: "Epic", title: "Checkout that never loses an order", state: "In Progress", assignedTo: "Lena Visser"),
+    ]
+
+    private static let states: [[String: String]] = [
+        ["name": "New", "category": "Proposed"], ["name": "Development In Progress", "category": "InProgress"], ["name": "Code Review", "category": "Resolved"],
+        ["name": "Testing", "category": "InProgress"], ["name": "Ready For QA", "category": "Resolved"], ["name": "Done", "category": "Completed"],
+    ]
+
+    static func isAttachment(_ url: URL) -> Bool { url.path().lowercased().contains("/_apis/wit/attachments/") }
+
+    static func answer(method: String, url: URL, body: [String: Any]) -> Any? {
+        let path = url.path().lowercased()
+        let id = path.firstMatch(of: #/workitems/(\d+)/#).flatMap { Int($0.1) }
+        let item = items.first { $0.id == id }
+        if path.hasSuffix("/_apis/connectiondata") {
+            return ["authenticatedUser": ["providerDisplayName": "Koen Example", "properties": ["Account": ["$type": "System.String", "$value": "koen@example.com"]]]]
+        }
+        if path.hasSuffix("/states") { return ["value": states] }
+        if path.hasSuffix("/_apis/wit/workitemsbatch") {
+            let wanted = body["ids"] as? [Int] ?? []
+            return ["value": wanted.map { id in items.first { $0.id == id }.map(raw) ?? NSNull() as Any }]
+        }
+        guard let item else { return nil }
+        if path.hasSuffix("/updates") { return ["value": updates(item)] }
+        if path.hasSuffix("/comments") {
+            if method == "POST" { return comment(99, "Koen Example", body["text"] as? String ?? "", hoursAgo: 0, markdown: true) }
+            return ["comments": item.id == 60379 ? comments : []]
+        }
+        var answer = raw(item)
+        answer["relations"] = item.id == 60379 ? relations : []
+        return answer
+    }
+
+    private static func raw(_ item: Item) -> [String: Any] {
+        ["id": item.id, "fields": [
+            "System.Id": item.id, "System.TeamProject": "Shop", "System.WorkItemType": item.type, "System.Title": item.title, "System.State": item.state,
+            "System.IterationPath": "Shop\\Sprint 42", "System.AreaPath": "Shop\\Checkout", "System.Tags": "checkout; payments",
+            "System.AssignedTo": ["displayName": item.assignedTo, "uniqueName": "\(item.assignedTo.split(separator: " ")[0].lowercased())@example.com"],
+            "System.ChangedDate": DirectFixture.ago(hours: 3), "Microsoft.VSTS.Common.Priority": 2, "Microsoft.VSTS.Scheduling.Effort": 5,
+            "System.Description": item.description, "Microsoft.VSTS.Common.AcceptanceCriteria": item.acceptance, "Microsoft.VSTS.TCM.ReproSteps": item.repro,
+        ] as [String: Any]]
+    }
+
+    private static var relations: [[String: Any]] {
+        [
+            ["rel": "System.LinkTypes.Hierarchy-Reverse", "url": "https://dev.azure.com/acme/_apis/wit/workItems/60300"],
+            ["rel": "AttachedFile", "url": "https://dev.azure.com/acme/_apis/wit/attachments/\(attachment)", "attributes": ["name": "basket-before.png", "resourceSize": 184_320] as [String: Any]],
+            ["rel": "ArtifactLink", "url": "vstfs:///GitHub/PullRequest/\(shopRepository)%2f412", "attributes": ["name": "GitHub Pull Request"]],
+        ]
+    }
+
+    private static var comments: [[String: Any]] {
+        [
+            comment(3, "Sanne de Vries", "Pull request **#412** is up. The retry confirms the same payment intent, so nobody is charged twice.", hoursAgo: 3, markdown: true),
+            comment(2, "Lena Visser", "<div>Support had four of these last week. Please keep the basket for at least the session.</div>", hoursAgo: 50, markdown: false),
+        ]
+    }
+
+    private static func comment(_ id: Int, _ by: String, _ text: String, hoursAgo: Double, markdown: Bool) -> [String: Any] {
+        var comment: [String: Any] = ["id": id, "text": text, "createdDate": DirectFixture.ago(hours: hoursAgo), "createdBy": ["displayName": by]]
+        if markdown { comment["format"] = "markdown" }
+        return comment
+    }
+
+    private static func updates(_ item: Item) -> [[String: Any]] {
+        func change(_ rev: Int, by: String, hoursAgo: Double, _ fields: [String: Any]) -> [String: Any] {
+            var fields = fields
+            fields["System.ChangedDate"] = ["newValue": DirectFixture.ago(hours: hoursAgo)]
+            return ["rev": rev, "revisedBy": ["displayName": by], "fields": fields]
+        }
+        return [
+            change(1, by: "Lena Visser", hoursAgo: 96, ["System.State": ["newValue": "New"]]),
+            change(2, by: "Lena Visser", hoursAgo: 72, ["System.AssignedTo": ["newValue": ["displayName": item.assignedTo]]]),
+            change(3, by: item.assignedTo, hoursAgo: 48, ["System.State": ["oldValue": "New", "newValue": "Development In Progress"]]),
+            change(4, by: item.assignedTo, hoursAgo: 3, ["System.State": ["oldValue": "Development In Progress", "newValue": item.state]]),
+        ]
+    }
 }
 
 // MARK: - Images

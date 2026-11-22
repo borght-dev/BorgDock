@@ -42,6 +42,9 @@ struct ReviewRootView: View {
         }
         .overlay(alignment: .top) { ToastView() }
         .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        #if DEBUG
+        .task { if let direct = app.direct, !DirectFixture.isOn { await DirectDebugAccounts.connect(direct) } }
+        #endif
     }
 }
 
