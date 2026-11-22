@@ -110,7 +110,7 @@ struct CoverHost: View {
 
     var body: some View {
         switch cover {
-        case .review(let keys): QuickReviewView(keys: keys)
+        case .review(let request): QuickReviewView(request: request)
         }
     }
 }

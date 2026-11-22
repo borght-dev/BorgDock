@@ -1,12 +1,14 @@
 import SwiftUI
 
 /// Decide where you finished: the overall comment, your line drafts with a jump to each, and the outcomes.
-/// Request changes and Comment post at once; Approve moves on and waits out its Undo.
+/// Request changes and Comment post at once; Approve moves on and waits out its Undo. On your own pull request (Walk
+/// through this PR) the drafts post as a comment, never a verdict, and Done moves on without posting anything.
 struct DecideSheet: View {
     @Environment(AppModel.self) private var app
     let session: ReviewSession
     @Binding var draft: ReviewDraft
     let onDecided: () -> Void
+    var onWalked: () -> Void = {}
     let onJump: (String) -> Void
     @FocusState private var focused: Bool
 
@@ -14,6 +16,7 @@ struct DecideSheet: View {
         let key = session.key
         let locked = session.left > 0
         let busy = app.busy.contains("review-\(key.key)")
+        let own = session.detail?.isMine ?? false
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
@@ -21,10 +24,10 @@ struct DecideSheet: View {
                         .font(.system(size: 30))
                         .foregroundStyle(locked ? BD.text3 : BD.green)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(locked ? "\(session.left) left to review" : "All \(session.walk.total) files reviewed")
+                        Text(locked ? "\(session.left) left to \(own ? "read" : "review")" : "All \(session.walk.total) files \(own ? "read" : "reviewed")")
                             .font(.system(size: 21, weight: .bold))
                             .foregroundStyle(BD.text)
-                        Text(verbatim: "Your decision on #\(key.number)").font(.system(size: 15)).foregroundStyle(BD.text2)
+                        Text(verbatim: own ? "Your comment on #\(key.number)" : "Your decision on #\(key.number)").font(.system(size: 15)).foregroundStyle(BD.text2)
                     }
                 }
                 .padding(.horizontal, 8)
@@ -62,33 +65,17 @@ struct DecideSheet: View {
                     .background(BD.fill, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
 
-                HStack(spacing: 12) {
-                    Button("Request changes") { post(.requestChanges) }
-                        .buttonStyle(.bd(.danger, height: 50))
-                        .disabled(busy || draft.isEmpty)
+                if own {
                     Button("Comment") { post(.comment) }
                         .buttonStyle(.bd(.plain, height: 50))
                         .disabled(busy || draft.isEmpty)
-                }
-                .padding(.top, 4)
-
-                Button { approve(thenMerge: false) } label: {
-                    if locked {
-                        Label("Approve · \(session.left) left", systemImage: "lock")
-                    } else {
-                        Label("Approve", systemImage: "checkmark")
-                    }
-                }
-                .buttonStyle(.bdPrimary)
-                .disabled(locked || busy)
-
-                if let detail = session.detail, !detail.isMine, !detail.autoMerge {
-                    Button("Approve & auto-merge") { approve(thenMerge: true) }
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(locked ? BD.text3 : BD.green)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 2)
-                        .disabled(locked || busy)
+                        .padding(.top, 4)
+                    Button(action: onWalked) { Label("Done walking through", systemImage: "checkmark") }
+                        .buttonStyle(.bdPrimary)
+                        .disabled(busy)
+                        .accessibilityIdentifier("decide-walked")
+                } else {
+                    decisions(locked: locked, busy: busy)
                 }
             }
             .padding(.horizontal, 16)
@@ -98,6 +85,38 @@ struct DecideSheet: View {
         .background(BD.sheet)
         .presentationDetents([.fraction(0.64), .large])
         .presentationDragIndicator(.visible)
+    }
+
+    @ViewBuilder
+    private func decisions(locked: Bool, busy: Bool) -> some View {
+        HStack(spacing: 12) {
+            Button("Request changes") { post(.requestChanges) }
+                .buttonStyle(.bd(.danger, height: 50))
+                .disabled(busy || draft.isEmpty)
+            Button("Comment") { post(.comment) }
+                .buttonStyle(.bd(.plain, height: 50))
+                .disabled(busy || draft.isEmpty)
+        }
+        .padding(.top, 4)
+
+        Button { approve(thenMerge: false) } label: {
+            if locked {
+                Label("Approve · \(session.left) left", systemImage: "lock")
+            } else {
+                Label("Approve", systemImage: "checkmark")
+            }
+        }
+        .buttonStyle(.bdPrimary)
+        .disabled(locked || busy)
+
+        if let detail = session.detail, !detail.isMine, !detail.autoMerge {
+            Button("Approve & auto-merge") { approve(thenMerge: true) }
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(locked ? BD.text3 : BD.green)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 2)
+                .disabled(locked || busy)
+        }
     }
 
     private func post(_ event: ReviewEvent) {

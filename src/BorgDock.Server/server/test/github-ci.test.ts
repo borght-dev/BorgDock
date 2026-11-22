@@ -137,6 +137,34 @@ test('one group per fingerprint across pull requests and the base branch, base f
   assert.ok(onPr.snippet?.includes('expected 100 to be 90'));
 });
 
+test('a group carries the desktop store\'s facts over every kept failure, not only the live ones', () => {
+  const jobs = [
+    failure({ jobId: 1, branch: 'main', prKey: null, runId: 100, failedAt: '2026-10-30T09:00:00Z', headSha: 'm1' }),
+    failure({ jobId: 2, prKey: 'acme/shop#1', runId: 20, headSha: 'h1' }),
+    // Passed when rerun on the same commit: flaky.
+    failure({ jobId: 3, prKey: 'acme/shop#1', runId: 21, headSha: 'h1', checkName: 'unit' }),
+    // A pull request that has closed since still counts toward shared.
+    failure({ jobId: 4, prKey: 'acme/shop#9', runId: 40, failedStep: 'Set up job' }),
+  ];
+  const [group] = buildGroups(jobs, {
+    openPrs: new Map([['acme/shop#1', { title: 'Totals', failingJobs: new Set([2]), headSha: 'h1', passingChecks: new Set(['unit']) }]]),
+    baseBranches: new Map(),
+    claims: new Map(),
+  });
+  assert.deepEqual(group.branches.map((b) => b.prKey), ['acme/shop#1']);
+  assert.deepEqual(group.facts, {
+    tier: 'high',
+    repos: ['acme/shop'],
+    prKeys: ['acme/shop#1', 'acme/shop#9'],
+    prJobIds: [2, 3, 4],
+    baseRuns: [100],
+    runCount: 4,
+    passedOnRetry: 1,
+    catalogIds: [],
+    failedSteps: ['Run bun run test', 'Set up job'],
+  });
+});
+
 test('a failure only this pull request has is new in it; an unreadable log says why', () => {
   const only = failure({ jobId: 7 });
   const groups = buildGroups([only], { openPrs: new Map([['acme/shop#1', { title: 'x', failingJobs: new Set([7]) }]]), baseBranches: new Map(), claims: new Map() });

@@ -83,7 +83,11 @@ final class PrQueryTests: XCTestCase {
         XCTAssertTrue(matches("is:conflict", try listFacts(extra: ["mergeable": "conflicting"])))
         XCTAssertTrue(matches("is:stale", try listFacts(updatedHoursAgo: 8 * 24)))
         XCTAssertFalse(matches("is:stale", try listFacts()))
-        XCTAssertFalse(matches("is:shared", try listFacts(checks: listRed)), "the phone has no shared failures yet")
+        XCTAssertTrue(matches("is:shared", try listFacts(checks: listRed, ci: PrCiFacts(blocked: 2, outside: true))))
+        XCTAssertFalse(matches("is:shared", try listFacts(checks: listRed)))
+        XCTAssertTrue(matches("checks:shared", try listFacts(checks: listRed, ci: PrCiFacts(blocked: 2, outside: false))))
+        XCTAssertFalse(matches("checks:shared", try listFacts(checks: listRed)))
+        XCTAssertFalse(matches("checks:shared", try listFacts(checks: listRunning, ci: PrCiFacts(blocked: 2, outside: true))), "only a red pull request asks the store")
         XCTAssertTrue(matches("is:automerge", try listFacts(extra: ["autoMerge": true])))
         XCTAssertFalse(matches("is:automerge", try listFacts()))
         XCTAssertTrue(matches("is:open", try listFacts(draft: true, checks: listRed)))
@@ -251,9 +255,9 @@ func listPR(
 func listFacts(
     number: Int = 1, repo: String = "shop", author: String = listMe, title: String? = nil, draft: Bool = false,
     checks: [String: Any]? = nil, requested: [String] = [], teams: [String] = [], reviews: [(String, String)] = [],
-    updatedHoursAgo: Double = 1, extra: [String: Any] = [:]
+    updatedHoursAgo: Double = 1, extra: [String: Any] = [:], ci: PrCiFacts? = nil
 ) throws -> PrFacts {
     let pr = try listPR(number: number, repo: repo, author: author, title: title, draft: draft, checks: checks, requested: requested, teams: teams,
                         reviews: reviews, updatedHoursAgo: updatedHoursAgo, extra: extra)
-    return PrFacts(pr, PrFactsContext(logins: [listMe], now: samplePRNow))
+    return PrFacts(pr, PrFactsContext(logins: [listMe], now: samplePRNow, ciOf: { _ in ci }))
 }

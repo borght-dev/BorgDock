@@ -2,7 +2,7 @@
 // Ported from the desktop's src/services/focus-bucket.ts, pr-grouping.ts and priority-scoring.ts, so a pull
 // request lands in the same bucket on the phone as in BorgDock.
 
-import type { CheckState, CheckSummary, FocusBucket, Person, PrLabel, PrReason } from '../../../shared/src/api.ts';
+import type { CheckState, CheckSummary, FailedCheck, FocusBucket, Person, PrLabel, PrReason } from '../../../shared/src/api.ts';
 
 export const FOCUS_BUCKETS: readonly FocusBucket[] = ['you', 'wait', 'ready', 'stale'];
 
@@ -13,6 +13,8 @@ export type CheckContext = {
   name: string;
   workflow: string | null;
   runId: number | null;
+  /** The workflow run's number (`#15274`), which an E2E report names. */
+  runNumber: number | null;
   state: CheckState;
   /** GitHub's raw conclusion, lower case; null while it runs. */
   conclusion: string | null;
@@ -101,6 +103,13 @@ export function checkSummary(checks: readonly CheckContext[]): CheckSummary {
     skipped: count('skipped') + count('neutral'),
     segments: checks.map((c) => c.state).sort((a, b) => SEGMENT_ORDER[a] - SEGMENT_ORDER[b]).slice(0, 12),
   };
+}
+
+/** The head commit's failed checks as GitHub reports them, for the phone's E2E reports and shared CI failures. */
+export function failedChecksOf(checks: readonly CheckContext[]): FailedCheck[] {
+  return checks
+    .filter((c) => c.state === 'failure')
+    .map((c) => ({ name: c.name, jobId: c.kind === 'check' && c.id > 0 ? c.id : null, runId: c.runId, runNumber: c.runNumber, completedAt: c.completedAt }));
 }
 
 /* ---------- predicates (pr-grouping.ts) ---------- */

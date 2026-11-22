@@ -60,7 +60,7 @@ struct PrFilterSheet: View {
     @ViewBuilder
     private func summary(_ term: QueryTerm?) -> some View {
         if let term, let focus = app.focus.focus {
-            let context = PrListContext(focus: focus, list: app.prList, logins: app.focus.myLogins)
+            let context = PrListContext(focus: focus, list: app.prList, logins: app.focus.myLogins, ciGroups: app.focus.ciGroups)
             let chip = PrFacets.chip(term, name: context.name)
             Text(term.negate ? "not \(chip.values)" : chip.values)
                 .font(.system(size: 15, weight: .medium))
@@ -79,7 +79,7 @@ private struct PrFilterShowButton: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        let count = app.focus.focus.map { PrListContext(focus: $0, list: app.prList, logins: app.focus.myLogins).count(app.prList.query) } ?? 0
+        let count = app.focus.focus.map { PrListContext(focus: $0, list: app.prList, logins: app.focus.myLogins, ciGroups: app.focus.ciGroups).count(app.prList.query) } ?? 0
         Button { dismiss() } label: {
             Text(count == 1 ? "Show 1 pull request" : "Show \(count) pull requests")
                 .font(.system(size: 16.5, weight: .semibold))
@@ -174,7 +174,7 @@ struct PrFilterValuesView: View {
     /// The field's values counted within the other filters; a picked value no open pull request carries stays listed.
     private func values(selected: [String]) -> [PrFacets.Value] {
         guard let focus = app.focus.focus else { return [] }
-        let context = PrListContext(focus: focus, list: app.prList, logins: app.focus.myLogins)
+        let context = PrListContext(focus: focus, list: app.prList, logins: app.focus.myLogins, ciGroups: app.focus.ciGroups)
         let values = PrFacets.values(field, in: context.facts(except: field, query: app.prList.query), ctx: context.ctx)
         let missing = selected.filter { picked in !values.contains { $0.value == picked } }
         return missing.map { PrFacets.Value(value: $0, label: PrFacets.chip(QueryTerm(field, [$0]), name: context.name).values, count: 0) } + values

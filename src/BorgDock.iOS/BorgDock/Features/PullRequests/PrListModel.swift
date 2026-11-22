@@ -92,13 +92,15 @@ struct PrListModel {
         return filter(facts, view, parsed, hideFailing, ctx)
     }
 
-    /// Every open pull request's facts, with Focus's teams and stale threshold.
-    static func facts(_ focus: Focus, logins: Set<String>, now: Date) -> [PrFacts] {
+    /// Every open pull request's facts, with Focus's teams and stale threshold, and the related CI failures that clear a
+    /// red pull request.
+    static func facts(_ focus: Focus, logins: Set<String>, now: Date, ciGroups: [CiFailureGroup] = []) -> [PrFacts] {
         let ctx = PrFactsContext(
             logins: Set(logins.map { $0.lowercased() }),
             teams: Array(Set((focus.teams ?? [:]).values.flatMap { $0 })).sorted(),
             now: now,
-            staleAfterDays: focus.staleAfterDays ?? 7
+            staleAfterDays: focus.staleAfterDays ?? 7,
+            ciOf: CiLens.lookup(ciGroups, focus.pullRequests)
         )
         return focus.pullRequests.map { PrFacts($0, ctx) }
     }

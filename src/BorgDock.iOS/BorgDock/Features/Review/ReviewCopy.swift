@@ -220,16 +220,53 @@ struct ReviewDecisionRecord: Hashable, Sendable {
 
 /// Why a pull request didn't load, after its automatic retry: "GitHub took longer than 30 seconds, twice."
 /// The end of a review run: "All 6 reviewed", or "4 reviewed, 2 skipped" when some were skipped.
-enum ReviewRunSummary {
-    static func title(total: Int, decided: Int) -> String {
-        let skipped = total - decided
-        if skipped <= 0 { return total == 1 ? "Reviewed" : "All \(total) reviewed" }
-        if decided == 0 { return skipped == 1 ? "Skipped" : "All \(skipped) skipped" }
-        return "\(decided) reviewed, \(skipped) skipped"
+/// The end card's words: the desktop's `QuickReviewSummary`.
+struct ReviewEndSummary: Equatable {
+    var approved = 0
+    var commented = 0
+    var skipped = 0
+    var walked = 0
+
+    init(_ outcomes: [ReviewOutcome]) {
+        for outcome in outcomes {
+            switch outcome {
+            case .approved: approved += 1
+            case .commented: commented += 1
+            case .skipped: skipped += 1
+            case .walked: walked += 1
+            }
+        }
     }
 
-    static func detail(decided: Int) -> String {
-        decided > 0 ? "Approvals post when their Undo runs out." : "Skipped pull requests stay on Focus."
+    var reviewed: Int { approved + commented }
+    var onlyWalks: Bool { walked > 0 && reviewed == 0 }
+    var title: String { onlyWalks ? "Walk-through complete" : "Review complete" }
+
+    /// "2 PRs reviewed. Approvals post when their Undo runs out."
+    func detail(heldApprovals: Int) -> String {
+        let count = onlyWalks
+            ? "\(walked) of your PRs walked through."
+            : "\(reviewed) PR\(reviewed == 1 ? "" : "s") reviewed."
+        switch heldApprovals {
+        case 0: return count
+        case 1: return count + " The approval posts when its Undo runs out."
+        default: return count + " Approvals post when their Undo runs out."
+        }
+    }
+
+    /// The highlighted button goes to the same author, unless only the other pull request has passing checks.
+    static func prefersAuthor(author: PrSummary?, next: PrSummary?) -> Bool {
+        guard let author else { return false }
+        return author.overallStatus == .green || next?.overallStatus != .green
+    }
+
+    static func checks(_ pr: PrSummary) -> (text: String, tone: Tone, icon: String?) {
+        switch pr.overallStatus {
+        case .green: ("passing", .ok, "checkmark")
+        case .red: ("failing", .bad, "xmark")
+        case .yellow: ("checks running", .run, nil)
+        case .gray: ("no checks", .mute, nil)
+        }
     }
 }
 

@@ -136,6 +136,8 @@ private struct ReviewCard<Content: View>: View {
 /// A pull request before its files: what it is and why (checks, proof, description), and what changed by kind.
 struct ReviewBrief: View {
     let session: ReviewSession
+    /// Why a red pull request in an author run may be merged anyway: its failures are not its doing.
+    var bypass: String?
     @State private var readsAll = false
     @State private var descriptionHeight: CGFloat = 0
     @State private var zoomed: ProofImage?
@@ -148,6 +150,13 @@ struct ReviewBrief: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ReviewPrHeader(summary: detail.summary, commits: detail.commits)
                     chips(detail.summary)
+                    if let bypass {
+                        ReviewBanner(icon: "checkmark.shield", tone: .warn, title: "Red, but not its doing.", text: bypass)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("review-bypass")
+                    }
                     if session.isReReview, let files = session.files {
                         let changed = files.files.filter(\.changedSinceReview).count
                         ReviewBanner(icon: "arrow.counterclockwise", tone: .warn, title: "Re-review.",

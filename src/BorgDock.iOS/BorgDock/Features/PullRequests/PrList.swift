@@ -24,24 +24,6 @@ enum PrGroupSummary {
     }
 }
 
-/// Review all: one author's pull requests in Quick Review, oldest first, without the ones you can't approve and merge
-/// yet. The desktop's `services/author-run.ts`; the phone has no E2E report or shared CI failures, so any failing check
-/// holds a pull request.
-enum AuthorRun {
-    static func queue(_ prs: [PrSummary], author login: String, myLogins: Set<String>) -> [PrSummary] {
-        let author = login.lowercased()
-        let mine = Set(myLogins.map { $0.lowercased() })
-        guard !mine.contains(author) else { return [] }
-        return prs
-            .filter { pr in
-                pr.author.login.lowercased() == author && pr.state == .open && !pr.isDraft && !pr.isMine
-                    && !pr.isApprovedAtHead(by: mine)
-                    && pr.mergeable != .conflicting && pr.reviewDecision != .changesRequested && pr.checks.failed == 0
-            }
-            .sorted { $0.createdAt.sortDate < $1.createdAt.sortDate }
-    }
-}
-
 /// One step of a pull request's way in: Checks, Review, Merge.
 struct PrTrackStep: Hashable {
     enum Mark: Hashable {

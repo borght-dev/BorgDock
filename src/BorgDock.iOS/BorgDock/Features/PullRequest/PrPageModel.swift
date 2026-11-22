@@ -210,7 +210,7 @@ enum CommentPresentation: Equatable {
     static let longBotComment = 280
 
     static func of(author: Person, body: String, isReview: Bool) -> CommentPresentation {
-        if let report = E2EReport.parse(body) { return .e2eReport(failed: report.failed, body: report.body) }
+        if let report = E2EReportCard.parse(body) { return .e2eReport(failed: report.failed, body: report.body) }
         guard BotAuthor.isBot(author.login) else { return .plain }
         let cleanup = MarkdownCleanup.clean(body)
         let text = cleanup.text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -245,9 +245,9 @@ struct BotFold: Equatable {
     }
 }
 
-/// The repository's E2E workflow comment: `## E2E Test Results`, then `### Failed Tests` with a table. The card takes
-/// the title for itself and counts the table's rows.
-enum E2EReport {
+/// How the PR page shows the repository's E2E workflow comment: `## E2E Test Results`, then `### Failed Tests` with a
+/// table. The card takes the title for itself and counts the table's rows. `E2eReport` judges the same comment.
+enum E2EReportCard {
     static func parse(_ body: String) -> (failed: Int?, body: String)? {
         let lines = body.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
         guard let title = lines.firstIndex(where: { $0.wholeMatch(of: #/\s{0,3}#{1,6}\s*E2E Test Results\s*#*\s*/#) != nil }) else { return nil }

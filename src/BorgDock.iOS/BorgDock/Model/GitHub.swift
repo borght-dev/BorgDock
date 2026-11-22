@@ -109,9 +109,22 @@ struct PrSummary: Codable, Hashable, Sendable, Identifiable {
     let latestReviews: [PrLatestReview]?
     /// Focus's priority score: the Priority order's tie-break within a status.
     let priorityScore: Int?
+    /// The head commit's failed checks, one per check: what E2E reports and shared CI failures are judged by.
+    let failedChecks: [FailedCheck]?
 
     var id: String { key }
     var prKey: PrKey { PrKey(owner: owner, repo: repo, number: number) }
+}
+
+/// A failed check on the head commit, as GitHub reports it (the desktop's `failedCheckNames` and `ciJobs`).
+struct FailedCheck: Codable, Hashable, Sendable {
+    let name: String
+    /// The Actions job id; nil for a commit status.
+    let jobId: Int?
+    let runId: Int?
+    /// The workflow run's number (`#15274`), which an E2E report names.
+    let runNumber: Int?
+    let completedAt: String?
 }
 
 /// A reviewer's latest review of a pull request, at the commit it reviewed.
@@ -483,6 +496,31 @@ struct CiClaim: Codable, Hashable, Sendable {
     let note: String?
 }
 
+/// What the desktop's CI failure store knows about a group, over every failure the server keeps: `CiLens` decides from
+/// it whether the group is shared and whether it is a pull request's doing.
+struct CiGroupFacts: Codable, Hashable, Sendable {
+    enum Tier: String, ResilientEnum {
+        case high, medium
+        static let fallback = Tier.medium
+    }
+
+    let tier: Tier
+    /// `owner/repo` of each failure.
+    let repos: [String]
+    /// The pull requests it failed on, open or not.
+    let prKeys: [String]
+    /// The Actions job ids of its pull request failures.
+    let prJobIds: [Int]
+    /// The base-branch runs it failed in.
+    let baseRuns: [Int]
+    let runCount: Int
+    /// Failures whose check passed when it ran again on the same commit.
+    let passedOnRetry: Int
+    /// Known infrastructure faults it matched.
+    let catalogIds: [String]
+    let failedSteps: [String]
+}
+
 struct CiFailureGroup: Codable, Hashable, Sendable, Identifiable {
     let id: String
     /// "e2e / checkout › keeps the basket on timeout"
@@ -495,6 +533,8 @@ struct CiFailureGroup: Codable, Hashable, Sendable, Identifiable {
     let failures: Int
     let branches: [CiBranchHit]
     let claim: CiClaim?
+    /// Optional so an older server still decodes; without it no pull request is cleared.
+    let facts: CiGroupFacts?
 }
 
 /// POST /api/ci/groups/:id/claim

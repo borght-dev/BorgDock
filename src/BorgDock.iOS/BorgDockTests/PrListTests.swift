@@ -214,22 +214,6 @@ final class PrListTests: XCTestCase {
         XCTAssertEqual(PrGroupSummary.parts(asks, now: samplePRNow).map(\.text), ["1 asks you", "oldest 2 d"])
     }
 
-    func testReviewAllRunsTheAuthorsPullRequestsYouCanApproveOldestFirst() throws {
-        let prs = [
-            try samplePR(1, author: "priya", extra: ["createdAt": sampleISO(hoursAgo: 10)]),
-            try samplePR(2, author: "priya", extra: ["createdAt": sampleISO(hoursAgo: 200)]),
-            try samplePR(3, author: "priya", failed: 1),
-            try samplePR(4, author: "priya", extra: ["mergeable": "conflicting"]),
-            try samplePR(5, author: "priya", extra: ["reviewDecision": "changes_requested"]),
-            try samplePR(6, author: "priya", draft: true),
-            try samplePR(7, author: "priya", extra: ["approvedBy": ["koen"], "reviewedHeadSha": "abc"]),
-            try samplePR(8, author: "priya", extra: ["approvedBy": ["koen"], "reviewedHeadSha": "older"]),
-            try samplePR(9, author: "tom"),
-        ]
-        XCTAssertEqual(AuthorRun.queue(prs, author: "Priya", myLogins: me).map(\.number), [2, 8, 1])
-        XCTAssertTrue(AuthorRun.queue(prs, author: "koen", myLogins: me).isEmpty, "never your own")
-    }
-
     func testWaitingIsWhatInvolvesYouAndWaitsOnSomeoneElse() throws {
         XCTAssertTrue(try samplePR(1, mine: true).isWaitingOnOthers(myLogins: me), "yours under review")
         XCTAssertTrue(try samplePR(2, extra: ["reviewedHeadSha": "old"]).isWaitingOnOthers(myLogins: me), "you reviewed it")

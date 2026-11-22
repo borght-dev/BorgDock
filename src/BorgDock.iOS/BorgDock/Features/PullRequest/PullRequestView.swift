@@ -397,7 +397,7 @@ struct PrBottomBar: View {
                     Link(destination: url) { Label("Open on GitHub", systemImage: "arrow.up.right.square") }.buttonStyle(.bdPlain)
                 }
             } else {
-                Button { app.router.review(app.focus.reviewQueue(startingAt: detail.summary)) } label: {
+                Button { app.router.review([detail.summary.prKey]) } label: {
                     Label(detail.reviewedHeadSha != nil && detail.reviewedHeadSha != detail.headSha ? "Re-review" : "Start review", systemImage: "eye")
                 }
                 .buttonStyle(.bdPrimary)

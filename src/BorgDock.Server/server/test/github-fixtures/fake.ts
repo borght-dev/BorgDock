@@ -58,13 +58,13 @@ export const ago = (ms: number) => new Date(NOW - ms).toISOString();
 export const hours = (n: number) => n * 3_600_000;
 export const days = (n: number) => n * DAY;
 
-type Check = { name: string; conclusion?: string | null; status?: string; id?: number; runId?: number; workflow?: string; completedAt?: string };
+type Check = { name: string; conclusion?: string | null; status?: string; id?: number; runId?: number; runNumber?: number; workflow?: string; completedAt?: string };
 
 export function checkRun(c: Check) {
   return {
     __typename: 'CheckRun', databaseId: c.id ?? 1, name: c.name, status: c.status ?? 'COMPLETED', conclusion: c.conclusion === undefined ? 'SUCCESS' : c.conclusion,
     startedAt: ago(hours(2)), completedAt: c.completedAt ?? ago(hours(1)), detailsUrl: `https://github.com/acme/shop/actions/runs/${c.runId ?? 1}/job/${c.id ?? 1}`,
-    checkSuite: { workflowRun: { databaseId: c.runId ?? 1, workflow: { name: c.workflow ?? 'CI' } } },
+    checkSuite: { workflowRun: { databaseId: c.runId ?? 1, runNumber: c.runNumber ?? 1, workflow: { name: c.workflow ?? 'CI' } } },
   };
 }
 

@@ -18,6 +18,10 @@ final class FocusStore {
     private(set) var details: [String: PrDetail] = [:]
     private(set) var files: [String: PrFiles] = [:]
     private(set) var conversations: [String: PrConversation] = [:]
+    /// Related CI failures with a live failure: which red pull requests are not red by their own doing.
+    private(set) var ciGroups: [CiFailureGroup] = []
+    /// E2E reports read for author runs.
+    let e2e = E2eReports()
 
     /// Approvals waiting out their Undo.
     let hold = ApprovalHold(presenter: ApprovalLiveActivity())
@@ -85,9 +89,12 @@ final class FocusStore {
         isLoading = true
         defer { if generation == loadGeneration { isLoading = false } }
         do {
+            async let groups = try? api.ciGroups()
             let fresh = try await api.focus()
+            let freshGroups = await groups
             guard generation == loadGeneration else { return }
             focus = fresh
+            if let freshGroups { ciGroups = freshGroups }
             syncedAt = .now
             error = nil
         } catch is CancellationError {

@@ -125,7 +125,7 @@ test('CI groups: list, one, claim and unclaim', async () => {
   const groups = await json(app.request('/api/ci/groups'));
   assert.equal(groups.length, 1);
   const id = groups[0].id;
-  assert.deepEqual(Object.keys(groups[0]).sort(), ['branches', 'claim', 'failures', 'firstFailedAt', 'id', 'lastFailedAt', 'location', 'signal', 'title']);
+  assert.deepEqual(Object.keys(groups[0]).sort(), ['branches', 'claim', 'facts', 'failures', 'firstFailedAt', 'id', 'lastFailedAt', 'location', 'signal', 'title']);
   assert.equal((await json(app.request(`/api/ci/groups/${id}`))).id, id);
   assert.equal((await app.request('/api/ci/groups/nope')).status, 404);
   const claimed = await json(post(`/api/ci/groups/${id}/claim`, { note: 'Mine' }));

@@ -4,7 +4,7 @@ import Foundation
 /// Screenshot states for Quick Review against the fixture's queue (`e2e/fixtures/90-review-queue.mjs`), mockup
 /// sections 05 and 06. `-BorgDockRoute review/<what>`:
 ///   walk/<n>/<reviewed> · files/<n>/<reviewed> · tests/<n> · brief · decided · error (after the fixture's
-///   /preview/fail-files)
+///   /preview/fail-files) · end (Priya Shah's run at its end card, design/ios-pr-list/mockups.html section 05)
 @MainActor
 enum ReviewDebugRoute {
     private static let queue = [412, 405, 401].map { PrKey(owner: "acme", repo: "shop", number: $0) }
@@ -53,6 +53,16 @@ enum ReviewDebugRoute {
             store.reviewDecisions[approved.key] = decision(.held, at: .now.addingTimeInterval(-65), headSha: files.headSha)
             store.hold.hold(approved, label: "Approving #\(approved.number)", duration: .seconds(30), send: {}, onUndo: {}, onFailure: { _ in })
             app.router.review(queue)
+        case "end":
+            // #352 approved and waiting out its Undo, #370 commented on, #84 skipped; the run leaves the rest out.
+            let approved = PrKey(owner: "acme", repo: "shop", number: 352)
+            let commented = PrKey(owner: "acme", repo: "storefront", number: 370)
+            store.reviewDecisions[approved.key] = decision(.held, at: .now)
+            store.reviewDecisions[commented.key] = ReviewDecisionRecord(event: .comment, body: "Can a shared link expire?", lineComments: [],
+                                                                        headSha: "370a91c", at: .now.addingTimeInterval(-90), autoMerge: false, status: .posted)
+            store.hold.hold(approved, label: "Approving #\(approved.number)", duration: .seconds(60), send: {}, onUndo: {}, onFailure: { _ in })
+            store.debugReviewPosition = 99
+            app.router.reviewAuthor("priyashah", first: approved)
         case "error":
             store.reviewDecisions[queue[1].key] = ReviewDecisionRecord(event: .approve, body: "", lineComments: [], headSha: "9d0e4b1",
                                                                         at: .now.addingTimeInterval(-40), autoMerge: false, status: .posted)
