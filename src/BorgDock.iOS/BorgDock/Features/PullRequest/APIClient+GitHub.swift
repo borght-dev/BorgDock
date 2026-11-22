@@ -5,7 +5,9 @@ import Foundation
 extension APIClient: PullRequestBackend, WorkItemBackend {}
 
 extension APIClient {
-    func focus() async throws -> Focus { try await get("/api/focus") }
+    func focus(fresh: Bool = false) async throws -> Focus {
+        try await get("/api/focus", query: fresh ? [URLQueryItem(name: "refresh", value: "1")] : [])
+    }
 
     func pullRequest(_ key: PrKey) async throws -> PrDetail { try await get(key.apiPath) }
 

@@ -3,7 +3,8 @@ import Foundation
 /// What the pull request screens ask of whoever reads GitHub for them: the BorgDock server (`APIClient`), or GitHub
 /// itself from this phone (`GitHubDirect`).
 protocol PullRequestBackend: Sendable {
-    func focus() async throws -> Focus
+    /// The open pull requests. `fresh` reads GitHub now instead of answering from the last poll (pull to refresh).
+    func focus(fresh: Bool) async throws -> Focus
     func pullRequest(_ key: PrKey) async throws -> PrDetail
     func pullRequestFiles(_ key: PrKey) async throws -> PrFiles
     func conversation(_ key: PrKey) async throws -> PrConversation
