@@ -180,6 +180,14 @@ export interface SavedPrView {
   display: PrDisplay;
 }
 
+/** The longest name BorgDock for iPhone's server keeps for a saved view. */
+export const MAX_VIEW_NAME = 80;
+
+/** A saved view's name as both apps store it: trimmed, at most `MAX_VIEW_NAME` characters. */
+export function viewName(name: string): string {
+  return name.trim().slice(0, MAX_VIEW_NAME).trim();
+}
+
 export function newViewId(): string {
   return `view-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -192,7 +200,7 @@ export function sanitizeSavedView(raw: unknown): SavedPrView | null {
   if (typeof v.name !== 'string' || v.name.trim() === '') return null;
   return {
     id: v.id,
-    name: v.name.trim(),
+    name: viewName(v.name),
     filter: isPrViewKey(v.filter) ? v.filter : 'all',
     query: typeof v.query === 'string' ? v.query : '',
     display: sanitizeViewDisplay(v.display),

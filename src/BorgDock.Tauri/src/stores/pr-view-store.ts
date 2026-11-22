@@ -6,6 +6,7 @@ import {
   newViewId,
   type SavedPrView,
   sanitizeSavedViews,
+  viewName,
 } from '@/services/pr-list/facets';
 import { isGroupCollapsed } from '@/services/pr-list/groups';
 import type { PrViewKey } from '@/services/pr-list/model';
@@ -126,7 +127,7 @@ export const usePrViewStore = create<PrViewState>()((set, get) => ({
     settleChange();
     const view: SavedPrView = {
       id: newViewId(),
-      name: name.trim() || 'Untitled view',
+      name: viewName(name) || 'Untitled view',
       ...currentList(get().display),
     };
     const savedViews = [...get().savedViews, view];
@@ -154,7 +155,9 @@ export const usePrViewStore = create<PrViewState>()((set, get) => ({
 
   renameView: (id, name) => {
     if (!name.trim()) return;
-    const savedViews = get().savedViews.map((v) => (v.id === id ? { ...v, name: name.trim() } : v));
+    const savedViews = get().savedViews.map((v) =>
+      v.id === id ? { ...v, name: viewName(name) } : v,
+    );
     set({ savedViews });
     persist(PR_SAVED_VIEWS_STORE_KEY, savedViews);
   },

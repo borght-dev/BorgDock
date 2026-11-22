@@ -7,9 +7,11 @@ import {
   fieldLabel,
   hasTerms,
   isViewEdited,
+  MAX_VIEW_NAME,
   newViewId,
   type SavedPrView,
   sanitizeSavedViews,
+  viewName,
 } from '../facets';
 import { REVIEW_LABEL, STATUS_BUCKET_LABEL } from '../facts';
 import type { MatchContext, QueryField } from '../query';
@@ -264,5 +266,12 @@ describe('newViewId', () => {
     const b = newViewId();
     expect(a).toMatch(/^view-[a-z0-9]+-[a-z0-9]*$/);
     expect(a).not.toBe(b);
+  });
+});
+
+describe('viewName', () => {
+  it('trims and keeps at most the 80 characters the phone server accepts', () => {
+    expect(viewName('  Shop, green  ')).toBe('Shop, green');
+    expect(viewName('x'.repeat(100))).toHaveLength(MAX_VIEW_NAME);
   });
 });
