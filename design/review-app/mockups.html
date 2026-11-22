@@ -284,12 +284,14 @@
   .lgr + .lgr::before { content: ""; position: absolute; top: 0; left: 44px; right: 0; height: .5px; background: var(--sep); }
   .lgr .t { flex: 1; min-width: 0; }
   .lgr .t b { display: block; font-size: 14.5px; font-weight: 600; letter-spacing: -.012em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .lgr .t > span { display: block; font-size: 12px; color: var(--tx2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lgr .t > span { display: flex; flex-wrap: wrap; height: 16px; line-height: 16px; font-size: 12px; color: var(--tx2); margin-top: 2px; white-space: pre; overflow: hidden; }
+  .lgr .t > span > * { flex: none; }
   .lgr .t > span em { font-style: normal; color: var(--w, var(--tx2)); font-weight: 600; }
-  .lgr .t > span i { font-style: normal; color: var(--ac-tx); }
-  .lgr .rt { display: grid; grid-template-columns: 40px 26px; column-gap: 8px; row-gap: 7px; align-items: center; flex: none; }
-  .lgr .rt .cbar { width: 40px; margin: 0; }
-  .lgr .rt .age { font-size: 12px; text-align: right; }
+  .lgr .t > span i { font-style: normal; }
+  .lgr .rt { display: grid; grid-template-columns: 40px 32px; column-gap: 6px; row-gap: 7px; align-items: center; flex: none; }
+  .lgr .rt .cbar { width: 40px; height: 4px; margin: 0; }
+  .lgr .rt .cbar i { min-width: 6px; }
+  .lgr .rt .age { font-size: 12px; text-align: right; white-space: nowrap; }
   .lgr .rt .ds { grid-column: span 2; justify-self: end; font-size: 11px; margin: 0; }
   .lgr.one { min-height: 40px; }
   .lgr.one .t b { font-weight: 500; font-size: 14px; }
@@ -300,6 +302,45 @@
   .swp .lgr { margin-left: 96px; box-shadow: -6px 0 12px -6px rgba(0, 0, 0, .3); }
   .swp .swa { position: absolute; left: 0; top: 0; bottom: 0; width: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--onac); font-size: 12px; font-weight: 600; }
   .swp .swa .ic { --s: 19px; }
+  .swp.l { background: var(--tx3); }
+  .swp.l .lgr { margin-left: -84px; margin-right: 84px; box-shadow: 6px 0 12px -6px rgba(0, 0, 0, .3); }
+  .swp.l .swa { left: auto; right: 0; width: 84px; color: #fff; }
+  .lgr .t > span .ty { width: 7px; height: 7px; border-radius: 2px; margin-right: 4px; vertical-align: 1px; }
+  .lgr .rt .age.old { color: var(--yl); font-weight: 600; }
+  .lgr .rt .nock { font-size: 10.5px; color: var(--tx3); white-space: nowrap; }
+  .lgr.faded > * { opacity: .45; }
+  .av.bot { background: var(--fill2); color: var(--tx2); }
+  .av.bot .ic { --s: 12px; }
+  .lgh.pin { position: relative; z-index: 6; background: color-mix(in srgb, var(--bg) 80%, transparent); backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6); border-bottom: .5px solid var(--sep); }
+  .lgh.pin + .ldg { margin-top: -27px; border-top: 0; }
+  .lgh .rp { color: var(--tx); }
+  .lgs { padding: 9px 16px 5px; font: 500 11.5px "SF Mono", ui-monospace, monospace; color: var(--tx3); display: flex; gap: 6px; background: var(--card); position: relative; }
+  .lgs + .lgr::before { display: none; }
+  .lgr + .lgs::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: .5px; background: var(--sep); }
+  .lgn { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 16px; font-size: 14px; color: var(--tx2); background: var(--card); }
+  .lgn .ic { --s: 17px; color: var(--gr); }
+  .lgf { padding: 16px 20px 0; font-size: 12px; line-height: 1.5; color: var(--tx3); text-align: center; }
+  .sk { display: block; height: 9px; border-radius: 5px; background: var(--fill2); }
+  .lgr.skel .av { background: var(--fill2); }
+  .lgr.skel .t { display: grid; gap: 9px; }
+  .lgr.skel .t > .sk { height: 9px; margin: 0; }
+  .lgr.skel .rt .sk { height: 5px; }
+  .menu { position: absolute; z-index: 60; width: 268px; border-radius: 22px; background: var(--menu); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); border: .5px solid var(--glass-brd); box-shadow: 0 18px 50px rgba(0, 0, 0, .32); overflow: hidden; font-size: 16px; }
+  .menu .mi { display: flex; align-items: center; gap: 10px; padding: 0 16px; min-height: 44px; position: relative; }
+  .menu .mi + .mi::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: .5px; background: var(--sep); }
+  .menu .mi .ic { margin-left: auto; --s: 18px; }
+  .menu .mi small { display: block; font-size: 12px; color: var(--tx2); margin-top: -1px; max-width: 196px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .menu .gap { height: 7px; background: var(--fill); }
+  .lift { position: absolute; left: 10px; right: 10px; z-index: 60; border-radius: 18px; overflow: hidden; box-shadow: 0 18px 44px rgba(0, 0, 0, .3); }
+  .lift .lgr { border-left-width: 3px; }
+  .snav { height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
+  .snav .srch { flex: 1; margin: 0; border-radius: 19px; color: var(--tx); }
+  .snav .srch .ic { color: var(--tx3); }
+  .snav .srch .caret { display: inline-block; width: 2px; height: 19px; background: var(--ac); border-radius: 1px; margin-left: -5px; }
+  .snav > span { font-size: 16px; font-weight: 600; color: var(--ac-tx); }
+  .phone.strip { height: auto; border-radius: 30px; }
+  .phone.strip .hi { display: none; }
+  .phone.strip .view { position: static; padding: 4px 0 14px; }
 
   /* code */
   .code { font: 11.5px/18px "SF Mono", ui-monospace, Menlo, monospace; background: var(--fill); border-radius: 12px; padding: 9px 11px; color: var(--tx); white-space: pre; overflow: hidden; }
@@ -630,357 +671,162 @@
       <li><b>No server.</b> <span class="why">The phone talks to GitHub and Azure DevOps with your own tokens, kept in its keychain.</span></li>
       <li><b>Only what GitHub and Azure DevOps give.</b> <span class="why">No agents, T3 threads, Fix with Claude, push notifications, Sprint, Work or Notes.</span></li>
       <li><b>It looks like BorgDock.</b> <span class="why"><code>BDTokens</code> and <code>BDComponents</code>, iOS 26 Liquid Glass, light and dark.</span></li>
+      <li><b>The overview is the Ledger, direction C.</b> <span class="why">Koen's pick over A (Queue) and B (Board) on 22 November 2026. Everything that involves you is on one screen, in rows you can compare. It gives up full titles and long reasons for that.</span></li>
+      <li><b>A work item opens as a sheet over the pull request.</b> <span class="why">Koen's pick over a pushed page. Close it and you are back where you were reading.</span></li>
+      <li><b>Rerun failed checks stays, when the token has it.</b> <span class="why">With Actions write the button shows. Without it the button is absent and nothing asks for the permission.</span></li>
+      <li><b>Auto-merge is a switch on the decision sheet.</b> <span class="why">"Merge when checks pass", off until you turn it on, next to Approve.</span></li>
     </ul>
   </div>
   <div class="dbox open">
-    <h2>Open, for Koen</h2>
+    <h2>Proposed, not yet confirmed</h2>
     <ul>
-      <li><b>Which overview: A, B or C?</b> <span class="why">My pick is A. The other screens are drawn for A; only the way into them changes with B or C.</span></li>
-      <li><b>The work item as a sheet over the pull request,</b> <span class="why">as drawn, or a pushed page as in today's app?</span></li>
-      <li><b>Rerun failed checks from the phone?</b> <span class="why">It needs Actions write on the token. Drawn as a permission you may leave out.</span></li>
-      <li><b>Auto-merge as a switch on the decision sheet,</b> <span class="why">as drawn, or not on the phone at all?</span></li>
+      <li><b>The reason leads a row's second line.</b> <span class="why">Changed after the pick. In the direction mockup it came last and was the part that got cut off.</span></li>
+      <li><b>The check bar has one part per state.</b> <span class="why">Today's <code>CheckBar</code> draws a segment per check, which turns to dots at 40 points.</span></li>
+      <li><b>Swipe left only snoozes.</b> <span class="why">Merge is a button on the rows that can merge.</span></li>
+      <li><b>Tabs, Group, Sort, Display and saved views go.</b> <span class="why">The Ledger has one grouping and one order, and saved views synced through the server. Search with filter chips covers the rest.</span></li>
+      <li><b>The pull request page, Quick Review, the work item and setup</b> <span class="why">as drawn below.</span></li>
     </ul>
-    <p style="margin:10px 0 0;color:#8e8f96;font-size:13px">Everything below is a proposal until it is listed under Decided.</p>
+    <p style="margin:10px 0 0;color:#8e8f96;font-size:13px">My calls, made while working C out. Build them as drawn unless Koen says otherwise.</p>
   </div>
 </div>
 
 <nav class="toc">
-  <a href="#overview">Overview: three directions</a><a href="#pr">A pull request</a><a href="#review">Quick Review</a><a href="#item">A work item</a><a href="#setup">First run and Settings</a><a href="#kcd">Keep, change, drop</a>
+  <a href="#overview">Overview: the Ledger</a><a href="#pr">A pull request</a><a href="#review">Quick Review</a><a href="#item">A work item</a><a href="#setup">First run and Settings</a><a href="#kcd">Keep, change, drop</a><a href="#considered">Directions not chosen</a>
 </nav>
 
 <!-- ============================== OVERVIEW ============================== -->
 <section class="sec" id="overview">
-  <div class="sec-h"><h2>Overview: three directions</h2></div>
-  <p class="sec-lead">The same sixteen pull requests in each: six reviews asked of you (one is a re-review after new commits), three of your own that need something, two ready to merge and five waiting on others. The directions differ in what the first screen gives up: A puts the review run first, B gives every bucket equal room, C shows everything at once.</p>
+  <div class="sec-h"><h2>Overview: the Ledger</h2></div>
+  <p class="sec-lead">Koen picked direction C. The whole app opens on one list of two-line rows: sixteen pull requests that involve you, in four sections, with checks, age and size in columns on the right. Worked out here are the screen itself, what a row can say, what you can do to a row, search, and what the screen does with a long queue, an empty one, a first read and no connection. One change against the direction mockup: the reason moved to the front of the second line.</p>
 
-  <!-- ===== A ===== -->
-  <div class="dir" id="dir-a">
-    <div class="dir-h"><span class="k">A</span><div><h3>Queue</h3><p>The first screen is the review run itself: the pull request Start review opens, then the rest in the order you'll get them. Your own pull requests follow, grouped by what they need.</p></div></div>
+  <div class="dir" id="ledger-screen">
+    <div class="dir-h"><span class="k">1</span><div><h3>The screen</h3><p>The first screen fits all four sections for the sample data: eleven rows and the folded fifth of your own.</p></div></div>
     <div class="row">
-
       <figure class="shot">
-        <div class="phone light">
-          <div class="view">
-            <div class="nav"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><span class="upd">Updated 2 min ago</span><span class="sp"></span><span class="gb me">KV</span></div>
-            <div class="lt">6 to review</div>
-            <div class="sub">Oldest ask 4 days ago · 1 re-review</div>
-            <div class="pills"><span class="lb">Yours</span><span class="pill"><span class="dot" style="color:var(--rd)"></span>3 need you</span><span class="pill"><span class="dot" style="color:var(--gr)"></span>2 ready</span><span class="pill">5 waiting</span></div>
-            <div class="qr">
-              <div class="qh">
-                <span class="qn on">1</span>
-                <div class="t">
-                  <div class="pr-h"><span class="av" style="--h:20">PS</span><b>shop</b>#412 · Priya Shah<span class="sp"></span><span class="age">4 d</span></div>
-                  <h3>Checkout: round totals per line instead of per order</h3>
-                  <p class="ex">Totals were rounded once per order, so three lines of € 4,133 came to € 12,39. Each line now rounds on its own, like the receipt.</p>
-                  <div class="wil"><span class="ty bug"></span><b>AB#61021</b><span class="tt">Totals off by a cent on invoices with three lines</span><i class="ic chev" data-i="chev-r"></i></div>
-                  <div class="trk"><span class="s" style="--c:var(--rd)"><i class="tm"><i class="ic" data-i="x"></i></i>2 of 24 fail</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div>
-                </div>
-              </div>
-              <div class="qg">
-                <div class="ql"><span class="qn">2</span><div class="t">
-                  <div class="pr-h"><span class="av" style="--h:150">SO</span><b>shop</b>#405 · Sam Okafor<span class="sp"></span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span><span class="age">3 d</span></div>
-                  <h4>Webhook retries back off exponentially</h4>
-                  <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><span class="chip sm ac">AB#61002</span></div>
-                </div></div>
-                <div class="ql"><span class="qn">3</span><div class="t">
-                  <div class="pr-h"><span class="av" style="--h:300">ID</span><b>payments</b>#88 · Ines Duarte<span class="sp"></span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span><span class="age">2 d</span></div>
-                  <h4>Refunds for split payments</h4>
-                  <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><span class="chip sm ac">AB#60871</span></div>
-                </div></div>
-                <div class="ql"><span class="qn">4</span><div class="t">
-                  <div class="pr-h"><span class="av" style="--h:200">TB</span><b>storefront</b>#377 · Tom Berg<span class="sp"></span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span><span class="age">1 d</span></div>
-                  <h4>Show stock per warehouse on the product page</h4>
-                  <div class="trk"><span class="s" style="--c:var(--bl)"><i class="tm ring"></i>Running</span><i class="ln"></i><span class="s" style="--c:var(--yl)"><i class="tm ring"></i>Re-review, 3 files</span><span class="chip sm ac">AB#61040</span></div>
-                </div></div>
-                <div class="ql"><span class="qn">5</span><div class="t">
-                  <div class="pr-h"><span class="av" style="--h:200">TB</span><b>shop</b>#398 · Tom Berg<span class="sp"></span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span><span class="age">1 d</span></div>
-                  <h4>Address book: validate postcodes per country</h4>
-                  <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><span class="chip sm ac">AB#60990</span></div>
-                </div></div>
-                <div class="ql"><span class="qn">6</span><div class="t">
-                  <div class="pr-h"><span class="av" style="--h:265">MR</span><b>printfarm</b>#31 · Mateo Ruiz<span class="sp"></span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span><span class="age">5 h</span></div>
-                  <h4>Pause the queue when a spool runs out</h4>
-                  <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span></div>
-                </div></div>
-              </div>
-            </div>
-          </div>
-          <div class="edge"></div>
-          <div class="actbar"><span class="btn pri"><i class="ic" data-i="eye"></i>Start review<span class="cnt">6</span></span><span class="gb glass"><i class="ic" data-i="search"></i></span></div>
-        </div>
-        <figcaption><b>The queue is the screen</b>
-          <ul>
-            <li>The numbers are the order of the run: oldest ask first. Number 1 is opened up with what it changes and the work item it's for.</li>
-            <li>Every row has author, repository, size, age, checks, what's asked of you and its AB# chip.</li>
-            <li>Start review stays under your thumb. Tapping a row opens that pull request instead.</li>
-            <li>The three pills under the title are your own pull requests; a tap scrolls to that group.</li>
-          </ul>
-        </figcaption>
+        <div class="phone light"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span><em>Priya asked</em><span> · shop #412</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span><em>Sam asked</em><span> · shop #405</span><i> · <span class="ty pbi"></span>AB#61002</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span><em>Ines asked</em><span> · payments #88</span><i> · <span class="ty pbi"></span>AB#60871</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span><em>Re-review</em><span> · storefront #377</span><i> · <span class="ty pbi"></span>AB#61040</i></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:200">TB</span><div class="t"><b>Address book: validate postcodes per country</b><span><em>Tom asked</em><span> · shop #398</span><i> · <span class="ty bug"></span>AB#60990</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span><em>Mateo asked</em><span> · printfarm #31</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div></div><div class="lgh">Yours, needs you<span class="n">3</span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span><em>Tom wants changes</em><span> · storefront #371</span><i> · <span class="ty pbi"></span>AB#61012</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div><div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span><em>Ines has a question</em><span> · payments #90</span><i> · <span class="ty bug"></span>AB#60955</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div></div><div class="lgh">Ready to merge<span class="n">2</span></div><div class="ldg"><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span><em>Tom approved</em><span> · shop #401</span><i> · <span class="ty bug"></span>AB#60987</i></span></div><span class="gp go sm">Merge</span></div><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span><em>Ines approved</em><span> · payments #91</span></span></div><span class="gp go sm">Merge</span></div></div><div class="lgh">Waiting on others<span class="n">5</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div></div></div>
+        <figcaption><b>Everything that involves you</b><ul><li>Four sections in a fixed order. What others wait on you for, what your own pull requests need, what can merge, what waits on someone else.</li><li>The reason leads the second line. It never gets cut off there, and you can read it down the list like a column. Routine reasons stay grey. Amber is a re-review or requested changes, red a failure, green ready.</li><li>Start review walks To review from the top row down, longest wait first.</li><li>Checks, age and size line up on the right. The check bar is one line per row with a red or amber end, so eight green rows read as calm and the ninth stands out.</li><li>Waiting on others stays folded and remembers if you open it.</li></ul></figcaption>
       </figure>
-
       <figure class="shot">
-        <div class="phone">
-          <div class="view">
-            <div class="nav"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t"><b>6 to review</b><span>Updated 2 min ago</span></div><span class="gb me">KV</span></div>
-            <div class="grp-h" style="padding-top:8px">Yours, needs you<span>3</span></div>
-            <div class="grp">
-              <div class="pl"><span class="ico soft r" style="--c:var(--rd)"><i class="ic" data-i="x"></i></span><div class="t">
-                <div class="pr-h"><b>shop</b>#409<span class="sp"></span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span><span class="age">2 h</span></div>
-                <h4>Cache price lists per customer group</h4>
-                <div class="st"><span class="why bad">e2e and lint fail</span><span class="chip sm ac">AB#61055</span></div>
-              </div></div>
-              <div class="pl"><span class="ico soft r" style="--c:var(--yl)"><i class="ic" data-i="undo"></i></span><div class="t">
-                <div class="pr-h"><b>storefront</b>#371<span class="sp"></span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span><span class="age">1 d</span></div>
-                <h4>Product page: lazy-load the gallery</h4>
-                <div class="st"><span class="why warn">Tom asked for changes, 2 threads</span><span class="chip sm ac">AB#61012</span></div>
-              </div></div>
-              <div class="pl"><span class="ico soft r" style="--c:var(--ac-tx)"><i class="ic" data-i="msg"></i></span><div class="t">
-                <div class="pr-h"><b>payments</b>#90<span class="sp"></span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span><span class="age">4 h</span></div>
-                <h4>Retry declined cards once</h4>
-                <div class="st"><span class="why ac">Ines asked a question</span><span class="chip sm ac">AB#60955</span></div>
-              </div></div>
-            </div>
-            <div class="grp-h">Ready to merge<span>2</span></div>
-            <div class="grp">
-              <div class="pl"><span class="ico soft r" style="--c:var(--gr)"><i class="ic" data-i="merge"></i></span><div class="t">
-                <div class="pr-h"><b>shop</b>#401<span class="sp"></span><span class="ds"><span class="a">+48</span> <span class="d">−6</span></span><span class="age">3 d</span></div>
-                <h4>Price list import accepts semicolons</h4>
-                <div class="st"><span class="why ok">Tom approved, checks pass</span><span class="gp go sm">Merge</span></div>
-              </div></div>
-              <div class="pl"><span class="ico soft r" style="--c:var(--gr)"><i class="ic" data-i="merge"></i></span><div class="t">
-                <div class="pr-h"><b>payments</b>#91<span class="sp"></span><span class="ds"><span class="a">+12</span> <span class="d">−12</span></span><span class="age">1 d</span></div>
-                <h4>Bump the payment SDK to 7.2</h4>
-                <div class="st"><span class="why ok">Ines approved, checks pass</span><span class="gp go sm">Merge</span></div>
-              </div></div>
-            </div>
-            <div class="grp" style="margin-top:14px">
-              <div class="gx"><span class="ico soft r" style="--c:var(--tx2)"><i class="ic" data-i="clock"></i></span><div class="t"><b>Waiting on others</b><span>5 pull requests, oldest 4 days</span></div><span class="avs"><span class="av" style="--h:20">PS</span><span class="av" style="--h:150">SO</span><span class="av" style="--h:200">TB</span></span><i class="ic chev" data-i="chev-r"></i></div>
-            </div>
-            <div class="grp" style="margin-top:14px">
-              <div class="gx"><span class="ico soft r" style="--c:var(--tx2)"><i class="ic" data-i="layers"></i></span><div class="t"><b>All pull requests</b><span>143 open in 14 repositories</span></div><i class="ic chev" data-i="chev-r"></i></div>
-            </div>
-          </div>
-          <div class="edge"></div>
-          <div class="actbar"><span class="btn pri"><i class="ic" data-i="eye"></i>Start review<span class="cnt">6</span></span><span class="gb glass"><i class="ic" data-i="search"></i></span></div>
-        </div>
-        <figcaption><b>Scrolled: your own pull requests</b>
-          <ul>
-            <li>Needs you says why in one line: failing checks, changes asked, a question to answer.</li>
-            <li>Ready to merge has Merge on the row; it opens the merge sheet.</li>
-            <li>Waiting on others folds to one line with who you're waiting for.</li>
-            <li>All pull requests is today's list with its filters, groupings and saved views, unchanged.</li>
-          </ul>
-        </figcaption>
+        <div class="phone"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span><em>Priya asked</em><span> · shop #412</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span><em>Sam asked</em><span> · shop #405</span><i> · <span class="ty pbi"></span>AB#61002</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span><em>Ines asked</em><span> · payments #88</span><i> · <span class="ty pbi"></span>AB#60871</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span><em>Re-review</em><span> · storefront #377</span><i> · <span class="ty pbi"></span>AB#61040</i></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:200">TB</span><div class="t"><b>Address book: validate postcodes per country</b><span><em>Tom asked</em><span> · shop #398</span><i> · <span class="ty bug"></span>AB#60990</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span><em>Mateo asked</em><span> · printfarm #31</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div></div><div class="lgh">Yours, needs you<span class="n">3</span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span><em>Tom wants changes</em><span> · storefront #371</span><i> · <span class="ty pbi"></span>AB#61012</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div><div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span><em>Ines has a question</em><span> · payments #90</span><i> · <span class="ty bug"></span>AB#60955</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div></div><div class="lgh">Ready to merge<span class="n">2</span></div><div class="ldg"><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span><em>Tom approved</em><span> · shop #401</span><i> · <span class="ty bug"></span>AB#60987</i></span></div><span class="gp go sm">Merge</span></div><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span><em>Ines approved</em><span> · payments #91</span></span></div><span class="gp go sm">Merge</span></div></div><div class="lgh">Waiting on others<span class="n">5</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div></div></div>
+        <figcaption><b>Dark</b>The same screen. Colour sits in the edge, the reason and the check bar. Titles stay white, so the eye lands on the three rows that are not routine.</figcaption>
       </figure>
-
-      <aside class="notes">
-        <div class="note pick"><b>My recommendation</b>The app has one job, and A is the only direction where the order of the run is visible before you start it. The cost (your own pull requests are a scroll away) is covered by the three pills under the title.</div>
-        <div class="note"><b>Best at</b>Starting in one tap, and knowing what you'll read first and what comes after.</div>
-        <div class="note"><b>Costs</b>Your own pull requests start below the fold when the queue is longer than three.</div>
-        <div class="note"><b>From today's app</b>Focus's "6 reviews wait for you" card and its Your turn list become one thing: the queue, in run order.</div>
-      </aside>
+      <figure class="shot">
+        <div class="phone light"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh pin">Yours, needs you<span class="n">3</span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span><em>Tom wants changes</em><span> · storefront #371</span><i> · <span class="ty pbi"></span>AB#61012</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div><div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span><em>Ines has a question</em><span> · payments #90</span><i> · <span class="ty bug"></span>AB#60955</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div></div><div class="lgh">Ready to merge<span class="n">2</span></div><div class="ldg"><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span><em>Tom approved</em><span> · shop #401</span><i> · <span class="ty bug"></span>AB#60987</i></span></div><span class="gp go sm">Merge</span></div><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span><em>Ines approved</em><span> · payments #91</span></span></div><span class="gp go sm">Merge</span></div></div><div class="lgh">Waiting on others<span class="n">5</span><span class="sp"></span><i class="ic chev" data-i="chev-d"></i></div><div class="ldg"><div class="lgr" style="--c:transparent"><span class="av me2">KV</span><div class="t"><b>Order export: add the VAT number column</b><span><em>Waiting on Sam</em><span> · shop #407</span><i> · <span class="ty pbi"></span>AB#61031</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+140</span> <span class="d">−22</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av me2">KV</span><div class="t"><b>Search: remember the last filter</b><span><em>Waiting on Tom, Ines</em><span> · storefront #380</span><i> · <span class="ty pbi"></span>AB#61048</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+75</span> <span class="d">−18</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av me2">KV</span><div class="t"><b>Nightly backup: keep 14 days</b><span><em>Checks running</em><span> · infra #52</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i><i class="y" style="flex:3"></i></span><span class="age">20 m</span><span class="ds"><span class="a">+12</span> <span class="d">−4</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av me2">KV</span><div class="t"><b>Coupons: one per order</b><span><em>Draft</em><span> · shop #411</span><i> · <span class="ty pbi"></span>AB#61060</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 h</span><span class="ds"><span class="a">+220</span> <span class="d">−35</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av me2">KV</span><div class="t"><b>zsh: a faster prompt</b><span><em>Waiting on Mateo</em><span> · dotfiles #12</span></span></div><div class="rt"><span class="nock">no checks</span><span class="age">6 d</span><span class="ds"><span class="a">+30</span> <span class="d">−11</span></span></div></div></div><div class="lgh">Also open in your repositories<span class="n">25</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div><div class="lgf">6 repositories on 2 accounts · read at 09:39<br>Pull down to read again</div></div></div>
+        <figcaption><b>Scrolled to the end</b><ul><li>The header of the section you are in stays pinned under the title bar.</li><li>Waiting on others is open here. Each row names who or what it waits on.</li><li>Below it, the other 25 open pull requests in your repositories, folded. The footer says what was read and when. There is no push, so the list is as fresh as the last read.</li></ul></figcaption>
+      </figure>
     </div>
   </div>
 
-  <!-- ===== B ===== -->
-  <div class="dir" id="dir-b">
-    <div class="dir-h"><span class="k">B</span><div><h3>Board</h3><p>Four counts stay on top and the list shows one lane at a time. A lane has room to say why on every card: the failing test, the reviewer's words, the question.</p></div></div>
+  <div class="dir" id="ledger-rows">
+    <div class="dir-h"><span class="k">2</span><div><h3>What a row says</h3><p>Every row is 50 points high and has the same parts in the same places. These two strips are the catalogue for the implementing thread.</p></div></div>
     <div class="row">
-
       <figure class="shot">
-        <div class="phone light">
-          <div class="view">
-            <div class="nav"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><span class="upd">Updated 2 min ago</span><span class="sp"></span><span class="gb me">KV</span></div>
-            <div class="lt">Overview</div>
-            <div class="lanes">
-              <div class="lane on"><b>6</b><span>To review</span></div>
-              <div class="lane bad"><b>3</b><span>Needs you</span></div>
-              <div class="lane ok"><b>2</b><span>Ready</span></div>
-              <div class="lane mute"><b>5</b><span>Waiting</span></div>
-            </div>
-            <div class="listbar"><span>Oldest ask first</span><span>1 re-review</span></div>
-            <div class="list">
-              <div class="card">
-                <div class="pr-h"><span class="av" style="--h:20">PS</span><b>shop</b>#412 · Priya Shah<span class="sp"></span><span class="age">4 d</span></div>
-                <h4>Checkout: round totals per line instead of per order</h4>
-                <div class="why ac"><i class="ic" data-i="eye"></i>Asked for your review</div>
-                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="chip sm bad">2 fail</span><span class="chip sm ac">AB#61021</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div>
-              </div>
-              <div class="card">
-                <div class="pr-h"><span class="av" style="--h:150">SO</span><b>shop</b>#405 · Sam Okafor<span class="sp"></span><span class="age">3 d</span></div>
-                <h4>Webhook retries back off exponentially</h4>
-                <div class="why ac"><i class="ic" data-i="eye"></i>Asked for your review</div>
-                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="chip sm ac">AB#61002</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div>
-              </div>
-              <div class="card">
-                <div class="pr-h"><span class="av" style="--h:300">ID</span><b>payments</b>#88 · Ines Duarte<span class="sp"></span><span class="age">2 d</span></div>
-                <h4>Refunds for split payments</h4>
-                <div class="why ac"><i class="ic" data-i="eye"></i>Asked for your review</div>
-                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="chip sm ac">AB#60871</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div>
-              </div>
-              <div class="card">
-                <div class="pr-h"><span class="av" style="--h:200">TB</span><b>storefront</b>#377 · Tom Berg<span class="sp"></span><span class="age">1 d</span></div>
-                <h4>Show stock per warehouse on the product page</h4>
-                <div class="why warn"><i class="ic" data-i="rerun"></i>Re-review: 3 files changed since yours</div>
-                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i class="y"></i><i class="y"></i><i class="y"></i></span><span class="chip sm ac">AB#61040</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div>
-              </div>
-            </div>
-          </div>
-          <div class="edge"></div>
-          <div class="actbar"><span class="btn pri"><i class="ic" data-i="eye"></i>Start review<span class="cnt">6</span></span><span class="gb glass"><i class="ic" data-i="search"></i></span></div>
-        </div>
-        <figcaption><b>To review</b>
-          <ul>
-            <li>The four counts are the overview; they stay put while the list changes. Tap one or swipe sideways.</li>
-            <li>Cards are today's pull request card: check bar, AB# chip and size on the bottom line.</li>
-          </ul>
-        </figcaption>
+        <div class="phone nosb strip light"><div class="view"><div class="lgh">To review<span class="n"></span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span><em>Priya asked</em><span> · shop #412</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span><em>Re-review</em><span> · storefront #377</span><i> · <span class="ty pbi"></span>AB#61040</i></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Checkout button: show a loading state</b><span><em>@acme/checkout asked</em><span> · storefront #383</span><i> · <span class="ty pbi"></span>AB#61066</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+38</span> <span class="d">−6</span></span></div></div></div><div class="lgh">Yours, needs you<span class="n"></span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Coupons: stack with the loyalty discount</b><span><em>Conflicts with main</em><span> · shop #406</span><i> · <span class="ty pbi"></span>AB#61027</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+170</span> <span class="d">−26</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span><em>Tom wants changes</em><span> · storefront #371</span><i> · <span class="ty pbi"></span>AB#61012</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div><div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span><em>Ines has a question</em><span> · payments #90</span><i> · <span class="ty bug"></span>AB#60955</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div></div><div class="lgh">Ready to merge<span class="n"></span></div><div class="ldg"><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span><em>Tom approved</em><span> · shop #401</span><i> · <span class="ty bug"></span>AB#60987</i></span></div><span class="gp go sm">Merge</span></div></div><div class="lgh">Waiting on others<span class="n"></span></div><div class="ldg"><div class="lgr" style="--c:transparent"><span class="av me2">KV</span><div class="t"><b>Order export: add the VAT number column</b><span><em>Waiting on Sam</em><span> · shop #407</span><i> · <span class="ty pbi"></span>AB#61031</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+140</span> <span class="d">−22</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av me2">KV</span><div class="t"><b>Nightly backup: keep 14 days</b><span><em>Checks running</em><span> · infra #52</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i><i class="y" style="flex:3"></i></span><span class="age">20 m</span><span class="ds"><span class="a">+12</span> <span class="d">−4</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av me2">KV</span><div class="t"><b>Coupons: one per order</b><span><em>Draft</em><span> · shop #411</span><i> · <span class="ty pbi"></span>AB#61060</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 h</span><span class="ds"><span class="a">+220</span> <span class="d">−35</span></span></div></div></div></div></div>
+        <figcaption><b>Every reason a row can give</b><ul><li>A row reads left to right. Edge colour, author, title. Then the reason, the repository and number, and the work item with its type colour. On the right the check bar, how long it has waited for this reason, and its size.</li><li>When the second line runs out of room it drops the work item, whole. The reason is never cut.</li><li>To review names who asked. A re-review means commits landed after your review. A team request names the team.</li><li>Your own rows say what is wrong or who is waiting, in the words the pull request page uses.</li><li>A tap anywhere on the row opens the pull request. The work item opens from there, or from a long press.</li></ul></figcaption>
       </figure>
-
       <figure class="shot">
-        <div class="phone">
-          <div class="view">
-            <div class="nav"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><span class="upd">Updated 2 min ago</span><span class="sp"></span><span class="gb me">KV</span></div>
-            <div class="lt">Overview</div>
-            <div class="lanes">
-              <div class="lane"><b>6</b><span>To review</span></div>
-              <div class="lane bad on"><b>3</b><span>Needs you</span></div>
-              <div class="lane ok"><b>2</b><span>Ready</span></div>
-              <div class="lane mute"><b>5</b><span>Waiting</span></div>
-            </div>
-            <div class="listbar"><span>Your pull requests</span><span>Most urgent first</span></div>
-            <div class="list">
-              <div class="card">
-                <div class="pr-h"><b>shop</b>#409<span class="sp"></span><span class="age">2 h</span></div>
-                <h4>Cache price lists per customer group</h4>
-                <div class="why bad"><i class="ic" data-i="fail"></i>2 of 24 checks fail</div>
-                <div class="code">e2e    pricing.spec.ts:41 › group price shows
-lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
-                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="chip sm ac">AB#61055</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div>
-              </div>
-              <div class="card">
-                <div class="pr-h"><b>storefront</b>#371<span class="sp"></span><span class="age">1 d</span></div>
-                <h4>Product page: lazy-load the gallery</h4>
-                <div class="why warn"><i class="ic" data-i="undo"></i>Tom Berg asked for changes</div>
-                <div class="quote">The gallery jumps when the first image loads. Can it reserve the height?<small>gallery.tsx:52 · 2 threads open</small></div>
-                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="chip sm ac">AB#61012</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div>
-              </div>
-              <div class="card">
-                <div class="pr-h"><b>payments</b>#90<span class="sp"></span><span class="age">4 h</span></div>
-                <h4>Retry declined cards once</h4>
-                <div class="why ac"><i class="ic" data-i="msg"></i>Ines Duarte asked a question</div>
-                <div class="quote">Does the retry also run for 3-D Secure declines?</div>
-                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="chip sm ac">AB#60955</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div>
-              </div>
-            </div>
-          </div>
-          <div class="edge"></div>
-          <div class="actbar"><span class="btn pri"><i class="ic" data-i="eye"></i>Start review<span class="cnt">6</span></span><span class="gb glass"><i class="ic" data-i="search"></i></span></div>
-        </div>
-        <figcaption><b>Needs you</b>
-          <ul>
-            <li>Each card carries its reason: the failing tests by name, the comment that asked for changes, the question.</li>
-            <li>Ready is the same list with Merge on each card; Waiting names who each one waits for.</li>
-          </ul>
-        </figcaption>
+        <div class="phone nosb strip"><div class="view"><div class="lgh">Rows that are not average<span class="n"></span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: show the rounding rule in the order summary and on the invoice PDF</b><span><em>Priya asked</em><span> · shop #414</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+46</span> <span class="d">−3</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Invoices: one rounding rule everywhere</b><span><em>Priya asked</em><span> · shop #416</span><i> · <span class="ty bug"></span>AB#61021 +2</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+12k</span> <span class="d">−3.4k</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av bot"><i class="ic" data-i="bot"></i></span><div class="t"><b>Bump vitest from 3.1.4 to 3.2.0</b><span><em>Dependency update</em><span> · shop #399</span></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+14</span> <span class="d">−14</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>tmux: copy to the system clipboard</b><span><em>Mateo asked</em><span> · dotfiles #13</span></span></div><div class="rt"><span class="nock">no checks</span><span class="age">6 d</span><span class="ds"><span class="a">+30</span> <span class="d">−11</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Stock sync: retry the nightly job</b><span><em>Sam asked</em><span> · shop #362</span><i> · <span class="ty task"></span>AB#60410</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age old">23 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av me2">KV</span><div class="t"><b>Nightly backup: keep 14 days</b><span><em>Checks queued</em><span> · infra #52</span></span></div><div class="rt"><span class="cbar"><i class="g" style="flex:6"></i></span><span class="age">1 m</span><span class="ds"><span class="a">+12</span> <span class="d">−4</span></span></div></div></div></div></div>
+        <figcaption><b>Rows that are not average</b><ul><li>A long title is cut at the end. It is the only text a row cuts mid-word.</li><li>Several work items show the first and a count. A big change shows 12k, not 12,034.</li><li>A dependency bot gets a bot avatar and says what it is. A repository without checks says so.</li><li>Past a week the age turns amber. Queued checks are grey.</li></ul></figcaption>
       </figure>
-
-      <aside class="notes">
-        <div class="note"><b>Best at</b>Triage. Your own pull requests get as much room as the reviews, and you can read the reason without opening anything.</div>
-        <div class="note"><b>Costs</b>One lane at a time: seeing what's ready to merge is a tap away from the review queue. Six reviews need scrolling.</div>
-        <div class="note"><b>From today's app</b>The Pull requests tabs (Your turn, Mine, Ready) become four lanes with fixed meanings, and the card stays as it is.</div>
-      </aside>
     </div>
   </div>
 
-  <!-- ===== C ===== -->
-  <div class="dir" id="dir-c">
-    <div class="dir-h"><span class="k">C</span><div><h3>Ledger</h3><p>Everything on one screen. Two-line rows with checks, size and age in columns you can read down, like the desktop's table.</p></div></div>
+  <div class="dir" id="ledger-actions">
+    <div class="dir-h"><span class="k">3</span><div><h3>Acting on a row</h3><p>Tap opens the pull request. Swipes and the long press are the shortcuts, and Merge sits on the rows that can merge.</p></div></div>
     <div class="row">
-
       <figure class="shot">
-        <div class="phone light">
-          <div class="view">
-            <div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div>
-            <div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div>
-            <div class="ldg">
-              <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span>shop #412 · <i>AB#61021</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div>
-              <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span>shop #405 · <i>AB#61002</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div>
-              <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span>payments #88 · <i>AB#60871</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div>
-              <div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span>storefront #377 · <i>AB#61040</i> · <em>Re-review</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i class="y"></i><i class="y"></i><i class="y"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div>
-              <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:200">TB</span><div class="t"><b>Address book: validate postcodes per country</b><span>shop #398 · <i>AB#60990</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">1 d</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span></div></div>
-              <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span>printfarm #31 · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div>
-            </div>
-            <div class="lgh">Yours, needs you<span class="n">3</span></div>
-            <div class="ldg">
-              <div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span>shop #409 · <i>AB#61055</i> · <em>e2e, lint fail</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div>
-              <div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span>storefront #371 · <i>AB#61012</i> · <em>Changes asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div>
-              <div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span>payments #90 · <i>AB#60955</i> · <em>1 question</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div>
-            </div>
-            <div class="lgh">Ready to merge<span class="n">2</span></div>
-            <div class="ldg">
-              <div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span>shop #401 · <i>AB#60987</i> · <em>Tom approved</em></span></div><span class="gp go sm">Merge</span></div>
-              <div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span>payments #91 · <em>Ines approved</em></span></div><span class="gp go sm">Merge</span></div>
-            </div>
-            <div class="lgh">Waiting on others<span class="n">5</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div>
-          </div>
-        </div>
-        <figcaption><b>All sixteen, no scrolling</b>
-          <ul>
-            <li>The edge colour is the reason: indigo asks for your review, amber for a re-review or changes, red fails, green merges.</li>
-            <li>Checks and age line up down the right, so the red and the old stand out.</li>
-            <li>Start review moves into the To review header; a bar at the bottom would cover two rows.</li>
-          </ul>
-        </figcaption>
+        <div class="phone"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span><em>Priya asked</em><span> · shop #412</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div><div class="swp"><span class="swa"><i class="ic" data-i="eye"></i>Review</span><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span><em>Sam asked</em><span> · shop #405</span><i> · <span class="ty pbi"></span>AB#61002</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span><em>Ines asked</em><span> · payments #88</span><i> · <span class="ty pbi"></span>AB#60871</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span><em>Re-review</em><span> · storefront #377</span><i> · <span class="ty pbi"></span>AB#61040</i></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:200">TB</span><div class="t"><b>Address book: validate postcodes per country</b><span><em>Tom asked</em><span> · shop #398</span><i> · <span class="ty bug"></span>AB#60990</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span><em>Mateo asked</em><span> · printfarm #31</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div></div><div class="lgh">Yours, needs you<span class="n">3</span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span><em>Tom wants changes</em><span> · storefront #371</span><i> · <span class="ty pbi"></span>AB#61012</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div><div class="swp l"><span class="swa"><i class="ic" data-i="moon"></i>Snooze</span><div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span><em>Ines has a question</em><span> · payments #90</span><i> · <span class="ty bug"></span>AB#60955</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div></div></div><div class="lgh">Ready to merge<span class="n">2</span></div><div class="ldg"><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span><em>Tom approved</em><span> · shop #401</span><i> · <span class="ty bug"></span>AB#60987</i></span></div><span class="gp go sm">Merge</span></div><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span><em>Ines approved</em><span> · payments #91</span></span></div><span class="gp go sm">Merge</span></div></div><div class="lgh">Waiting on others<span class="n">5</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div></div></div>
+        <figcaption><b>Swipes, kept from today's list</b><ul><li>Right on a pull request you can review starts Quick Review on that one alone.</li><li>Left snoozes a row until tomorrow. Merge left the swipe, because a row that can merge now carries the button.</li><li>Two rows are swiped here to show both. Snooze lives on the phone, since no server remembers it. A snoozed row leaves the overview until 08:00 and search still finds it.</li></ul></figcaption>
       </figure>
-
       <figure class="shot">
-        <div class="phone">
-          <div class="view">
-            <div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div>
-            <div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div>
-            <div class="ldg">
-              <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span>shop #412 · <i>AB#61021</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div>
-              <div class="swp"><span class="swa"><i class="ic" data-i="eye"></i>Review</span><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span>shop #405 · <i>AB#61002</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div></div>
-              <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span>payments #88 · <i>AB#60871</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div>
-              <div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span>storefront #377 · <i>AB#61040</i> · <em>Re-review</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i class="y"></i><i class="y"></i><i class="y"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div>
-              <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:200">TB</span><div class="t"><b>Address book: validate postcodes per country</b><span>shop #398 · <i>AB#60990</i> · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">1 d</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span></div></div>
-              <div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span>printfarm #31 · <em>Review asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div>
-            </div>
-            <div class="lgh">Yours, needs you<span class="n">3</span></div>
-            <div class="ldg">
-              <div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span>shop #409 · <i>AB#61055</i> · <em>e2e, lint fail</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div>
-              <div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span>storefront #371 · <i>AB#61012</i> · <em>Changes asked</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div>
-              <div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span>payments #90 · <i>AB#60955</i> · <em>1 question</em></span></div><div class="rt"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div>
-            </div>
-            <div class="lgh">Ready to merge<span class="n">2</span></div>
-            <div class="ldg">
-              <div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span>shop #401 · <i>AB#60987</i> · <em>Tom approved</em></span></div><span class="gp go sm">Merge</span></div>
-              <div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span>payments #91 · <em>Ines approved</em></span></div><span class="gp go sm">Merge</span></div>
-            </div>
-            <div class="lgh">Waiting on others<span class="n">5</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div>
-          </div>
-        </div>
-        <figcaption><b>Dark, with a row swiped</b>Swipe right on a row to review that pull request alone, as in today's list. Swipe left merges or snoozes until tomorrow.</figcaption>
+        <div class="phone light"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span><em>Priya asked</em><span> · shop #412</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div><div class="lgr faded" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span><em>Sam asked</em><span> · shop #405</span><i> · <span class="ty pbi"></span>AB#61002</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span><em>Ines asked</em><span> · payments #88</span><i> · <span class="ty pbi"></span>AB#60871</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span><em>Re-review</em><span> · storefront #377</span><i> · <span class="ty pbi"></span>AB#61040</i></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:200">TB</span><div class="t"><b>Address book: validate postcodes per country</b><span><em>Tom asked</em><span> · shop #398</span><i> · <span class="ty bug"></span>AB#60990</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span><em>Mateo asked</em><span> · printfarm #31</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div></div><div class="lgh">Yours, needs you<span class="n">3</span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span><em>Tom wants changes</em><span> · storefront #371</span><i> · <span class="ty pbi"></span>AB#61012</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div><div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span><em>Ines has a question</em><span> · payments #90</span><i> · <span class="ty bug"></span>AB#60955</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div></div><div class="lgh">Ready to merge<span class="n">2</span></div><div class="ldg"><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span><em>Tom approved</em><span> · shop #401</span><i> · <span class="ty bug"></span>AB#60987</i></span></div><span class="gp go sm">Merge</span></div><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span><em>Ines approved</em><span> · payments #91</span></span></div><span class="gp go sm">Merge</span></div></div><div class="lgh">Waiting on others<span class="n">5</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div></div><div class="toast glass" style="bottom:30px"><span class="rg"></span><div class="t">Approving shop #405<span>Posts in 4 s</span></div><span class="u"><i class="ic" data-i="undo"></i>Undo</span></div></div>
+        <figcaption><b>Back from reviewing one</b>You approved #405 from its swipe and land on the list again. Its row fades while the approval waits out the five seconds of Undo, then leaves and the count drops to 5. Undo keeps the review from posting and puts the row back.</figcaption>
       </figure>
-
-      <aside class="notes">
-        <div class="note"><b>Best at</b>The whole picture in one look, and comparing rows: which is red, which is big, which is old.</div>
-        <div class="note"><b>Costs</b>Long titles are cut off, the reason shrinks to two words, rows are 50 points high, and Start review is a small button at the top, away from your thumb.</div>
-        <div class="note"><b>From today's app</b>The desktop's table display, brought to the phone. Today's iPhone list has nothing this dense.</div>
-      </aside>
+      <figure class="shot">
+        <div class="phone light"><div class="view"><div style="position:absolute;inset:0;padding-top:54px;filter:blur(5px)"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span><em>Priya asked</em><span> · shop #412</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span><em>Sam asked</em><span> · shop #405</span><i> · <span class="ty pbi"></span>AB#61002</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span><em>Ines asked</em><span> · payments #88</span><i> · <span class="ty pbi"></span>AB#60871</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span><em>Re-review</em><span> · storefront #377</span><i> · <span class="ty pbi"></span>AB#61040</i></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:200">TB</span><div class="t"><b>Address book: validate postcodes per country</b><span><em>Tom asked</em><span> · shop #398</span><i> · <span class="ty bug"></span>AB#60990</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span><em>Mateo asked</em><span> · printfarm #31</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div></div><div class="lgh">Yours, needs you<span class="n">3</span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span><em>Tom wants changes</em><span> · storefront #371</span><i> · <span class="ty pbi"></span>AB#61012</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div><div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span><em>Ines has a question</em><span> · payments #90</span><i> · <span class="ty bug"></span>AB#60955</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div></div><div class="lgh">Ready to merge<span class="n">2</span></div><div class="ldg"><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span><em>Tom approved</em><span> · shop #401</span><i> · <span class="ty bug"></span>AB#60987</i></span></div><span class="gp go sm">Merge</span></div><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span><em>Ines approved</em><span> · payments #91</span></span></div><span class="gp go sm">Merge</span></div></div><div class="lgh">Waiting on others<span class="n">5</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div></div><div class="dim" style="background:rgba(0,0,0,.22)"></div><div class="lift" style="top:296px"><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span><em>Re-review</em><span> · storefront #377</span><i> · <span class="ty pbi"></span>AB#61040</i></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div></div><div class="menu" style="top:356px;left:10px"><div class="mi"><div>Review this pull request</div><i class="ic" data-i="eye"></i></div><div class="mi"><div>Review Tom's 2, oldest first</div><i class="ic" data-i="users"></i></div><div class="mi"><div>Open AB#61040<small>Stock per warehouse on the product page</small></div><i class="ic" data-i="tasks"></i></div><div class="gap"></div><div class="mi"><div>Snooze until tomorrow</div><i class="ic" data-i="moon"></i></div><div class="mi"><div>Copy link</div><i class="ic" data-i="link"></i></div><div class="mi"><div>Open on GitHub</div><i class="ic" data-i="ext"></i></div></div></div></div>
+        <figcaption><b>Long press, someone else's</b><ul><li>Review this one alone, or run through the author's pull requests oldest first. Both are kept from today's app.</li><li>The work item opens as a sheet from here, without opening the pull request first.</li><li>Gone from today's menu: Fix with Claude and Open in T3.</li></ul></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="phone"><div class="view"><div style="position:absolute;inset:0;padding-top:54px;filter:blur(5px)"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span><em>Priya asked</em><span> · shop #412</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span><em>Sam asked</em><span> · shop #405</span><i> · <span class="ty pbi"></span>AB#61002</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span><em>Ines asked</em><span> · payments #88</span><i> · <span class="ty pbi"></span>AB#60871</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span><em>Re-review</em><span> · storefront #377</span><i> · <span class="ty pbi"></span>AB#61040</i></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:200">TB</span><div class="t"><b>Address book: validate postcodes per country</b><span><em>Tom asked</em><span> · shop #398</span><i> · <span class="ty bug"></span>AB#60990</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span><em>Mateo asked</em><span> · printfarm #31</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div></div><div class="lgh">Yours, needs you<span class="n">3</span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span><em>Tom wants changes</em><span> · storefront #371</span><i> · <span class="ty pbi"></span>AB#61012</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div><div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span><em>Ines has a question</em><span> · payments #90</span><i> · <span class="ty bug"></span>AB#60955</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div></div><div class="lgh">Ready to merge<span class="n">2</span></div><div class="ldg"><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span><em>Tom approved</em><span> · shop #401</span><i> · <span class="ty bug"></span>AB#60987</i></span></div><span class="gp go sm">Merge</span></div><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span><em>Ines approved</em><span> · payments #91</span></span></div><span class="gp go sm">Merge</span></div></div><div class="lgh">Waiting on others<span class="n">5</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div></div><div class="dim" style="background:rgba(0,0,0,.22)"></div><div class="lift" style="top:496px"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div></div><div class="menu" style="bottom:366px;left:10px"><div class="mi"><div>Rerun 2 failed checks<small>e2e · chromium 2/4 and lint</small></div><i class="ic" data-i="rerun"></i></div><div class="mi"><div>Open AB#61055<small>Price lists per customer group</small></div><i class="ic" data-i="tasks"></i></div><div class="gap"></div><div class="mi"><div>Snooze until tomorrow</div><i class="ic" data-i="moon"></i></div><div class="mi"><div>Copy link</div><i class="ic" data-i="link"></i></div><div class="mi"><div>Open on GitHub</div><i class="ic" data-i="ext"></i></div></div></div></div>
+        <figcaption><b>Long press, your own with red checks</b><ul><li>Rerun is here because this account's token may write Actions. With a token that may not, the item is absent, here and on the pull request page. Nothing asks you to add the permission.</li><li>A rerun runs the same commit again. It helps with a flaky test and does nothing for a real failure, so the pull request page stays one tap away.</li></ul></figcaption>
+      </figure>
     </div>
   </div>
 
-  <table class="tbl">
-    <tr><th></th><th>A · Queue</th><th>B · Board</th><th>C · Ledger</th></tr>
-    <tr><td>Taps to start reviewing</td><td class="y">1</td><td class="y">1</td><td class="y">1</td></tr>
-    <tr><td>Order of the run visible</td><td class="y">Yes, numbered</td><td class="m">Yes, as a list</td><td class="m">Yes, as a list</td></tr>
-    <tr><td>Your own PRs on the first screen</td><td class="m">As three counts</td><td class="m">As three counts</td><td class="y">All of them</td></tr>
-    <tr><td>Why a PR needs you</td><td class="y">One line</td><td class="y">The test, comment or question itself</td><td class="n">Two words</td></tr>
-    <tr><td>Pull requests on the first screen</td><td>4 to 5</td><td>3 to 4</td><td>11, plus Waiting folded</td></tr>
-    <tr><td>Full title readable</td><td class="y">Yes</td><td class="y">Yes</td><td class="n">Often cut off</td></tr>
-  </table>
+  <div class="dir" id="ledger-find">
+    <div class="dir-h"><span class="k">4</span><div><h3>Finding one</h3><p>Search for a pull request you know exists. Unfold Also open to browse what your teams are doing.</p></div></div>
+    <div class="row">
+      <figure class="shot">
+        <div class="phone light"><div class="view"><div class="snav"><div class="srch"><i class="ic" data-i="search"></i>refund<i class="caret"></i></div><span>Cancel</span></div><div class="jump" style="padding-top:8px"><span>Failing</span><span>Mine</span><span>Stale</span><span>Drafts</span><span>Merged</span></div><div class="lgh">To review<span class="n">1</span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span><em>Ines asked</em><span> · payments #88</span><i> · <span class="ty pbi"></span>AB#60871</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div></div><div class="lgh">Also open<span class="n">2</span></div><div class="ldg"><div class="lgr" style="--c:transparent"><span class="av" style="--h:150">SO</span><div class="t"><b>Refund emails: use the order's language</b><span><em>No reviewer yet</em><span> · payments #85</span><i> · <span class="ty bug"></span>AB#60802</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">5 d</span><span class="ds"><span class="a">+44</span> <span class="d">−9</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av" style="--h:20">PS</span><div class="t"><b>Returns: refund shipping for a faulty item</b><span><em>Sam is reviewing</em><span> · shop #396</span><i> · <span class="ty pbi"></span>AB#60944</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+132</span> <span class="d">−17</span></span></div></div></div><div class="lgh">Merged this week<span class="n">1</span></div><div class="ldg"><div class="lgr" style="--c:var(--mg);--w:var(--mg)"><span class="av" style="--h:200">TB</span><div class="t"><b>Refund rounding follows the invoice</b><span><em>Merged</em><span> · shop #390</span><i> · <span class="ty bug"></span>AB#60931</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+58</span> <span class="d">−22</span></span></div></div></div></div><div class="kb" data-kb></div></div>
+        <figcaption><b>Search</b><ul><li>The magnifier in the title bar. It searches every open pull request in your repositories and the ones merged this week, by title, number, author, branch or AB#.</li><li>Results keep the overview's sections and rows.</li><li>The chips are the filters of today's list. They take the place of its tabs, which the sections now cover.</li></ul></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="phone"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>16 involve you · updated 2 min ago</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh pin">Also open in your repositories<span class="n">25</span><span class="sp"></span><i class="ic chev" data-i="chev-d"></i></div><div class="ldg"><div class="lgr" style="--c:transparent"><span class="av" style="--h:330">LV</span><div class="t"><b>e2e: cover the wishlist</b><span><em>Draft</em><span> · storefront #376</span></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+240</span> <span class="d">−0</span></span></div></div><div class="lgs"><span>acme/payments</span><span>5</span></div><div class="lgr" style="--c:transparent"><span class="av" style="--h:150">SO</span><div class="t"><b>Payouts: daily instead of weekly</b><span><em>Ines is reviewing</em><span> · payments #89</span><i> · <span class="ty pbi"></span>AB#60902</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+210</span> <span class="d">−60</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av" style="--h:300">ID</span><div class="t"><b>3-D Secure: handle the frictionless flow</b><span><em>Sam approved</em><span> · payments #87</span><i> · <span class="ty pbi"></span>AB#60866</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+330</span> <span class="d">−48</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av" style="--h:150">SO</span><div class="t"><b>Refund emails: use the order's language</b><span><em>No reviewer yet</em><span> · payments #85</span><i> · <span class="ty bug"></span>AB#60802</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">5 d</span><span class="ds"><span class="a">+44</span> <span class="d">−9</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av bot"><i class="ic" data-i="bot"></i></span><div class="t"><b>Bump eslint from 9.14.0 to 9.15.0</b><span><em>Dependency update</em><span> · payments #84</span></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">6 d</span><span class="ds"><span class="a">+6</span> <span class="d">−6</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av" style="--h:300">ID</span><div class="t"><b>Ledger export: one file per month</b><span><em>Draft</em><span> · payments #79</span><i> · <span class="ty pbi"></span>AB#60711</i></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age old">23 d</span><span class="ds"><span class="a">+1.9k</span> <span class="d">−120</span></span></div></div><div class="lgs"><span>acme/infra</span><span>2</span></div><div class="lgr" style="--c:transparent"><span class="av" style="--h:330">LV</span><div class="t"><b>CI: cache the Playwright browsers</b><span><em>Sam is reviewing</em><span> · infra #51</span></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">3 h</span><span class="ds"><span class="a">+28</span> <span class="d">−6</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av" style="--h:150">SO</span><div class="t"><b>Staging: rotate the database password</b><span><em>Tom approved</em><span> · infra #50</span></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+9</span> <span class="d">−9</span></span></div></div><div class="lgs"><span>kv-labs/printfarm</span><span>2</span></div><div class="lgr" style="--c:transparent"><span class="av" style="--h:265">MR</span><div class="t"><b>Slicer profiles for the 0.2 mm nozzle</b><span><em>No reviewer yet</em><span> · printfarm #30</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+460</span> <span class="d">−0</span></span></div></div><div class="lgr" style="--c:transparent"><span class="av" style="--h:265">MR</span><div class="t"><b>Camera: a time-lapse per print</b><span><em>Draft</em><span> · printfarm #29</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age old">9 d</span><span class="ds"><span class="a">+730</span> <span class="d">−15</span></span></div></div></div><div class="lgf">6 repositories on 2 accounts · read at 09:39<br>Pull down to read again</div></div></div>
+        <figcaption><b>Also open, unfolded</b><ul><li>The pull requests that do not involve you, by repository. No edge colour, because nothing here waits on you.</li><li>The reason says where each one stands. Swipe right to review one anyway.</li><li>A review request from a repository under "Also read" still lands in To review.</li></ul></figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="dir" id="ledger-states">
+    <div class="dir-h"><span class="k">5</span><div><h3>More, less, nothing</h3><p>The same list with fourteen reviews, with none, with nothing at all, while it is first read, and without a connection.</p></div></div>
+    <div class="row">
+      <figure class="shot">
+        <div class="phone light"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>24 involve you · updated just now</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh pin">To review<span class="n">14</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Pause the queue when a spool runs out</b><span><em>Mateo asked</em><span> · printfarm #31</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age">5 h</span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Wishlist: share by link</b><span><em>Ines asked</em><span> · storefront #381</span><i> · <span class="ty pbi"></span>AB#61052</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+190</span> <span class="d">−12</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Chargebacks: attach the evidence file</b><span><em>Sam asked</em><span> · payments #92</span><i> · <span class="ty pbi"></span>AB#61061</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 h</span><span class="ds"><span class="a">+260</span> <span class="d">−31</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:330">LV</span><div class="t"><b>e2e: seed the price lists before checkout specs</b><span><em>Lena asked</em><span> · shop #413</span></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 h</span><span class="ds"><span class="a">+84</span> <span class="d">−20</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: show the rounding rule in the summary</b><span><em>Priya asked</em><span> · shop #414</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+46</span> <span class="d">−3</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:200">TB</span><div class="t"><b>Product page: skeleton while stock loads</b><span><em>Tom asked</em><span> · storefront #382</span><i> · <span class="ty pbi"></span>AB#61040</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+71</span> <span class="d">−9</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds: one audit log entry per split</b><span><em>Ines asked</em><span> · payments #93</span><i> · <span class="ty pbi"></span>AB#60871</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 h</span><span class="ds"><span class="a">+120</span> <span class="d">−14</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhooks: dead-letter after eight tries</b><span><em>Sam asked</em><span> · shop #415</span><i> · <span class="ty pbi"></span>AB#61002</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">40 m</span><span class="ds"><span class="a">+205</span> <span class="d">−18</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:265">MR</span><div class="t"><b>Show the filament left per spool</b><span><em>Mateo asked</em><span> · printfarm #32</span></span></div><div class="rt"><span class="cbar"><i style="flex:3"></i></span><span class="age">25 m</span><span class="ds"><span class="a">+96</span> <span class="d">−4</span></span></div></div></div><div class="lgh">Yours, needs you<span class="n">3</span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span><em>Tom wants changes</em><span> · storefront #371</span><i> · <span class="ty pbi"></span>AB#61012</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div><div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span><em>Ines has a question</em><span> · payments #90</span><i> · <span class="ty bug"></span>AB#60955</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div></div></div></div>
+        <figcaption><b>A long queue</b><ul><li>Fourteen reviews push your own pull requests off the first screen. The To review header stays pinned while you scroll it, and Start review with it.</li><li>Every row is in the list. There is no "8 more" row to open first.</li></ul></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="phone"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>10 involve you · updated just now</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh">To review<span class="n">0</span></div><div class="ldg"><div class="lgn"><i class="ic" data-i="ok"></i>Nothing waits for your review</div></div><div class="lgh">Yours, needs you<span class="n">3</span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr" style="--c:var(--yl);--w:var(--yl)"><span class="av me2">KV</span><div class="t"><b>Product page: lazy-load the gallery</b><span><em>Tom wants changes</em><span> · storefront #371</span><i> · <span class="ty pbi"></span>AB#61012</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div></div><div class="lgr" style="--c:var(--ac);--w:var(--ac-tx)"><span class="av me2">KV</span><div class="t"><b>Retry declined cards once</b><span><em>Ines has a question</em><span> · payments #90</span><i> · <span class="ty bug"></span>AB#60955</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">4 h</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div></div></div><div class="lgh">Ready to merge<span class="n">2</span></div><div class="ldg"><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span><em>Tom approved</em><span> · shop #401</span><i> · <span class="ty bug"></span>AB#60987</i></span></div><span class="gp go sm">Merge</span></div><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Bump the payment SDK to 7.2</b><span><em>Ines approved</em><span> · payments #91</span></span></div><span class="gp go sm">Merge</span></div></div><div class="lgh">Waiting on others<span class="n">5</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div><div class="lgh">Also open in your repositories<span class="n">25</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div><div class="lgf">6 repositories on 2 accounts · read at 09:39<br>Pull down to read again</div></div></div>
+        <figcaption><b>Nothing to review</b>The section stays, with one line, so you can tell the list loaded. Start review is gone and your own pull requests move up.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="phone light"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>Nothing involves you · updated just now</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="qdone" style="padding-top:150px"><span class="big"><i class="ic" data-i="check"></i></span><h3>All clear</h3><p>No reviews asked and nothing of yours is open.</p></div><div style="position:absolute;left:0;right:0;bottom:64px"><div class="lgh">Also open in your repositories<span class="n">25</span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div><div class="ldg" style="height:0"></div><div class="lgf">6 repositories on 2 accounts · read at 09:39<br>Pull down to read again</div></div></div></div>
+        <figcaption><b>Nothing at all</b>One screen, said once. The rest of your repositories stay reachable at the bottom.</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="phone"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>Reading 2 of 6 repositories…</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="lgh">To review<span class="n"></span><span class="sp"></span><span class="gp sm" style="opacity:.5"><i class="ic" data-i="eye"></i>Start review</span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span><em>Priya asked</em><span> · shop #412</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span><em>Sam asked</em><span> · shop #405</span><i> · <span class="ty pbi"></span>AB#61002</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:200">TB</span><div class="t"><b>Address book: validate postcodes per country</b><span><em>Tom asked</em><span> · shop #398</span><i> · <span class="ty bug"></span>AB#60990</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span></div></div><div class="lgr skel" style="--c:transparent"><span class="av"></span><div class="t"><span class="sk" style="width:72%"></span><span class="sk" style="width:44%"></span></div><div class="rt"><span class="sk" style="width:40px"></span><span></span></div></div><div class="lgr skel" style="--c:transparent"><span class="av"></span><div class="t"><span class="sk" style="width:58%"></span><span class="sk" style="width:50%"></span></div><div class="rt"><span class="sk" style="width:40px"></span><span></span></div></div></div><div class="lgh">Yours, needs you<span class="n"></span></div><div class="ldg"><div class="lgr" style="--c:var(--rd);--w:var(--rd)"><span class="av me2">KV</span><div class="t"><b>Cache price lists per customer group</b><span><em>e2e, lint fail</em><span> · shop #409</span><i> · <span class="ty task"></span>AB#61055</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">2 h</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div></div><div class="lgr skel" style="--c:transparent"><span class="av"></span><div class="t"><span class="sk" style="width:64%"></span><span class="sk" style="width:48%"></span></div><div class="rt"><span class="sk" style="width:40px"></span><span></span></div></div></div><div class="lgh">Ready to merge<span class="n"></span></div><div class="ldg"><div class="lgr" style="--c:var(--gr);--w:var(--gr)"><span class="av me2">KV</span><div class="t"><b>Price list import accepts semicolons</b><span><em>Tom approved</em><span> · shop #401</span><i> · <span class="ty bug"></span>AB#60987</i></span></div><span class="gp go sm">Merge</span></div><div class="lgr skel" style="--c:transparent"><span class="av"></span><div class="t"><span class="sk" style="width:54%"></span><span class="sk" style="width:40%"></span></div><div class="rt"><span class="sk" style="width:40px"></span><span></span></div></div></div><div class="lgh">Waiting on others<span class="n"></span><span class="sp"></span><i class="ic chev" data-i="chev-r"></i></div></div></div>
+        <figcaption><b>The first read</b><ul><li>The phone reads one repository after another. Rows appear as they arrive and grey rows hold the place of what is still being read.</li><li>Start review waits for the whole read, because an older request may still come in and belong first.</li><li>Every later launch opens on the last list and refreshes it in place.</li></ul></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="phone light crop"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>16 involve you · read at 09:12</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="bn warn" style="margin-top:4px"><i class="ic" data-i="alert"></i><div><b>No connection.</b> <span>This is the list from 09:12. Reviewing and merging need GitHub, so they wait.</span></div></div><div class="lgh">To review<span class="n">6</span><span class="sp"></span><span class="gp sm" style="opacity:.5"><i class="ic" data-i="eye"></i>Start review</span></div><div class="ldg"><div class="lgr faded" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span><em>Priya asked</em><span> · shop #412</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div><div class="lgr faded" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span><em>Sam asked</em><span> · shop #405</span><i> · <span class="ty pbi"></span>AB#61002</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div><div class="lgr faded" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span><em>Ines asked</em><span> · payments #88</span><i> · <span class="ty pbi"></span>AB#60871</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div><div class="lgr faded" style="--c:var(--yl);--w:var(--yl)"><span class="av" style="--h:200">TB</span><div class="t"><b>Show stock per warehouse on the product page</b><span><em>Re-review</em><span> · storefront #377</span><i> · <span class="ty pbi"></span>AB#61040</i></span></div><div class="rt"><span class="cbar"><i style="flex:9"></i><i class="y" style="flex:9"></i></span><span class="age">1 d</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div></div></div></div></div>
+        <figcaption><b>Offline</b>The last list stays, dimmed, with the time it was read. The same banner names an account whose token stopped working, or GitHub's rate limit and when it lifts.</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="rules" id="ledger-rules">
+    <div class="rule"><h4>Sections</h4>
+      <ul>
+        <li>Order is fixed: To review, Yours needs you, Ready to merge, Waiting on others, Also open in your repositories.</li>
+        <li>To review is in run order, longest wait first. A re-review keeps the date of its new request.</li>
+        <li>Yours, needs you puts failures first, then requested changes, then questions.</li>
+        <li>A section with nothing in it is left out. To review is the exception and says "Nothing waits for your review".</li>
+        <li>Waiting on others and Also open fold, and the phone remembers which are open.</li>
+        <li>The header of the section on screen pins under the title bar.</li>
+        <li>Drafts of others never enter To review. Your own drafts sit in Waiting on others.</li>
+      </ul>
+    </div>
+    <div class="rule"><h4>Rows</h4>
+      <ul>
+        <li>50 points, two lines, one tap target. The title is cut with an ellipsis.</li>
+        <li>Line two is reason, repository and number, work item. Too long, and it drops the work item whole. The reason is coloured only when it is not routine.</li>
+        <li>Edge colour follows the reason: indigo a review or a question, amber a re-review or requested changes, red failing checks or a conflict, green ready, none for waiting and for pull requests that are not yours to act on.</li>
+        <li>Age is how long the row has had its reason, not the age of the pull request. Past seven days it turns amber.</li>
+        <li>The check bar is 40 by 4 points with one part per state, each as wide as its share of the checks and never under 6 points. That is a grouped style for <code>CheckBar</code>, which draws one segment per check today. Ready rows trade the right column for Merge.</li>
+        <li>The frames are 393 points wide, the narrow case. A Pro Max has room for the work item on nearly every row.</li>
+        <li>At larger text sizes the title wraps to two lines and the right column drops the size before anything else.</li>
+      </ul>
+    </div>
+    <div class="rule"><h4>Actions</h4>
+      <ul>
+        <li>Start review is the one filled control. Its tap target is 44 points high though it draws at 30.</li>
+        <li>Merge on a row opens the merge sheet. It never merges on the tap.</li>
+        <li>Swipe right reviews one pull request. Swipe left snoozes it until tomorrow.</li>
+        <li>Rerun failed checks appears only when the account's token may write Actions.</li>
+        <li>The list refreshes on launch, on pull down and on the Settings interval while open. The title bar says when it was last read.</li>
+        <li>Offline, the last list stays and every action that writes is disabled.</li>
+      </ul>
+    </div>
+  </div>
 </section>
 
 <!-- ============================== PULL REQUEST ============================== -->
@@ -1001,7 +847,7 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
           </div>
           <div class="wic"><div class="t"><div class="tp"><span class="ty bug"></span>Bug · <b>AB#61021</b><span class="chip sm run">Code Review</span></div><div class="tt">Totals off by a cent on invoices with three or more lines</div></div><i class="ic chev" data-i="chev-r"></i></div>
           <div class="jump"><span class="on">Checks</span><span>Proof 3</span><span>Description</span><span>Reviewers 3</span><span>Conversation 8</span><span>Files 52</span></div>
-          <div class="sl" style="padding-top:8px">Checks<span class="sp"></span><span>2 of 24 failing</span></div>
+          <div class="sl" style="padding-top:8px">Checks<span class="sp"></span><span>2 of 24 failing</span><a style="margin-left:12px;display:inline-flex;align-items:center;gap:4px"><i class="ic" data-i="rerun" style="--s:13px;--sw:2.4;align-self:center"></i>Rerun failed</a></div>
           <div class="fc">
             <div class="h"><i class="ic" data-i="fail"></i>e2e · chromium 2/4<span class="sp"></span><span>4 min</span></div>
             <div class="stp">Run Playwright tests</div>
@@ -1023,9 +869,10 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
       </div>
       <figcaption><b>Someone else's, checks failing</b>
         <ul>
-          <li>The track under the author is the same one as on the overview row: checks, review, merge.</li>
+          <li>The track under the author spells out what the overview row packs into its check bar and reason: checks, review, merge.</li>
           <li>The work item is a card of its own with its type, state and title. It opens the item as a sheet.</li>
           <li>Failing checks come first, each with the step and the error from the end of its log. "Also failing on main" comes from the default branch's own check runs.</li>
+          <li>Rerun failed shows because this account's token may write Actions. Without that permission it is absent and the checks read the same.</li>
           <li>Start review is filled because the review is yours to do. Merge opens the merge sheet, which says what's still missing.</li>
         </ul>
       </figcaption>
@@ -1545,7 +1392,7 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
             <div class="cell"><span class="av lg me2">KV</span><div class="t"><b>kv-acme</b><span>acme · reads 41 repositories</span></div><span class="chip ok"><i class="ic" data-i="check"></i>Works</span></div>
             <div class="cell" style="min-height:44px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr);margin:0 5px"></i><div class="t"><b style="font-size:15px">Pull requests: read and write</b><span>Reviews, comments, merging</span></div></div>
             <div class="cell" style="min-height:44px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr);margin:0 5px"></i><div class="t"><b style="font-size:15px">Contents: read and write</b><span>Diffs, and the merge itself</span></div></div>
-            <div class="cell" style="min-height:44px"><i class="ic" data-i="alert" style="--s:20px;color:var(--yl);margin:0 5px"></i><div class="t"><b style="font-size:15px">Checks and Actions: not granted</b><span>Checks show, their logs and Rerun won't</span></div></div>
+            <div class="cell" style="min-height:44px"><i class="ic" data-i="ok" style="--s:20px;color:var(--gr);margin:0 5px"></i><div class="t"><b style="font-size:15px">Actions: read and write</b><span>The error from a check's log, and Rerun</span></div></div>
             <div class="cell" style="min-height:44px"><i class="ic" data-i="clock" style="--s:20px;color:var(--tx2);margin:0 5px"></i><div class="t"><b style="font-size:15px">Expires 20 February 2027</b></div></div>
           </div>
           <div class="opt-h">Show it as</div>
@@ -1557,6 +1404,8 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
         <ul>
           <li>One account per token. Add your personal account the same way, here or later in Settings.</li>
           <li>The app reads what the token may do and says what a missing permission costs, instead of failing later.</li>
+          <li>Actions write is optional. A token without it adds the account all the same, the row reads "Actions: read only" in grey, and Rerun stays out of the app.</li>
+          <li>Check the exact permission names against GitHub's docs when building. The mockup shows the idea.</li>
           <li>The label is only for you: it groups repositories and names the account when its token runs out.</li>
         </ul>
       </figcaption>
@@ -1618,7 +1467,7 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
       <figcaption><b>Repositories</b>
         <ul>
           <li>Grouped by account. The ones where you reviewed or opened pull requests lately start switched on.</li>
-          <li>"Also read" is kept from today's Repositories screen: a review request from a repository you don't watch still reaches the queue.</li>
+          <li>"Also read" is kept from today's Repositories screen: a review request from a repository you don't watch still lands in To review.</li>
         </ul>
       </figcaption>
     </figure>
@@ -1661,24 +1510,7 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
     </figure>
 
     <figure class="shot">
-      <div class="phone light crop">
-        <div class="view">
-          <div class="nav"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><span class="upd">Updated 2 min ago</span><span class="sp"></span><span class="gb me">KV</span></div>
-          <div class="lt">5 to review</div>
-          <div class="sub">Oldest ask 4 days ago · 1 re-review</div>
-          <div class="bn warn"><i class="ic" data-i="key"></i><div><b>kv-labs isn't being read.</b> <span>Its token expired yesterday, so pull requests from your personal account are missing here.</span><br><span class="go2">Replace the token</span></div></div>
-          <div class="pills"><span class="lb">Yours</span><span class="pill"><span class="dot" style="color:var(--rd)"></span>3 need you</span><span class="pill"><span class="dot" style="color:var(--gr)"></span>2 ready</span><span class="pill">5 waiting</span></div>
-          <div class="qr" style="--rail-end:0px">
-            <div class="qh">
-              <span class="qn on">1</span>
-              <div class="t">
-                <div class="pr-h"><span class="av" style="--h:20">PS</span><b>shop</b>#412 · Priya Shah<span class="sp"></span><span class="age">4 d</span></div>
-                <h3>Checkout: round totals per line instead of per order</h3>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div class="phone light crop"><div class="view"><div class="nav" style="height:48px"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t" style="text-align:left;padding-left:3px"><b>Overview</b><span>14 involve you · updated 2 min ago</span></div><span class="gb" style="width:36px;height:36px"><i class="ic" data-i="search" style="--s:17px"></i></span><span class="gb me" style="width:36px;height:36px;font-size:12px">KV</span></div><div class="bn warn" style="margin-top:4px"><i class="ic" data-i="key"></i><div><b>kv-labs isn't being read.</b> <span>Its token expired yesterday, so pull requests from your personal account are missing here.</span><br><span class="go2">Replace the token</span></div></div><div class="lgh">To review<span class="n">5</span><span class="sp"></span><span class="gp pri sm"><i class="ic" data-i="eye"></i>Start review</span></div><div class="ldg"><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:20">PS</span><div class="t"><b>Checkout: round totals per line instead of per order</b><span><em>Priya asked</em><span> · shop #412</span><i> · <span class="ty bug"></span>AB#61021</i></span></div><div class="rt"><span class="cbar"><i style="flex:22"></i><i class="r" style="flex:2"></i></span><span class="age">4 d</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:150">SO</span><div class="t"><b>Webhook retries back off exponentially</b><span><em>Sam asked</em><span> · shop #405</span><i> · <span class="ty pbi"></span>AB#61002</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">3 d</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div></div><div class="lgr" style="--c:var(--ac)"><span class="av" style="--h:300">ID</span><div class="t"><b>Refunds for split payments</b><span><em>Ines asked</em><span> · payments #88</span><i> · <span class="ty pbi"></span>AB#60871</i></span></div><div class="rt"><span class="cbar"><i style="flex:24"></i></span><span class="age">2 d</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div></div></div></div></div>
       <figcaption><b>When a token stops working</b>The overview says which account is missing and what that hides, and keeps showing the rest. The same goes for a token that lost a permission, or Azure DevOps being unreachable: AB# chips then show the number only.</figcaption>
     </figure>
 
@@ -1692,9 +1524,9 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
   <table class="tbl" style="margin-top:0">
     <tr><th></th><th>Keep</th><th>Change</th><th>Drop</th></tr>
     <tr><td>Overview<br><span style="font-weight:400;color:#8e8f96">Focus, PullRequests</span></td>
-      <td>Start review runs the queue, oldest ask first. The checks, review, merge track. Swipe right to review, left to merge or snooze. The full list with filters, groupings and saved views, behind "All pull requests".</td>
-      <td>Focus's queue card and Your turn list become the queue itself. Your own pull requests are grouped by what they need. Snooze is kept on the phone, since no server remembers it.</td>
-      <td>The tab bar, Agents, the Work and Sprint tiles, the bell and Notes: the app has one stack. Long-press items Fix with Claude and Open in T3. Saved-view sync, which went through the server.</td></tr>
+      <td>Start review walks the reviews asked of you, longest wait first. Swipe right to review one. The long press with the author run. Snooze, kept on the phone since no server remembers it. The list's filters, as chips in search.</td>
+      <td>Focus and the Pull requests list become one screen, the Ledger. Focus's queue card is the To review section with Start review in its header, and the list's tabs are the sections. The checks, review, merge track moves to the pull request page. A row shows a check bar and a reason in its place. Merge is a button on the row and no longer a swipe.</td>
+      <td>The tab bar, Agents, the Work and Sprint tiles, the bell and Notes: the app has one stack. Long-press items Fix with Claude and Open in T3. Group, Sort and Display, since the Ledger has one grouping and one order. Saved views, which synced through the server.</td></tr>
     <tr><td>Pull request<br><span style="font-weight:400;color:#8e8f96">PullRequest</span></td>
       <td>One page with jump chips. Checks first when they fail, with the error from the log. Proof row, rendered markdown, threads on their lines, the reply box, the merge sheet with Face ID.</td>
       <td>The work item moves from a chip to a card under the title. Reviewers get a section. Review and Merge are both in the bar on every pull request.</td>
@@ -1711,6 +1543,262 @@ lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
       <td>The Repositories screen with "Also read". Face ID. Which paths count as tests or generated.</td>
       <td>Sign-in becomes a token per GitHub account and one for Azure DevOps, each checked on paste. Settings lead with the accounts.</td>
       <td>Clerk sign-in, the server address, Machines, Desktop link, Notifications, Devices.</td></tr>
+  </table>
+</section>
+
+<!-- ============================== NOT CHOSEN ============================== -->
+<section class="sec" id="considered">
+  <div class="sec-h"><h2>Directions not chosen</h2></div>
+  <p class="sec-lead">A and B were drawn next to C, with the same sixteen pull requests. Koen picked C on 22 November 2026. C is worked out at the top of this file. A and B stay here for the record. Don't build from them.</p>
+
+  <!-- ===== A ===== -->
+  <div class="dir" id="dir-a">
+    <div class="dir-h"><span class="k">A</span><div><h3>Queue</h3><p>The first screen is the review run itself: the pull request Start review opens, then the rest in the order you'll get them. Your own pull requests follow, grouped by what they need.</p></div></div>
+    <div class="row">
+
+      <figure class="shot">
+        <div class="phone light">
+          <div class="view">
+            <div class="nav"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><span class="upd">Updated 2 min ago</span><span class="sp"></span><span class="gb me">KV</span></div>
+            <div class="lt">6 to review</div>
+            <div class="sub">Oldest ask 4 days ago · 1 re-review</div>
+            <div class="pills"><span class="lb">Yours</span><span class="pill"><span class="dot" style="color:var(--rd)"></span>3 need you</span><span class="pill"><span class="dot" style="color:var(--gr)"></span>2 ready</span><span class="pill">5 waiting</span></div>
+            <div class="qr">
+              <div class="qh">
+                <span class="qn on">1</span>
+                <div class="t">
+                  <div class="pr-h"><span class="av" style="--h:20">PS</span><b>shop</b>#412 · Priya Shah<span class="sp"></span><span class="age">4 d</span></div>
+                  <h3>Checkout: round totals per line instead of per order</h3>
+                  <p class="ex">Totals were rounded once per order, so three lines of € 4,133 came to € 12,39. Each line now rounds on its own, like the receipt.</p>
+                  <div class="wil"><span class="ty bug"></span><b>AB#61021</b><span class="tt">Totals off by a cent on invoices with three lines</span><i class="ic chev" data-i="chev-r"></i></div>
+                  <div class="trk"><span class="s" style="--c:var(--rd)"><i class="tm"><i class="ic" data-i="x"></i></i>2 of 24 fail</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div>
+                </div>
+              </div>
+              <div class="qg">
+                <div class="ql"><span class="qn">2</span><div class="t">
+                  <div class="pr-h"><span class="av" style="--h:150">SO</span><b>shop</b>#405 · Sam Okafor<span class="sp"></span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span><span class="age">3 d</span></div>
+                  <h4>Webhook retries back off exponentially</h4>
+                  <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><span class="chip sm ac">AB#61002</span></div>
+                </div></div>
+                <div class="ql"><span class="qn">3</span><div class="t">
+                  <div class="pr-h"><span class="av" style="--h:300">ID</span><b>payments</b>#88 · Ines Duarte<span class="sp"></span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span><span class="age">2 d</span></div>
+                  <h4>Refunds for split payments</h4>
+                  <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><span class="chip sm ac">AB#60871</span></div>
+                </div></div>
+                <div class="ql"><span class="qn">4</span><div class="t">
+                  <div class="pr-h"><span class="av" style="--h:200">TB</span><b>storefront</b>#377 · Tom Berg<span class="sp"></span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span><span class="age">1 d</span></div>
+                  <h4>Show stock per warehouse on the product page</h4>
+                  <div class="trk"><span class="s" style="--c:var(--bl)"><i class="tm ring"></i>Running</span><i class="ln"></i><span class="s" style="--c:var(--yl)"><i class="tm ring"></i>Re-review, 3 files</span><span class="chip sm ac">AB#61040</span></div>
+                </div></div>
+                <div class="ql"><span class="qn">5</span><div class="t">
+                  <div class="pr-h"><span class="av" style="--h:200">TB</span><b>shop</b>#398 · Tom Berg<span class="sp"></span><span class="ds"><span class="a">+64</span> <span class="d">−12</span></span><span class="age">1 d</span></div>
+                  <h4>Address book: validate postcodes per country</h4>
+                  <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span><span class="chip sm ac">AB#60990</span></div>
+                </div></div>
+                <div class="ql"><span class="qn">6</span><div class="t">
+                  <div class="pr-h"><span class="av" style="--h:265">MR</span><b>printfarm</b>#31 · Mateo Ruiz<span class="sp"></span><span class="ds"><span class="a">+52</span> <span class="d">−9</span></span><span class="age">5 h</span></div>
+                  <h4>Pause the queue when a spool runs out</h4>
+                  <div class="trk"><span class="s" style="--c:var(--gr)"><i class="tm"><i class="ic" data-i="check"></i></i>Checks</span><i class="ln"></i><span class="s" style="--c:var(--ac-tx)"><i class="tm ring"></i>Your review</span></div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+          <div class="edge"></div>
+          <div class="actbar"><span class="btn pri"><i class="ic" data-i="eye"></i>Start review<span class="cnt">6</span></span><span class="gb glass"><i class="ic" data-i="search"></i></span></div>
+        </div>
+        <figcaption><b>The queue is the screen</b>
+          <ul>
+            <li>The numbers are the order of the run: oldest ask first. Number 1 is opened up with what it changes and the work item it's for.</li>
+            <li>Every row has author, repository, size, age, checks, what's asked of you and its AB# chip.</li>
+            <li>Start review stays under your thumb. Tapping a row opens that pull request instead.</li>
+            <li>The three pills under the title are your own pull requests; a tap scrolls to that group.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone">
+          <div class="view">
+            <div class="nav"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><div class="nav-t"><b>6 to review</b><span>Updated 2 min ago</span></div><span class="gb me">KV</span></div>
+            <div class="grp-h" style="padding-top:8px">Yours, needs you<span>3</span></div>
+            <div class="grp">
+              <div class="pl"><span class="ico soft r" style="--c:var(--rd)"><i class="ic" data-i="x"></i></span><div class="t">
+                <div class="pr-h"><b>shop</b>#409<span class="sp"></span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span><span class="age">2 h</span></div>
+                <h4>Cache price lists per customer group</h4>
+                <div class="st"><span class="why bad">e2e and lint fail</span><span class="chip sm ac">AB#61055</span></div>
+              </div></div>
+              <div class="pl"><span class="ico soft r" style="--c:var(--yl)"><i class="ic" data-i="undo"></i></span><div class="t">
+                <div class="pr-h"><b>storefront</b>#371<span class="sp"></span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span><span class="age">1 d</span></div>
+                <h4>Product page: lazy-load the gallery</h4>
+                <div class="st"><span class="why warn">Tom asked for changes, 2 threads</span><span class="chip sm ac">AB#61012</span></div>
+              </div></div>
+              <div class="pl"><span class="ico soft r" style="--c:var(--ac-tx)"><i class="ic" data-i="msg"></i></span><div class="t">
+                <div class="pr-h"><b>payments</b>#90<span class="sp"></span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span><span class="age">4 h</span></div>
+                <h4>Retry declined cards once</h4>
+                <div class="st"><span class="why ac">Ines asked a question</span><span class="chip sm ac">AB#60955</span></div>
+              </div></div>
+            </div>
+            <div class="grp-h">Ready to merge<span>2</span></div>
+            <div class="grp">
+              <div class="pl"><span class="ico soft r" style="--c:var(--gr)"><i class="ic" data-i="merge"></i></span><div class="t">
+                <div class="pr-h"><b>shop</b>#401<span class="sp"></span><span class="ds"><span class="a">+48</span> <span class="d">−6</span></span><span class="age">3 d</span></div>
+                <h4>Price list import accepts semicolons</h4>
+                <div class="st"><span class="why ok">Tom approved, checks pass</span><span class="gp go sm">Merge</span></div>
+              </div></div>
+              <div class="pl"><span class="ico soft r" style="--c:var(--gr)"><i class="ic" data-i="merge"></i></span><div class="t">
+                <div class="pr-h"><b>payments</b>#91<span class="sp"></span><span class="ds"><span class="a">+12</span> <span class="d">−12</span></span><span class="age">1 d</span></div>
+                <h4>Bump the payment SDK to 7.2</h4>
+                <div class="st"><span class="why ok">Ines approved, checks pass</span><span class="gp go sm">Merge</span></div>
+              </div></div>
+            </div>
+            <div class="grp" style="margin-top:14px">
+              <div class="gx"><span class="ico soft r" style="--c:var(--tx2)"><i class="ic" data-i="clock"></i></span><div class="t"><b>Waiting on others</b><span>5 pull requests, oldest 4 days</span></div><span class="avs"><span class="av" style="--h:20">PS</span><span class="av" style="--h:150">SO</span><span class="av" style="--h:200">TB</span></span><i class="ic chev" data-i="chev-r"></i></div>
+            </div>
+            <div class="grp" style="margin-top:14px">
+              <div class="gx"><span class="ico soft r" style="--c:var(--tx2)"><i class="ic" data-i="layers"></i></span><div class="t"><b>All pull requests</b><span>143 open in 14 repositories</span></div><i class="ic chev" data-i="chev-r"></i></div>
+            </div>
+          </div>
+          <div class="edge"></div>
+          <div class="actbar"><span class="btn pri"><i class="ic" data-i="eye"></i>Start review<span class="cnt">6</span></span><span class="gb glass"><i class="ic" data-i="search"></i></span></div>
+        </div>
+        <figcaption><b>Scrolled: your own pull requests</b>
+          <ul>
+            <li>Needs you says why in one line: failing checks, changes asked, a question to answer.</li>
+            <li>Ready to merge has Merge on the row; it opens the merge sheet.</li>
+            <li>Waiting on others folds to one line with who you're waiting for.</li>
+            <li>All pull requests is today's list with its filters, groupings and saved views, unchanged.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <aside class="notes">
+        <div class="note pick"><b>My recommendation at the time</b>The app has one job, and A is the only direction where the order of the run is visible before you start it. The cost (your own pull requests are a scroll away) is covered by the three pills under the title.</div>
+        <div class="note"><b>Best at</b>Starting in one tap, and knowing what you'll read first and what comes after.</div>
+        <div class="note"><b>Costs</b>Your own pull requests start below the fold when the queue is longer than three.</div>
+        <div class="note"><b>From today's app</b>Focus's "6 reviews wait for you" card and its Your turn list become one thing: the queue, in run order.</div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ===== B ===== -->
+  <div class="dir" id="dir-b">
+    <div class="dir-h"><span class="k">B</span><div><h3>Board</h3><p>Four counts stay on top and the list shows one lane at a time. A lane has room to say why on every card: the failing test, the reviewer's words, the question.</p></div></div>
+    <div class="row">
+
+      <figure class="shot">
+        <div class="phone light">
+          <div class="view">
+            <div class="nav"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><span class="upd">Updated 2 min ago</span><span class="sp"></span><span class="gb me">KV</span></div>
+            <div class="lt">Overview</div>
+            <div class="lanes">
+              <div class="lane on"><b>6</b><span>To review</span></div>
+              <div class="lane bad"><b>3</b><span>Needs you</span></div>
+              <div class="lane ok"><b>2</b><span>Ready</span></div>
+              <div class="lane mute"><b>5</b><span>Waiting</span></div>
+            </div>
+            <div class="listbar"><span>Oldest ask first</span><span>1 re-review</span></div>
+            <div class="list">
+              <div class="card">
+                <div class="pr-h"><span class="av" style="--h:20">PS</span><b>shop</b>#412 · Priya Shah<span class="sp"></span><span class="age">4 d</span></div>
+                <h4>Checkout: round totals per line instead of per order</h4>
+                <div class="why ac"><i class="ic" data-i="eye"></i>Asked for your review</div>
+                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="chip sm bad">2 fail</span><span class="chip sm ac">AB#61021</span><span class="ds"><span class="a">+1.1k</span> <span class="d">−214</span></span></div>
+              </div>
+              <div class="card">
+                <div class="pr-h"><span class="av" style="--h:150">SO</span><b>shop</b>#405 · Sam Okafor<span class="sp"></span><span class="age">3 d</span></div>
+                <h4>Webhook retries back off exponentially</h4>
+                <div class="why ac"><i class="ic" data-i="eye"></i>Asked for your review</div>
+                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="chip sm ac">AB#61002</span><span class="ds"><span class="a">+412</span> <span class="d">−96</span></span></div>
+              </div>
+              <div class="card">
+                <div class="pr-h"><span class="av" style="--h:300">ID</span><b>payments</b>#88 · Ines Duarte<span class="sp"></span><span class="age">2 d</span></div>
+                <h4>Refunds for split payments</h4>
+                <div class="why ac"><i class="ic" data-i="eye"></i>Asked for your review</div>
+                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="chip sm ac">AB#60871</span><span class="ds"><span class="a">+640</span> <span class="d">−212</span></span></div>
+              </div>
+              <div class="card">
+                <div class="pr-h"><span class="av" style="--h:200">TB</span><b>storefront</b>#377 · Tom Berg<span class="sp"></span><span class="age">1 d</span></div>
+                <h4>Show stock per warehouse on the product page</h4>
+                <div class="why warn"><i class="ic" data-i="rerun"></i>Re-review: 3 files changed since yours</div>
+                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i class="y"></i><i class="y"></i><i class="y"></i></span><span class="chip sm ac">AB#61040</span><span class="ds"><span class="a">+88</span> <span class="d">−14</span></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="edge"></div>
+          <div class="actbar"><span class="btn pri"><i class="ic" data-i="eye"></i>Start review<span class="cnt">6</span></span><span class="gb glass"><i class="ic" data-i="search"></i></span></div>
+        </div>
+        <figcaption><b>To review</b>
+          <ul>
+            <li>The four counts are the overview; they stay put while the list changes. Tap one or swipe sideways.</li>
+            <li>Cards are today's pull request card: check bar, AB# chip and size on the bottom line.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone">
+          <div class="view">
+            <div class="nav"><span class="tile"><svg viewBox="0 0 32 32"><use href="#mark"/></svg></span><span class="upd">Updated 2 min ago</span><span class="sp"></span><span class="gb me">KV</span></div>
+            <div class="lt">Overview</div>
+            <div class="lanes">
+              <div class="lane"><b>6</b><span>To review</span></div>
+              <div class="lane bad on"><b>3</b><span>Needs you</span></div>
+              <div class="lane ok"><b>2</b><span>Ready</span></div>
+              <div class="lane mute"><b>5</b><span>Waiting</span></div>
+            </div>
+            <div class="listbar"><span>Your pull requests</span><span>Most urgent first</span></div>
+            <div class="list">
+              <div class="card">
+                <div class="pr-h"><b>shop</b>#409<span class="sp"></span><span class="age">2 h</span></div>
+                <h4>Cache price lists per customer group</h4>
+                <div class="why bad"><i class="ic" data-i="fail"></i>2 of 24 checks fail</div>
+                <div class="code">e2e    pricing.spec.ts:41 › group price shows
+lint   src/pricing/cache.ts:14 <span class="m">useConst</span></div>
+                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i><i class="r"></i><i class="r"></i></span><span class="chip sm ac">AB#61055</span><span class="ds"><span class="a">+310</span> <span class="d">−40</span></span></div>
+              </div>
+              <div class="card">
+                <div class="pr-h"><b>storefront</b>#371<span class="sp"></span><span class="age">1 d</span></div>
+                <h4>Product page: lazy-load the gallery</h4>
+                <div class="why warn"><i class="ic" data-i="undo"></i>Tom Berg asked for changes</div>
+                <div class="quote">The gallery jumps when the first image loads. Can it reserve the height?<small>gallery.tsx:52 · 2 threads open</small></div>
+                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="chip sm ac">AB#61012</span><span class="ds"><span class="a">+96</span> <span class="d">−30</span></span></div>
+              </div>
+              <div class="card">
+                <div class="pr-h"><b>payments</b>#90<span class="sp"></span><span class="age">4 h</span></div>
+                <h4>Retry declined cards once</h4>
+                <div class="why ac"><i class="ic" data-i="msg"></i>Ines Duarte asked a question</div>
+                <div class="quote">Does the retry also run for 3-D Secure declines?</div>
+                <div class="pr-f"><span class="cbar"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="chip sm ac">AB#60955</span><span class="ds"><span class="a">+58</span> <span class="d">−7</span></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="edge"></div>
+          <div class="actbar"><span class="btn pri"><i class="ic" data-i="eye"></i>Start review<span class="cnt">6</span></span><span class="gb glass"><i class="ic" data-i="search"></i></span></div>
+        </div>
+        <figcaption><b>Needs you</b>
+          <ul>
+            <li>Each card carries its reason: the failing tests by name, the comment that asked for changes, the question.</li>
+            <li>Ready is the same list with Merge on each card; Waiting names who each one waits for.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <aside class="notes">
+        <div class="note"><b>Best at</b>Triage. Your own pull requests get as much room as the reviews, and you can read the reason without opening anything.</div>
+        <div class="note"><b>Costs</b>One lane at a time: seeing what's ready to merge is a tap away from the review queue. Six reviews need scrolling.</div>
+        <div class="note"><b>From today's app</b>The Pull requests tabs (Your turn, Mine, Ready) become four lanes with fixed meanings, and the card stays as it is.</div>
+      </aside>
+    </div>
+  </div>
+
+  <table class="tbl">
+    <tr><th></th><th>A · Queue</th><th>B · Board</th><th>C · Ledger, chosen</th></tr>
+    <tr><td>Taps to start reviewing</td><td class="y">1</td><td class="y">1</td><td class="y">1</td></tr>
+    <tr><td>Order of the run visible</td><td class="y">Yes, numbered</td><td class="m">Yes, as a list</td><td class="m">Yes, as a list</td></tr>
+    <tr><td>Your own PRs on the first screen</td><td class="m">As three counts</td><td class="m">As three counts</td><td class="y">All of them</td></tr>
+    <tr><td>Why a PR needs you</td><td class="y">One line</td><td class="y">The test, comment or question itself</td><td class="n">Two words</td></tr>
+    <tr><td>Pull requests on the first screen</td><td>4 to 5</td><td>3 to 4</td><td>11, plus Waiting folded</td></tr>
+    <tr><td>Full title readable</td><td class="y">Yes</td><td class="y">Yes</td><td class="n">Often cut off</td></tr>
   </table>
 </section>
 
