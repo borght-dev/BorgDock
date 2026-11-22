@@ -97,6 +97,7 @@ A second iPhone app (target `BorgDockReview`) that reads GitHub and Azure DevOps
 - **Images load through `LoadedImage` / `ImageLoader`.** `AsyncImage` sends no token and ignores `URLProtocol.registerClass`, so Azure DevOps attachments and uploads in private repositories stay grey with it.
 - **A simulator run with real accounts needs a signed build.** With `CODE_SIGNING_ALLOWED=NO` the Keychain refuses the tokens and the app stays on its connect screen. `-BorgDockFixture` (made-up data) needs no Keychain.
 - **A new Swift file needs `xcodegen generate`** before `xcodebuild` sees it ("cannot find … in scope"); `swift build` finds it by itself.
+- **Ported regular expressions keep JavaScript's meaning on purpose.** With `.matchingSemantics(.unicodeScalar)` Swift 6.4's `\w` and `\b` stop counting digits, so `Direct/GitHub/Ci` spells ASCII classes out (`CiText.swift`), and `Direct/Ado` goes through `NSRegularExpression` (`AdoPattern`: `\z` where JavaScript's `$` means the very end).
 
 ## Implementation Status (Legacy WPF — completed before Tauri rewrite)
 
