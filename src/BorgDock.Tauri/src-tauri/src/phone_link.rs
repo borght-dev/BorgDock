@@ -1,6 +1,7 @@
 //! The link to BorgDock for iPhone's server. The desktop asks the server for
 //! a code, the phone approves it, and the desktop gets a session that may only
-//! send presence, share reads, share its watched repositories and sign out. Contract:
+//! send presence, share reads, share its watched repositories, share saved pull
+//! request views and sign out. Contract:
 //! `src/BorgDock.Server/shared/src/borgdock.ts`, "Owners, desktop link and read sync".
 //!
 //! Every request goes through here: the webview's CSP can't reach a server
@@ -25,6 +26,9 @@ const REPOSITORIES_RETRY: Duration = Duration::from_secs(10 * 60);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 const UNLINKED: &str = "Your iPhone unlinked this desktop. Link it again in Settings.";
 const CANCELED: &str = "This link was canceled. Start again.";
+const NO_SHARED_VIEWS: &str =
+    "This server doesn't share saved views yet. Update BorgDock's server.";
+const PR_VIEWS_PATH: &str = "/api/pr-views";
 pub const CHANGED_EVENT: &str = "phone-link-changed";
 
 static WAKE: LazyLock<tokio::sync::Notify> = LazyLock::new(tokio::sync::Notify::new);
@@ -178,10 +182,46 @@ pub struct PhoneReadsSince {
     pub targets: Vec<PhoneActivityTarget>,
 }
 
+/// A saved pull request view as the server keeps it (`SavedPrView`). `display`
+/// stays whole, so the phone's fields and ones this version doesn't know go
+/// back as they came.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct PhoneSavedPrView {
+    pub id: String,
+    pub name: String,
+    pub filter: String,
+    pub query: String,
+    pub display: Value,
+}
+
+/// The server's one list of saved views; `revision` is 0 before the first write.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct PhonePrViews {
+    pub revision: i64,
+    pub views: Vec<PhoneSavedPrView>,
+    pub updated_at: Option<String>,
+}
+
+/// A write over a revision: saved, or refused because another device wrote
+/// first (`current` is the list to merge with).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(tag = "status", rename_all = "lowercase")]
+pub enum PhonePrViewsWrite {
+    Saved { saved: PhonePrViews },
+    Conflict { current: PhonePrViews },
+}
+
 #[derive(Debug, PartialEq)]
 enum Failure {
     Unauthorized,
     Gone,
+    /// 409, with the body that says why.
+    Conflict(String),
     Other(String),
 }
 
@@ -190,6 +230,7 @@ impl From<Failure> for String {
         match failure {
             Failure::Unauthorized => UNLINKED.to_string(),
             Failure::Gone => "The server no longer knows this link.".to_string(),
+            Failure::Conflict(body) => error_text(StatusCode::CONFLICT, &body),
             Failure::Other(message) => message,
         }
     }
@@ -279,6 +320,42 @@ fn should_send_repositories(
     }
 }
 
+fn pr_views_put_request(
+    session: &Session,
+    base_revision: i64,
+    views: &[PhoneSavedPrView],
+) -> RequestBuilder {
+    authed(session, Method::PUT, PR_VIEWS_PATH)
+        .json(&json!({ "baseRevision": base_revision, "views": views }))
+}
+
+fn unexpected(error: serde_json::Error) -> String {
+    format!("The server sent something unexpected: {error}")
+}
+
+fn parse_pr_views(body: &str) -> Result<PhonePrViews, String> {
+    serde_json::from_str(body).map_err(unexpected)
+}
+
+/// The 409 of a write over a revision that is no longer current.
+fn parse_pr_views_conflict(body: &str) -> Result<PhonePrViews, String> {
+    #[derive(Deserialize)]
+    struct Wire {
+        current: PhonePrViews,
+    }
+    Ok(serde_json::from_str::<Wire>(body)
+        .map_err(unexpected)?
+        .current)
+}
+
+/// An older server has no saved views: say that, not "no longer knows this link".
+fn pr_views_failure(failure: Failure) -> String {
+    match failure {
+        Failure::Gone => NO_SHARED_VIEWS.to_string(),
+        other => other.into(),
+    }
+}
+
 fn reads_path(since: &str) -> String {
     format!("/api/activity/reads?since={}", urlencoding::encode(since))
 }
@@ -306,6 +383,7 @@ async fn send(builder: RequestBuilder) -> Result<String, Failure> {
     match status {
         StatusCode::UNAUTHORIZED => Err(Failure::Unauthorized),
         StatusCode::NOT_FOUND | StatusCode::GONE => Err(Failure::Gone),
+        StatusCode::CONFLICT => Err(Failure::Conflict(body)),
         status if status.is_success() => Ok(body),
         status => Err(Failure::Other(error_text(status, &body))),
     }
@@ -313,8 +391,7 @@ async fn send(builder: RequestBuilder) -> Result<String, Failure> {
 
 async fn send_json<T: DeserializeOwned>(builder: RequestBuilder) -> Result<T, Failure> {
     let body = send(builder).await?;
-    serde_json::from_str(&body)
-        .map_err(|e| Failure::Other(format!("The server sent something unexpected: {e}")))
+    serde_json::from_str(&body).map_err(|e| Failure::Other(unexpected(e)))
 }
 
 /// Targets of kinds this build doesn't know are left out, not an error.
@@ -324,8 +401,7 @@ fn parse_reads(body: &str) -> Result<PhoneReadsSince, String> {
         until: String,
         targets: Vec<Value>,
     }
-    let wire: Wire = serde_json::from_str(body)
-        .map_err(|e| format!("The server sent something unexpected: {e}"))?;
+    let wire: Wire = serde_json::from_str(body).map_err(unexpected)?;
     Ok(PhoneReadsSince {
         until: wire.until,
         targets: wire
@@ -385,15 +461,17 @@ async fn linked_session() -> Result<Session, String> {
 }
 
 /// A session the server no longer accepts is forgotten, so Settings shows "Link".
-async fn call(builder: RequestBuilder) -> Result<String, String> {
-    match send(builder).await {
-        Err(Failure::Unauthorized) => {
-            log::warn!("phone link: the server refused the session; forgetting it");
-            forget_session().await?;
-            Err(UNLINKED.to_string())
-        }
-        result => result.map_err(String::from),
+async fn signed(builder: RequestBuilder) -> Result<String, Failure> {
+    let result = send(builder).await;
+    if result == Err(Failure::Unauthorized) {
+        log::warn!("phone link: the server refused the session; forgetting it");
+        forget_session().await.map_err(Failure::Other)?;
     }
+    result
+}
+
+async fn call(builder: RequestBuilder) -> Result<String, String> {
+    signed(builder).await.map_err(String::from)
 }
 
 async fn send_presence(session: &Session) -> Result<(), String> {
@@ -594,6 +672,38 @@ pub async fn phone_link_reads_since(since: String) -> Result<PhoneReadsSince, St
     let session = linked_session().await?;
     let body = call(authed(&session, Method::GET, &reads_path(&since))).await?;
     parse_reads(&body)
+}
+
+/// The saved pull request views on the server; `None` while this desktop isn't linked.
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn phone_link_pr_views_get() -> Result<Option<PhonePrViews>, String> {
+    let Some(session) = read_session().await? else {
+        return Ok(None);
+    };
+    let body = signed(authed(&session, Method::GET, PR_VIEWS_PATH))
+        .await
+        .map_err(pr_views_failure)?;
+    parse_pr_views(&body).map(Some)
+}
+
+/// Writes the whole list over `base_revision`, the revision this desktop last read.
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn phone_link_pr_views_put(
+    base_revision: i64,
+    views: Vec<PhoneSavedPrView>,
+) -> Result<PhonePrViewsWrite, String> {
+    let session = linked_session().await?;
+    match signed(pr_views_put_request(&session, base_revision, &views)).await {
+        Ok(body) => Ok(PhonePrViewsWrite::Saved {
+            saved: parse_pr_views(&body)?,
+        }),
+        Err(Failure::Conflict(body)) => Ok(PhonePrViewsWrite::Conflict {
+            current: parse_pr_views_conflict(&body)?,
+        }),
+        Err(failure) => Err(pr_views_failure(failure)),
+    }
 }
 
 #[cfg(test)]
@@ -851,6 +961,85 @@ mod tests {
         );
         assert_eq!(request.headers()["authorization"], "Bearer tok");
         assert_eq!(body_of(&request), json!({ "repositories": ["acme/shop"] }));
+    }
+
+    #[test]
+    fn saved_views_are_put_over_a_revision_with_display_kept_whole() {
+        let views = vec![PhoneSavedPrView {
+            id: "view-1".into(),
+            name: "Mine".into(),
+            filter: "mine".into(),
+            query: "is:draft".into(),
+            display: json!({ "groupBy": "author", "phoneOnly": { "pinned": true } }),
+        }];
+        let request = pr_views_put_request(&session(), 7, &views).build().unwrap();
+        assert_eq!(request.method(), Method::PUT);
+        assert_eq!(
+            request.url().as_str(),
+            "https://mini.example.ts.net/borgdock/api/pr-views"
+        );
+        assert_eq!(request.headers()["authorization"], "Bearer tok");
+        assert_eq!(request.headers()["x-dispatch-intent"], "1");
+        assert_eq!(
+            body_of(&request),
+            json!({
+                "baseRevision": 7,
+                "views": [{
+                    "id": "view-1",
+                    "name": "Mine",
+                    "filter": "mine",
+                    "query": "is:draft",
+                    "display": { "groupBy": "author", "phoneOnly": { "pinned": true } },
+                }],
+            })
+        );
+    }
+
+    #[test]
+    fn saved_views_and_their_conflict_parse() {
+        let list = r#"{"revision":3,"views":[{"id":"v","name":"N","filter":"all","query":"","display":{"layout":"board","future":[1,2]}}],"updatedAt":"2026-11-22T10:00:00.000Z"}"#;
+        let views = parse_pr_views(list).unwrap();
+        assert_eq!(views.revision, 3);
+        assert_eq!(
+            views.views[0].display,
+            json!({ "layout": "board", "future": [1, 2] })
+        );
+        assert_eq!(
+            parse_pr_views(r#"{"revision":0,"views":[],"updatedAt":null}"#)
+                .unwrap()
+                .updated_at,
+            None
+        );
+        let conflict = format!(
+            r#"{{"error":"Your saved views changed on another device.","current":{list}}}"#
+        );
+        assert_eq!(parse_pr_views_conflict(&conflict).unwrap(), views);
+    }
+
+    #[test]
+    fn a_write_answers_with_its_status() {
+        let views = PhonePrViews {
+            revision: 1,
+            views: vec![],
+            updated_at: None,
+        };
+        assert_eq!(
+            serde_json::to_value(PhonePrViewsWrite::Conflict {
+                current: views.clone()
+            })
+            .unwrap(),
+            json!({ "status": "conflict", "current": { "revision": 1, "views": [], "updatedAt": null } })
+        );
+        assert_eq!(
+            serde_json::to_value(PhonePrViewsWrite::Saved { saved: views }).unwrap()["status"],
+            "saved"
+        );
+    }
+
+    #[test]
+    fn an_older_server_without_saved_views_says_so() {
+        assert_eq!(pr_views_failure(Failure::Gone), NO_SHARED_VIEWS);
+        assert_eq!(pr_views_failure(Failure::Unauthorized), UNLINKED);
     }
 
     #[test]

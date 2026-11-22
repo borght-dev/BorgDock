@@ -195,6 +195,21 @@ export function sanitizeDisplay(value: unknown, base: PrDisplay = DEFAULT_DISPLA
   };
 }
 
+const KNOWN_FIELDS = new Set<string>(Object.keys(DEFAULT_DISPLAY));
+
+/**
+ * A saved view's display: `sanitizeDisplay`, keeping the fields this version
+ * doesn't know as they came (another device's settings), so a view synced
+ * back to the server loses none of them.
+ */
+export function sanitizeViewDisplay(value: unknown): PrDisplay {
+  const unknownFields =
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).filter(([key]) => !KNOWN_FIELDS.has(key)))
+      : {};
+  return { ...unknownFields, ...sanitizeDisplay(value) };
+}
+
 export function sameDisplay(a: PrDisplay, b: PrDisplay): boolean {
   return (
     a.layout === b.layout &&

@@ -11,6 +11,7 @@ import { createGitHubSync } from './github-sync';
 import { initialize } from './initialize';
 import { startNotesSync } from './notes-sync';
 import { startPhoneLinkSync } from './phone-link-sync';
+import { startPrViewsSync } from './pr-views-sync';
 import { startReviewGuideWriter } from './review-guide-writer';
 import { followT3Sessions } from './t3-sessions';
 import { startVisibilityTracking } from './visibility';
@@ -37,6 +38,7 @@ export function startApplicationRuntime(): () => void {
   const stopWorkstreams = WORKSTREAMS_ENABLED ? startWorkstreamsSync() : undefined;
   const stopNotes = startNotesSync();
   const stopPhoneLink = startPhoneLinkSync();
+  const stopPrViews = startPrViewsSync();
   const stopGuideWriter = startReviewGuideWriter();
   const getSettings = () => useSettingsStore.getState().settings;
   const reconcile = (restart = false) => {
@@ -137,6 +139,7 @@ export function startApplicationRuntime(): () => void {
     stopWorkstreams?.();
     stopNotes();
     stopPhoneLink();
+    stopPrViews();
     stopGuideWriter();
     document.removeEventListener('borgdock-refresh', refresh);
   };

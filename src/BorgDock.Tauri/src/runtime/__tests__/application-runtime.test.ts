@@ -23,6 +23,7 @@ vi.mock('../t3-sessions', () => ({ followT3Sessions: () => () => {} }));
 vi.mock('../workstreams-sync', () => ({ startWorkstreamsSync: () => () => {} }));
 vi.mock('../notes-sync', () => ({ startNotesSync: () => () => {} }));
 vi.mock('../phone-link-sync', () => ({ startPhoneLinkSync: () => () => {} }));
+vi.mock('../pr-views-sync', () => ({ startPrViewsSync: () => () => {} }));
 vi.mock('../activity-sync', () => ({ startActivitySync: () => () => {} }));
 
 const original = useSettingsStore.getState().settings;
