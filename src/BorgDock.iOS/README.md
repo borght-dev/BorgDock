@@ -55,7 +55,7 @@ DevOps straight from the phone, so it needs no BorgDock server, and has no agent
   the server client in BorgDock, `GitHubDirect` and `AdoWorkItems` here. `AppModel.direct` is set in this app only;
   `canStartAgents` hides what needs T3.
 - **`Direct/`** is the Swift port of the server's `github/` and `ado/` code: the same searches, Focus rules, file
-  categories and item page. Change a rule on both sides together. It is Foundation only, so `Package.swift` compiles
+  categories, failure reasons from job logs, related CI failures and item page. Change a rule on both sides together. It is Foundation only, so `Package.swift` compiles
   it on the Mac: `swift test` runs `DirectTests/` in seconds, without a simulator (the Xcode test target runs them too).
 - **Accounts** (`BorgDock/DirectMode/`): a token per GitHub account (classic, `repo` and `read:org`, single sign-on
   authorized) and one Azure DevOps organization, project and personal access token. They live in the Keychain of the

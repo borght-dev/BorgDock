@@ -90,7 +90,7 @@ src/BorgDock.Server/        # Its server and Dispatch's web app (Node 24, own np
 
 A second iPhone app (target `BorgDockReview`) that reads GitHub and Azure DevOps straight from the phone. How it is built, its accounts and its debug launch arguments: `src/BorgDock.iOS/README.md`, "BorgDock Review".
 
-- **`Direct/` ports the server.** `Direct/GitHub` follows `server/src/github/`, `Direct/Ado` follows `server/src/ado/` and `borgdock/item-detail.ts`, and `DirectTests/` reuses the server tests' cases. Change a rule on both sides together.
+- **`Direct/` ports the server.** `Direct/GitHub` follows `server/src/github/` (its `Ci/` the `ci/` folder: why a check is red, related CI failures), `Direct/Ado` follows `server/src/ado/` and `borgdock/item-detail.ts`, and `DirectTests/` reuses the server tests' cases. Change a rule on both sides together.
 - **Verify `Direct/` with `swift test` in `src/BorgDock.iOS`**: seconds on the Mac, no simulator. The package compiles it because it is Foundation only; UIKit and SwiftUI belong in `BorgDock/DirectMode/`.
 - **Both apps compile `BorgDock/` and `Direct/` as one module**, so a type name declared in both collides (`OverallStatus` sat in `PrFacts.swift` and `FocusRules.swift`). Keep the one definition in `Direct/`.
 - **Shared screens ask `app.pullRequests` and `app.workItems`** for pull requests and work items (`app.api` is the server only), and show what needs T3 only when `app.canStartAgents`.

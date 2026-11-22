@@ -38,6 +38,15 @@ final class PrPageTests: XCTestCase {
         XCTAssertEqual(ChecksLabel.text([run(1, .success)]), "1 passed")
     }
 
+    func testAFailedCheckWithoutAReasonSaysWhetherOneIsComing() {
+        func run(jobId: Int?) -> CheckRun {
+            CheckRun(id: 7, name: "build", workflow: nil, state: .failure, startedAt: nil, completedAt: nil, durationSeconds: nil,
+                     url: "https://ci.example.com/7", runId: jobId.map { _ in 70 }, jobId: jobId, failure: nil)
+        }
+        XCTAssertEqual(FailedCheckCard.withoutReason(run(jobId: 7)), "Reading the log…")
+        XCTAssertEqual(FailedCheckCard.withoutReason(run(jobId: nil)), "Open the check to see why it failed.", "another CI's check has no log on GitHub")
+    }
+
     func testCheckDurationsInWholeMinutes() {
         XCTAssertEqual(CheckDuration.text(45), "45 s")
         XCTAssertEqual(CheckDuration.text(252), "4 min")

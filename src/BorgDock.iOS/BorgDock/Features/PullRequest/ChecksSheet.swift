@@ -193,7 +193,7 @@ struct FailedCheckCard: View {
                         .padding(.top, 9)
                     }
                 } else {
-                    Text("Reading the log…").font(.system(size: 12.5)).foregroundStyle(BD.text3).padding(.top, 2)
+                    Text(FailedCheckCard.withoutReason(run)).font(.system(size: 12.5)).foregroundStyle(BD.text3).padding(.top, 2)
                 }
             }
             .padding(.leading, 26)
@@ -204,6 +204,12 @@ struct FailedCheckCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .bdCard(radius: 20, fill: fill)
         .contextMenu { menu }
+    }
+
+    /// What stands where the reason will: the log is being read, or it can't be, because only GitHub Actions jobs
+    /// have a log to read (a check another CI reports never gets a reason here).
+    static func withoutReason(_ run: CheckRun) -> String {
+        run.jobId == nil ? "Open the check to see why it failed." : "Reading the log…"
     }
 
     /// The location line, then the snippet; a snippet that already starts with the location keeps it once.

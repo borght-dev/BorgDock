@@ -61,6 +61,9 @@ final class DirectFixtureProtocol: URLProtocol {
 
     override func startLoading() {
         guard let url = request.url else { return }
+        if url.host() == "api.github.com", url.path().hasSuffix("/logs") {
+            return answer(200, Data(GitHubFixture.failedJobLog.utf8), type: "text/plain")
+        }
         if url.host() == Self.imageHost || AdoFixture.isAttachment(url) {
             return answer(200, FixtureImage.png(named: url.query() ?? url.lastPathComponent), type: "image/png")
         }
@@ -280,7 +283,23 @@ private enum GitHubFixture {
         ]
     }
 
+    /// The end of the failed e2e job's log, as Vitest prints a failure.
+    static let failedJobLog = """
+    2026-10-20T09:14:01.8760000Z  FAIL  e2e/checkout.spec.ts > checkout > keeps the basket when the payment times out
+    2026-10-20T09:14:01.8833000Z AssertionError: expected 0 to be 3 // Object.is equality
+    2026-10-20T09:14:01.9417000Z  ❯ e2e/checkout.spec.ts:42:27
+    2026-10-20T09:14:02.1169000Z  Test Files  1 failed | 6 passed (7)
+    2026-10-20T09:14:02.1242000Z       Tests  1 failed | 31 passed (32)
+    2026-10-20T09:14:02.1534000Z error: script "test:e2e" exited with code 1
+    2026-10-20T09:14:02.1607000Z ##[error]Process completed with exit code 1.
+    """
+
     static func rest(method: String, path: String, query: String) -> Any? {
+        if method == "GET", path.contains("/actions/jobs/") {
+            return ["steps": [["name": "Set up job", "conclusion": "success"], ["name": "Run bun run test:e2e", "conclusion": "failure"]]]
+        }
+        // The default branches are green: no failure here is shared with main.
+        if method == "GET", path.hasSuffix("/actions/runs") { return ["workflow_runs": [Any]()] }
         if method == "GET", path.hasSuffix("/files") { return path.contains("/pulls/412/") && !query.contains("page=2") ? files : [Any]() }
         if method == "GET", path.contains("/compare/") { return ["files": [["filename": "src/pricing/round.ts", "status": "modified", "additions": 4, "deletions": 1]]] }
         if method == "POST", path.hasSuffix("/reviews") { return ["id": 9001] }
