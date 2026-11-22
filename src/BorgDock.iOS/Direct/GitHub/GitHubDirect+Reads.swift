@@ -70,6 +70,7 @@ extension GitHubDirect {
 
     func pullRequest(_ key: PrKey) async throws -> PrDetail {
         let (record, detail, repository, account) = try await record(of: key)
+        readUnreadLogs(of: record)
         let methods: [MergeMethod] = (repository.squashMergeAllowed ? [.squash] : []) + (repository.mergeCommitAllowed ? [.merge] : [])
             + (repository.rebaseMergeAllowed ? [.rebase] : [])
         let preferred = MergeMethod(rawValue: repository.viewerDefaultMergeMethod.lowercased())
@@ -133,7 +134,7 @@ extension GitHubDirect {
             return CheckRun(
                 id: check.id, name: check.name, workflow: check.workflow, state: check.state, startedAt: check.startedAt, completedAt: check.completedAt,
                 durationSeconds: duration, url: check.url, runId: check.runId, jobId: check.kind == .check && check.runId != nil ? check.id : nil,
-                failure: nil
+                failure: checkFailure(of: check)
             )
         }
         .sorted { (order[$0.state, default: 9], $0.name) < (order[$1.state, default: 9], $1.name) }

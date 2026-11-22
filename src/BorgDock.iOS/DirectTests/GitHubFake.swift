@@ -23,6 +23,8 @@ final class GitHubFake: URLProtocol {
         var status = 200
         var body = Data()
         var headers: [String: String] = [:]
+        /// Set by `held(by:)`.
+        var gate: Gate?
 
         static func json(_ object: Any, status: Int = 200) -> Answer {
             Answer(status: status, body: (try? JSONSerialization.data(withJSONObject: object)) ?? Data())
@@ -31,6 +33,44 @@ final class GitHubFake: URLProtocol {
         /// A GraphQL answer: `{ "data": … }`.
         static func data(_ object: Any) -> Answer { json(["data": object]) }
         static func status(_ status: Int, message: String = "") -> Answer { json(["message": message], status: status) }
+        static func text(_ text: String, status: Int = 200, headers: [String: String] = [:]) -> Answer {
+            Answer(status: status, body: Data(text.utf8), headers: headers)
+        }
+
+        /// GitHub's answer for a job's log: the log is at `location`.
+        static func redirect(to location: String) -> Answer { Answer(status: 302, headers: ["Location": location]) }
+
+        /// The same answer, sent only once `gate` opens: one that is still on its way.
+        func held(by gate: Gate) -> Answer {
+            var held = self
+            held.gate = gate
+            return held
+        }
+    }
+
+    /// Holds answers back until a test opens it.
+    final class Gate: @unchecked Sendable {
+        private let lock = NSLock()
+        // Guarded by `lock`.
+        private var isOpen = false
+        private var waiting: [() -> Void] = []
+
+        func open() {
+            let released = lock.withLock {
+                isOpen = true
+                defer { waiting = [] }
+                return waiting
+            }
+            released.forEach { $0() }
+        }
+
+        fileprivate func whenOpen(_ work: @escaping () -> Void) {
+            let alreadyOpen = lock.withLock {
+                if !isOpen { waiting.append(work) }
+                return isOpen
+            }
+            if alreadyOpen { work() }
+        }
     }
 
     /// Handlers run on the loader's thread while the test awaits the request; they only read what they captured.
@@ -97,13 +137,29 @@ final class GitHubFake: URLProtocol {
             return Self.rest.first { $0.method == seen.method && url.range(of: $0.pattern, options: .regularExpression) != nil }?.handler
         }
         let answer = handler?(seen) ?? .status(404, message: "Not Found (\(seen.method) \(url))")
+        guard let gate = answer.gate else { return send(answer) }
+        // URLProtocol wants its client told on the thread that started the load.
+        held = answer
+        let loader = Thread.current
+        let modes = [(RunLoop.current.currentMode ?? .default).rawValue]
+        gate.whenOpen { self.perform(#selector(self.sendHeld), on: loader, with: nil, waitUntilDone: false, modes: modes) }
+    }
+
+    override func stopLoading() {}
+
+    /// The answer a gate holds back.
+    private var held: Answer?
+
+    @objc private func sendHeld() {
+        if let held { send(held) }
+    }
+
+    private func send(_ answer: Answer) {
         let response = HTTPURLResponse(url: request.url!, statusCode: answer.status, httpVersion: "HTTP/1.1", headerFields: answer.headers)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: answer.body)
         client?.urlProtocolDidFinishLoading(self)
     }
-
-    override func stopLoading() {}
 
     private static func read(_ stream: InputStream) -> Data {
         stream.open()
@@ -205,10 +261,11 @@ enum Fake {
     }
 }
 
-/// A GitHub with one repository and two open pull requests. #1: a review Sanne asked from koen, its e2e job red.
-/// #2: koen's own, approved and green.
+/// A GitHub with one repository, two open pull requests and a red main branch. #1: a review Sanne asked from koen,
+/// its e2e job red. #2: koen's own, approved and green. main: red since m1.
 struct GitHubWorld {
     let store = MemoryStore()
+    private let made = Services()
     var review = Fake.pullRequest(
         number: 1, title: "Keep the basket on timeout AB#60379",
         body: "Before/after:\n![basket kept](https://github.com/user-attachments/assets/basket.png)\n<img src=\"https://github.com/user-attachments/assets/after.png\" alt=\"after\">",
@@ -250,9 +307,57 @@ struct GitHubWorld {
                 "id": pr["id"]!, "headRefOid": pr["headRefOid"]!, "state": "OPEN", "headRefName": pr["headRefName"]!, "isCrossRepository": false, "head": pr["head"]!,
             ]]])
         }
+        installFailedJobs()
     }
 
-    func service(accounts: [String] = ["koen"], workItems: @escaping WorkItemLookup = { _ in [] }) -> GitHubDirect {
-        GitHubDirect(accounts: accounts.map(Fake.account), store: store, session: GitHubFake.session(), workItems: workItems, now: { Fake.now })
+    /// #1's failed job and main's red runs, with the log of each failed job behind GitHub's redirect to storage.
+    private func installFailedJobs() {
+        let testFailed: [String: Any] = ["name": "Run bun run test", "conclusion": "failure"]
+        GitHubFake.onRest("GET", #"/repos/acme/shop/actions/jobs/501$"#, json: ["id": 501, "steps": [["name": "Set up job", "conclusion": "success"], testFailed]])
+        GitHubFake.onRest("GET", #"/actions/jobs/\d+/logs$"#) { seen in
+            let job = seen.url.firstMatch(of: #/jobs/(\d+)/#).map { String($0.1) } ?? ""
+            return .redirect(to: "https://storage.example/logs/\(job)?sig=secret")
+        }
+        GitHubFake.onRest("GET", #"^https://storage\.example/logs/"#) { _ in Self.storedLog }
+
+        // main: runs 900 and 899 red (899 the first), 898 green.
+        func run(_ id: Int, _ conclusion: String, sha: String, ago: TimeInterval, message: String) -> [String: Any] {
+            ["id": id, "workflow_id": 7, "name": "CI", "status": "completed", "conclusion": conclusion, "head_sha": sha, "created_at": Fake.ago(ago),
+             "head_commit": ["message": message]]
+        }
+        GitHubFake.onRest("GET", #"/repos/acme/shop/actions/runs\?branch=main"#, json: ["workflow_runs": [
+            run(900, "failure", sha: "m2", ago: Fake.hours(4), message: "Tidy the cart"),
+            run(899, "failure", sha: "m1", ago: Fake.days(1), message: "Round totals\n\nlong body"),
+            run(898, "success", sha: "m0", ago: Fake.days(2), message: "Green"),
+        ]])
+        GitHubFake.onRest("GET", "/actions/runs/900/jobs", json: ["jobs": [
+            ["id": 901, "run_id": 900, "name": "test", "conclusion": "failure", "completed_at": Fake.ago(Fake.hours(3)), "head_sha": "m2", "steps": [testFailed]],
+            ["id": 902, "run_id": 900, "name": "lint", "conclusion": "success", "completed_at": Fake.ago(Fake.hours(3)), "head_sha": "m2"],
+        ]])
     }
+
+    /// What log storage answers for the tail of a failed job's log.
+    static let storedLog = GitHubFake.Answer.text(CiLogs.vitestFailure, status: 206, headers: ["Content-Range": "bytes 0-1/2"])
+
+    func service(accounts: [String] = ["koen"], workItems: @escaping WorkItemLookup = { _ in [] }) -> GitHubDirect {
+        let service = GitHubDirect(accounts: accounts.map(Fake.account), store: store, session: GitHubFake.session(), workItems: workItems, now: { Fake.now })
+        made.add(service)
+        return service
+    }
+
+    /// Waits until the services this world made have read the job logs they started on, so none of them is still
+    /// asking GitHub when the next test begins.
+    func settle() async {
+        for service in made.all { await service.ciSettled() }
+    }
+}
+
+/// The services a world made.
+private final class Services: @unchecked Sendable {
+    private let lock = NSLock()
+    // Guarded by `lock`.
+    private var services: [GitHubDirect] = []
+
+    var all: [GitHubDirect] { lock.withLock { services } }
+    func add(_ service: GitHubDirect) { lock.withLock { services.append(service) } }
 }
