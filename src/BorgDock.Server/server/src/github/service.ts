@@ -368,6 +368,10 @@ export class GithubService extends EventEmitter {
       snoozedUntil: until !== null && until > ctx.now ? new Date(until).toISOString() : null,
       autoMerge: pr.autoMerge,
       reviewedHeadSha: myReview(pr, pr.account)?.commitSha ?? null,
+      requestedReviewerLogins: pr.requestedReviewers,
+      requestedTeams: pr.requestedTeams,
+      latestReviews: pr.latestReviews.map(({ login, state, commitSha }) => ({ login, state, commitSha })),
+      priorityScore: scoreOf(pr, ctx),
     };
   }
 
@@ -387,6 +391,8 @@ export class GithubService extends EventEmitter {
       pullRequests: ranked.map((r) => r.summary),
       agentsWaiting: this.agentsWaiting(),
       accounts: [...this.accountStatus.values()],
+      teams: Object.fromEntries([...this.accountStatus.keys()].map((login) => [login.toLowerCase(), this.teamsOf(login)])),
+      staleAfterDays: this.config.github.staleAfterDays,
     };
   }
 

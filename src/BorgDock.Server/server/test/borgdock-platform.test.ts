@@ -416,6 +416,43 @@ test('a linked desktop shares its watched repositories; the phone sees where its
   }
 });
 
+test('saved pull request views: the phone and a linked desktop compare and set one list', async () => {
+  const { call, close, phone, phoneAuth } = await ownedServer();
+  try {
+    const start = (await (await call('/api/desktop/links', { method: 'POST', json: { deviceName: 'Work laptop' } })).json()) as any;
+    const body = JSON.stringify({ code: start.code });
+    assert.equal((await call('/api/desktop/links/approve', { method: 'POST', headers: { ...phoneAuth, ...signedHeaders(phone.privateKey, 'POST', '/api/desktop/links/approve', body) }, body })).status, 200);
+    const desk = { authorization: `Bearer ${((await (await call(`/api/desktop/links/${start.linkId}?secret=${start.pollSecret}`)).json()) as any).token}` };
+
+    assert.deepEqual(await (await call('/api/pr-views', { headers: phoneAuth })).json(), { revision: 0, views: [], updatedAt: null });
+    const shop = { id: 'view-1', name: 'Shop, green', filter: 'all', query: 'repo:shop -checks:failing', display: { layout: 'table', groupBy: 'status', columns: ['checks'] } };
+    const first = await call('/api/pr-views', { method: 'PUT', headers: desk, json: { baseRevision: 0, views: [shop] } });
+    assert.equal(first.status, 200, await first.clone().text());
+    assert.equal(((await first.json()) as any).revision, 1);
+
+    const read = (await (await call('/api/pr-views', { headers: phoneAuth })).json()) as any;
+    assert.equal(read.revision, 1);
+    assert.deepEqual(read.views, [shop], 'the display comes back as sent, layout and columns included');
+
+    const stale = await call('/api/pr-views', { method: 'PUT', headers: phoneAuth, json: { baseRevision: 0, views: [] } });
+    assert.equal(stale.status, 409, 'written over a revision that is no longer current');
+    const conflict = (await stale.json()) as any;
+    assert.equal(conflict.current.revision, 1);
+    assert.deepEqual(conflict.current.views, [shop]);
+
+    const second = await call('/api/pr-views', { method: 'PUT', headers: phoneAuth, json: { baseRevision: 1, views: [] } });
+    assert.equal(((await second.json()) as any).revision, 2);
+
+    const bad = (views: unknown) => call('/api/pr-views', { method: 'PUT', headers: phoneAuth, json: { baseRevision: 2, views } });
+    assert.equal((await bad([{ ...shop, filter: 'waiting' }])).status, 400, 'an unknown tab');
+    assert.equal((await bad([{ ...shop, name: ' ' }])).status, 400, 'no name');
+    assert.equal((await bad([shop, shop])).status, 400, 'the same id twice');
+    assert.equal((await call('/api/pr-views', { method: 'PUT', headers: phoneAuth, json: { views: [] } })).status, 400, 'no base revision');
+  } finally {
+    close();
+  }
+});
+
 test('desktop links expire after ten minutes, and an approved token nobody picked up revokes its session', () => {
   const revoked: string[] = [];
   const links = new DesktopLinks((sessionId) => revoked.push(sessionId));

@@ -29,12 +29,13 @@ test('GET /api/focus answers 503 before the first poll, then Focus', async () =>
   assert.equal((await app.request('/api/focus')).status, 503);
   await service.refresh();
   const focus = await json(app.request('/api/focus'));
-  assert.deepEqual(Object.keys(focus).sort(), ['accounts', 'agentsWaiting', 'counts', 'generatedAt', 'pullRequests']);
+  assert.deepEqual(Object.keys(focus).sort(), ['accounts', 'agentsWaiting', 'counts', 'generatedAt', 'pullRequests', 'staleAfterDays', 'teams']);
   const pr = focus.pullRequests[0];
-  for (const field of ['key', 'account', 'title', 'author', 'bucket', 'reason', 'checks', 'headSha', 'workItemIds', 'snoozedUntil', 'reviewedHeadSha', 'labels', 'mergeable']) {
+  for (const field of ['key', 'account', 'title', 'author', 'bucket', 'reason', 'checks', 'headSha', 'workItemIds', 'snoozedUntil', 'reviewedHeadSha', 'labels', 'mergeable', 'requestedReviewerLogins', 'requestedTeams', 'latestReviews', 'priorityScore']) {
     assert.ok(field in pr, `PrSummary.${field}`);
   }
   assert.deepEqual(Object.keys(pr.reason).sort(), ['icon', 'text', 'tone']);
+  for (const review of pr.latestReviews) assert.deepEqual(Object.keys(review).sort(), ['commitSha', 'login', 'state']);
 });
 
 test('GET /api/focus?refresh=1 polls first', async () => {

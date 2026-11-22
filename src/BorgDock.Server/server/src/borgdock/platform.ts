@@ -11,6 +11,7 @@ import { DeviceKeys } from './devices.ts';
 import { MachineHub } from './machines.ts';
 import { Owners } from './owner.ts';
 import { PresenceBoard, Preferences } from './preferences.ts';
+import { PrViewsStore } from './pr-views.ts';
 
 const SUMMARY_CHECK_MS = 5 * 60_000;
 
@@ -27,6 +28,7 @@ export class Platform {
   readonly hub: MachineHub;
   readonly journal: ActivityJournal;
   readonly preferences: Preferences;
+  readonly prViews: PrViewsStore;
   readonly presence: PresenceBoard;
   readonly pusher: BorgDockPusher;
   readonly live: LiveActivities;
@@ -47,6 +49,7 @@ export class Platform {
     this.hub = new MachineHub(config, db, () => deps.service.fleet ?? null);
     this.journal = new ActivityJournal(db);
     this.preferences = new Preferences(db);
+    this.prViews = new PrViewsStore(db);
     const sender = () => notifier.apnsSender ?? null;
     this.pusher = new BorgDockPusher({ db, sender, preferences: this.preferences, presence: this.presence });
     this.live = new LiveActivities(db, sender, () => (config.apns?.production === false ? 'sandbox' : 'production'));

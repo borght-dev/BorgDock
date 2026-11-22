@@ -3,7 +3,7 @@ import { upgradeWebSocket } from '@hono/node-server';
 import type {
   ApproveDesktopRequest, BorgDockPreferences, ClerkExchangeRequest, ClerkExchangeResponse, DesktopLinkApproval, DesktopLinkRequest, DesktopRepositoriesRequest, LaunchRequest,
   LiveActivityRegistration, MarkReadRequest, PairMachineRequest,
-  Presence, PushToStartRegistration, ReadTargetsRequest, ResolveRefsRequest, ServerInfo,
+  Presence, PrViewsConflict as PrViewsConflictBody, PushToStartRegistration, PutPrViewsRequest, ReadTargetsRequest, ResolveRefsRequest, ServerInfo,
 } from '../../../../shared/src/api.ts';
 import { API_VERSION } from '../../../../shared/src/api.ts';
 import { clientOf, RateLimiter } from '../../auth/request.ts';
@@ -14,6 +14,7 @@ import { allowlisted, ClerkError } from '../../borgdock/clerk.ts';
 import { DesktopLinkError, desktopScope } from '../../borgdock/desktops.ts';
 import { PairingError } from '../../borgdock/machines.ts';
 import { platformFor } from '../../borgdock/platform.ts';
+import { PrViewsConflict } from '../../borgdock/pr-views.ts';
 import { account, refOf, resolveRefs, search, sources, widgets } from '../../borgdock/queries.ts';
 import { UserError } from '../../service.ts';
 import { readBody, type Api, type Env, type RouteDeps } from '../context.ts';
@@ -305,6 +306,22 @@ export function registerPlatformRoutes(api: Api, deps: RouteDeps) {
     const result = deps.github.setDesktopRepositories(repositories, { sessionId: id, name });
     deps.record(c, 'desktop.repositories', { desktop: id, repositories: result.repositories.length });
     return c.json({ ok: true });
+  });
+
+  // Saved pull request views, shared by the phone and the linked desktop: compare and set, the clients merge.
+  api.get('/pr-views', (c) => c.json(platform.prViews.get()));
+
+  api.put('/pr-views', async (c) => {
+    const { baseRevision, views } = await readBody<PutPrViewsRequest>(c);
+    try {
+      const saved = platform.prViews.put(baseRevision, views);
+      deps.record(c, 'pr-views.put', { revision: saved.revision, views: saved.views.length });
+      return c.json(saved);
+    } catch (error) {
+      if (!(error instanceof PrViewsConflict)) throw error;
+      const conflict: PrViewsConflictBody = { error: error.message, current: error.current };
+      return c.json(conflict, 409);
+    }
   });
 
   api.get('/preferences', (c) => c.json(platform.preferences.get()));
