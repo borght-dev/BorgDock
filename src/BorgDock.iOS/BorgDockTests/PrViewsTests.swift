@@ -152,6 +152,28 @@ final class PrViewsTests: XCTestCase {
         let puts = StubURLProtocol.requests.filter { $0.method == "PUT" }.compactMap { ($0.json as? [String: Any])?["baseRevision"] as? Int }
         XCTAssertEqual(puts, [2, 3])
     }
+
+    func testAServerThatLostItsListGetsTheViewsBackInsteadOfWipingThem() async throws {
+        let app = AppModel(serverURL: StubURLProtocol.baseURL, token: "test-token", session: StubURLProtocol.session())
+        let store = PrListStore(defaults: freshDefaults())
+        store.app = app
+        let shared = #"{"id":"v1","name":"Shop","filter":"all","query":"repo:shop","display":{}}"#
+        StubURLProtocol.respond { _ in (200, #"{"revision":6,"views":[\#(shared)],"updatedAt":null}"#) }
+        await store.sync()
+        XCTAssertEqual(store.savedViews.map(\.id), ["v1"])
+
+        // The server's database was reset: revision 0, no views.
+        StubURLProtocol.respond { request in
+            if request.method == "GET" { return (200, #"{"revision":0,"views":[],"updatedAt":null}"#) }
+            let views = String(data: try! JSONSerialization.data(withJSONObject: (request.json as? [String: Any])?["views"] ?? []), encoding: .utf8)!
+            return (200, #"{"revision":1,"views":\#(views),"updatedAt":null}"#)
+        }
+        await store.sync()
+        let put = try XCTUnwrap(StubURLProtocol.requests.first { $0.method == "PUT" }?.json as? [String: Any])
+        XCTAssertEqual(put["baseRevision"] as? Int, 0)
+        XCTAssertEqual((put["views"] as? [[String: Any]])?.map { $0["id"] as? String }, ["v1"], "written back, not wiped")
+        XCTAssertEqual(store.savedViews.map(\.id), ["v1"])
+    }
 }
 
 /// Counts calls from the stub's background thread.

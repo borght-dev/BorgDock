@@ -124,6 +124,36 @@ test('failed jobs: the log tail through the redirect, a group with the base bran
   assert.throws(() => service.ciGroup('nope'), (e: UserError) => e.status === 404);
 });
 
+test('Focus sends GitHub\'s review facts and your teams, so the phone works out the list facts itself', async () => {
+  const { service, gh, prs } = githubWorld();
+  const asked = rawPr({
+    number: 3, title: 'Cache the price list', author: 'tom', headSha: 'h3', requested: ['koen', 'mira'], teams: ['platform'],
+    reviews: [{ login: 'mira', state: 'APPROVED', sha: 'h3' }, { login: 'sanne', state: 'CHANGES_REQUESTED', sha: 'h0' }],
+  });
+  gh.onGraphql('FocusSearch', (r) => ({ body: { data: searchAnswer(/involves:@me/.test(r.body.variables.query) ? [prs[1], prs[2], asked] : []) } }));
+  const focus = (await service.refresh())!;
+  const pr = focus.pullRequests.find((p) => p.key === 'acme/shop#3')!;
+  assert.deepEqual(pr.requestedReviewerLogins, ['koen', 'mira']);
+  assert.deepEqual(pr.requestedTeams, ['platform']);
+  assert.deepEqual(pr.latestReviews, [{ login: 'mira', state: 'approved', commitSha: 'h3' }, { login: 'sanne', state: 'changes_requested', commitSha: 'h0' }]);
+  assert.ok(pr.priorityScore > 0, 'a review asked from you scores');
+  assert.deepEqual(focus.teams, { koen: ['platform'] });
+  assert.equal(focus.staleAfterDays, 7);
+
+  service.setRepositoryPreferences({ includeInvolving: true, includeTeamRequests: false });
+  assert.deepEqual((await service.refresh())!.teams, { koen: [] }, 'team requests off: no team counts as yours');
+});
+
+test('detail keeps its people and reviews with text next to the summary\'s logins and latest reviews', async () => {
+  const { service } = githubWorld();
+  await service.refresh();
+  const detail = await service.detail(TWO);
+  assert.deepEqual(detail.requestedReviewers.map((p) => p.login), ['koen']);
+  assert.deepEqual(detail.reviews.map((r) => [r.author.login, r.body]), [['mira', 'Looks close']]);
+  assert.deepEqual(detail.latestReviews, [{ login: 'mira', state: 'approved', commitSha: 'h2' }]);
+  assert.deepEqual(detail.requestedReviewerLogins, []);
+});
+
 test('detail: merge options, proof images, reviews, the linked work item and threads on the branch', async () => {
   const { service } = githubWorld();
   await service.refresh();

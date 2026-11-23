@@ -182,6 +182,23 @@ describe('planPull', () => {
     });
   });
 
+  it('keeps the views here when the server lost its list', () => {
+    expect(planPull({ revision: 6, views: [a, b] }, [a, b], { revision: 0, views: [] })).toEqual({
+      kind: 'put',
+      views: [a, b],
+      over: 0,
+    });
+  });
+
+  it('merges with a server that lost its list and was written since', () => {
+    const c = view('c');
+    expect(planPull({ revision: 6, views: [a, b] }, [a, b], { revision: 1, views: [c] })).toEqual({
+      kind: 'put',
+      views: [c, a, b],
+      over: 1,
+    });
+  });
+
   it('takes theirs after a new link when there are no views here', () => {
     expect(planPull(null, [], { revision: 2, views: [a] })).toEqual({ kind: 'adopt' });
   });

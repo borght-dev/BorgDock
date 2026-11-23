@@ -172,7 +172,10 @@ final class PrListStore {
             let mine = savedViews
             do {
                 let theirs: PrViews = try await app.api.get("/api/pr-views")
-                let merged = theirs.revision == base.revision ? mine : PrViewMerge.merge(base: base.views, mine: mine, theirs: theirs.views)
+                // Revisions only go up: a lower one means the server lost its list, so the base says nothing about it and
+                // taking its list would delete every view here. Every view here then counts as added.
+                let before = theirs.revision >= base.revision ? base.views : []
+                let merged = theirs.revision == base.revision ? mine : PrViewMerge.merge(base: before, mine: mine, theirs: theirs.views)
                 if merged == theirs.views {
                     adopt(theirs, sent: mine)
                 } else {

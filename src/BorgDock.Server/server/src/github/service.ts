@@ -379,17 +379,17 @@ export class GithubService extends EventEmitter {
   private buildFocus(): Focus {
     const ranked = [...this.records.values()]
       .filter((pr) => pr.state === 'open')
-      .map((pr) => ({ summary: this.summaryOf(pr), score: scoreOf(pr, this.context(pr.account)) }))
+      .map((pr) => this.summaryOf(pr))
       .sort((a, b) => compareFocus(
-        { bucket: a.summary.bucket, score: a.score, updatedAt: a.summary.updatedAt, size: a.summary.additions + a.summary.deletions },
-        { bucket: b.summary.bucket, score: b.score, updatedAt: b.summary.updatedAt, size: b.summary.additions + b.summary.deletions },
+        { bucket: a.bucket, score: a.priorityScore, updatedAt: a.updatedAt, size: a.additions + a.deletions },
+        { bucket: b.bucket, score: b.priorityScore, updatedAt: b.updatedAt, size: b.additions + b.deletions },
       ));
     const counts = Object.fromEntries(FOCUS_BUCKETS.map((b) => [b, 0])) as Record<FocusBucket, number>;
-    for (const { summary } of ranked) counts[summary.bucket]++;
+    for (const summary of ranked) counts[summary.bucket]++;
     return {
       generatedAt: new Date(this.clock()).toISOString(),
       counts,
-      pullRequests: ranked.map((r) => r.summary),
+      pullRequests: ranked,
       agentsWaiting: this.agentsWaiting(),
       accounts: [...this.accountStatus.values()],
       teams: Object.fromEntries([...this.accountStatus.keys()].map((login) => [login.toLowerCase(), this.teamsOf(login)])),
