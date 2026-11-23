@@ -228,12 +228,15 @@ struct QuickReviewView: View {
     /// An undone approval comes back to its decision with the draft intact.
     private func reopenIfAsked() {
         guard let wanted = app.focus.reopenDecision, let index = queue.firstIndex(where: { $0.key == wanted }) else { return }
-        app.focus.reopenDecision = nil
         if position != index { position = index }
         guard let session = sessions[wanted] else { return }
         session.stage = .walk
         session.revisiting = false
-        if session.isLoaded { deciding = true }
+        // Still loading: the ask stands, and the end of the load comes back here. Taking it now would lose the sheet,
+        // since a decision can't open over a pull request that isn't read yet.
+        guard session.isLoaded else { return }
+        app.focus.reopenDecision = nil
+        deciding = true
     }
 
     private func advance() {

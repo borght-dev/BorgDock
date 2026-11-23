@@ -34,7 +34,7 @@ final class ReviewScreensUITests: XCTestCase {
     private func any(_ app: XCUIApplication, _ id: String) -> XCUIElement { app.descendants(matching: .any)[id] }
 
     private func text(_ app: XCUIApplication, containing words: String) -> XCUIElement {
-        app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", words)).firstMatch
+        app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", words)).firstMatch
     }
 
     // MARK: - A pull request
@@ -117,12 +117,9 @@ final class ReviewScreensUITests: XCTestCase {
     @MainActor
     func testTheDecisionHasAutoMergeAsASwitch() {
         let app = launch(route: "i1/decide/acme/shop/412")
+        // Every file is reviewed: the decision opens by itself.
         let approve = app.buttons["decide-approve"]
-        if !approve.waitForExistence(timeout: 30) {
-            // The sheet opens by itself after the last file; from the top right at any time.
-            app.buttons["Done, decide"].tap()
-        }
-        XCTAssertTrue(approve.waitForExistence(timeout: 15))
+        XCTAssertTrue(approve.waitForExistence(timeout: 40))
         XCTAssertEqual(approve.label, "Approve")
         XCTAssertFalse(app.buttons["Approve & auto-merge"].exists, "auto-merge is a switch, not a fourth button")
         let toggle = app.switches["decide-auto-merge"]
@@ -131,6 +128,28 @@ final class ReviewScreensUITests: XCTestCase {
         capture("decide")
         toggle.switches.firstMatch.exists ? toggle.switches.firstMatch.tap() : toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
         XCTAssertEqual(app.buttons["decide-approve"].label, "Approve and merge when ready")
+    }
+
+    @MainActor
+    func testWithNothingLeftToReviewTheEndCardLeadsToYourOwn() {
+        // Nobody asks for a review; one of your own is walked through.
+        let app = launch(route: "i1/decide/acme/shop/419", mode: "quiet")
+        let done = app.buttons["decide-walked"]
+        XCTAssertTrue(done.waitForExistence(timeout: 40))
+        // Let the sheet finish sliding in before the tap.
+        sleep(1)
+        done.tap()
+        let merge = app.buttons["review-end-merge-acme/shop#398"]
+        XCTAssertTrue(merge.waitForExistence(timeout: 15), "what can merge comes first")
+        XCTAssertTrue(app.buttons["review-end-needs-you"].exists)
+        XCTAssertTrue(app.buttons["review-end-needs-you"].label.contains("need you"), app.buttons["review-end-needs-you"].label)
+        XCTAssertFalse(app.buttons["review-end-next"].exists, "there is no review to go on with")
+        capture("review-end")
+        merge.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Merge #398'")).firstMatch.waitForExistence(timeout: 10), "the merge sheet comes up over the review")
+        app.buttons["Close"].firstMatch.tap()
+        app.buttons["review-end-overview"].tap()
+        XCTAssertTrue(app.staticTexts["ledger-subtitle"].waitForExistence(timeout: 10))
     }
 
     // MARK: - Settings and the first run

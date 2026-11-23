@@ -87,7 +87,7 @@ final class LedgerUITests: XCTestCase {
         XCTAssertTrue(start.waitForExistence(timeout: 15))
         start.tap()
         XCTAssertTrue(app.buttons["brief-start"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Keep the basket on timeout'")).firstMatch.exists, "the longest wait is first")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Keep the basket on timeout'")).firstMatch.exists, "the longest wait is first")
     }
 
     @MainActor
@@ -95,7 +95,7 @@ final class LedgerUITests: XCTestCase {
         let app = launch()
         XCTAssertTrue(row(app, "acme/payments#88").waitForExistence(timeout: 15))
         row(app, "acme/payments#88").tap()
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Refunds for split payments'")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Refunds for split payments'")).firstMatch.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["ledger-start-review"].isHittable)
     }
 
@@ -127,7 +127,7 @@ final class LedgerUITests: XCTestCase {
         asked.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Review this pull request"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Review Tom's 2, oldest first"].exists)
-        XCTAssertTrue(app.buttons.containing(NSPredicate(format: "label CONTAINS 'Open AB#61040'")).firstMatch.exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS 'Open AB#61040'")).firstMatch.exists)
         for title in ["Snooze until tomorrow", "Copy link", "Open on GitHub"] { XCTAssertTrue(app.buttons[title].exists, title) }
         XCTAssertFalse(app.buttons["Fix with Claude"].exists)
         sleep(1)
@@ -140,7 +140,7 @@ final class LedgerUITests: XCTestCase {
         let failing = row(app, "acme/shop#419")
         XCTAssertTrue(failing.waitForExistence(timeout: 15))
         failing.press(forDuration: 1.2)
-        XCTAssertTrue(app.buttons.containing(NSPredicate(format: "label CONTAINS 'Rerun 2 failed checks'")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS 'Rerun 2 failed checks'")).firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Review this pull request"].exists)
         sleep(1)
         capture("ledger-menu-yours")
@@ -152,7 +152,7 @@ final class LedgerUITests: XCTestCase {
         let merge = app.buttons["ledger-merge-acme/shop#398"]
         XCTAssertTrue(merge.waitForExistence(timeout: 15))
         merge.tap()
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Merge #398'")).firstMatch.waitForExistence(timeout: 10), "it never merges on the tap")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Merge #398'")).firstMatch.waitForExistence(timeout: 10), "it never merges on the tap")
     }
 
     // MARK: - Finding one
@@ -215,11 +215,11 @@ final class LedgerUITests: XCTestCase {
     func testWithoutAConnectionTheLastListStaysAndSaysSo() {
         let app = launch(mode: "offline")
         XCTAssertTrue(row(app, "acme/shop#412").waitForExistence(timeout: 15))
-        // Pull down: the next read fails.
+        // Pull down, far enough to let go into a refresh: the next read fails.
         let first = row(app, "acme/shop#412")
         first.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .press(forDuration: 0.05, thenDragTo: first.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 6)))
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'No connection.'")).firstMatch.waitForExistence(timeout: 15))
+            .press(forDuration: 0.05, thenDragTo: first.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 11)))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'No connection.'")).firstMatch.waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["ledger-subtitle"].label.contains("read at"))
         XCTAssertFalse(app.buttons["ledger-start-review"].isEnabled, "reviewing needs GitHub")
         XCTAssertFalse(app.buttons["ledger-merge-acme/shop#398"].exists, "so does merging")

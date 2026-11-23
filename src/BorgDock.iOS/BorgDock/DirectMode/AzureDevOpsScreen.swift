@@ -118,14 +118,9 @@ struct AzureDevOpsScreen: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            Button { Task { await connect() } } label: {
+            SetupBar(disabled: connecting || connection == nil, identifier: "ado-connect") { Task { await connect() } } label: {
                 if connecting { ProgressView().tint(.white) } else { Text("Connect \(address?.lastPathComponent ?? "Azure DevOps")") }
             }
-            .buttonStyle(.bdPrimary)
-            .disabled(connecting || connection == nil)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
-            .accessibilityIdentifier("ado-connect")
         }
         .task(id: organization + "\n" + token) { await readProjects() }
         .onAppear(perform: prefill)

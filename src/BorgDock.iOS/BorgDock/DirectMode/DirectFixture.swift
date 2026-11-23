@@ -54,6 +54,9 @@ enum DirectFixture {
     /// A session that reads the fixture and forgets everything when the app quits.
     @MainActor
     static func session() -> DirectSession {
+        // Made-up data starts clean: what an earlier run marked reviewed, unfolded or chose would change what this one shows.
+        if let app = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: app) }
+        UserDefaults.standard.removePersistentDomain(forName: "direct-fixture")
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [DirectFixtureProtocol.self]
         let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("direct-fixture-\(UUID().uuidString)", isDirectory: true)

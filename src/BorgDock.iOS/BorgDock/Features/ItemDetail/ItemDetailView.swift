@@ -226,10 +226,10 @@ struct ItemDetailView: View {
         switch section {
         case .qaNotes:
             ItemSectionLabel(title: section.title, trailing: qaNotesByline)
-            RichTextCard(markdown: richText(section), attachments: detail?.attachments ?? [])
+            RichTextCard(markdown: richText(section), attachments: detail?.attachments ?? [], size: reading == nil ? 14.5 : 15.5)
         case .description, .reproSteps, .acceptance, .developerNotes:
             ItemSectionLabel(title: section.title)
-            RichTextCard(markdown: richText(section), attachments: detail?.attachments ?? [])
+            RichTextCard(markdown: richText(section), attachments: detail?.attachments ?? [], size: reading == nil ? 14.5 : 15.5)
         case .pullRequests:
             let pullRequests = self.pullRequests
             ItemSectionLabel(title: section.title, trailing: String(pullRequests.count))

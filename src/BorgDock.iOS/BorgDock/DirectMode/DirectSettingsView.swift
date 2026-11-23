@@ -29,7 +29,7 @@ struct DirectSettingsView: View {
             }
 
             Section {
-                NavigationLink { AzureDevOpsScreen(session: session) { } } label: {
+                NavigationLink { AzureDevOpsSettings(session: session) } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "checklist")
                             .font(.system(size: 15, weight: .semibold))
@@ -96,6 +96,7 @@ struct DirectSettingsView: View {
             ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() }.accessibilityIdentifier("settings-done") }
         }
         .tint(BD.accent)
+        .bdGroupedList()
         .onChange(of: session.faceIdForActions) { Task { await app.focus.loadPreferences() } }
         .onChange(of: refresh) { _, seconds in Task { await session.gitHub.setRefresh(seconds: seconds) } }
         .task(id: session.credentials.gitHub.map(\.id)) {
@@ -133,7 +134,7 @@ struct DirectSettingsView: View {
                 HStack(spacing: 0) {
                     Text(account.label.flatMap { $0.isEmpty ? nil : $0 } ?? (account.name ?? "GitHub")).foregroundStyle(BD.text2)
                     if let warning {
-                        Text(verbatim: " · \(warning.prefix(1).lowercased() + warning.dropFirst())").foregroundStyle((account.daysLeft() ?? 0) < 3 ? BD.red : BD.yellow)
+                        Text(verbatim: " · \(warning.prefix(1).lowercased() + warning.dropFirst())").foregroundStyle(account.expiresSoon() ? BD.red : BD.yellow)
                     } else if repositories > 0 {
                         Text(verbatim: " · \(repositories == 1 ? "1 repository" : "\(repositories) repositories")").foregroundStyle(BD.text2)
                     }
@@ -143,6 +144,16 @@ struct DirectSettingsView: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Azure DevOps from Settings: connecting or disconnecting goes back to the list.
+private struct AzureDevOpsSettings: View {
+    @Environment(\.dismiss) private var dismiss
+    let session: DirectSession
+
+    var body: some View {
+        AzureDevOpsScreen(session: session) { dismiss() }
     }
 }
 
@@ -215,6 +226,7 @@ struct GitHubAccountView: View {
         .navigationTitle(account?.shownLabel ?? login)
         .navigationBarTitleDisplayMode(.inline)
         .tint(BD.accent)
+        .bdGroupedList()
         .task { await check() }
         .onAppear { (label, customLabel) = AccountLabel.parse(account?.label) }
         .onChange(of: label) { saveLabel() }

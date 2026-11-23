@@ -132,6 +132,7 @@ struct ThreadDiffLines: View {
 
 /// A comment or review summary: as written, as the E2E report, or a bot's folded row that opens on Show.
 struct CommentEntryCard: View {
+    @Environment(AppModel.self) private var app
     let entry: PrComments.Entry
     @State private var unfolded = false
 
@@ -145,6 +146,28 @@ struct CommentEntryCard: View {
                     .padding(.top, 11)
                     .padding(.bottom, 12)
                 reactions
+            case .e2eReport(let failed, let body) where app.isReview:
+                // A bot's report is one line until you ask for it.
+                Button { withAnimation(.snappy) { unfolded.toggle() } } label: {
+                    HStack(spacing: 10) {
+                        BotBadge()
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("E2E Test Results").font(.system(size: 14.5, weight: .semibold)).foregroundStyle(BD.text)
+                            Text(E2EReportCard.line(failed: failed, body: body)).font(.system(size: 12.5)).foregroundStyle(BD.text2).lineLimit(1)
+                        }
+                        Spacer(minLength: 6)
+                        ToneChip(text: unfolded ? "Hide" : "Show")
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 11)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                if unfolded {
+                    GitHubMarkdown(body, size: 14)
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 12)
+                }
             case .e2eReport(let failed, let body):
                 HStack(alignment: .top, spacing: 10) {
                     BotBadge()

@@ -178,10 +178,12 @@ struct TokenField: View {
     let placeholder: String
     @Binding var text: String
     var identifier: String
+    /// False puts the keyboard away, e.g. once the token is recognised and what it may do shows under it.
+    var typing: FocusState<Bool>.Binding?
 
     var body: some View {
         HStack(spacing: 10) {
-            SecureField(placeholder, text: $text)
+            field
                 .textContentType(.password)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -190,6 +192,7 @@ struct TokenField: View {
                 .accessibilityIdentifier(identifier)
             Button {
                 if let pasted = UIPasteboard.general.string { text = pasted.trimmingCharacters(in: .whitespacesAndNewlines) }
+                typing?.wrappedValue = false
             } label: {
                 Label("Paste", systemImage: "doc.on.clipboard")
                     .labelStyle(TightLabelStyle(spacing: 5))
@@ -205,6 +208,43 @@ struct TokenField: View {
         .padding(.leading, 16)
         .padding(.trailing, 10)
         .frame(minHeight: 54)
+    }
+
+    @ViewBuilder
+    private var field: some View {
+        let secure = SecureField(placeholder, text: $text)
+        if let typing { secure.focused(typing) } else { secure }
+    }
+}
+
+/// The button a setup step ends on, over a fade so the page scrolls under it; dim while it can't be pressed.
+struct SetupBar<Label: View>: View {
+    var disabled = false
+    var identifier: String
+    let action: () -> Void
+    @ViewBuilder let label: Label
+
+    var body: some View {
+        Button(action: action) { label }
+            .buttonStyle(.bdPrimary)
+            .disabled(disabled)
+            .opacity(disabled ? 0.45 : 1)
+            .accessibilityIdentifier(identifier)
+            .padding(.horizontal, 16)
+            .padding(.top, 22)
+            .padding(.bottom, 8)
+            .background {
+                LinearGradient(stops: [.init(color: BD.bg.opacity(0), location: 0), .init(color: BD.bg, location: 0.42)], startPoint: .top, endPoint: .bottom)
+                    .ignoresSafeArea(edges: .bottom)
+                    .allowsHitTesting(false)
+            }
+    }
+}
+
+extension View {
+    /// A grouped list on BorgDock's own background instead of the system's.
+    func bdGroupedList() -> some View {
+        scrollContentBackground(.hidden).background(BD.bg)
     }
 }
 

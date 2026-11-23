@@ -62,12 +62,14 @@ struct WorkflowTrackView: View {
 struct RichTextCard: View {
     let markdown: String
     var attachments: [ItemAttachment] = []
+    /// BorgDock Review's reading sheet sets its text a size up.
+    var size: CGFloat = 14.5
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(RichText.blocks(markdown).enumerated()), id: \.offset) { _, block in
                 switch block {
-                case .markdown(let text): GitHubMarkdown(text, size: 14.5).frame(maxWidth: .infinity, alignment: .leading)
+                case .markdown(let text): GitHubMarkdown(text, size: size).frame(maxWidth: .infinity, alignment: .leading)
                 case .image(let alt, let url): AttachmentImage(alt: alt, url: url, attachment: attachments.first { $0.url == url })
                 }
             }

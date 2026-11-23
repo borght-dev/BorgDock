@@ -68,7 +68,9 @@ struct ReviewEndCard: View {
                     .accessibilityIdentifier("review-end-held")
                 }
 
-                if next.author != nil || next.next != nil {
+                if app.isReview, !run.filling, queueIsEmpty {
+                    yourOwn
+                } else if next.author != nil || next.next != nil {
                     sectionHeader("What's next")
                     VStack(spacing: 10) {
                         if let author = next.author {
@@ -92,6 +94,15 @@ struct ReviewEndCard: View {
         .accessibilityIdentifier("review-end")
     }
 
+    /// Nothing asks for your review any more, apart from what this run decided on: BorgDock Review then turns to your
+    /// own pull requests. With reviews left, the card offers the next one as it always did.
+    private var queueIsEmpty: Bool {
+        guard let focus = app.focus.focus else { return false }
+        let decided = Set(run.shown.map(\.key).filter { app.focus.reviewDecisions[$0] != nil })
+        let asked = Ledger(focus.pullRequests, LedgerContext(focus: focus, app: app, now: .now)).rows(in: .toReview)
+        return asked.allSatisfy { decided.contains($0.pr.key) }
+    }
+
     /// The review queue is empty, so what's next is your own: what can merge first, then how many need you.
     @ViewBuilder
     private var yourOwn: some View {
@@ -106,10 +117,14 @@ struct ReviewEndCard: View {
                     HStack(spacing: 10) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(row.pr.title).font(.system(size: 15.5, weight: .semibold)).foregroundStyle(BD.text).lineLimit(1)
-                            Text(verbatim: "\(row.pr.repo) #\(row.pr.number) · \(row.reason.text), \(LedgerChecks.summary(row.pr.checks).lowercased())")
-                                .font(.system(size: 13))
-                                .foregroundStyle(BD.text2)
-                                .lineLimit(1)
+                            // The checks go first when the line runs out of room: "approved" already says it can merge.
+                            ViewThatFits(in: .horizontal) {
+                                Text(verbatim: "\(row.pr.repo) #\(row.pr.number) · \(row.reason.text), \(LedgerChecks.summary(row.pr.checks).lowercased())")
+                                Text(verbatim: "\(row.pr.repo) #\(row.pr.number) · \(row.reason.text)")
+                            }
+                            .font(.system(size: 13))
+                            .foregroundStyle(BD.text2)
+                            .lineLimit(1)
                         }
                         Spacer(minLength: 6)
                         Button("Merge") { onMerge(row.pr.prKey) }
@@ -146,7 +161,6 @@ struct ReviewEndCard: View {
                     .accessibilityIdentifier("review-end-needs-you")
                 }
             }
-            .accessibilityIdentifier("review-end-your-own")
         }
         Button("Back to the overview", action: onDone)
             .buttonStyle(.bd(.plain, height: 50))

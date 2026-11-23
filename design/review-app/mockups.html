@@ -694,6 +694,7 @@
     <ul>
       <li><b>Everything on this page is in the app.</b> <span class="why">Branch <code>feat/ios-review-ui</code>, 23 November 2026. Each screen is behind <code>app.isReview</code>: BorgDock keeps its own.</span></li>
       <li><b>A comment takes several lines with two taps, not a drag.</b> <span class="why">Tap the first line, then the last. The diff scrolls and pages under the same finger, so a drag from the line number fought both. The keyboard waits for a tap in the box, or the sheet would cover the lines you are picking.</span></li>
+      <li><b>Long lines wrap, as today.</b> <span class="why">A sideways scroll would fight the swipe between files. The pinch for the type size is in.</span></li>
       <li><b>The token screen shows what GitHub tells.</b> <span class="why">A classic token's scopes come with every answer. A fine-grained token's permissions never do, so the app tries one read of pull requests and one of Actions. Writing can't be tried: Rerun shows until GitHub refuses one for that account.</span></li>
       <li><b>A repository's row says what involves you.</b> <span class="why">"3 open involve you", or when it was last pushed to. "You reviewed 12 here this quarter" needs a search per repository.</span></li>
       <li><b>A team in Reviewers has no head count.</b> <span class="why">"Team, anyone of it". GitHub gives the count only with a read per team.</span></li>

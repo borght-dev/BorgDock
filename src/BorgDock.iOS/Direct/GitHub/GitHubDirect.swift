@@ -76,6 +76,8 @@ actor GitHubDirect: PullRequestBackend {
     var records: [String: PrRecord] = [:]
     private var current: Focus?
     private var polling: Task<Focus, Error>?
+    /// Why the last read of the list failed outright; nil again once one succeeds.
+    private var failed: (any Error)?
     private var merged: (at: Date, list: [PrSummary])?
 
     var detailCache: [String: (at: Date, raw: RawDetail, account: String)] = [:]
@@ -141,7 +143,12 @@ actor GitHubDirect: PullRequestBackend {
     func accountStatus(of login: String) -> AccountStatus? { accountStatus[login] }
 
     func focus(fresh: Bool) async throws -> Focus {
-        if !fresh, changedAt == nil, let current, let polledAt, clock().timeIntervalSince(polledAt) < refreshEvery { return current }
+        if !fresh, changedAt == nil, let current, let polledAt, clock().timeIntervalSince(polledAt) < refreshEvery {
+            // A read that failed since the list was last read stands until the next one: the list is older than it
+            // looks, and handing it back as fresh would take the "this is old" off the screen for a minute.
+            if let failed { throw failed }
+            return current
+        }
         return try await refresh(repositories: fresh)
     }
 
@@ -152,7 +159,14 @@ actor GitHubDirect: PullRequestBackend {
         let read = Task { try await self.poll() }
         polling = read
         defer { polling = nil }
-        return try await read.value
+        do {
+            let focus = try await read.value
+            failed = nil
+            return focus
+        } catch {
+            if !(error is CancellationError) { failed = error }
+            throw error
+        }
     }
 
     private func poll() async throws -> Focus {

@@ -16,6 +16,7 @@ struct GitHubTokenScreen: View {
     @State private var label = AccountLabel.work
     @State private var customLabel = ""
     @State private var saveError: String?
+    @FocusState private var typing: Bool
 
     enum Check: Equatable {
         case idle, checking
@@ -33,7 +34,7 @@ struct GitHubTokenScreen: View {
             VStack(alignment: .leading, spacing: 0) {
                 SetupLabel(title: "Token")
                 VStack(spacing: 0) {
-                    TokenField(placeholder: "ghp_… or github_pat_…", text: $token, identifier: "github-token")
+                    TokenField(placeholder: "ghp_… or github_pat_…", text: $token, identifier: "github-token", typing: $typing)
                     Rectangle().fill(BD.separator).frame(height: 0.5).padding(.leading, 16)
                     SetupLinkRow(title: "Create a token on github.com", detail: "Opens with repo and read:org ticked", url: Self.classicURL)
                 }
@@ -172,14 +173,9 @@ struct GitHubTokenScreen: View {
     @ViewBuilder
     private var addButton: some View {
         if case .facts(let facts) = check {
-            Button { add(facts) } label: {
+            SetupBar(disabled: facts.isUseless || mismatch(facts) != nil, identifier: "github-add") { add(facts) } label: {
                 Text(replacing == nil ? "Add \(facts.person.login)" : "Use this token for \(facts.person.login)")
             }
-            .buttonStyle(.bdPrimary)
-            .disabled(facts.isUseless || mismatch(facts) != nil)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
-            .accessibilityIdentifier("github-add")
         }
     }
 
@@ -235,6 +231,8 @@ struct GitHubTokenScreen: View {
             let facts = try await session.checkGitHubToken(token)
             if Task.isCancelled { return }
             check = .facts(facts)
+            // The keyboard goes: what the token may do is the thing to read now.
+            typing = false
         } catch is CancellationError {
         } catch {
             check = .failed(error.localizedDescription)

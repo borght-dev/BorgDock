@@ -155,6 +155,13 @@ struct FilePage: View {
     var onReply: (ReviewThread) -> Void = { _ in }
     /// A tap on a line's number, or on the draft under it.
     let onLine: (DiffLine) -> Void
+    /// BorgDock Review: a two-finger pinch changes the diff's type size, and the size is kept.
+    @AppStorage(FilePage.textSizeKey) private var textSize = FilePage.defaultTextSize
+    @State private var pinchStart: Double?
+
+    static let textSizeKey = "review.diffTextSize"
+    static let defaultTextSize = 11.5
+    static let textSizes = 9.0...17.0
 
     var body: some View {
         let language = SyntaxHighlighter.language(for: file.path)
@@ -177,7 +184,7 @@ struct FilePage: View {
                         LazyVStack(spacing: 0) {
                             ForEach(lines) { line in
                                 DiffLineRow(
-                                    line: line, language: language, fontSize: 11.5,
+                                    line: line, language: language, fontSize: app.isReview ? textSize : Self.defaultTextSize,
                                     selected: line.anchor.map { selection?.covers($0) ?? false } ?? false,
                                     covered: line.anchor.map { draft.covers(path: file.path, anchor: $0) } ?? false
                                 ) { tap(line) }
@@ -198,6 +205,12 @@ struct FilePage: View {
                 .padding(.bottom, selection == nil ? 170 : 420)
             }
             .scrollIndicators(.hidden)
+            .simultaneousGesture(MagnifyGesture().onChanged { pinch in
+                guard app.isReview else { return }
+                let start = pinchStart ?? textSize
+                pinchStart = start
+                textSize = min(Self.textSizes.upperBound, max(Self.textSizes.lowerBound, (start * pinch.magnification * 2).rounded() / 2))
+            }.onEnded { _ in pinchStart = nil })
             .onChange(of: selection?.anchor) { _, anchor in
                 guard let anchor, let line = lines.first(where: { $0.anchor == anchor }) else { return }
                 withAnimation(.snappy) { proxy.scrollTo(line.id, anchor: UnitPoint(x: 0, y: 0.3)) }

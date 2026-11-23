@@ -103,18 +103,15 @@ struct RepositoryPicker: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { SetupTitle(title: "Repositories", step: step) }
         .tint(BD.accent)
+        .bdGroupedList()
         .safeAreaInset(edge: .bottom) {
             if let finish {
-                Button {
+                SetupBar(identifier: "repositories-finish") {
                     Task {
                         await apply()
                         finish()
                     }
                 } label: { Text("Show my pull requests") }
-                    .buttonStyle(.bdPrimary)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                    .accessibilityIdentifier("repositories-finish")
             }
         }
         .task { await load() }

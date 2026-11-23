@@ -361,6 +361,16 @@ struct BotFold: Equatable {
 /// How the PR page shows the repository's E2E workflow comment: `## E2E Test Results`, then `### Failed Tests` with a
 /// table. The card takes the title for itself and counts the table's rows. `E2eReport` judges the same comment.
 enum E2EReportCard {
+    /// "1 failed, 311 passed · run #2214": the folded report's line, from what the report says of itself.
+    static func line(failed: Int?, body: String) -> String {
+        var counts: [String] = []
+        if let failed { counts.append("\(failed) failed") }
+        if let passed = body.firstMatch(of: #/(\d+)\s+passed/#) { counts.append("\(passed.output.1) passed") }
+        var parts = counts.isEmpty ? [] : [counts.joined(separator: ", ")]
+        if let run = body.firstMatch(of: #/(?i)run:?\**\s*\[?#(\d+)/#) { parts.append("run #\(run.output.1)") }
+        return parts.isEmpty ? DescriptionExcerpt.excerpt(body) : parts.joined(separator: " · ")
+    }
+
     static func parse(_ body: String) -> (failed: Int?, body: String)? {
         let lines = body.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
         guard let title = lines.firstIndex(where: { $0.wholeMatch(of: #/\s{0,3}#{1,6}\s*E2E Test Results\s*#*\s*/#) != nil }) else { return nil }

@@ -124,7 +124,9 @@ struct LedgerView: View {
         .ledgerList()
         .accessibilityIdentifier("ledger")
         .safeAreaInset(edge: .top, spacing: 0) { titleBar(store, ledger, now: now) }
-        .refreshable { await store.load(reportErrors: true, fresh: true) }
+        // In a task of its own: SwiftUI cancels a refresh when the view under it updates, and a cancelled read ends
+        // without a word, with the list neither read again nor marked old.
+        .refreshable { await Task { await store.load(reportErrors: true, fresh: true) }.value }
         #if DEBUG
         .task(id: debugScrollToEnd) {
             guard debugScrollToEnd else { return }
@@ -401,9 +403,11 @@ struct LedgerBanner: View {
         (icon, action) = ("key.horizontal", "Replace the token")
         let label = known?.label.flatMap { $0.isEmpty ? nil : $0.lowercased() }
         let whose = label.map { "your \($0) account" } ?? "that account"
-        let why: String = switch known?.daysLeft() {
-        case let days? where days < 0: days == -1 ? "Its token expired yesterday" : "Its token expired \(-days) days ago"
-        default: "GitHub refuses its token"
+        let why: String = switch known?.expiredDaysAgo() {
+        case 0?: "Its token expired today"
+        case 1?: "Its token expired yesterday"
+        case let days?: "Its token expired \(days) days ago"
+        case nil: "GitHub refuses its token"
         }
         rest = "\(why), so pull requests from \(whose) are missing here."
     }
