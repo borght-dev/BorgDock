@@ -88,6 +88,7 @@ final class LedgerUITests: XCTestCase {
         start.tap()
         XCTAssertTrue(app.buttons["brief-start"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Keep the basket on timeout'")).firstMatch.exists, "the longest wait is first")
+        capture("review-brief")
     }
 
     @MainActor
