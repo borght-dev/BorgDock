@@ -34,7 +34,7 @@ final class GitHubTokenTests: XCTestCase {
     func testOnlyOneLongWordIsCheckedWhileYouType() {
         XCTAssertFalse(GitHubTokenCheck.looksLikeToken("ghp_short"))
         XCTAssertFalse(GitHubTokenCheck.looksLikeToken("this is a sentence, not a token at all"))
-        XCTAssertTrue(GitHubTokenCheck.looksLikeToken("  ghp_0123456789abcdef0123456789abcdef0123\n"))
+        XCTAssertTrue(GitHubTokenCheck.looksLikeToken("  ghp_made-up-token-for-these-tests-0123\n"))
     }
 
     func testTheLastPageOfOneItemPagesIsTheCount() {
@@ -55,7 +55,7 @@ final class GitHubTokenTests: XCTestCase {
     func testAClassicTokenSaysItsScopesAndNeedsNoProbe() async throws {
         user(scopes: "read:org, repo", expires: "2027-02-20 10:00:00 UTC")
         repositories(count: 41)
-        let facts = try await GitHubTokenCheck.inspect(token: "ghp_0123456789abcdef0123456789abcdef0123", session: GitHubFake.session())
+        let facts = try await GitHubTokenCheck.inspect(token: "ghp_made-up-token-for-these-tests-0123", session: GitHubFake.session())
         XCTAssertEqual(facts.person.login, "koen")
         XCTAssertEqual(facts.kind, .classic)
         XCTAssertEqual(facts.scopes, ["read:org", "repo"])
@@ -73,7 +73,7 @@ final class GitHubTokenTests: XCTestCase {
     func testAClassicTokenWithoutRepoIsRefusedBeforeItIsKept() async throws {
         user(scopes: "read:user")
         repositories(count: 0)
-        let facts = try await GitHubTokenCheck.inspect(token: "ghp_0123456789abcdef0123456789abcdef0123", session: GitHubFake.session())
+        let facts = try await GitHubTokenCheck.inspect(token: "ghp_made-up-token-for-these-tests-0123", session: GitHubFake.session())
         XCTAssertTrue(facts.isUseless)
         XCTAssertEqual(facts.mayRerun, .no)
         XCTAssertEqual(facts.rows().first?.mark, .missing)
@@ -114,7 +114,7 @@ final class GitHubTokenTests: XCTestCase {
     func testATokenGitHubDoesNotKnowSaysSo() async {
         GitHubFake.onRest("GET", "/user$") { _ in .status(401, message: "Bad credentials") }
         do {
-            _ = try await GitHubTokenCheck.inspect(token: "ghp_0123456789abcdef0123456789abcdef0123", session: GitHubFake.session())
+            _ = try await GitHubTokenCheck.inspect(token: "ghp_made-up-token-for-these-tests-0123", session: GitHubFake.session())
             XCTFail("a refused token is no account")
         } catch {
             XCTAssertTrue((error as? APIError)?.isUnauthorized == true, "\(error)")
