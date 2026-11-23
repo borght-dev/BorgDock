@@ -69,9 +69,11 @@ struct ChecksActions: View {
             }
             .buttonStyle(.bd(.plain))
             .disabled(busy || detail.checks.failed == 0)
-            Button { handToClaude() } label: { Label("Hand to Claude", systemImage: "sparkle") }
-                .buttonStyle(.bdPrimary)
-                .disabled(detail.checks.failed == 0)
+            if app.canStartAgents {
+                Button { handToClaude() } label: { Label("Hand to Claude", systemImage: "sparkle") }
+                    .buttonStyle(.bdPrimary)
+                    .disabled(detail.checks.failed == 0)
+            }
         }
     }
 
@@ -191,7 +193,7 @@ struct FailedCheckCard: View {
                         .padding(.top, 9)
                     }
                 } else {
-                    Text("Reading the log…").font(.system(size: 12.5)).foregroundStyle(BD.text3).padding(.top, 2)
+                    Text(FailedCheckCard.withoutReason(run)).font(.system(size: 12.5)).foregroundStyle(BD.text3).padding(.top, 2)
                 }
             }
             .padding(.leading, 26)
@@ -204,6 +206,12 @@ struct FailedCheckCard: View {
         .contextMenu { menu }
     }
 
+    /// What stands where the reason will: the log is being read, or it can't be, because only GitHub Actions jobs
+    /// have a log to read (a check another CI reports never gets a reason here).
+    static func withoutReason(_ run: CheckRun) -> String {
+        run.jobId == nil ? "Open the check to see why it failed." : "Reading the log…"
+    }
+
     /// The location line, then the snippet; a snippet that already starts with the location keeps it once.
     static func excerpt(_ failure: CheckFailure) -> String? {
         guard let snippet = failure.snippet ?? failure.summary else { return failure.location }
@@ -214,7 +222,9 @@ struct FailedCheckCard: View {
     @ViewBuilder
     private var menu: some View {
         Button { Task { await app.focus.rerunFailed(detail.summary.prKey) } } label: { Label("Rerun failed checks", systemImage: "arrow.counterclockwise") }
-        Button { app.focus.fixWithClaude(detail.summary) } label: { Label("Hand to Claude", systemImage: "sparkle") }
+        if app.canStartAgents {
+            Button { app.focus.fixWithClaude(detail.summary) } label: { Label("Hand to Claude", systemImage: "sparkle") }
+        }
         if let url = URL(string: run.url) { Link(destination: url) { Label("Open the log", systemImage: "doc.plaintext") } }
         if let groupId = run.failure?.groupId {
             Button { app.router.sheet = nil; app.router.push(.ciGroup(groupId)) } label: { Label("Related CI failure", systemImage: "point.3.connected.trianglepath.dotted") }

@@ -376,7 +376,7 @@ struct PrBottomBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            if offersFix, detail.checks.failed > 0 {
+            if offersFix, detail.checks.failed > 0, app.canStartAgents {
                 Button { app.focus.fixWithClaude(detail.summary) } label: {
                     Label("Fix", systemImage: "sparkle")
                         .font(.system(size: 17, weight: .semibold))

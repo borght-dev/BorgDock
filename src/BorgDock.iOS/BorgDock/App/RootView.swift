@@ -76,13 +76,31 @@ struct RouteView: View {
         case .workstream(let id): WorkstreamView(id: id)
         case .note(let path): NoteView(path: path)
         case .activity: ActivityView()
-        case .settings: SettingsView()
+        case .settings: AppSettingsView()
         case .machines: MachinesView()
         case .notes: NotesView()
         case .sprintItems(let list): SprintItemsView(list: list)
-        case .repositories: RepositoriesView()
+        case .repositories: AppRepositoriesView()
         case .waitingOnOthers: WaitingOnOthersView()
         }
+    }
+}
+
+/// Settings for how this app reads its data: through the BorgDock server, or straight from GitHub and Azure DevOps.
+struct AppSettingsView: View {
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        if let direct = app.direct { DirectSettingsView(session: direct) } else { SettingsView() }
+    }
+}
+
+/// Which repositories the pull request list reads: the server reports its own; without one you choose them here.
+struct AppRepositoriesView: View {
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        if let direct = app.direct { WatchedRepositoriesView(session: direct) } else { RepositoriesView() }
     }
 }
 
@@ -100,7 +118,7 @@ struct SheetHost: View {
         case .quickCapture: QuickCaptureSheet()
         case .addMachine: AddMachineView()
         case .linkDesktop: LinkDesktopView()
-        case .settings: NavigationStack { SettingsView().routeDestinations() }
+        case .settings: NavigationStack { AppSettingsView().routeDestinations() }
         }
     }
 }

@@ -25,6 +25,15 @@ struct ItemDetailView: View {
     /// The section a chip jumped to stays under the bar for a few seconds while images above it load.
     @State private var pinned: String?
 
+    /// BorgDock Review's Connect Azure DevOps form, offered when the item can't be read for want of a connection.
+    @State private var connecting = false
+
+    /// What the page reads from: the item, and in BorgDock Review the Azure DevOps connection.
+    private struct Source: Equatable {
+        let id: Int
+        let azureDevOps: AdoConnection?
+    }
+
     private static let space = "item-page"
     private static let jumpBarHeight: CGFloat = 50
 
@@ -40,7 +49,19 @@ struct ItemDetailView: View {
             if let item {
                 page(item)
             } else if let loadError {
-                ScrollView { StatusCard(icon: "exclamationmark.triangle", text: loadError, tone: .warn) }
+                ScrollView {
+                    StatusCard(icon: "exclamationmark.triangle", text: loadError, tone: .warn)
+                    if let direct = app.direct, !direct.hasAzureDevOps {
+                        Button("Connect Azure DevOps") { connecting = true }
+                            .buttonStyle(.bdPrimary)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                            .accessibilityIdentifier("item-connect-ado")
+                            .sheet(isPresented: $connecting) {
+                                NavigationStack { AzureDevOpsForm(session: direct) { connecting = false } }
+                            }
+                    }
+                }
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -60,7 +81,8 @@ struct ItemDetailView: View {
             ToolbarItem(placement: .topBarTrailing) { moreMenu }
         }
         .tint(BD.text)
-        .task(id: route.id) { await load() }
+        // Connecting Azure DevOps (BorgDock Review) reads the item it couldn't read before.
+        .task(id: Source(id: route.id, azureDevOps: app.direct?.credentials.azureDevOps)) { await load() }
         .refreshable {
             if let fresh = await app.refreshItem(route.id) {
                 detail = fresh
@@ -72,7 +94,7 @@ struct ItemDetailView: View {
 
     private func load() async {
         do {
-            detail = try await app.api.item(route.id)
+            detail = try await app.workItems.item(route.id)
             posted = []
             loadError = nil
         } catch is CancellationError {
@@ -123,7 +145,8 @@ struct ItemDetailView: View {
             position.scrollTo(y: max(0, top - Self.jumpBarHeight))
         }
         .safeAreaInset(edge: .bottom) {
-            if selection == ItemSection.activity.id { composer(item) } else { bottomBar(item) }
+            // Moving an item and fixing it are agent runs; without agents the comment box is always at hand.
+            if selection == ItemSection.activity.id || !app.canStartAgents { composer(item) } else { bottomBar(item) }
         }
         .task(id: DebugJump(target: app.router.scrollTarget, ready: detail != nil && sectionTops[app.router.scrollTarget ?? ""] != nil)) {
             guard let target = app.router.scrollTarget, detail != nil, sectionTops[target] != nil else { return }
@@ -383,7 +406,7 @@ struct ItemDetailView: View {
         posting = true
         defer { posting = false }
         do {
-            posted.append(try await app.api.postItemComment(itemId: item.id, text: text))
+            posted.append(try await app.workItems.postItemComment(itemId: item.id, text: text))
             draft = ""
         } catch {
             app.report(error)

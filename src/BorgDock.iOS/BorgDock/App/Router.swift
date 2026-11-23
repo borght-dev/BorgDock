@@ -1,33 +1,6 @@
 import Foundation
 import Observation
 
-/// A pull request: `owner/repo#number`, the key the server uses everywhere.
-struct PrKey: Hashable, Codable, Sendable, Identifiable {
-    let owner: String
-    let repo: String
-    let number: Int
-
-    var id: String { key }
-    var key: String { "\(owner)/\(repo)#\(number)" }
-    /// "/api/prs/owner/repo/12"
-    var apiPath: String { "/api/prs/\(APIClient.pathComponent(owner))/\(APIClient.pathComponent(repo))/\(number)" }
-
-    init(owner: String, repo: String, number: Int) {
-        self.owner = owner
-        self.repo = repo
-        self.number = number
-    }
-
-    /// Parses "owner/repo#12".
-    init?(key: String) {
-        let parts = key.split(separator: "#", maxSplits: 1)
-        guard parts.count == 2, let number = Int(parts[1]) else { return nil }
-        let names = parts[0].split(separator: "/", maxSplits: 1)
-        guard names.count == 2 else { return nil }
-        self.init(owner: String(names[0]), repo: String(names[1]), number: number)
-    }
-}
-
 struct ItemRoute: Hashable {
     let id: Int
     /// Shown while GET /api/items/:id loads, e.g. a sprint item or search result that isn't in the overview.
@@ -131,6 +104,10 @@ final class Router {
     }
 
     var tab: Tab = .today
+    /// An app with one stack (BorgDock Review) shows every route on it, whichever tab the route names.
+    var onlyTab: Tab? {
+        didSet { if let onlyTab { tab = onlyTab } }
+    }
     var todayPath: [Route] = []
     var pullRequestsPath: [Route] = []
     var workPath: [Route] = []
@@ -158,6 +135,7 @@ final class Router {
     }
 
     func open(_ path: [Route], in tab: Tab) {
+        let tab = onlyTab ?? tab
         sheet = nil
         cover = nil
         self.tab = tab
@@ -219,7 +197,7 @@ final class Router {
     }
 
     func reset() {
-        tab = .today
+        tab = onlyTab ?? .today
         todayPath = []
         pullRequestsPath = []
         workPath = []
@@ -266,7 +244,7 @@ final class Router {
             guard let tab = Tab(link: parts[1]) else { return false }
             sheet = nil
             cover = nil
-            self.tab = tab
+            self.tab = onlyTab ?? tab
         default:
             return false
         }

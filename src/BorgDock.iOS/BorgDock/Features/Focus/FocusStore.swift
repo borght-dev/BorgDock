@@ -60,6 +60,8 @@ final class FocusStore {
     #endif
 
     @ObservationIgnored private var loadGeneration = 0
+    /// The failure the last poll reported, so a poll that keeps failing says so once.
+    @ObservationIgnored private var reportedPollError: String?
     /// Quick Review's reads of a pull request's detail and files, in flight or done, so the next PR in the queue is
     /// read while you review the current one and both views share one request.
     @ObservationIgnored private var snapshotReads: [String: Task<ReviewSnapshot, Error>] = [:]
@@ -67,7 +69,8 @@ final class FocusStore {
 
     init() {}
 
-    var api: APIClient? { app?.api }
+    /// Whoever reads GitHub: the server, or this phone itself.
+    var backend: (any PullRequestBackend)? { app?.pullRequests }
 
     /// Your GitHub logins, from the accounts the server read the pull requests with.
     var myLogins: Set<String> { Set(focus?.pullRequests.map(\.account) ?? []) }
@@ -82,29 +85,34 @@ final class FocusStore {
 
     // MARK: - Loading
 
-    func load(reportErrors: Bool = false) async {
-        guard let api else { return }
+    /// `fresh` reads GitHub now instead of the last poll's answer (pull to refresh).
+    func load(reportErrors: Bool = false, fresh: Bool = false) async {
+        guard let backend else { return }
         loadGeneration += 1
         let generation = loadGeneration
         isLoading = true
         defer { if generation == loadGeneration { isLoading = false } }
         do {
-            async let groups = try? api.ciGroups()
-            let fresh = try await api.focus()
+            async let groups = try? backend.ciGroups()
+            let fresh = try await backend.focus(fresh: fresh)
             let freshGroups = await groups
             guard generation == loadGeneration else { return }
             focus = fresh
             if let freshGroups { ciGroups = freshGroups }
             syncedAt = .now
             error = nil
+            reportedPollError = nil
         } catch is CancellationError {
             return
         } catch {
             guard generation == loadGeneration else { return }
+            let message = (error as? APIError)?.message ?? error.localizedDescription
             if reportErrors || focus != nil {
-                app?.report(error)
+                // Without a connection every poll fails the same way; the list on screen stays, and one toast is enough.
+                if reportErrors || message != reportedPollError { app?.report(error) }
+                reportedPollError = message
             } else {
-                self.error = (error as? APIError)?.message ?? error.localizedDescription
+                self.error = message
             }
         }
     }
@@ -118,8 +126,28 @@ final class FocusStore {
     }
 
     func loadPreferences() async {
-        guard let api else { return }
-        if let value = try? await api.faceIdForActions() { faceIdPreference = value }
+        guard let app else { return }
+        if let direct = app.direct {
+            faceIdPreference = direct.faceIdForActions
+        } else if let value = try? await app.api.faceIdForActions() {
+            faceIdPreference = value
+        }
+    }
+
+    /// The list as the last launch left it, shown while the first read runs.
+    func restore(_ focus: Focus?) {
+        if self.focus == nil { self.focus = focus }
+    }
+
+    /// Forgets what was read, when the last account it was read with is removed.
+    func forget() {
+        loadGeneration += 1
+        focus = nil
+        error = nil
+        details = [:]
+        files = [:]
+        conversations = [:]
+        ciGroups = []
     }
 
     @discardableResult
@@ -143,15 +171,15 @@ final class FocusStore {
     }
 
     private func fetchDetail(_ key: PrKey) async throws -> PrDetail {
-        guard let api else { throw APIError.network("Signed out.") }
-        let detail = try await api.pullRequest(key)
+        guard let backend else { throw APIError.network("Signed out.") }
+        let detail = try await backend.pullRequest(key)
         details[key.key] = detail
         return detail
     }
 
     private func fetchFiles(_ key: PrKey) async throws -> PrFiles {
-        guard let api else { throw APIError.network("Signed out.") }
-        let fresh = try await api.pullRequestFiles(key)
+        guard let backend else { throw APIError.network("Signed out.") }
+        let fresh = try await backend.pullRequestFiles(key)
         files[key.key] = fresh
         return fresh
     }
@@ -218,9 +246,9 @@ final class FocusStore {
 
     @discardableResult
     func loadConversation(_ key: PrKey) async -> PrConversation? {
-        guard let api else { return nil }
+        guard let backend else { return nil }
         do {
-            let fresh = try await api.conversation(key)
+            let fresh = try await backend.conversation(key)
             conversations[key.key] = fresh
             return fresh
         } catch {
@@ -231,12 +259,12 @@ final class FocusStore {
 
     // MARK: - Actions
 
-    private func run(_ busyKey: String, _ work: (APIClient) async throws -> Void) async -> Bool {
+    private func run(_ busyKey: String, _ work: (any PullRequestBackend) async throws -> Void) async -> Bool {
         guard let app, !app.busy.contains(busyKey) else { return false }
         app.busy.insert(busyKey)
         defer { app.busy.remove(busyKey) }
         do {
-            try await work(app.api)
+            try await work(app.pullRequests)
             return true
         } catch {
             app.report(error)
@@ -310,8 +338,8 @@ final class FocusStore {
             label: "Approving #\(key.number)",
             title: summary(key)?.title,
             send: { [weak self] in
-                guard let api = self?.api else { throw APIError.network("Signed out.") }
-                _ = try await api.submitReview(key, request)
+                guard let backend = self?.backend else { throw APIError.network("Signed out.") }
+                _ = try await backend.submitReview(key, request)
             },
             onUndo: { [weak self] in
                 self?.reviewDecisions[key.key] = nil
@@ -322,9 +350,9 @@ final class FocusStore {
                 self?.reviewDecisions[key.key]?.status = .posted
                 self?.app?.toasts.show("Approved #\(key.number)")
                 Task {
-                    if let thenMerge, let api = self?.api {
+                    if let thenMerge, let backend = self?.backend {
                         do {
-                            let response = try await api.merge(key, thenMerge)
+                            let response = try await backend.merge(key, thenMerge)
                             self?.app?.toasts.show(response.message)
                         } catch {
                             self?.app?.report(error)

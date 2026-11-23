@@ -55,10 +55,7 @@ enum BD {
     }
 }
 
-/// How alarming something is. The same five tones as the desktop's verdicts (`services/dispatch/verdict.ts`).
-enum Tone: String, Codable, Sendable, CaseIterable {
-    case bad, warn, ok, run, mute
-
+extension Tone {
     var color: Color {
         switch self {
         case .bad: BD.red

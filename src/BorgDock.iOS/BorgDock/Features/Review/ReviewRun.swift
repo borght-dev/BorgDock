@@ -114,12 +114,12 @@ extension FocusStore {
         RunWorld(prs: focus?.pullRequests ?? [], e2e: e2e.entries, groups: ciGroups)
     }
 
-    /// Reads the E2E reports `candidates` need, through the server.
+    /// Reads the E2E reports `candidates` need.
     func readE2eReports(candidates: [PrSummary], prs: [PrSummary]) async {
-        guard let api else { return }
+        guard let backend else { return }
         e2e.reader = E2eReports.Reader(
-            comments: { try await api.conversation($0).comments },
-            files: { try await api.pullRequestFiles($0).files.map(\.path) }
+            comments: { try await backend.conversation($0).comments },
+            files: { try await backend.pullRequestFiles($0).files.map(\.path) }
         )
         await e2e.ensure(candidates: candidates, prs: prs)
     }

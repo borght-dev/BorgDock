@@ -37,7 +37,7 @@ struct FocusView: View {
         .navigationTitle("Focus")
         .toolbar { toolbar }
         .refreshable {
-            async let pullRequests: Void = store.load(reportErrors: true)
+            async let pullRequests: Void = store.load(reportErrors: true, fresh: true)
             async let sprint: Void = app.sprint.load(reportErrors: true)
             async let items: Void = app.refreshOverview()
             _ = await (pullRequests, sprint, items)

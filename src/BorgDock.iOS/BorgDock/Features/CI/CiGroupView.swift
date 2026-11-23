@@ -196,7 +196,7 @@ struct CiGroupView: View {
 
     private func load() async {
         do {
-            group = try await app.api.ciGroup(id)
+            group = try await app.pullRequests.ciGroup(id)
             error = nil
         } catch {
             if group == nil { self.error = (error as? APIError)?.message ?? error.localizedDescription } else { app.report(error) }
@@ -206,7 +206,7 @@ struct CiGroupView: View {
     private func claim() async {
         let text = note.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            group = try await app.api.claimCiGroup(id, note: text.isEmpty ? nil : text)
+            group = try await app.pullRequests.claimCiGroup(id, note: text.isEmpty ? nil : text)
             note = ""
         } catch {
             app.report(error)
@@ -214,6 +214,6 @@ struct CiGroupView: View {
     }
 
     private func release() async {
-        do { group = try await app.api.releaseCiGroup(id) } catch { app.report(error) }
+        do { group = try await app.pullRequests.releaseCiGroup(id) } catch { app.report(error) }
     }
 }

@@ -2,8 +2,12 @@ import Foundation
 
 // MARK: - GitHub and CI endpoints (shared/src/borgdock.ts)
 
+extension APIClient: PullRequestBackend, WorkItemBackend {}
+
 extension APIClient {
-    func focus() async throws -> Focus { try await get("/api/focus") }
+    func focus(fresh: Bool = false) async throws -> Focus {
+        try await get("/api/focus", query: fresh ? [URLQueryItem(name: "refresh", value: "1")] : [])
+    }
 
     func pullRequest(_ key: PrKey) async throws -> PrDetail { try await get(key.apiPath) }
 
@@ -58,6 +62,11 @@ extension APIClient {
         let preferences: FaceIdPreference = try await get("/api/preferences")
         return preferences.faceIdForActions
     }
+}
+
+private extension PrKey {
+    /// "/api/prs/owner/repo/12"
+    var apiPath: String { "/api/prs/\(APIClient.pathComponent(owner))/\(APIClient.pathComponent(repo))/\(number)" }
 }
 
 private struct FaceIdPreference: Decodable {

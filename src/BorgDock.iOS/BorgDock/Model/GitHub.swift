@@ -253,6 +253,27 @@ struct PrDetail: Codable, Hashable, Sendable {
         case defaultMergeMethod, deleteBranchOnMerge, viewerCanMerge, workItems, threads
     }
 
+    init(
+        summary: PrSummary, body: String, commits: Int, reviews: [PrReview], requestedReviewers: [Person], requestedFromYou: Bool,
+        checkRuns: [CheckRun], proofImages: [ProofImage], allowedMergeMethods: [MergeMethod], defaultMergeMethod: MergeMethod,
+        deleteBranchOnMerge: Bool, viewerCanMerge: Bool, workItems: [WorkItemSummary], threads: [ThreadSummary]
+    ) {
+        self.summary = summary
+        self.body = body
+        self.commits = commits
+        self.reviews = reviews
+        self.requestedReviewers = requestedReviewers
+        self.requestedFromYou = requestedFromYou
+        self.checkRuns = checkRuns
+        self.proofImages = proofImages
+        self.allowedMergeMethods = allowedMergeMethods
+        self.defaultMergeMethod = defaultMergeMethod
+        self.deleteBranchOnMerge = deleteBranchOnMerge
+        self.viewerCanMerge = viewerCanMerge
+        self.workItems = workItems
+        self.threads = threads
+    }
+
     init(from decoder: Decoder) throws {
         summary = try PrSummary(from: decoder)
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -425,6 +446,11 @@ struct SubmitReviewResponse: Codable, Hashable, Sendable {
     let reviewId: String?
 
     private enum CodingKeys: String, CodingKey { case ok, reviewId }
+
+    init(ok: Bool, reviewId: String?) {
+        self.ok = ok
+        self.reviewId = reviewId
+    }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

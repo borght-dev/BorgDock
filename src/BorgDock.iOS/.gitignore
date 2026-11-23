@@ -5,3 +5,6 @@ build/
 DerivedData/
 *.xcresult
 xcuserdata/
+
+# `swift build` / `swift test` for the core package (Package.swift)
+.build/

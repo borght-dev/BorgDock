@@ -330,7 +330,7 @@ struct MarkdownImagesView: View {
             if shown.count == 1, let image = shown.first {
                 Button { zoomed = zoom(image) } label: {
                     VStack(alignment: .leading, spacing: 6) {
-                        RemoteImage(url: app.api.resolve(image.url), contentMode: .fit)
+                        RemoteImage(url: app.workItems.resolve(image.url), contentMode: .fit)
                             .frame(maxWidth: .infinity, maxHeight: 260)
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         if !image.alt.isEmpty {
@@ -347,7 +347,7 @@ struct MarkdownImagesView: View {
                     HStack(alignment: .top, spacing: 10) {
                         ForEach(shown, id: \.self) { image in
                             Button { zoomed = zoom(image) } label: {
-                                ImageThumbnail(url: app.api.resolve(image.url), caption: image.alt)
+                                ImageThumbnail(url: app.workItems.resolve(image.url), caption: image.alt)
                             }
                             .buttonStyle(.plain)
                         }
@@ -359,7 +359,7 @@ struct MarkdownImagesView: View {
     }
 
     private func zoom(_ image: MarkdownImage) -> ZoomedImage? {
-        app.api.resolve(image.url).map { ZoomedImage(url: $0, caption: image.alt) }
+        app.workItems.resolve(image.url).map { ZoomedImage(url: $0, caption: image.alt) }
     }
 }
 
@@ -386,11 +386,11 @@ struct RemoteImage: View {
     var contentMode: ContentMode = .fill
 
     var body: some View {
-        AsyncImage(url: url) { phase in
+        LoadedImage(url: url) { phase in
             switch phase {
             case .success(let image): image.resizable().aspectRatio(contentMode: contentMode)
             case .failure: Image(systemName: "photo").font(.title2).foregroundStyle(BD.text3).frame(maxWidth: .infinity, maxHeight: .infinity).background(BD.fill)
-            default: BD.fill
+            case .empty: BD.fill
             }
         }
     }

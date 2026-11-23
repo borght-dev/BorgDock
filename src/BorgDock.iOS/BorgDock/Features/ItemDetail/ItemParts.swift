@@ -81,7 +81,7 @@ struct RichTextCard: View {
     }
 }
 
-/// A screenshot from ADO, loaded through the server's signed URL: the image, then its name and size.
+/// A screenshot from ADO: the image, then its name and size.
 struct AttachmentImage: View {
     @Environment(AppModel.self) private var app
     let alt: String
@@ -90,11 +90,11 @@ struct AttachmentImage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            AsyncImage(url: app.api.resolve(url)) { phase in
+            LoadedImage(url: app.workItems.resolve(url)) { phase in
                 switch phase {
                 case .success(let image): image.resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 case .failure: Label("Couldn't load the image", systemImage: "photo").font(.system(size: 13)).foregroundStyle(BD.text3).frame(height: 60)
-                default: ProgressView().frame(maxWidth: .infinity).frame(height: 90)
+                case .empty: ProgressView().frame(maxWidth: .infinity).frame(height: 90)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -228,7 +228,8 @@ struct ItemDetailsGrid: View {
                 Text(verbatim: "AB#\(parent.id) \(parent.title)")
             }
         case .tags(let tags):
-            HStack(spacing: 5) {
+            // Wrapping: a row of six tags is wider than the phone, and one too-wide row widens the whole page.
+            FlowLayout(spacing: 5) {
                 ForEach(tags, id: \.self) { ToneChip(text: $0, small: true) }
             }
         }

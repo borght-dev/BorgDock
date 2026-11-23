@@ -35,6 +35,6 @@ struct WaitingOnOthersView: View {
         .scrollContentBackground(.hidden)
         .background(BD.bg)
         .navigationTitle("Waiting on others")
-        .refreshable { await store.load(reportErrors: true) }
+        .refreshable { await store.load(reportErrors: true, fresh: true) }
     }
 }

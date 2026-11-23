@@ -298,7 +298,8 @@ struct ItemComment: Codable, Hashable, Sendable {
     var markdown: String? = nil
 }
 
-/// The rich-text fields as GitHub-flavoured markdown. Images point at signed /api/items/:id/attachments/… paths.
+/// The rich-text fields as GitHub-flavoured markdown. Images point at signed /api/items/:id/attachments/… paths from
+/// the server, or at Azure DevOps itself when the phone reads it directly.
 struct ItemMarkdown: Codable, Hashable, Sendable {
     var description = ""
     var acceptanceCriteria = ""
@@ -346,7 +347,8 @@ struct ItemParent: Codable, Hashable, Sendable {
     let typeName: String
 }
 
-/// `url` is a signed server path that loads without an Authorization header.
+/// `url` is a signed server path that loads without an Authorization header; read directly, it is the attachment's own
+/// Azure DevOps address, which `ImageLoader` adds the token for.
 struct ItemAttachment: Codable, Hashable, Sendable, Identifiable {
     let name: String
     let url: String

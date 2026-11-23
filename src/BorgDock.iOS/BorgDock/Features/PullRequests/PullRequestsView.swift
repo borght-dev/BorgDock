@@ -91,7 +91,7 @@ struct PullRequestsView: View {
         }
         .toolbar { toolbar }
         .refreshable {
-            async let pullRequests: Void = store.load(reportErrors: true)
+            async let pullRequests: Void = store.load(reportErrors: true, fresh: true)
             async let views: Void = list.sync()
             _ = await (pullRequests, views)
         }

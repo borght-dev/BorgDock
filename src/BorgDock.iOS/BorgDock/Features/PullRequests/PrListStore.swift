@@ -155,7 +155,8 @@ final class PrListStore {
 
     /// Reads the server's views and merges them with this iPhone's; writes back what changed here.
     func sync() async {
-        guard let app, app.isSignedIn else { return }
+        // Without a server there is nobody to share the views with: they stay this iPhone's.
+        guard let app, app.isSignedIn, app.direct == nil else { return }
         if syncing {
             syncAgain = true
             return

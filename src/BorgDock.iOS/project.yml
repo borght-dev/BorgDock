@@ -39,6 +39,8 @@ targets:
           - Info.plist
           - BorgDock.entitlements
       - path: Shared
+      # GitHub and Azure DevOps read straight from the phone (also the core package, Package.swift).
+      - path: Direct
     dependencies:
       - target: BorgDockWidgets
       - target: BorgDockNotificationContent
@@ -90,6 +92,54 @@ targets:
         com.apple.developer.applesignin: [Default]
         # Clerk's passkeys are bound to its Frontend API domain.
         com.apple.developer.associated-domains: [webcredentials:relevant-grouse-8572.clerk.accounts.dev]
+
+  # BorgDock Review: pull request review on its own, reading GitHub and Azure DevOps straight from the phone. It
+  # compiles BorgDock's sources with its own entry point (BorgDockReview/) and without Clerk, widgets or extensions.
+  BorgDockReview:
+    type: application
+    platform: iOS
+    sources:
+      - path: BorgDock
+        excludes:
+          - Info.plist
+          - BorgDock.entitlements
+          - App/BorgDockApp.swift
+          - Networking/ClerkSignIn.swift
+      - path: Shared
+      - path: Direct
+      - path: BorgDockReview
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.borght.borgdock.review
+        PRODUCT_NAME: BorgDockReview
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+    info:
+      path: BorgDockReview/Info.plist
+      properties:
+        CFBundleDisplayName: Review
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        BorgDockAppGroup: $(BORGDOCK_APP_GROUP)
+        NSFaceIDUsageDescription: BorgDock Review asks for Face ID before it merges or approves.
+        # The sources it shares with BorgDock name these, though no screen of this app reaches them.
+        NSCameraUsageDescription: BorgDock Review doesn't use the camera.
+        NSMicrophoneUsageDescription: BorgDock Review doesn't use the microphone.
+        NSSpeechRecognitionUsageDescription: BorgDock Review doesn't use speech recognition.
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        ITSAppUsesNonExemptEncryption: false
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
 
   BorgDockWidgets:
     type: app-extension
@@ -166,6 +216,8 @@ targets:
     platform: iOS
     sources:
       - path: BorgDockTests
+      # Also run by `swift test` on the Mac, without a simulator.
+      - path: DirectTests
     dependencies:
       - target: BorgDock
     settings:
@@ -201,6 +253,15 @@ schemes:
       config: Debug
       targets:
         - BorgDockTests
+    archive:
+      config: Release
+
+  BorgDockReview:
+    build:
+      targets:
+        BorgDockReview: all
+    run:
+      config: Debug
     archive:
       config: Release
 
