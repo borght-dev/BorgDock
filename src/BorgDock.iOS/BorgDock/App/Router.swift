@@ -57,6 +57,8 @@ enum SheetRoute: Identifiable {
     case addMachine
     case linkDesktop
     case settings
+    /// BorgDock Review: a work item over the pull request that names it (`from`), which the item marks as "You're here".
+    case workItem(ItemRoute, from: PrKey?)
 
     var id: String {
         switch self {
@@ -68,6 +70,7 @@ enum SheetRoute: Identifiable {
         case .addMachine: "add-machine"
         case .linkDesktop: "link-desktop"
         case .settings: "settings"
+        case .workItem(let item, _): "item-\(item.id)"
         }
     }
 }

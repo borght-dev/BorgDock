@@ -118,6 +118,8 @@ struct AttachmentImage: View {
 struct ItemPullRequestRow: View {
     @Environment(AppModel.self) private var app
     let pr: ItemPullRequest
+    /// The pull request you opened the item from.
+    var here = false
 
     var body: some View {
         if pr.shared { compact } else { full }
@@ -129,7 +131,7 @@ struct ItemPullRequestRow: View {
                 Text(ItemPullRequestTrack.repositoryName(pr)).fontWeight(.semibold).foregroundStyle(BD.text)
                 Text(verbatim: "#\(pr.number)" + (pr.author.map { " · \(CommentAuthor.displayName($0).name)" } ?? ""))
                 Spacer(minLength: 8)
-                Text(ShortTime.age(pr.updatedAt))
+                if here { ToneChip(text: "You're here", small: true, accent: true) } else { Text(ShortTime.age(pr.updatedAt)) }
             }
             .font(.system(size: 13))
             .foregroundStyle(BD.text2)

@@ -6,6 +6,10 @@ struct DiffLineRow: View {
     let line: DiffLine
     let language: SyntaxHighlighter.Language
     var fontSize: CGFloat = 13
+    /// The line is part of the comment being written: tinted in the accent.
+    var selected = false
+    /// A draft comment covers the line: an accent bar on its edge.
+    var covered = false
     var onTapNumber: (() -> Void)?
 
     private var charWidth: CGFloat { fontSize * 0.6 }
@@ -56,6 +60,9 @@ struct DiffLineRow: View {
         .padding(.trailing, 12)
         .padding(.vertical, 2.5)
         .background(background)
+        .overlay { if selected { BD.accent.opacity(0.16).allowsHitTesting(false) } }
+        .overlay(alignment: .leading) { if selected || covered { BD.accent.frame(width: 3).allowsHitTesting(false) } }
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var numberColor: Color {
@@ -78,18 +85,23 @@ struct DiffLineRow: View {
 /// A bubble under a diff line: your draft comment, tappable to edit.
 struct DraftBubble: View {
     let line: Int
+    /// The first line of a draft on several lines.
+    var startLine: Int?
     let text: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(verbatim: "Draft · line \(line)").font(.system(size: 11.5, weight: .semibold)).foregroundStyle(BD.accentText)
+            Text(verbatim: startLine.map { "Draft · lines \($0) to \(line)" } ?? "Draft · line \(line)")
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(BD.accentText)
             Text(DraftBubble.inline(text)).font(.system(size: 14.5)).foregroundStyle(BD.text).lineSpacing(1.5)
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(BD.accentSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(BD.accent.opacity(0.35), lineWidth: 0.5))
+        // Dashed until the review posts: a draft is only on this phone.
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(BD.accent.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
         .padding(.leading, 50)
         .padding(.trailing, 12)
         .padding(.vertical, 6)

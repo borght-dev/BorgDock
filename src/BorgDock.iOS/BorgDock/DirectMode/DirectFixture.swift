@@ -1,4 +1,5 @@
 #if DEBUG
+import os
 import UIKit
 
 /// `-BorgDockFixture`: made-up GitHub and Azure DevOps answers (the `acme` shop), so screenshots and UI tests never
@@ -6,10 +7,49 @@ import UIKit
 enum DirectFixture {
     static var isOn: Bool { ProcessInfo.processInfo.arguments.contains("-BorgDockFixture") }
 
+    /// `-BorgDockFixtureMode <mode>`: the states of the overview that the full sample never shows.
+    enum Mode: String {
+        /// Nobody asks for your review.
+        case quiet
+        /// Nothing involves you; your repositories still have open pull requests.
+        case clear
+        /// The first read answers; after it GitHub can't be reached.
+        case offline
+        /// GitHub takes its time, so the first read stays on screen.
+        case slow
+        /// No account yet: the first run.
+        case fresh
+        /// The second account's token has expired: the overview says which account isn't read.
+        case expired
+    }
+
+    static let mode: Mode? = {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-BorgDockFixtureMode"), arguments.indices.contains(index + 1) else { return nil }
+        return Mode(rawValue: arguments[index + 1])
+    }()
+
     static let credentials = DirectCredentials(
-        gitHub: [.init(login: "koen", token: "fixture", name: "Koen Example", avatarUrl: nil)],
+        gitHub: [.init(login: "koen", token: "fixture", name: "Koen Example", avatarUrl: nil, label: "Work", expiresAt: now.addingTimeInterval(89 * 86_400), kind: .fineGrained)],
         azureDevOps: AdoConnection(organizationURL: URL(string: "https://dev.azure.com/acme")!, project: "Shop", credential: .personalAccessToken("fixture"))
     )
+
+    /// The personal account whose token ran out yesterday (`expired`).
+    static let expiredAccount = DirectCredentials.GitHub(
+        login: "koen-labs", token: "expired", name: "Koen Example", avatarUrl: nil, label: "Personal", expiresAt: now.addingTimeInterval(-86_400), kind: .fineGrained
+    )
+
+    /// The accounts the app starts with, by the fixture's mode.
+    static var startCredentials: DirectCredentials {
+        switch mode {
+        case .fresh: return DirectCredentials()
+        case .expired:
+            var both = credentials
+            both.gitHub.append(expiredAccount)
+            return both
+        default: return credentials
+        }
+    }
 
     /// A session that reads the fixture and forgets everything when the app quits.
     @MainActor
@@ -18,7 +58,7 @@ enum DirectFixture {
         configuration.protocolClasses = [DirectFixtureProtocol.self]
         let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("direct-fixture-\(UUID().uuidString)", isDirectory: true)
         let defaults = UserDefaults(suiteName: "direct-fixture") ?? .standard
-        return DirectSession(store: FileStore(directory: scratch), defaults: defaults, session: URLSession(configuration: configuration), credentials: credentials)
+        return DirectSession(store: FileStore(directory: scratch), defaults: defaults, session: URLSession(configuration: configuration), credentials: startCredentials)
     }
 
     static let now = Date()
@@ -59,8 +99,19 @@ final class DirectFixtureProtocol: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func stopLoading() {}
 
+    /// How many list searches were answered: one read of the list is three.
+    private static let listSearches = OSAllocatedUnfairLock(initialState: 0)
+
     override func startLoading() {
         guard let url = request.url else { return }
+        if DirectFixture.mode == .slow { Thread.sleep(forTimeInterval: 25) }
+        if DirectFixture.mode == .offline, url.host() == "api.github.com", Self.listSearches.withLock({ $0 }) >= 3 {
+            client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
+            return
+        }
+        if url.host() == "api.github.com", request.value(forHTTPHeaderField: "Authorization") == "Bearer expired" {
+            return answer(401, Data(#"{"message":"Bad credentials"}"#.utf8), type: "application/json")
+        }
         if url.host() == "api.github.com", url.path().hasSuffix("/logs") {
             return answer(200, Data(GitHubFixture.failedJobLog.utf8), type: "text/plain")
         }
@@ -72,16 +123,23 @@ final class DirectFixtureProtocol: URLProtocol {
         let reply: Any? = url.host() == "dev.azure.com"
             ? AdoFixture.answer(method: request.httpMethod ?? "GET", url: url, body: json)
             : url.path() == "/graphql"
-                ? GitHubFixture.graphql(query: json["query"] as? String ?? "", variables: json["variables"] as? [String: Any] ?? [:])
+                ? Self.graphql(json)
                 : GitHubFixture.rest(method: request.httpMethod ?? "GET", path: url.path(), query: url.query() ?? "")
         guard let reply, let data = try? JSONSerialization.data(withJSONObject: reply) else {
             return answer(404, Data(#"{"message":"Not in the fixture"}"#.utf8), type: "application/json")
         }
-        answer(200, data, type: "application/json")
+        answer(200, data, type: "application/json", headers: GitHubFixture.headers(path: url.path(), query: url.query() ?? ""))
     }
 
-    private func answer(_ status: Int, _ data: Data, type: String) {
-        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": type])!
+    private static func graphql(_ json: [String: Any]) -> Any? {
+        let query = json["query"] as? String ?? ""
+        if query.contains("FocusSearch") { listSearches.withLock { $0 += 1 } }
+        return GitHubFixture.graphql(query: query, variables: json["variables"] as? [String: Any] ?? [:])
+    }
+
+    private func answer(_ status: Int, _ data: Data, type: String, headers: [String: String] = [:]) {
+        let fields = headers.merging(["Content-Type": type]) { _, type in type }
+        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: fields)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)
@@ -112,6 +170,7 @@ private enum GitHubFixture {
 
     struct PullRequest {
         var number: Int
+        var owner = "acme"
         var repo = "shop"
         var title: String
         var author: (login: String, name: String?)
@@ -129,6 +188,11 @@ private enum GitHubFixture {
         var checks: [Check] = [Check(name: "build"), Check(name: "unit"), Check(name: "lint")]
         var commits: [String]?
         var mergeable = "MERGEABLE"
+        /// When each requested reviewer was asked, as GitHub's timeline has it.
+        var requestedHoursAgo: Double = 6
+        /// When the reviews were submitted; three hours before the last update when unset.
+        var reviewedHoursAgo: Double?
+        var mergedHoursAgo: Double?
 
         var headSha: String { "head\(number)" }
         var branch: String { "feat/" + title.lowercased().split(separator: " ").prefix(3).joined(separator: "-").filter { $0.isLetter || $0 == "-" } }
@@ -154,20 +218,25 @@ private enum GitHubFixture {
         PullRequest(
             number: 412, title: "Keep the basket on timeout AB#60379", author: ("sanne", "Sanne de Vries"), body: basketBody, updatedHoursAgo: 2,
             additions: 148, deletions: 37, files: 5, labels: [("frontend", "1d76db"), ("checkout", "5319e7")], requested: ["koen"],
-            checks: [Check(name: "build"), Check(name: "unit"), Check(name: "lint"), Check(name: "e2e / checkout", conclusion: "FAILURE"), Check(name: "types")]
+            checks: [Check(name: "build"), Check(name: "unit"), Check(name: "lint"), Check(name: "e2e / checkout", conclusion: "FAILURE"), Check(name: "types")],
+            requestedHoursAgo: 4 * 24
         ),
         PullRequest(
             number: 409, title: "Round totals per line, not per order AB#60402", author: ("mira", "Mira Jansen"), updatedHoursAgo: 5, additions: 62, deletions: 18, files: 4,
-            labels: [("pricing", "0e8a16")], requested: ["koen"], reviews: [("koen", "COMMENTED", "c1")], commits: ["c1", "c2", "head409"]
+            labels: [("pricing", "0e8a16")], requested: ["koen"], reviews: [("koen", "COMMENTED", "c1")], commits: ["c1", "c2", "head409"],
+            requestedHoursAgo: 26
         ),
-        PullRequest(number: 415, title: "Cache the price list for a minute", author: ("tom", "Tom Bakker"), updatedHoursAgo: 1, additions: 31, deletions: 4, files: 2, teams: ["platform"]),
+        PullRequest(
+            number: 415, title: "Cache the price list for a minute", author: ("tom", "Tom Bakker"), updatedHoursAgo: 1, additions: 31, deletions: 4, files: 2,
+            teams: ["platform"], requestedHoursAgo: 2
+        ),
         PullRequest(
             number: 398, title: "Checkout: show the delivery window", author: ("koen", "Koen Example"), updatedHoursAgo: 20, additions: 96, deletions: 12, files: 6,
-            reviews: [("mira", "APPROVED", nil)]
+            reviews: [("mira", "APPROVED", nil)], reviewedHoursAgo: 21
         ),
         PullRequest(
             number: 401, title: "Search suggestions for product names AB#60388", author: ("koen", "Koen Example"), updatedHoursAgo: 7, additions: 210, deletions: 44, files: 9,
-            reviews: [("sanne", "CHANGES_REQUESTED", nil)]
+            reviews: [("sanne", "CHANGES_REQUESTED", nil)], reviewedHoursAgo: 26
         ),
         PullRequest(
             number: 404, title: "Move the cart store to signals", author: ("koen", "Koen Example"), updatedHoursAgo: 0.4, additions: 340, deletions: 301, files: 14,
@@ -178,22 +247,120 @@ private enum GitHubFixture {
             number: 377, title: "Upgrade the payment SDK to 9", author: ("tom", "Tom Bakker"), updatedHoursAgo: 12 * 24, createdHoursAgo: 20 * 24, additions: 12, deletions: 12, files: 2,
             checks: [Check(name: "build", conclusion: "FAILURE"), Check(name: "unit")]
         ),
+    ] + ledgerRows
+
+    /// The rest of the acme shop, so the overview shows every section and every reason a row can give.
+    private static let ledgerRows: [PullRequest] = [
+        // To review
+        PullRequest(
+            number: 88, repo: "payments", title: "Refunds for split payments AB#60871", author: ("ines", "Ines Duarte"), updatedHoursAgo: 20, additions: 640, deletions: 212, files: 18,
+            requested: ["koen"], requestedHoursAgo: 2 * 24
+        ),
+        PullRequest(
+            number: 382, repo: "storefront", title: "Product page: skeleton while stock loads AB#61040", author: ("tom", "Tom Bakker"), updatedHoursAgo: 9, additions: 71, deletions: 9,
+            requested: ["koen"], requestedHoursAgo: 25
+        ),
+        PullRequest(
+            number: 31, owner: "kv-labs", repo: "printfarm", title: "Pause the queue when a spool runs out", author: ("mateo", "Mateo Ruiz"), updatedHoursAgo: 5, additions: 52, deletions: 9,
+            requested: ["koen"], checks: [Check(name: "build"), Check(name: "test")], requestedHoursAgo: 5
+        ),
+        // Yours, needs you
+        PullRequest(
+            number: 419, title: "Cache price lists per customer group AB#61055", author: ("koen", "Koen Example"), updatedHoursAgo: 2, additions: 310, deletions: 40, files: 11,
+            requested: ["sanne"], checks: [Check(name: "build"), Check(name: "unit"), Check(name: "types"), Check(name: "e2e · chromium 2/4", conclusion: "FAILURE"), Check(name: "lint", conclusion: "FAILURE")]
+        ),
+        PullRequest(
+            number: 90, repo: "payments", title: "Retry declined cards once", author: ("koen", "Koen Example"), updatedHoursAgo: 4, additions: 58, deletions: 7,
+            reviews: [("ines", "COMMENTED", nil)], reviewedHoursAgo: 4
+        ),
+        // Ready to merge
+        PullRequest(
+            number: 91, repo: "payments", title: "Bump the payment SDK to 7.2", author: ("koen", "Koen Example"), updatedHoursAgo: 3, additions: 12, deletions: 12, files: 2,
+            reviews: [("ines", "APPROVED", nil)], reviewedHoursAgo: 3
+        ),
+        // Waiting on others
+        PullRequest(
+            number: 407, title: "Order export: add the VAT number AB#61031", author: ("koen", "Koen Example"), updatedHoursAgo: 30, additions: 140, deletions: 22, files: 7,
+            requested: ["sam"], requestedHoursAgo: 2 * 24
+        ),
+        PullRequest(
+            number: 380, repo: "storefront", title: "Search: remember the last filter", author: ("koen", "Koen Example"), updatedHoursAgo: 22, additions: 75, deletions: 18,
+            requested: ["tom", "ines"], requestedHoursAgo: 26
+        ),
+        PullRequest(number: 411, title: "Coupons: one per order AB#61060", author: ("koen", "Koen Example"), draft: true, updatedHoursAgo: 3, createdHoursAgo: 3, additions: 220, deletions: 35, files: 8),
+        PullRequest(
+            number: 12, owner: "kv-labs", repo: "dotfiles", title: "zsh: a faster prompt", author: ("koen", "Koen Example"), updatedHoursAgo: 6 * 24, createdHoursAgo: 7 * 24, additions: 30, deletions: 11, files: 1,
+            requested: ["mateo"], checks: [], requestedHoursAgo: 6 * 24
+        ),
+        // Also open in your repositories
+        PullRequest(number: 89, repo: "payments", title: "Payouts: daily instead of weekly", author: ("sam", "Sam Okafor"), updatedHoursAgo: 40, additions: 210, deletions: 60, files: 9, requested: ["ines"], requestedHoursAgo: 2 * 24),
+        PullRequest(
+            number: 87, repo: "payments", title: "3-D Secure: handle the frictionless flow", author: ("ines", "Ines Duarte"), updatedHoursAgo: 60, additions: 330, deletions: 48, files: 12,
+            reviews: [("sam", "APPROVED", nil)], reviewedHoursAgo: 3 * 24
+        ),
+        PullRequest(number: 85, repo: "payments", title: "Refund emails: use the order's language", author: ("sam", "Sam Okafor"), updatedHoursAgo: 100, createdHoursAgo: 5 * 24, additions: 44, deletions: 9),
+        PullRequest(number: 84, repo: "payments", title: "Bump eslint from 9.14.0 to 9.15.0", author: ("dependabot", nil), updatedHoursAgo: 6 * 24, createdHoursAgo: 6 * 24, additions: 6, deletions: 6, files: 2),
+        PullRequest(
+            number: 79, repo: "payments", title: "Ledger export: one file per month AB#60711", author: ("ines", "Ines Duarte"), draft: true, updatedHoursAgo: 4 * 24, createdHoursAgo: 23 * 24,
+            additions: 1900, deletions: 120, files: 31
+        ),
+        PullRequest(
+            number: 51, repo: "infra", title: "CI: cache the Playwright browsers", author: ("lena", "Lena Visser"), updatedHoursAgo: 3, additions: 28, deletions: 6, files: 2,
+            requested: ["sam"], checks: [Check(name: "build"), Check(name: "plan"), Check(name: "apply", conclusion: nil)], requestedHoursAgo: 3
+        ),
+        PullRequest(
+            number: 50, repo: "infra", title: "Staging: rotate the database password", author: ("sam", "Sam Okafor"), updatedHoursAgo: 26, additions: 9, deletions: 9, files: 2,
+            reviews: [("tom", "APPROVED", nil)], reviewedHoursAgo: 24
+        ),
+        PullRequest(
+            number: 30, owner: "kv-labs", repo: "printfarm", title: "Slicer profiles for the 0.2 mm nozzle", author: ("mateo", "Mateo Ruiz"), updatedHoursAgo: 50, createdHoursAgo: 2 * 24,
+            additions: 460, deletions: 0, files: 6, checks: [Check(name: "build"), Check(name: "test")]
+        ),
+        PullRequest(
+            number: 29, owner: "kv-labs", repo: "printfarm", title: "Camera: a time-lapse per print", author: ("mateo", "Mateo Ruiz"), draft: true, updatedHoursAgo: 8 * 24, createdHoursAgo: 9 * 24,
+            additions: 730, deletions: 15, files: 9, checks: [Check(name: "build"), Check(name: "test")]
+        ),
+    ]
+
+    /// The open pull requests the list reads, by the fixture's mode.
+    private static var shown: [PullRequest] {
+        func asksKoen(_ pr: PullRequest) -> Bool { pr.requested.contains("koen") || pr.teams.contains("platform") }
+        switch DirectFixture.mode {
+        case .quiet: return pullRequests.filter { !asksKoen($0) }
+        case .clear: return pullRequests.filter { !asksKoen($0) && $0.author.login != "koen" && !$0.reviews.contains { $0.login == "koen" } }
+        case .offline, .slow, .fresh, .expired, nil: return pullRequests
+        }
+    }
+
+    /// What merged this week: search shows these in a section of their own.
+    private static let merged: [PullRequest] = [
+        PullRequest(
+            number: 390, title: "Refund rounding follows the invoice AB#60931", author: ("tom", "Tom Bakker"), updatedHoursAgo: 3 * 24, createdHoursAgo: 6 * 24, additions: 58, deletions: 22,
+            reviews: [("koen", "APPROVED", nil)], mergedHoursAgo: 3 * 24
+        ),
+        PullRequest(
+            number: 86, repo: "payments", title: "Refunds: show the reason on the receipt", author: ("ines", "Ines Duarte"), updatedHoursAgo: 5 * 24, createdHoursAgo: 8 * 24, additions: 92, deletions: 14,
+            reviews: [("sam", "APPROVED", nil)], mergedHoursAgo: 5 * 24
+        ),
     ]
 
     static func node(_ pr: PullRequest) -> [String: Any] {
         [
             "id": "PR_\(pr.repo)_\(pr.number)", "number": pr.number, "title": pr.title, "body": pr.body,
-            "url": "https://github.com/acme/\(pr.repo)/pull/\(pr.number)", "isDraft": pr.draft, "state": "OPEN",
-            "createdAt": DirectFixture.ago(hours: pr.createdHoursAgo), "updatedAt": DirectFixture.ago(hours: pr.updatedHoursAgo), "mergedAt": NSNull(),
+            "url": "https://github.com/\(pr.owner)/\(pr.repo)/pull/\(pr.number)", "isDraft": pr.draft, "state": pr.mergedHoursAgo == nil ? "OPEN" : "MERGED",
+            "createdAt": DirectFixture.ago(hours: pr.createdHoursAgo), "updatedAt": DirectFixture.ago(hours: pr.updatedHoursAgo),
+            "mergedAt": pr.mergedHoursAgo.map { DirectFixture.ago(hours: $0) as Any } ?? NSNull(),
             "additions": pr.additions, "deletions": pr.deletions, "changedFiles": pr.files, "headRefName": pr.branch, "baseRefName": "main", "headRefOid": pr.headSha,
             "isCrossRepository": false, "mergeable": pr.mergeable, "reviewDecision": NSNull(), "autoMergeRequest": NSNull(),
             "author": actor(pr.author.login, pr.author.name),
-            "repository": ["name": pr.repo, "owner": ["login": "acme"], "defaultBranchRef": ["name": "main"]],
+            "repository": ["name": pr.repo, "owner": ["login": pr.owner], "defaultBranchRef": ["name": "main"]],
             "labels": ["nodes": pr.labels.map { ["name": $0.0, "color": $0.1] }],
             "reviewRequests": ["nodes": pr.requested.map { ["requestedReviewer": ["__typename": "User", "login": $0]] }
                 + pr.teams.map { ["requestedReviewer": ["__typename": "Team", "slug": $0]] }],
+            "requested": ["nodes": pr.requested.map { ["createdAt": DirectFixture.ago(hours: pr.requestedHoursAgo), "requestedReviewer": ["__typename": "User", "login": $0]] as [String: Any] }
+                + pr.teams.map { ["createdAt": DirectFixture.ago(hours: pr.requestedHoursAgo), "requestedReviewer": ["__typename": "Team", "slug": $0]] as [String: Any] }],
             "latestReviews": ["nodes": pr.reviews.map {
-                ["state": $0.state, "submittedAt": DirectFixture.ago(hours: pr.updatedHoursAgo + 3), "author": ["login": $0.login], "commit": ["oid": $0.sha ?? pr.headSha]] as [String: Any]
+                ["state": $0.state, "submittedAt": DirectFixture.ago(hours: pr.reviewedHoursAgo ?? pr.updatedHoursAgo + 3), "author": ["login": $0.login], "commit": ["oid": $0.sha ?? pr.headSha]] as [String: Any]
             }],
             "head": ["nodes": [["commit": ["statusCheckRollup": ["contexts": ["nodes": pr.checks.enumerated().map { check($1, id: pr.number * 100 + $0, pr: pr) }]]]]]],
             "recent": ["nodes": (pr.commits ?? [pr.headSha]).map { ["commit": ["oid": $0]] }],
@@ -209,14 +376,14 @@ private enum GitHubFixture {
         return [
             "__typename": "CheckRun", "databaseId": id, "name": check.name, "status": running ? "IN_PROGRESS" : "COMPLETED", "conclusion": check.conclusion ?? NSNull(),
             "startedAt": DirectFixture.ago(hours: pr.updatedHoursAgo), "completedAt": running ? NSNull() : DirectFixture.ago(hours: max(0, pr.updatedHoursAgo - 0.1)) as Any,
-            "detailsUrl": "https://github.com/acme/\(pr.repo)/actions/runs/\(pr.number)/job/\(id)",
+            "detailsUrl": "https://github.com/\(pr.owner)/\(pr.repo)/actions/runs/\(pr.number)/job/\(id)",
             "checkSuite": ["workflowRun": ["databaseId": pr.number * 10, "runNumber": pr.number * 3, "workflow": ["name": check.workflow]]],
         ]
     }
 
     static func graphql(query: String, variables: [String: Any]) -> Any? {
         let operation = query.firstMatch(of: #/(?:query|mutation)\s+(\w+)/#).map { String($0.1) } ?? ""
-        let pr = pullRequests.first { $0.number == variables["number"] as? Int && $0.repo == variables["repo"] as? String }
+        let pr = (pullRequests + merged).first { $0.number == variables["number"] as? Int && $0.repo == variables["repo"] as? String }
         switch operation {
         case "Viewer":
             return data(["viewer": actor("koen", "Koen Example")])
@@ -224,7 +391,8 @@ private enum GitHubFixture {
             return data(["viewer": ["organizations": ["nodes": [["teams": ["nodes": [["slug": "platform"]]]]]]]])
         case "FocusSearch":
             // Everything involves koen here; the other searches add nothing new.
-            let found = (variables["query"] as? String ?? "").contains("involves:@me") ? pullRequests.map(node) : []
+            let search = variables["query"] as? String ?? ""
+            let found = !search.contains("involves:@me") ? [] : search.contains("is:merged") ? merged.map(node) : shown.map(node)
             return data(["viewer": ["login": "koen"], "found": ["pageInfo": ["hasNextPage": false, "endCursor": NSNull()], "nodes": found]])
         case "PrDetail":
             guard let pr else { return data(["repository": ["pullRequest": NSNull()]]) }
@@ -234,7 +402,7 @@ private enum GitHubFixture {
                 ["state": $0.state, "submittedAt": DirectFixture.ago(hours: pr.updatedHoursAgo + 3), "body": $0.state == "APPROVED" ? "" : "Close. See the notes on the retry.",
                  "author": actor($0.login, $0.login.capitalized)] as [String: Any]
             }]
-            detail["reviewRequestsFull"] = ["nodes": pr.requested.map { ["requestedReviewer": ["__typename": "User", "login": $0, "name": "Koen Example", "avatarUrl": NSNull()]] }]
+            detail["reviewRequestsFull"] = ["nodes": pr.requested.map { ["requestedReviewer": ["__typename": "User", "login": $0, "name": $0 == "koen" ? "Koen Example" : $0.capitalized, "avatarUrl": NSNull()]] }]
             return data(["repository": [
                 "squashMergeAllowed": true, "mergeCommitAllowed": false, "rebaseMergeAllowed": true, "deleteBranchOnMerge": true,
                 "viewerPermission": "WRITE", "viewerDefaultMergeMethod": "SQUASH", "pullRequest": detail,
@@ -294,7 +462,30 @@ private enum GitHubFixture {
     2026-10-20T09:14:02.1607000Z ##[error]Process completed with exit code 1.
     """
 
+    /// The repositories the account reads, newest push first: the acme shop's and the personal ones.
+    private static let repositories: [(name: String, pushedHoursAgo: Double)] = [
+        ("acme/shop", 1), ("acme/payments", 3), ("acme/infra", 3), ("acme/storefront", 9), ("kv-labs/printfarm", 5), ("acme/api", 26),
+        ("acme/design-tokens", 2 * 24), ("acme/checkout-sdk", 3 * 24), ("acme/warehouse", 4 * 24), ("acme/mobile", 6 * 24), ("kv-labs/dotfiles", 6 * 24),
+        ("acme/docs", 9 * 24), ("acme/emails", 12 * 24), ("acme/search", 15 * 24), ("acme/billing-export", 21 * 24), ("acme/legacy-admin", 60 * 24),
+    ]
+
+    /// What GitHub says in an answer's headers: when the token expires, and how many repositories there are.
+    static func headers(path: String, query: String) -> [String: String] {
+        if path == "/user" { return ["github-authentication-token-expiration": "2027-02-20 10:00:00 UTC"] }
+        if path == "/user/repos", query.contains("per_page=1&") || query.hasSuffix("per_page=1") {
+            return ["Link": "<https://api.github.com/user/repos?per_page=1&page=\(repositories.count)>; rel=\"last\""]
+        }
+        return [:]
+    }
+
     static func rest(method: String, path: String, query: String) -> Any? {
+        if method == "GET", path == "/user" { return ["login": "koen", "name": "Koen Example", "avatar_url": NSNull()] as [String: Any] }
+        if method == "GET", path == "/user/repos" {
+            if query.contains("page=2") || query.contains("page=3") { return [Any]() }
+            let all: [[String: Any]] = repositories.map { ["full_name": $0.name, "pushed_at": DirectFixture.ago(hours: $0.pushedHoursAgo), "private": true, "archived": false] }
+            return query.contains("per_page=1&") ? Array(all.prefix(1)) : all
+        }
+        if method == "GET", path.hasSuffix("/pulls") { return [Any]() }
         if method == "GET", path.contains("/actions/jobs/") {
             return ["steps": [["name": "Set up job", "conclusion": "success"], ["name": "Run bun run test:e2e", "conclusion": "failure"]]]
         }
@@ -433,6 +624,13 @@ private enum AdoFixture {
         ),
         Item(id: 60388, title: "Suggest product names while searching", state: "Development In Progress", assignedTo: "Koen Example"),
         Item(id: 60300, type: "Epic", title: "Checkout that never loses an order", state: "In Progress", assignedTo: "Lena Visser"),
+        Item(id: 60871, title: "Refund an order that was paid in parts", state: "Code Review", assignedTo: "Ines Duarte"),
+        Item(id: 61040, title: "Stock per warehouse on the product page", state: "Code Review", assignedTo: "Tom Bakker"),
+        Item(id: 61055, type: "Task", title: "Price lists per customer group", state: "Development In Progress", assignedTo: "Koen Example"),
+        Item(id: 61031, title: "VAT number on the order export", state: "Code Review", assignedTo: "Koen Example"),
+        Item(id: 61060, title: "One coupon per order", state: "Development In Progress", assignedTo: "Koen Example"),
+        Item(id: 60711, title: "Monthly ledger export for bookkeeping", state: "Development In Progress", assignedTo: "Ines Duarte"),
+        Item(id: 60931, type: "Bug", title: "Refunds round differently than the invoice", state: "Done", assignedTo: "Tom Bakker"),
     ]
 
     /// Notes as an agent writes them: lists with quoted source lines, the shape that once pushed the page off screen.
@@ -471,6 +669,7 @@ private enum AdoFixture {
         if path.hasSuffix("/_apis/connectiondata") {
             return ["authenticatedUser": ["providerDisplayName": "Koen Example", "properties": ["Account": ["$type": "System.String", "$value": "koen@example.com"]]]]
         }
+        if path.hasSuffix("/_apis/projects") { return ["value": [["name": "Shop"], ["name": "Warehouse"], ["name": "Platform"]]] }
         if path.hasSuffix("/states") { return ["value": path.contains("/bug/") ? longWorkflow : states] }
         if path.hasSuffix("/_apis/wit/workitemsbatch") {
             let wanted = body["ids"] as? [Int] ?? []

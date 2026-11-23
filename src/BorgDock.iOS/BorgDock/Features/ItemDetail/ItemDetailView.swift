@@ -6,6 +6,8 @@ import SwiftUI
 /// never changes an ADO state on a button. Mockup: design/ios-flow, section 08.
 struct ItemDetailView: View {
     let route: ItemRoute
+    /// BorgDock Review: the item as a reading page in a sheet over the pull request that names it.
+    var reading: ItemReading?
 
     @Environment(AppModel.self) private var app
     @Environment(\.openURL) private var openURL
@@ -58,7 +60,11 @@ struct ItemDetailView: View {
                             .padding(.top, 12)
                             .accessibilityIdentifier("item-connect-ado")
                             .sheet(isPresented: $connecting) {
-                                NavigationStack { AzureDevOpsForm(session: direct) { connecting = false } }
+                                NavigationStack {
+                                    AzureDevOpsScreen(session: direct) { connecting = false }
+                                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { connecting = false } } }
+                                }
+                                .tint(BD.accent)
                             }
                     }
                 }
@@ -72,7 +78,14 @@ struct ItemDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
-            if !headerGone, let url = item.flatMap({ URL(string: $0.url) }) {
+            if let reading, reading.isRoot {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: reading.close) { Image(systemName: "xmark") }
+                        .accessibilityLabel("Close")
+                        .accessibilityIdentifier("item-close")
+                }
+            }
+            if !headerGone || reading != nil, let url = item.flatMap({ URL(string: $0.url) }) {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { openURL(url) } label: { Image(systemName: "arrow.up.right.square") }
                         .accessibilityLabel("Open in Azure DevOps")
@@ -107,8 +120,12 @@ struct ItemDetailView: View {
     // MARK: Page
 
     private func page(_ item: WorkItemSummary) -> some View {
-        let sections = ItemLayout.sections(state: item.state, agentAsks: agentAsks(item), available: available())
-        let jumps = ItemLayout.jumps(sections, activityCount: comments.count + (detail?.history.count ?? 0))
+        let sections = reading == nil
+            ? ItemLayout.sections(state: item.state, agentAsks: agentAsks(item), available: available())
+            : ItemLayout.readingSections(available: available())
+        let jumps = reading == nil
+            ? ItemLayout.jumps(sections, activityCount: comments.count + (detail?.history.count ?? 0))
+            : ItemLayout.readingJumps(sections, pullRequests: pullRequests.count, discussion: comments.count)
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header(item)
@@ -173,9 +190,24 @@ struct ItemDetailView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
                 .padding(.top, 7)
+            if reading != nil { whoHasIt(item).padding(.top, 9) }
         }
         .padding(.horizontal, 16)
         .padding(.top, 4)
+    }
+
+    /// "Priya Shah · Sprint 23 · Priority 2": who has it, under the title of the reading page.
+    private func whoHasIt(_ item: WorkItemSummary) -> some View {
+        let owner = item.assignedTo.map { CommentAuthor.displayName($0).name }
+        let facts = [owner ?? "Nobody has it", item.sprint.isEmpty ? nil : item.sprint, item.priority.map { "Priority \($0)" }].compactMap(\.self)
+        return HStack(spacing: 7) {
+            if let owner { PersonAvatar(name: owner, size: 20) }
+            Text(facts.joined(separator: " · ")).lineLimit(1)
+        }
+        .font(.system(size: 14))
+        .foregroundStyle(BD.text2)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("item-who")
     }
 
     private func stateTone(_ item: WorkItemSummary) -> Tone {
@@ -203,9 +235,11 @@ struct ItemDetailView: View {
             ItemSectionLabel(title: section.title, trailing: String(pullRequests.count))
             CellGroup(indent: 14) {
                 ForEach(pullRequests) { pr in
-                    Button { open(pr) } label: { ItemPullRequestRow(pr: pr) }
+                    let here = isHere(pr)
+                    Button { open(pr) } label: { ItemPullRequestRow(pr: pr, here: here) }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("item-pr-\(pr.number)")
+                        .accessibilityHint(here ? "Closes the work item" : "")
                 }
             }
         case .agents:
@@ -220,7 +254,7 @@ struct ItemDetailView: View {
         case .details:
             ItemSectionLabel(title: section.title)
             ItemDetailsGrid(cells: ItemDetailCell.cells(item, detail: detail, sprint: app.sprint.sprint)) { parent in
-                app.router.push(ItemRoute(id: parent.id))
+                if let reading { reading.push(.workItem(ItemRoute(id: parent.id))) } else { app.router.push(ItemRoute(id: parent.id)) }
             }
         case .activity:
             activity.frame(minHeight: scroll.visibleHeight - Self.jumpBarHeight, alignment: .top)
@@ -230,15 +264,20 @@ struct ItemDetailView: View {
     private var activity: some View {
         let entries = ItemActivity.entries(comments: comments, history: detail?.history ?? [], filter: activityFilter, me: me)
         return VStack(alignment: .leading, spacing: 0) {
-            ItemSectionLabel(title: "Activity", trailing: String(comments.count + (detail?.history.count ?? 0)))
-            Picker("Show", selection: $activityFilter) {
-                ForEach(ItemActivity.Filter.allCases) { Text($0.title).tag($0) }
+            if reading != nil {
+                // Comments newest first with the state changes between them: how the item got here.
+                ItemSectionLabel(title: "Discussion", trailing: comments.isEmpty ? nil : String(comments.count))
+            } else {
+                ItemSectionLabel(title: "Activity", trailing: String(comments.count + (detail?.history.count ?? 0)))
+                Picker("Show", selection: $activityFilter) {
+                    ForEach(ItemActivity.Filter.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .controlSize(.large)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
+                .accessibilityIdentifier("activity-filter")
             }
-            .pickerStyle(.segmented)
-            .controlSize(.large)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 10)
-            .accessibilityIdentifier("activity-filter")
             if entries.isEmpty {
                 Text(detail == nil ? "Loading…" : "Nothing yet. Comments and state changes show here.")
                     .font(.system(size: 14))
@@ -440,11 +479,19 @@ struct ItemDetailView: View {
     // MARK: Navigation
 
     private func open(_ pr: ItemPullRequest) {
-        if let key = PrKey(pullRequestURL: pr.url) {
-            app.router.push(.pullRequest(key))
+        if let reading, isHere(pr) {
+            reading.close()
+        } else if let key = PrKey(pullRequestURL: pr.url) {
+            if let reading { reading.push(.pullRequest(key)) } else { app.router.push(.pullRequest(key)) }
         } else if let url = URL(string: pr.url) {
             openURL(url)
         }
+    }
+
+    /// The pull request the sheet came up over.
+    private func isHere(_ pr: ItemPullRequest) -> Bool {
+        guard let from = reading?.from, let key = PrKey(pullRequestURL: pr.url) else { return false }
+        return key.key.caseInsensitiveCompare(from.key) == .orderedSame
     }
 
     /// An agent row opens its pull request; on its own item there is nowhere else to go, so it stays.
@@ -494,5 +541,50 @@ enum PlainText {
         return result
             .replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+/// How a work item reads in BorgDock Review's sheet: which pull request it came up over, and where its links go.
+struct ItemReading {
+    /// The pull request under the sheet; its row says "You're here".
+    var from: PrKey?
+    /// The first page of the sheet has the close button; a parent item pushed on it has Back.
+    var isRoot = true
+    let push: (Route) -> Void
+    let close: () -> Void
+}
+
+/// A work item over what you were reading (design/review-app/mockups.html, "A work item"): swipe down or close and you
+/// are back on the line you left. A parent item or another of its pull requests opens inside the sheet.
+struct WorkItemSheet: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.dismiss) private var dismiss
+    let route: ItemRoute
+    var from: PrKey?
+    @State private var path: [Route] = []
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            ItemDetailView(route: route, reading: reading(root: true))
+                .navigationDestination(for: Route.self) { route in
+                    switch route {
+                    case .workItem(let item): ItemDetailView(route: item, reading: reading(root: false))
+                    case .pullRequest(let key): PullRequestView(key: key).environment(\.pullRequestPeek, true)
+                    default: RouteView(route: route)
+                    }
+                }
+        }
+        .environment(\.linkNavigator, LinkNavigator(
+            from: from,
+            workItem: { item, _ in path.append(.workItem(item)) },
+            pullRequest: { key in path.append(.pullRequest(key)) }
+        ))
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .accessibilityIdentifier("work-item-sheet")
+    }
+
+    private func reading(root: Bool) -> ItemReading {
+        ItemReading(from: from, isRoot: root, push: { path.append($0) }, close: { dismiss() })
     }
 }

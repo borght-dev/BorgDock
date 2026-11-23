@@ -100,7 +100,7 @@ struct AppRepositoriesView: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        if let direct = app.direct { WatchedRepositoriesView(session: direct) } else { RepositoriesView() }
+        if let direct = app.direct { RepositoryPicker(session: direct) } else { RepositoriesView() }
     }
 }
 
@@ -119,6 +119,7 @@ struct SheetHost: View {
         case .addMachine: AddMachineView()
         case .linkDesktop: LinkDesktopView()
         case .settings: NavigationStack { AppSettingsView().routeDestinations() }
+        case .workItem(let item, let from): WorkItemSheet(route: item, from: from)
         }
     }
 }
@@ -145,7 +146,7 @@ enum DebugRoute {
         case "item":
             let target = parts[1].split(separator: "/").map(String.init)
             if let id = Int(target[0]) {
-                app.router.openItem(id)
+                if app.isReview { app.openWorkItem(ItemRoute(id: id)) } else { app.router.openItem(id) }
                 app.router.scrollTarget = target.dropFirst().first
             }
         case "start":

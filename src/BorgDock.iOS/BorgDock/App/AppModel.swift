@@ -125,6 +125,23 @@ final class AppModel {
     /// Agents run on machines with T3 Code, which only the server reaches.
     var canStartAgents: Bool { direct == nil }
 
+    /// BorgDock Review: one stack, the Ledger and the screens of design/review-app/mockups.html.
+    var isReview: Bool { direct != nil }
+
+    /// A work item a pull request names. In BorgDock Review it comes up as a sheet over what you were reading; in
+    /// BorgDock it is a page of its own.
+    func openWorkItem(_ item: ItemRoute, from pullRequest: PrKey? = nil) {
+        if isReview { router.present(.workItem(item, from: pullRequest)) } else { router.push(.workItem(item)) }
+    }
+
+    /// The GitHub accounts BorgDock Review reads with; empty with a server, which names them in what it sends.
+    var reviewAccounts: [Person] {
+        (direct?.credentials.gitHub ?? []).map { Person(login: $0.login, name: $0.name, avatarUrl: $0.avatarUrl) }
+    }
+
+    /// Rerun needs a token that may write Actions. The server reruns with its own.
+    func canRerunChecks(of pr: PrSummary) -> Bool { direct?.mayRerunChecks(pr.account) ?? true }
+
     /// Agents waiting on you, for the Work tab's badge.
     var dispatchBadge: Int { overview.map { $0.walk?.briefing.needYou ?? OverviewSummary($0).waiting } ?? 0 }
 

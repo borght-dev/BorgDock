@@ -113,6 +113,12 @@ actor GitHubClient {
         return data
     }
 
+    /// One answer as GitHub gave it, status and headers included: a token check reads the headers, and a refusal is
+    /// an answer there, not a failure.
+    func answer(_ method: String, _ path: String) async throws -> (Data, HTTPURLResponse) {
+        try await send(method, url: Self.api + path, body: nil)
+    }
+
     // MARK: Job logs
 
     /// The last `maxBytes` of a job's log, or nil when GitHub has none. `repository` is `owner/repo`. The redirect

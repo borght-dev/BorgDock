@@ -6,13 +6,19 @@ struct PrCommentsSection: View {
     @Environment(AppModel.self) private var app
     let key: PrKey
     let detail: PrDetail
+    /// BorgDock Review: the section is the conversation, and its label says how many threads still wait.
+    var conversation = false
     @State private var showResolved = false
 
     var body: some View {
         let conversation = app.focus.conversations[key.key]
         let comments = PrComments(conversation: conversation, reviews: detail.reviews)
         VStack(alignment: .leading, spacing: 0) {
-            PrSectionLabel(title: "Comments", trailing: comments.count > 0 ? "\(comments.count)" : nil)
+            if self.conversation {
+                PrSectionLabel(title: "Conversation", trailing: PrThreadsLabel.text(open: comments.open.count, total: comments.count))
+            } else {
+                PrSectionLabel(title: "Comments", trailing: comments.count > 0 ? "\(comments.count)" : nil)
+            }
             if conversation == nil {
                 ProgressView().frame(maxWidth: .infinity).padding(.vertical, 20)
             } else if comments.isEmpty {

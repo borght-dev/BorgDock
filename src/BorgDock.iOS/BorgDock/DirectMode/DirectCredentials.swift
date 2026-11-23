@@ -8,8 +8,28 @@ struct DirectCredentials: Codable, Equatable, Sendable {
         var token: String
         var name: String?
         var avatarUrl: String?
+        /// "Work", "Personal" or your own word: it names the account in Settings and when its token runs out.
+        var label: String?
+        /// When the token stops working, as GitHub said when it was added; nil for one that doesn't expire.
+        var expiresAt: Date?
+        var kind: GitHubTokenFacts.Kind?
 
         var id: String { login.lowercased() }
+
+        /// "Work", or the login when no label was given.
+        var shownLabel: String { label.flatMap { $0.isEmpty ? nil : $0 } ?? login }
+
+        /// Days until the token expires; nil when it doesn't, negative once it has.
+        func daysLeft(now: Date = .now) -> Int? {
+            expiresAt.map { Int(($0.timeIntervalSince(now) / 86_400).rounded(.down)) }
+        }
+
+        /// "Token expires in 6 days", once that is two weeks away or less.
+        func expiryWarning(now: Date = .now) -> String? {
+            guard let days = daysLeft(now: now), days < 14 else { return nil }
+            if days < 0 { return "Token expired" }
+            return days == 0 ? "Token expires today" : days == 1 ? "Token expires tomorrow" : "Token expires in \(days) days"
+        }
         var account: GitHubAccount { GitHubAccount(login: login, token: token) }
     }
 

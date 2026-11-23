@@ -2,41 +2,154 @@ import Foundation
 
 /// The pull request page's sections, in the order they show and with the jump chips over them.
 enum PrPageSection: String, CaseIterable, Hashable {
-    case checks, proof, description, comments, files
+    case checks, proof, description, reviewers, comments, files
 
     var title: String {
         switch self {
         case .checks: "Checks"
         case .proof: "Proof"
         case .description: "Description"
+        case .reviewers: "Reviewers"
         case .comments: "Comments"
         case .files: "Files"
         }
     }
 
-    /// Checks lead while one fails; otherwise the description does and checks follow it. Proof shows only with images.
-    static func order(failing: Bool, hasProof: Bool) -> [PrPageSection] {
+    /// Checks lead while one fails; otherwise the description does and checks follow it. Proof shows only with images,
+    /// Reviewers only when someone was asked or answered.
+    static func order(failing: Bool, hasProof: Bool, hasReviewers: Bool = false) -> [PrPageSection] {
         let sections: [PrPageSection] = failing
-            ? [.checks, .proof, .description, .comments, .files]
-            : [.proof, .description, .checks, .comments, .files]
-        return sections.filter { $0 != .proof || hasProof }
+            ? [.checks, .proof, .description, .reviewers, .comments, .files]
+            : [.proof, .description, .checks, .reviewers, .comments, .files]
+        return sections.filter { ($0 != .proof || hasProof) && ($0 != .reviewers || hasReviewers) }
     }
 
-    static func jumpItems(_ sections: [PrPageSection], proof: Int, comments: Int, files: Int) -> [JumpBar.Item] {
+    /// `conversation`: BorgDock Review calls the comments the conversation.
+    static func jumpItems(_ sections: [PrPageSection], proof: Int, comments: Int, files: Int, reviewers: Int = 0, conversation: Bool = false) -> [JumpBar.Item] {
         sections.map { section in
             let count: Int? = switch section {
             case .checks, .description: nil
             case .proof: proof
+            case .reviewers: reviewers
             case .comments: comments
             case .files: files
             }
-            return JumpBar.Item(id: section.rawValue, title: section.title, count: count)
+            return JumpBar.Item(id: section.rawValue, title: section == .comments && conversation ? "Conversation" : section.title, count: count)
         }
     }
 
     /// The section being read: the last one whose top has passed the reading line, 40 % down the visible page.
     static func visible(_ sections: [PrPageSection], tops: [PrPageSection: CGFloat], line: CGFloat) -> PrPageSection? {
         sections.last { (tops[$0] ?? .infinity) <= line } ?? sections.first
+    }
+}
+
+// MARK: - Reviewers
+
+/// One row of the Reviewers section: someone who was asked, or who answered.
+struct PrReviewerRow: Identifiable, Equatable {
+    enum Status: Equatable { case yours, approved, changesRequested, commented, waiting }
+
+    let id: String
+    /// "You", "Tom Berg", "@checkout".
+    let name: String
+    /// Nil for a team.
+    let person: Person?
+    let isYou: Bool
+    /// "Asked by Priya, 4 d ago", "2 d ago · 2 commits since", "Team".
+    let detail: String
+    let status: Status
+    var isTeam = false
+}
+
+/// Who was asked to review a pull request, who answered, and whether commits came after an answer.
+enum PrReviewers {
+    /// You first while your review is asked, then the answers newest first, then who is still asked, teams last.
+    static func rows(_ detail: PrDetail, myLogins: Set<String>, myTeams: [String] = [], now: Date = .now) -> [PrReviewerRow] {
+        let mine = Set(myLogins.map { $0.lowercased() })
+        var people: [String: Person] = [detail.author.login.lowercased(): detail.author]
+        for person in detail.reviews.map(\.author) + detail.requestedReviewers { people[person.login.lowercased()] = person }
+        let teams = Set((detail.requestedTeams ?? []).map(TeamSlug.normalized))
+        // The server names requested teams among the reviewers; they get a row of their own.
+        let asked = (detail.requestedReviewerLogins ?? detail.requestedReviewers.map(\.login).filter { !teams.contains(TeamSlug.normalized($0)) })
+        let askedKeys = Set(asked.map { $0.lowercased() })
+        let author = detail.author.login.lowercased()
+        var rows: [PrReviewerRow] = []
+
+        let askedAgo = age(detail.reviewRequestedAt, now: now)
+        let throughTeam = Set(myTeams.map(TeamSlug.normalized)).intersection(teams).sorted().first
+        if !detail.isMine, detail.requestedFromYou {
+            let direct = askedKeys.contains { mine.contains($0) }
+            let by = direct || throughTeam == nil ? "Asked by \(detail.author.firstName)" : "Asked through @\(throughTeam ?? "")"
+            rows.append(PrReviewerRow(id: "you", name: "You", person: nil, isYou: true, detail: [by, askedAgo].filter { !$0.isEmpty }.joined(separator: ", "), status: .yours))
+        }
+
+        let answers = (detail.latestReviews ?? [])
+            .filter { [.approved, .changesRequested, .commented].contains($0.state) && $0.login.lowercased() != author }
+            .filter { !(mine.contains($0.login.lowercased()) && rows.contains(where: \.isYou)) }
+            .sorted { ($0.submittedAt ?? "") > ($1.submittedAt ?? "") }
+        for review in answers {
+            let key = review.login.lowercased()
+            let you = mine.contains(key)
+            var parts = [age(review.submittedAt, now: now)].filter { !$0.isEmpty }
+            if let since = review.commitsSince, since > 0 { parts.append(since == 1 ? "1 commit since" : "\(since) commits since") }
+            if askedKeys.contains(key) { parts.append("asked again") }
+            let status: PrReviewerRow.Status = switch review.state {
+            case .approved: .approved
+            case .changesRequested: .changesRequested
+            default: .commented
+            }
+            let person = people[key] ?? Person(login: review.login, name: nil, avatarUrl: nil)
+            rows.append(PrReviewerRow(id: key, name: you ? "You" : person.displayName, person: person, isYou: you, detail: parts.joined(separator: " · "), status: status))
+        }
+
+        let answered = Set(rows.map(\.id))
+        for login in asked where !answered.contains(login.lowercased()) && !mine.contains(login.lowercased()) {
+            let person = people[login.lowercased()] ?? Person(login: login, name: nil, avatarUrl: nil)
+            rows.append(PrReviewerRow(id: login.lowercased(), name: person.displayName, person: person, isYou: false,
+                                      detail: askedAgo.isEmpty ? "Asked" : "Asked \(askedAgo)", status: .waiting))
+        }
+        for team in teams.sorted() {
+            rows.append(PrReviewerRow(id: "@" + team, name: "@" + team, person: nil, isYou: false, detail: "Team, anyone of it", status: .waiting, isTeam: true))
+        }
+        return rows
+    }
+
+    /// "1 of 3 approved", "Changes requested", "3 asked".
+    static func summary(_ rows: [PrReviewerRow]) -> String {
+        guard !rows.isEmpty else { return "" }
+        if rows.contains(where: { $0.status == .changesRequested }) { return "Changes requested" }
+        let approved = rows.filter { $0.status == .approved }.count
+        return approved > 0 ? "\(approved) of \(rows.count) approved" : "\(rows.count) asked"
+    }
+
+    private static func age(_ iso: String?, now: Date) -> String {
+        let age = ShortTime.age(iso, now: now)
+        return age.isEmpty || age == "now" ? age : "\(age) ago"
+    }
+}
+
+/// "12 source", "31 tests", "9 generated": how much there is to read before you start.
+enum PrChangeMix {
+    struct Part: Equatable {
+        let count: Int
+        let label: String
+    }
+
+    static func parts(_ files: [PrFile]) -> [Part] {
+        let order: [(PrFileCategory, String)] = [(.source, "source"), (.docs, "docs"), (.tests, "tests"), (.generated, "generated")]
+        return order.compactMap { kind, label in
+            let count = files.filter { $0.kind == kind }.count
+            return count > 0 ? Part(count: count, label: label) : nil
+        }
+    }
+}
+
+/// How many review threads still wait: "1 thread open", the Conversation section's trailing label.
+enum PrThreadsLabel {
+    static func text(open: Int, total: Int) -> String? {
+        if open > 0 { return open == 1 ? "1 thread open" : "\(open) threads open" }
+        return total > 0 ? "\(total)" : nil
     }
 }
 

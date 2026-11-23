@@ -41,6 +41,17 @@ actor AdoClient {
         }
     }
 
+    /// The projects the credential sees, by name: the setup screen offers them, so there is nothing to mistype.
+    func projects() async throws -> [String] {
+        let list: ProjectList = try await request("_apis/projects?api-version=7.1&$top=300")
+        return list.value.map(\.name).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    private struct ProjectList: Decodable, Sendable {
+        struct Project: Decodable, Sendable { let name: String }
+        let value: [Project]
+    }
+
     /// The item page's reads: the item first (its project names the comments' route), with its revisions alongside.
     /// Comments and revisions that can't be read leave the page without them.
     func itemRead(_ id: Int) async throws -> AdoItemRead {

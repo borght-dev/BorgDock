@@ -21,6 +21,9 @@ extension GitHubDirect {
             let line: Int
             let side: String
             let body: String
+            /// A comment on several lines names its first line too; both ends are on the same side.
+            var start_line: Int?
+            var start_side: String?
         }
 
         let commit_id: String
@@ -109,7 +112,13 @@ extension GitHubDirect {
                 "POST", "/repos/\(key.owner)/\(key.repo)/pulls/\(key.number)/reviews",
                 body: ReviewBody(
                     commit_id: request.headSha, event: request.event.rawValue, body: request.body,
-                    comments: request.comments.map { ReviewBody.Comment(path: $0.path, line: $0.line, side: $0.side.rawValue, body: $0.body) }
+                    comments: request.comments.map { comment in
+                        let start = comment.startLine.flatMap { $0 < comment.line ? $0 : nil }
+                        return ReviewBody.Comment(
+                            path: comment.path, line: comment.line, side: comment.side.rawValue, body: comment.body,
+                            start_line: start, start_side: start == nil ? nil : comment.side.rawValue
+                        )
+                    }
                 ),
                 as: ReviewAnswer.self
             )
@@ -153,7 +162,12 @@ extension GitHubDirect {
             var runIds: [Int] = []
             for runId in head.checks.filter({ $0.state == .failure }).compactMap(\.runId) where !runIds.contains(runId) { runIds.append(runId) }
             for runId in runIds {
-                try await client(account).call("POST", "/repos/\(key.owner)/\(key.repo)/actions/runs/\(runId)/rerun-failed-jobs", body: NoBody())
+                do {
+                    try await client(account).call("POST", "/repos/\(key.owner)/\(key.repo)/actions/runs/\(runId)/rerun-failed-jobs", body: NoBody())
+                } catch let error as GitHubError where error.status == 403 {
+                    // The token may read Actions and not write them: Rerun leaves the app for this account.
+                    throw RerunRefused(account: account)
+                }
             }
             return RerunResponse(reruns: runIds.count)
         }
@@ -166,6 +180,13 @@ extension GitHubDirect {
         publishFocus()
         return OKResponse(ok: true)
     }
+}
+
+/// GitHub refused a rerun because the account's token may not write Actions.
+struct RerunRefused: Error, LocalizedError, Equatable {
+    let account: String
+
+    var errorDescription: String? { "The token for \(account) may not rerun checks. Rerun is hidden from now on; a token with Actions write brings it back." }
 }
 
 /// A mutation's answer nobody reads.

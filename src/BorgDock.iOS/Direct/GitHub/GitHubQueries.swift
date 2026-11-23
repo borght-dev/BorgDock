@@ -81,7 +81,7 @@ enum GitHubQueries {
       query PrConversation($owner: String!, $repo: String!, $number: Int!) {
         repository(owner: $owner, name: $repo) {
           pullRequest(number: $number) {
-            reviewThreads(first: 100) { nodes { id path line originalLine isResolved
+            reviewThreads(first: 100) { nodes { id path line originalLine startLine diffSide isOutdated isResolved
               comments(first: 50) { nodes { id body createdAt diffHunk author { login avatarUrl ... on User { name } } reactionGroups { content reactors { totalCount } } } } } }
             comments(last: 100) { nodes { id body createdAt author { login avatarUrl ... on User { name } } reactionGroups { content reactors { totalCount } } } }
           }
@@ -371,6 +371,9 @@ struct RawConversation: Decodable, Sendable {
         let path: String?
         let line: Int?
         let originalLine: Int?
+        let startLine: Int?
+        let diffSide: String?
+        let isOutdated: Bool?
         let isResolved: Bool
         let comments: Nodes<Comment>
     }
@@ -517,7 +520,8 @@ enum GitHubMapping {
                 ReviewThread(
                     id: thread.id, path: thread.path, line: thread.line ?? thread.originalLine,
                     diffHunk: lastHunkLines(thread.comments.nodes.first?.diffHunk), isResolved: thread.isResolved,
-                    comments: thread.comments.nodes.map(comment)
+                    comments: thread.comments.nodes.map(comment),
+                    side: thread.diffSide.flatMap(DiffSide.init(rawValue:)), startLine: thread.startLine, isOutdated: thread.isOutdated
                 )
             },
             comments: pullRequest.comments.nodes.map(comment)

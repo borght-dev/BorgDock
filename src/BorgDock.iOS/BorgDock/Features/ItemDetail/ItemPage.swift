@@ -62,6 +62,31 @@ enum ItemLayout {
     }
 }
 
+extension ItemLayout {
+    /// BorgDock Review reads an item to learn what a pull request is for, so the order is fixed, top to bottom: what is
+    /// wrong or wanted, how to tell it is done, the notes on it, which pull requests belong to it, its fields, the
+    /// discussion. Agents have no place: the phone has none.
+    static let readingOrder: [ItemSection] = [.description, .reproSteps, .acceptance, .qaNotes, .developerNotes, .pullRequests, .details, .activity]
+
+    static func readingSections(available: Set<ItemSection>) -> [ItemSection] {
+        readingOrder.filter(available.contains)
+    }
+
+    /// Description, Repro steps, Acceptance, Pull requests 2, Discussion 4.
+    static func readingJumps(_ sections: [ItemSection], pullRequests: Int, discussion: Int) -> [JumpBar.Item] {
+        sections.compactMap { section in
+            switch section {
+            case .description: JumpBar.Item(id: section.id, title: "Description")
+            case .reproSteps: JumpBar.Item(id: section.id, title: "Repro steps")
+            case .acceptance: JumpBar.Item(id: section.id, title: "Acceptance")
+            case .pullRequests: JumpBar.Item(id: section.id, title: "Pull requests", count: pullRequests)
+            case .activity: JumpBar.Item(id: section.id, title: "Discussion", count: discussion)
+            case .qaNotes, .developerNotes, .details, .agents: nil
+            }
+        }
+    }
+}
+
 /// An item's way through its workflow: one segment per state, done in accent, where it failed in red, plus a line
 /// from its history: "Back from QA twice · in Testing Failed for 1 day".
 struct WorkflowTrack: Equatable {

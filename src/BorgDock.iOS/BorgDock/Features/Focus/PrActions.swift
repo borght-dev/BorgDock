@@ -35,7 +35,7 @@ struct PrContextMenu: View {
         Section {
             Button { Task { await focus.snoozeUntilTomorrow(pr.prKey) } } label: { Label("Snooze until tomorrow", systemImage: "moon") }
             ForEach(pr.workItemIds.prefix(2), id: \.self) { id in
-                Button { app.router.push(.workItem(ItemRoute(id: id))) } label: { Label("Open AB#" + String(id), systemImage: "rectangle.split.3x1") }
+                Button { app.openWorkItem(ItemRoute(id: id), from: pr.prKey) } label: { Label("Open AB#" + String(id), systemImage: "rectangle.split.3x1") }
             }
             Button { focus.copyBranch(pr) } label: { Label("Copy branch name", systemImage: "arrow.triangle.branch") }
             Button { focus.openOnGitHub(pr) } label: { Label("Open on GitHub", systemImage: "arrow.up.right.square") }

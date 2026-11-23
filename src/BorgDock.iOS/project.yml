@@ -239,6 +239,20 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1"
 
+  # BorgDock Review's screens on its made-up data (`-BorgDockFixture`): no server, no network.
+  BorgDockReviewUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: BorgDockReviewUITests
+    dependencies:
+      - target: BorgDockReview
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.borght.borgdock.review.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+
 schemes:
   BorgDock:
     build:
@@ -260,8 +274,15 @@ schemes:
     build:
       targets:
         BorgDockReview: all
+        BorgDockReviewUITests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      # No debugger on the test runner: under xcodebuild it only adds a way for the launch to hang.
+      debugEnabled: false
+      targets:
+        - BorgDockReviewUITests
     archive:
       config: Release
 

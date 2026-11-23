@@ -254,6 +254,23 @@ struct ReviewEndSummary: Equatable {
         }
     }
 
+    /// "Failing checks, changes asked, a question": why your own pull requests need you, each kind once.
+    static func needs(_ kinds: [LedgerReason.Kind]) -> String {
+        var parts: [String] = []
+        for kind in kinds {
+            let part: String = switch kind {
+            case .failing: "failing checks"
+            case .conflicts: "conflicts"
+            case .changesRequested: "changes asked"
+            case .commented: "a comment"
+            default: "a look"
+            }
+            if !parts.contains(part) { parts.append(part) }
+        }
+        let line = parts.joined(separator: ", ")
+        return line.prefix(1).uppercased() + line.dropFirst()
+    }
+
     /// The highlighted button goes to the same author, unless only the other pull request has passing checks.
     static func prefersAuthor(author: PrSummary?, next: PrSummary?) -> Bool {
         guard let author else { return false }
