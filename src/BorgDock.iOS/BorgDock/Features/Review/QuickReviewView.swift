@@ -17,6 +17,25 @@ struct QuickReviewView: View {
     @State private var deciding = false
     @State private var showsFiles = false
     @State private var lineDraft: LineDraftTarget?
+    /// What BorgDock Review opens over the review: the router's sheets are under this cover.
+    @State private var over: Over?
+
+    /// A sheet over Quick Review.
+    private enum Over: Identifiable {
+        case workItem(ItemRoute, from: PrKey?)
+        case pullRequest(PrKey)
+        case merge(PrKey)
+        case reply(PrKey, ReviewThread)
+
+        var id: String {
+            switch self {
+            case .workItem(let item, _): "item-\(item.id)"
+            case .pullRequest(let key): "pr-\(key.key)"
+            case .merge(let key): "merge-\(key.key)"
+            case .reply(_, let thread): "reply-\(thread.id)"
+            }
+        }
+    }
 
     private var queue: [PrKey] { run?.queue ?? [] }
     private var key: PrKey? { queue.indices.contains(position) ? queue[position] : nil }
@@ -59,8 +78,30 @@ struct QuickReviewView: View {
             if let key, let session { DecideSheet(session: session, draft: draftBinding(key), onDecided: advance, onWalked: walked, onJump: jump) }
         }
         .sheet(item: $lineDraft) { target in
-            if let key { LineDraftSheet(target: target, draft: draftBinding(key)) }
+            if let key {
+                if target.growing {
+                    // The comment grows while the sheet is open: it shows the lines it covers now.
+                    LineRangeDraftSheet(target: lineDraft ?? target, draft: draftBinding(key))
+                } else {
+                    LineDraftSheet(target: target, draft: draftBinding(key))
+                }
+            }
         }
+        .sheet(item: $over) { over in
+            switch over {
+            case .workItem(let item, let from): WorkItemSheet(route: item, from: from)
+            case .pullRequest(let key):
+                NavigationStack { PullRequestView(key: key).environment(\.pullRequestPeek, true) }
+                    .presentationDragIndicator(.visible)
+            case .merge(let key): MergeSheet(key: key)
+            case .reply(let key, let thread): ThreadReplySheet(key: key, thread: thread)
+            }
+        }
+        .environment(\.linkNavigator, LinkNavigator(
+            from: key,
+            workItem: { item, from in over = .workItem(item, from: from) },
+            pullRequest: { key in over = .pullRequest(key) }
+        ))
         .sheet(isPresented: $showsFiles) {
             if let session { ReviewFilesSheet(session: session) }
         }
@@ -94,11 +135,15 @@ struct QuickReviewView: View {
             if let session { ReviewBrief(session: session, bypass: key.flatMap { run?.bypass[$0.key] }) }
         case .walk:
             if let key, let session {
-                WalkPager(session: session) { position in
+                WalkPager(session: session, locked: lineDraft != nil) { position in
                     switch position {
                     case .file(let path):
                         if let file = session.walk.file(path) {
-                            FilePage(session: session, file: file, draft: app.focus.reviewDrafts[key.key] ?? ReviewDraft()) { lineDraft = $0 }
+                            FilePage(
+                                session: session, file: file, draft: app.focus.reviewDrafts[key.key] ?? ReviewDraft(),
+                                selection: lineDraft?.path == path ? lineDraft : nil,
+                                onReply: { over = .reply(key, $0) }
+                            ) { line in tapped(line, in: file, session: session, key: key) }
                         }
                     case .step(let group):
                         StepPage(session: session, group: group)
@@ -117,6 +162,10 @@ struct QuickReviewView: View {
                 }, onNext: { key in
                     run.startSingle(key)
                     position = 0
+                }, onMerge: { key in
+                    over = .merge(key)
+                }, onDone: {
+                    dismiss()
                 })
             }
         }
@@ -179,12 +228,15 @@ struct QuickReviewView: View {
     /// An undone approval comes back to its decision with the draft intact.
     private func reopenIfAsked() {
         guard let wanted = app.focus.reopenDecision, let index = queue.firstIndex(where: { $0.key == wanted }) else { return }
-        app.focus.reopenDecision = nil
         if position != index { position = index }
         guard let session = sessions[wanted] else { return }
         session.stage = .walk
         session.revisiting = false
-        if session.isLoaded { deciding = true }
+        // Still loading: the ask stands, and the end of the load comes back here. Taking it now would lose the sheet,
+        // since a decision can't open over a pull request that isn't read yet.
+        guard session.isLoaded else { return }
+        app.focus.reopenDecision = nil
+        deciding = true
     }
 
     private func advance() {
@@ -203,6 +255,23 @@ struct QuickReviewView: View {
         session?.revisiting = true
         session?.stage = .walk
         session?.open(path)
+    }
+
+    /// A tap on a line. In BorgDock Review the comment sheet leaves the diff in reach, and a tap on another line of
+    /// the same hunk makes the comment cover every line up to it.
+    private func tapped(_ line: DiffLine, in file: PrFile, session: ReviewSession, key: PrKey) {
+        guard let anchor = line.anchor else { return }
+        guard app.isReview else {
+            lineDraft = LineDraftTarget(path: file.path, anchor: anchor, code: line.text)
+            return
+        }
+        if let open = lineDraft, open.path == file.path {
+            if let grown = session.extended(open, to: line, in: file) { lineDraft = grown }
+            return
+        }
+        guard var target = session.draftTarget(for: line, in: file, draft: app.focus.reviewDrafts[key.key] ?? ReviewDraft()) else { return }
+        target.growing = true
+        lineDraft = target
     }
 
     private func markReviewed() {

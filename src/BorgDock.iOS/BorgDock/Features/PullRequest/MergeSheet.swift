@@ -25,7 +25,9 @@ struct MergeSheet: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background(BD.sheet)
-            .navigationTitle("Merge")
+            // BorgDock Review names what merges into what, as its mockup's sheet does.
+            .navigationTitle(app.isReview ? "Merge #\(key.number)" : "Merge")
+            .navigationSubtitle(app.isReview ? detail.map { "into \($0.baseRef)" } ?? "" : "")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

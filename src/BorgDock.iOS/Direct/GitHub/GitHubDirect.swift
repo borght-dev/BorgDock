@@ -47,6 +47,10 @@ actor GitHubDirect: PullRequestBackend {
     /// GitHub's search lags a write by a moment; the list is read again this long after one.
     static let settleAfterWrite: TimeInterval = 1.5
     static let focusStoreKey = "github.focus"
+    /// The merged pull requests of the week are read again after this long.
+    static let mergedFreshFor: TimeInterval = 5 * 60
+    /// Pages of merged pull requests read per search; a busy repository merges more in a week than search needs.
+    static let mergedMaxPages = 2
 
     let accounts: [GitHubAccount]
     let store: any DirectStore
@@ -72,6 +76,9 @@ actor GitHubDirect: PullRequestBackend {
     var records: [String: PrRecord] = [:]
     private var current: Focus?
     private var polling: Task<Focus, Error>?
+    /// Why the last read of the list failed outright; nil again once one succeeds.
+    private var failed: (any Error)?
+    private var merged: (at: Date, list: [PrSummary])?
 
     var detailCache: [String: (at: Date, raw: RawDetail, account: String)] = [:]
     /// Detail reads in flight per pull request, so a detail and its files read at once ask GitHub once.
@@ -120,8 +127,28 @@ actor GitHubDirect: PullRequestBackend {
 
     // MARK: - The list
 
+    /// How old the list may get: the setting, else a minute.
+    var refreshEvery: TimeInterval { settings.refreshSeconds.map(TimeInterval.init) ?? Self.pollEvery }
+
+    /// How often the list is read while the app is open, in seconds.
+    func setRefresh(seconds: Int) {
+        var next = settings
+        next.refreshSeconds = seconds == Int(Self.pollEvery) ? nil : seconds
+        guard next != settings else { return }
+        settings = next
+        store.set(settings, forKey: GitHubSettings.storeKey)
+    }
+
+    /// What the last read of an account's pull requests came to.
+    func accountStatus(of login: String) -> AccountStatus? { accountStatus[login] }
+
     func focus(fresh: Bool) async throws -> Focus {
-        if !fresh, changedAt == nil, let current, let polledAt, clock().timeIntervalSince(polledAt) < Self.pollEvery { return current }
+        if !fresh, changedAt == nil, let current, let polledAt, clock().timeIntervalSince(polledAt) < refreshEvery {
+            // A read that failed since the list was last read stands until the next one: the list is older than it
+            // looks, and handing it back as fresh would take the "this is old" off the screen for a minute.
+            if let failed { throw failed }
+            return current
+        }
         return try await refresh(repositories: fresh)
     }
 
@@ -132,7 +159,14 @@ actor GitHubDirect: PullRequestBackend {
         let read = Task { try await self.poll() }
         polling = read
         defer { polling = nil }
-        return try await read.value
+        do {
+            let focus = try await read.value
+            failed = nil
+            return focus
+        } catch {
+            if !(error is CancellationError) { failed = error }
+            throw error
+        }
     }
 
     private func poll() async throws -> Focus {
@@ -346,10 +380,28 @@ actor GitHubDirect: PullRequestBackend {
             reviewedHeadSha: pr.myReview(pr.account)?.commitSha,
             requestedReviewerLogins: pr.requestedReviewers,
             requestedTeams: pr.requestedTeams,
-            latestReviews: pr.latestReviews.map { PrLatestReview(login: $0.login, state: $0.state, commitSha: $0.commitSha) },
+            latestReviews: pr.latestReviews.map { review in
+                PrLatestReview(
+                    login: review.login, state: review.state, commitSha: review.commitSha, submittedAt: review.submittedAt,
+                    commitsSince: review.commitSha.flatMap(pr.commitsSince)
+                )
+            },
             priorityScore: FocusRules.score(of: pr, context),
-            failedChecks: FocusRules.failedChecks(pr.checks)
+            failedChecks: FocusRules.failedChecks(pr.checks),
+            reviewRequestedAt: reviewRequestedAt(pr, context)
         )
+    }
+
+    /// Since when the open review is asked: yours while it waits on you (GitHub's request, else when this phone first
+    /// saw it), else the first of the reviewers still pending.
+    private func reviewRequestedAt(_ pr: PrRecord, _ context: FocusContext) -> String? {
+        let times = pr.reviewRequestTimes
+        if pr.isWaitingOnMe(context.login, teams: context.teams) {
+            let mine = [PrRecord.reviewerKey(login: context.login)] + FocusRules.matchedTeams(pr.requestedTeams, mine: context.teams).map(PrRecord.reviewerKey(team:))
+            return mine.compactMap { times[$0] }.min() ?? context.reviewRequestedAt(pr.key)
+        }
+        let pending = pr.requestedReviewers.map(PrRecord.reviewerKey(login:)) + pr.requestedTeams.map(PrRecord.reviewerKey(team:))
+        return pending.compactMap { times[$0] }.min()
     }
 
     private func buildFocus() -> Focus {
@@ -391,6 +443,43 @@ actor GitHubDirect: PullRequestBackend {
         detailCache[key.key] = nil
         detailReads[key.key] = nil
         changedAt = clock()
+    }
+
+    // MARK: - Merged this week
+
+    /// Merged in the last seven days: where it involves an account, and in every watched repository. Newest first.
+    /// A search that fails leaves its part out; when every one fails the error is thrown.
+    func mergedThisWeek() async throws -> [PrSummary] {
+        if let merged, clock().timeIntervalSince(merged.at) < Self.mergedFreshFor { return merged.list }
+        guard !logins.isEmpty else { throw directError(401, "Add a GitHub account in Settings.") }
+        let since = String(GitHubTime.iso(clock().addingTimeInterval(-7 * 86_400)).prefix(10))
+        var searches: [(login: String, query: String)] = []
+        if settings.includeInvolving {
+            searches += logins.map { ($0, GitHubSettings.mergedInvolvingSearch(since: since)) }
+        }
+        for name in settings.repositories {
+            guard let login = byRepository[name.lowercased()]?.account ?? logins.first else { continue }
+            searches.append((login, GitHubSettings.mergedSearch(name, since: since)))
+        }
+        var found: [String: PrRecord] = [:]
+        var failure: (any Error)?
+        var answered = 0
+        for search in searches {
+            do {
+                let result = try await searchAll(search.login, search.query, maxPages: Self.mergedMaxPages)
+                answered += 1
+                for raw in result.found {
+                    let record = GitHubMapping.record(raw, account: search.login)
+                    if found[record.key] == nil { found[record.key] = record }
+                }
+            } catch {
+                failure = failure ?? error
+            }
+        }
+        if answered == 0, let failure { throw (failure as? GitHubError)?.shown ?? failure }
+        let list = found.values.filter { $0.state == .merged }.map { summary(of: $0) }.sorted { ($0.mergedAt ?? "") > ($1.mergedAt ?? "") }
+        merged = (clock(), list)
+        return list
     }
 
     // MARK: - Repositories

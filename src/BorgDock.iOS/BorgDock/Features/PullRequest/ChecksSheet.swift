@@ -188,7 +188,7 @@ struct FailedCheckCard: View {
                     if changesSpec || failure.alsoOnBase != nil {
                         HStack(spacing: 6) {
                             if changesSpec { ToneChip(text: "This PR changes the spec", small: true, accent: true) }
-                            if failure.alsoOnBase != nil { ToneChip(text: "Also red on \(detail.baseRef)", tone: .warn, small: true) }
+                            if failure.alsoOnBase != nil { ToneChip(text: "Also \(app.isReview ? "failing" : "red") on \(detail.baseRef)", tone: .warn, small: true) }
                         }
                         .padding(.top, 9)
                     }
@@ -221,7 +221,9 @@ struct FailedCheckCard: View {
 
     @ViewBuilder
     private var menu: some View {
-        Button { Task { await app.focus.rerunFailed(detail.summary.prKey) } } label: { Label("Rerun failed checks", systemImage: "arrow.counterclockwise") }
+        if app.canRerunChecks(of: detail.summary) {
+            Button { Task { await app.focus.rerunFailed(detail.summary.prKey) } } label: { Label("Rerun failed checks", systemImage: "arrow.counterclockwise") }
+        }
         if app.canStartAgents {
             Button { app.focus.fixWithClaude(detail.summary) } label: { Label("Hand to Claude", systemImage: "sparkle") }
         }

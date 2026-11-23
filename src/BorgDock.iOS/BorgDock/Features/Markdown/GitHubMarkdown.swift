@@ -6,6 +6,7 @@ import SwiftUI
 /// `AB#123` chips on the item. Mockup: design/ios-flow/mockups.html, section 04.
 struct GitHubMarkdown: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.linkNavigator) private var navigator
     let markdown: String
     var size: CGFloat = 15
     /// Images shown elsewhere on the screen (a PR's Proof row), left out here.
@@ -22,7 +23,7 @@ struct GitHubMarkdown: View {
             .foregroundStyle(BD.text)
             .tint(BD.accentText)
             .environment(\.markdownOmittedImages, omittedImages)
-            .environment(\.openURL, OpenURLAction { MarkdownLinks.open($0, app: app) })
+            .environment(\.openURL, OpenURLAction { MarkdownLinks.open($0, app: app, navigator: navigator) })
     }
 }
 
@@ -30,6 +31,27 @@ extension EnvironmentValues {
     @Entry var markdownOmittedImages: Set<String> = []
     /// Work item types by id, for the glyph on AB# chips the overview doesn't know.
     @Entry var markdownWorkItemTypes: [Int: String] = [:]
+    /// Where links to work items and pull requests go from this screen.
+    @Entry var linkNavigator = LinkNavigator()
+}
+
+/// Where a screen sends a work item or pull request link. On the app's own stack both are the router's; a screen
+/// inside a sheet, or over Quick Review, sets its own, because the router's stack is under it.
+struct LinkNavigator {
+    /// The pull request on screen: the work item it names marks it "You're here".
+    var from: PrKey?
+    var workItem: (@MainActor (ItemRoute, PrKey?) -> Void)?
+    var pullRequest: (@MainActor (PrKey) -> Void)?
+
+    @MainActor
+    func openWorkItem(_ item: ItemRoute, app: AppModel) {
+        if let workItem { workItem(item, from) } else { app.openWorkItem(item, from: from) }
+    }
+
+    @MainActor
+    func openPullRequest(_ key: PrKey, app: AppModel) {
+        if let pullRequest { pullRequest(key) } else { app.router.push(.pullRequest(key)) }
+    }
 }
 
 /// Where a link in rendered markdown goes.
@@ -56,10 +78,10 @@ enum MarkdownLinks {
     static func url(forWorkItem id: Int) -> URL { URL(string: "borgdock://item/\(id)")! }
 
     @MainActor
-    static func open(_ url: URL, app: AppModel) -> OpenURLAction.Result {
+    static func open(_ url: URL, app: AppModel, navigator: LinkNavigator = LinkNavigator()) -> OpenURLAction.Result {
         switch destination(url) {
-        case .workItem(let id): app.router.push(.workItem(ItemRoute(id: id, prefill: app.itemOverview(id)?.item)))
-        case .pullRequest(let key): app.router.push(.pullRequest(key))
+        case .workItem(let id): navigator.openWorkItem(ItemRoute(id: id, prefill: app.itemOverview(id)?.item), app: app)
+        case .pullRequest(let key): navigator.openPullRequest(key, app: app)
         case .app(let url): app.open(url)
         case .external: return .systemAction
         }

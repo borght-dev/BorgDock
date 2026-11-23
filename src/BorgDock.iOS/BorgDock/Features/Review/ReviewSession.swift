@@ -19,9 +19,18 @@ final class ReviewSession {
         case failed(String)
     }
 
+    /// Which diff a re-review reads: what changed since your review, or the whole pull request.
+    enum Scope: Hashable {
+        case sinceReview, all
+    }
+
     let key: PrKey
     private(set) var loadState = LoadState.loading
+    /// Every file of the pull request, whatever the scope.
     private(set) var files: PrFiles?
+    /// The diff between the commit you reviewed and the head; nil when there is none to read (BorgDock Review only).
+    private(set) var sinceFiles: PrFiles?
+    private(set) var scope = Scope.all
     private(set) var walk = ReviewWalk([])
     private(set) var reviewed: Set<String> = []
     /// Paths whose page you've seen in this review: a green dot on a step's rows.
@@ -36,7 +45,7 @@ final class ReviewSession {
     @ObservationIgnored private weak var store: FocusStore?
     @ObservationIgnored private var loadedDetail: PrDetail?
     @ObservationIgnored private let storage: ReviewedFiles
-    /// Parsed diffs by path, so moving back and forth doesn't parse again.
+    /// Parsed diffs by scope and path, so moving back and forth doesn't parse again.
     @ObservationIgnored private var parsed: [String: [DiffLine]] = [:]
 
     init(key: PrKey, storage: ReviewedFiles = ReviewedFiles()) {
@@ -57,7 +66,14 @@ final class ReviewSession {
         loadState = .loading
         do {
             let snapshot = try await store.reviewSnapshot(key)
-            show(detail: snapshot.detail, files: snapshot.files, start: start)
+            var since: PrFiles?
+            if store.app?.isReview == true {
+                // Other people's threads show under their lines; a re-review reads what changed since yours.
+                async let conversation: Void = store.readConversationQuietly(key)
+                if ReviewedFiles.isReReview(snapshot.files) { since = try? await store.backend?.pullRequestFilesSinceReview(key) }
+                await conversation
+            }
+            show(detail: snapshot.detail, files: snapshot.files, since: since, start: start)
         } catch is CancellationError {
             return
         } catch {
@@ -66,10 +82,13 @@ final class ReviewSession {
     }
 
     /// Shows a pull request already read: the walk starts on `start`, else on the first page you haven't reviewed.
-    func show(detail: PrDetail, files: PrFiles, start: ReviewWalk.Position? = nil) {
+    func show(detail: PrDetail, files: PrFiles, since: PrFiles? = nil, start: ReviewWalk.Position? = nil) {
         loadedDetail = detail
         self.files = files
-        walk = ReviewWalk(files.files)
+        parsed = [:]
+        sinceFiles = since.flatMap { $0.files.isEmpty ? nil : $0 }
+        scope = sinceFiles == nil ? .all : .sinceReview
+        walk = ReviewWalk(scopedFiles, steps: stepGroups)
         reviewed = storage.initial(prKey: key.key, files: files)
         opened = store?.openedFiles[key.key] ?? opened
         let first = start.flatMap { walk.contains($0) ? $0 : nil } ?? walk.start(reviewed)
@@ -79,10 +98,31 @@ final class ReviewSession {
     }
 
     func lines(_ file: PrFile) -> [DiffLine] {
-        if let cached = parsed[file.path] { return cached }
+        let cacheKey = "\(scope):\(file.path)"
+        if let cached = parsed[cacheKey] { return cached }
         let lines = file.patch.map(UnifiedDiff.parse) ?? []
-        parsed[file.path] = lines
+        parsed[cacheKey] = lines
         return lines
+    }
+
+    /// BorgDock Review's setting for which kinds are one step; BorgDock reads tests and generated files as one each.
+    private var stepGroups: Set<ReviewWalk.Group> {
+        store?.app?.isReview == true ? ReviewPreferences.steps().groups : [.tests, .generated]
+    }
+
+    /// The files the walk reads in this scope.
+    private var scopedFiles: [PrFile] {
+        (scope == .sinceReview ? sinceFiles?.files : nil) ?? files?.files ?? []
+    }
+
+    /// Switches between what changed since your review and every file. The page stays when the other scope has it.
+    func setScope(_ next: Scope) {
+        guard next != scope, next == .all || sinceFiles != nil else { return }
+        scope = next
+        walk = ReviewWalk(scopedFiles, steps: stepGroups)
+        let stay = position.flatMap { walk.contains($0) ? $0 : nil }
+        position = nil
+        if let target = stay ?? walk.start(reviewed) { go(to: target) }
     }
 
     func isReviewed(_ position: ReviewWalk.Position) -> Bool { walk.isReviewed(position, in: reviewed) }

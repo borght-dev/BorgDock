@@ -1,63 +1,89 @@
 import SwiftUI
 
-/// BorgDock Review's settings: the GitHub accounts and the Azure DevOps organization it reads with, which
-/// repositories it lists, and Face ID before a merge or an approval.
+/// BorgDock Review's settings, from your avatar (design/review-app/mockups.html): the accounts first, each with its
+/// label, its repositories and when its token runs out; then what is read, how a review goes, and Face ID.
 struct DirectSettingsView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
     let session: DirectSession
 
     @State private var addingAccount = false
-    @State private var connectingAzureDevOps = false
+    @State private var watched: PrRepositories?
+    @State private var available: Int?
+    @State private var refresh = Int(GitHubDirect.pollEvery)
+    @AppStorage(ReviewPreferences.readAllKey) private var readAll = true
+    @AppStorage(ReviewPreferences.stepsKey) private var steps = ReviewPreferences.Steps.both.rawValue
 
     var body: some View {
         @Bindable var session = session
         List {
             Section {
                 ForEach(session.credentials.gitHub) { account in
-                    HStack(spacing: 12) {
-                        PersonAvatar(name: account.name ?? account.login, size: 34)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(account.name ?? account.login).font(.system(size: 16, weight: .semibold)).foregroundStyle(BD.text)
-                            Text(verbatim: "@\(account.login)").font(.system(size: 14)).foregroundStyle(BD.text2)
-                        }
-                    }
-                    .swipeActions {
-                        Button("Remove", role: .destructive) { remove(account) }
-                    }
-                    .accessibilityIdentifier("account-\(account.login)")
+                    NavigationLink { GitHubAccountView(session: session, login: account.login) } label: { accountRow(account) }
+                        .accessibilityIdentifier("account-\(account.login)")
                 }
-                Button { addingAccount = true } label: { Label("Add a GitHub account", systemImage: "plus") }
+                Button { addingAccount = true } label: { Label("Add an account", systemImage: "plus") }
                     .accessibilityIdentifier("add-account")
             } header: {
                 Text("GitHub")
-            } footer: {
-                Text("Each account reads the pull requests it can see. Swipe an account to remove it.")
             }
 
             Section {
-                if let connection = session.credentials.azureDevOps {
-                    LabeledContent("Organization", value: connection.organizationURL.lastPathComponent)
-                    LabeledContent("Project", value: connection.project)
-                    Button("Disconnect", role: .destructive) { session.disconnectAzureDevOps() }
-                } else {
-                    Button { connectingAzureDevOps = true } label: { Label("Connect Azure DevOps", systemImage: "plus") }
-                        .accessibilityIdentifier("connect-ado")
+                NavigationLink { AzureDevOpsSettings(session: session) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(BD.text2)
+                            .frame(width: 34, height: 34)
+                            .background(BD.fill2, in: Circle())
+                        if let connection = session.credentials.azureDevOps {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(connection.organizationURL.lastPathComponent).font(.system(size: 16, weight: .semibold)).foregroundStyle(BD.text)
+                                Text("Project \(connection.project)").font(.system(size: 13.5)).foregroundStyle(BD.text2)
+                            }
+                            Spacer(minLength: 6)
+                            Text("Connected").font(.system(size: 14)).foregroundStyle(BD.green)
+                        } else {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Connect Azure DevOps").font(.system(size: 16, weight: .semibold)).foregroundStyle(BD.accentText)
+                                Text("The work item behind an AB# reference").font(.system(size: 13.5)).foregroundStyle(BD.text2)
+                            }
+                        }
+                    }
                 }
+                .accessibilityIdentifier("connect-ado")
             } header: {
                 Text("Azure DevOps")
-            } footer: {
-                Text("Opens the work items a pull request names (AB#123) inside the app.")
             }
 
             Section("Pull requests") {
-                NavigationLink(value: Route.repositories) { Label("Repositories", systemImage: "folder") }
+                NavigationLink(value: Route.repositories) {
+                    LabeledContent("Repositories", value: repositoriesValue)
+                }
+                .accessibilityIdentifier("settings-repositories")
+                Picker("Refresh", selection: $refresh) {
+                    ForEach(GitHubSettings.refreshChoices, id: \.self) { seconds in
+                        Text(seconds == 60 ? "Every minute while open" : "Every \(seconds / 60) min while open").tag(seconds)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+                .accessibilityIdentifier("settings-refresh")
             }
 
             Section {
-                Toggle("Face ID to merge and approve", isOn: $session.faceIdForActions)
+                Toggle("Read every file before approving", isOn: $readAll)
+                    .accessibilityIdentifier("settings-read-all")
+                Picker("Tests and generated files", selection: $steps) {
+                    ForEach(ReviewPreferences.Steps.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .pickerStyle(.navigationLink)
+                .accessibilityIdentifier("settings-steps")
+                Toggle("Face ID for approvals and merges", isOn: $session.faceIdForActions)
+                    .accessibilityIdentifier("settings-face-id")
+            } header: {
+                Text("Review")
             } footer: {
-                Text("Asks before a merge or an approval leaves this iPhone.")
+                Text("Tokens are stored in this iPhone's keychain and go only to github.com and dev.azure.com.")
             }
 
             Section {
@@ -67,34 +93,187 @@ struct DirectSettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+            ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() }.accessibilityIdentifier("settings-done") }
         }
         .tint(BD.accent)
+        .bdGroupedList()
         .onChange(of: session.faceIdForActions) { Task { await app.focus.loadPreferences() } }
+        .onChange(of: refresh) { _, seconds in Task { await session.gitHub.setRefresh(seconds: seconds) } }
+        .task(id: session.credentials.gitHub.map(\.id)) {
+            watched = await session.gitHub.repositories()
+            refresh = Int(await session.gitHub.refreshEvery)
+            available = Set(await session.gitHub.availableRepositories().values.joined().map(\.id)).count
+        }
         .sheet(isPresented: $addingAccount) {
             NavigationStack {
-                ScrollView {
-                    GitHubTokenForm(session: session, buttonTitle: "Add account") { _ in
-                        addingAccount = false
-                        Task { await app.focus.load(reportErrors: true, fresh: true) }
-                    }
-                    .padding(20)
+                GitHubTokenScreen(session: session) { _ in
+                    addingAccount = false
+                    Task { await app.focus.load(reportErrors: true, fresh: true) }
                 }
-                .background(BD.bg)
-                .navigationTitle("Add a GitHub account")
-                .navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { addingAccount = false } } }
             }
-        }
-        .sheet(isPresented: $connectingAzureDevOps) {
-            NavigationStack { AzureDevOpsForm(session: session) { connectingAzureDevOps = false } }
+            .tint(BD.accent)
         }
     }
 
-    private func remove(_ account: DirectCredentials.GitHub) {
-        session.removeGitHubAccount(account.login)
+    /// "12 of 43".
+    private var repositoriesValue: String {
+        guard let watched else { return "" }
+        let count = watched.repositories.count
+        guard let available, available >= count, available > 0 else { return count == 0 ? "None" : "\(count)" }
+        return "\(count) of \(available)"
+    }
+
+    private func accountRow(_ account: DirectCredentials.GitHub) -> some View {
+        let warning = account.expiryWarning()
+        let repositories = (watched?.repositories ?? []).filter { $0.name.lowercased().hasPrefix(account.login.lowercased() + "/") }.count
+        return HStack(spacing: 12) {
+            PersonAvatar(name: account.name ?? account.login, size: 34)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(account.login).font(.system(size: 16, weight: .semibold)).foregroundStyle(BD.text).lineLimit(1)
+                HStack(spacing: 0) {
+                    Text(account.label.flatMap { $0.isEmpty ? nil : $0 } ?? (account.name ?? "GitHub")).foregroundStyle(BD.text2)
+                    if let warning {
+                        Text(verbatim: " · \(warning.prefix(1).lowercased() + warning.dropFirst())").foregroundStyle(account.expiresSoon() ? BD.red : BD.yellow)
+                    } else if repositories > 0 {
+                        Text(verbatim: " · \(repositories == 1 ? "1 repository" : "\(repositories) repositories")").foregroundStyle(BD.text2)
+                    }
+                }
+                .font(.system(size: 13.5))
+                .lineLimit(1)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Azure DevOps from Settings: connecting or disconnecting goes back to the list.
+private struct AzureDevOpsSettings: View {
+    @Environment(\.dismiss) private var dismiss
+    let session: DirectSession
+
+    var body: some View {
+        AzureDevOpsScreen(session: session) { dismiss() }
+    }
+}
+
+/// One GitHub account in Settings: what its token may do and when it runs out, its label, a new token, or out.
+struct GitHubAccountView: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.dismiss) private var dismiss
+    let session: DirectSession
+    let login: String
+
+    @State private var facts: GitHubTokenFacts?
+    @State private var failure: String?
+    @State private var label = AccountLabel.work
+    @State private var customLabel = ""
+    @State private var replacing = false
+    @State private var confirmsRemoval = false
+
+    private var account: DirectCredentials.GitHub? {
+        session.credentials.gitHub.first { $0.login.caseInsensitiveCompare(login) == .orderedSame }
+    }
+
+    var body: some View {
+        List {
+            Section {
+                HStack(spacing: 12) {
+                    PersonAvatar(name: account?.name ?? login, size: 40)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(account?.name ?? login).font(.system(size: 17, weight: .semibold)).foregroundStyle(BD.text)
+                        Text(verbatim: "@\(login)").font(.system(size: 14)).foregroundStyle(BD.text2)
+                    }
+                }
+            }
+            Section {
+                if let facts {
+                    LabeledContent("Reads", value: facts.reach.replacingOccurrences(of: "Reads ", with: ""))
+                    ForEach(facts.rows()) { row in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.title).font(.system(size: 15.5)).foregroundStyle(row.mark == .missing ? BD.red : BD.text)
+                            if !row.detail.isEmpty { Text(row.detail).font(.system(size: 13)).foregroundStyle(BD.text2) }
+                        }
+                    }
+                } else if let failure {
+                    Label(failure, systemImage: "exclamationmark.triangle.fill").foregroundStyle(BD.red)
+                } else {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Asking GitHub what this token may do…").foregroundStyle(BD.text2)
+                    }
+                }
+                Button("Replace the token") { replacing = true }.accessibilityIdentifier("account-replace")
+            } header: {
+                Text("Token")
+            }
+            Section {
+                Picker("Show it as", selection: $label) {
+                    ForEach(AccountLabel.allCases) { Text($0.title).tag($0) }
+                }
+                if label == .other {
+                    TextField("A word for this account", text: $customLabel).onSubmit(saveLabel)
+                }
+            } footer: {
+                Text("Only for you: it names the account here and when its token runs out.")
+            }
+            Section {
+                Button("Remove \(login)", role: .destructive) { confirmsRemoval = true }.accessibilityIdentifier("account-remove")
+            } footer: {
+                Text("Its token leaves this iPhone's keychain. Nothing changes on GitHub.")
+            }
+        }
+        .navigationTitle(account?.shownLabel ?? login)
+        .navigationBarTitleDisplayMode(.inline)
+        .tint(BD.accent)
+        .bdGroupedList()
+        .task { await check() }
+        .onAppear { (label, customLabel) = AccountLabel.parse(account?.label) }
+        .onChange(of: label) { saveLabel() }
+        .onDisappear(perform: saveLabel)
+        .confirmationDialog("Remove \(login)?", isPresented: $confirmsRemoval, titleVisibility: .visible) {
+            Button("Remove the account", role: .destructive, action: remove)
+        } message: {
+            Text("Its pull requests leave the overview.")
+        }
+        .sheet(isPresented: $replacing) {
+            NavigationStack {
+                GitHubTokenScreen(session: session, replacing: login) { _ in
+                    replacing = false
+                    Task {
+                        await check()
+                        await app.focus.load(reportErrors: true, fresh: true)
+                    }
+                }
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { replacing = false } } }
+            }
+            .tint(BD.accent)
+        }
+    }
+
+    private func check() async {
+        guard let token = account?.token else { return }
+        do {
+            facts = try await session.checkGitHubToken(token)
+            failure = nil
+        } catch is CancellationError {
+        } catch {
+            facts = nil
+            failure = error.localizedDescription
+        }
+    }
+
+    private func saveLabel() {
+        let word = label == .other ? customLabel : label.title
+        guard account != nil, word != account?.label, !(label == .other && word.trimmingCharacters(in: .whitespaces).isEmpty) else { return }
+        session.setLabel(word, for: login)
+    }
+
+    private func remove() {
+        session.removeGitHubAccount(login)
         if session.hasGitHub {
             Task { await app.focus.load(reportErrors: true, fresh: true) }
+            dismiss()
         } else {
             app.focus.forget()
             app.router.reset()
@@ -102,66 +281,43 @@ struct DirectSettingsView: View {
     }
 }
 
-/// Organization, project and a personal access token; checked with Azure DevOps before it is kept.
-struct AzureDevOpsForm: View {
-    let session: DirectSession
-    let onDone: () -> Void
+/// How a review goes on this phone.
+enum ReviewPreferences {
+    /// Approve stays locked until every file and step is marked reviewed. On unless you turn it off.
+    static let readAllKey = "review.readAllBeforeApproving"
+    static let stepsKey = "review.steps"
 
-    @State private var organization = ""
-    @State private var project = ""
-    @State private var token = ""
-    @State private var error: String?
-    @State private var checking = false
+    /// Which kinds of files the walk reads as one step instead of one by one.
+    enum Steps: String, CaseIterable, Identifiable {
+        case both, tests, generated, none
 
-    var body: some View {
-        Form {
-            Section {
-                TextField("Organization", text: $organization, prompt: Text("acme or dev.azure.com/acme"))
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .accessibilityIdentifier("ado-organization")
-                TextField("Project", text: $project)
-                    .autocorrectionDisabled()
-                    .accessibilityIdentifier("ado-project")
-                SecureField("Personal access token", text: $token)
-                    .textContentType(.password)
-                    .accessibilityIdentifier("ado-token")
-            } footer: {
-                Text("The token needs **Work Items: Read & write** (write only to post comments). It stays in this iPhone's Keychain.")
-            }
-            if let error {
-                Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(BD.red) }
-            }
-            Section {
-                Button { Task { await connect() } } label: {
-                    if checking { ProgressView() } else { Text("Connect") }
-                }
-                .disabled(checking || connection == nil)
-                .accessibilityIdentifier("ado-connect")
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .both: "One step each"
+            case .tests: "Tests as one step"
+            case .generated: "Generated as one step"
+            case .none: "File by file"
             }
         }
-        .navigationTitle("Azure DevOps")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: onDone) } }
-    }
 
-    private var connection: AdoConnection? {
-        let token = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        let project = project.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !token.isEmpty, !project.isEmpty, let url = AzureDevOpsAddress.organizationURL(organization) else { return nil }
-        return AdoConnection(organizationURL: url, project: project, credential: .personalAccessToken(token))
-    }
-
-    private func connect() async {
-        guard let connection, !checking else { return }
-        checking = true
-        defer { checking = false }
-        do {
-            try await session.connectAzureDevOps(connection)
-            onDone()
-        } catch {
-            self.error = error.localizedDescription
+        var groups: Set<ReviewWalk.Group> {
+            switch self {
+            case .both: [.tests, .generated]
+            case .tests: [.tests]
+            case .generated: [.generated]
+            case .none: []
+            }
         }
+    }
+
+    static func readAll(_ defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: readAllKey) as? Bool ?? true
+    }
+
+    static func steps(_ defaults: UserDefaults = .standard) -> Steps {
+        defaults.string(forKey: stepsKey).flatMap(Steps.init(rawValue:)) ?? .both
     }
 }
 
@@ -173,101 +329,5 @@ enum AzureDevOpsAddress {
         name = String(name.split(separator: "/").first ?? "")
         guard name.wholeMatch(of: #/[A-Za-z0-9][A-Za-z0-9-]*/#) != nil else { return nil }
         return URL(string: "https://dev.azure.com/\(name)")
-    }
-}
-
-/// The repositories every open pull request is listed of, yours or not, and which searches add the ones that involve you.
-struct WatchedRepositoriesView: View {
-    @Environment(AppModel.self) private var app
-    let session: DirectSession
-
-    @State private var repositories: PrRepositories?
-    @State private var adding = ""
-    @State private var error: String?
-
-    var body: some View {
-        List {
-            Section {
-                ForEach(repositories?.repositories ?? []) { repository in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(repository.name).font(.system(size: 16, weight: .medium)).foregroundStyle(BD.text)
-                        Text(repository.ok ? "\(repository.open) open" : repository.error ?? "Couldn't be read")
-                            .font(.system(size: 13))
-                            .foregroundStyle(repository.ok ? BD.text2 : BD.red)
-                    }
-                    .accessibilityIdentifier("repository-\(repository.name)")
-                }
-                .onDelete { offsets in
-                    var names = repositories?.repositories.map(\.name) ?? []
-                    names.remove(atOffsets: offsets)
-                    Task { await watch(names) }
-                }
-                HStack {
-                    TextField("owner/repository", text: $adding)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .submitLabel(.done)
-                        .onSubmit { Task { await add() } }
-                        .accessibilityIdentifier("repository-name")
-                    Button("Add") { Task { await add() } }
-                        .disabled(GitHubSettings.cleanRepositories([adding]).isEmpty)
-                }
-            } header: {
-                Text("Watched repositories")
-            } footer: {
-                Text(error ?? "Every open pull request of these is listed, also the ones that don't involve you.")
-                    .foregroundStyle(error == nil ? BD.text2 : BD.red)
-            }
-
-            if let repositories {
-                Section {
-                    Toggle("Pull requests that involve me", isOn: preference(\.includeInvolving, current: repositories.includeInvolving))
-                    Toggle("Review requests to my teams", isOn: preference(\.includeTeamRequests, current: repositories.includeTeamRequests))
-                        .disabled(!repositories.includeInvolving)
-                } footer: {
-                    Text("From any repository: yours, the ones you were asked to review and the ones you reviewed.")
-                }
-                if repositories.cutOff {
-                    Section { Label("GitHub returned more pull requests than fit in one read; the list is cut off.", systemImage: "scissors").foregroundStyle(BD.text2) }
-                }
-            }
-        }
-        .navigationTitle("Repositories")
-        .navigationBarTitleDisplayMode(.inline)
-        .tint(BD.accent)
-        .task { repositories = await session.gitHub.repositories() }
-    }
-
-    private func add() async {
-        let names = GitHubSettings.cleanRepositories([adding])
-        guard !names.isEmpty else {
-            error = "Write it as owner/repository."
-            return
-        }
-        adding = ""
-        await watch((repositories?.repositories.map(\.name) ?? []) + names)
-    }
-
-    private func watch(_ names: [String]) async {
-        error = nil
-        repositories = await session.gitHub.watch(names)
-        await reload()
-    }
-
-    private func preference(_ path: WritableKeyPath<PrRepositoryPreferences, Bool?>, current: Bool) -> Binding<Bool> {
-        Binding(get: { current }, set: { value in
-            var preferences = PrRepositoryPreferences()
-            preferences[keyPath: path] = value
-            Task {
-                repositories = await session.gitHub.setRepositoryPreferences(preferences)
-                await reload()
-            }
-        })
-    }
-
-    /// Reads the list with the new settings, then shows what each repository's read found.
-    private func reload() async {
-        await app.focus.load(reportErrors: true, fresh: true)
-        repositories = await session.gitHub.repositories()
     }
 }

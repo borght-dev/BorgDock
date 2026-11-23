@@ -13,6 +13,8 @@ final class FocusStore {
     private(set) var error: String?
     private(set) var isLoading = false
     private(set) var syncedAt: Date?
+    /// Why the list on screen is old: the newest read failed and an earlier answer is still shown.
+    private(set) var trouble: ListTrouble?
 
     /// Details and files by PR key, kept while the app runs so going back and forth stays instant.
     private(set) var details: [String: PrDetail] = [:]
@@ -101,6 +103,7 @@ final class FocusStore {
             if let freshGroups { ciGroups = freshGroups }
             syncedAt = .now
             error = nil
+            trouble = nil
             reportedPollError = nil
         } catch is CancellationError {
             return
@@ -108,8 +111,10 @@ final class FocusStore {
             guard generation == loadGeneration else { return }
             let message = (error as? APIError)?.message ?? error.localizedDescription
             if reportErrors || focus != nil {
+                if focus != nil { trouble = ListTrouble(error) }
                 // Without a connection every poll fails the same way; the list on screen stays, and one toast is enough.
-                if reportErrors || message != reportedPollError { app?.report(error) }
+                // BorgDock Review says it in a banner over the list instead.
+                if reportErrors || (message != reportedPollError && app?.direct == nil) { app?.report(error) }
                 reportedPollError = message
             } else {
                 self.error = message
@@ -144,6 +149,7 @@ final class FocusStore {
         loadGeneration += 1
         focus = nil
         error = nil
+        trouble = nil
         details = [:]
         files = [:]
         conversations = [:]
@@ -257,6 +263,13 @@ final class FocusStore {
         }
     }
 
+    /// The conversation for Quick Review's walk, which shows other people's threads under their lines. A failure stays
+    /// quiet: the walk reads fine without them.
+    func readConversationQuietly(_ key: PrKey) async {
+        guard let backend, let fresh = try? await backend.conversation(key) else { return }
+        conversations[key.key] = fresh
+    }
+
     // MARK: - Actions
 
     private func run(_ busyKey: String, _ work: (any PullRequestBackend) async throws -> Void) async -> Bool {
@@ -283,7 +296,15 @@ final class FocusStore {
 
     func rerunFailed(_ key: PrKey) async {
         var reruns = 0
-        let done = await run("rerun-\(key.key)") { reruns = try await $0.rerunFailed(key).reruns }
+        let done = await run("rerun-\(key.key)") { backend in
+            do {
+                reruns = try await backend.rerunFailed(key).reruns
+            } catch let refused as RerunRefused {
+                // BorgDock Review stops offering what this account's token can't do.
+                self.app?.direct?.noteActionsWrite(false, for: refused.account)
+                throw refused
+            }
+        }
         guard done else { return }
         app?.toasts.show(reruns == 0 ? "No failed runs to restart" : reruns == 1 ? "Restarted 1 workflow run" : "Restarted \(reruns) workflow runs")
         await loadDetail(key)
@@ -422,6 +443,28 @@ final class FocusStore {
     }
 }
 
+/// Why the pull request list on screen is old.
+struct ListTrouble: Equatable {
+    enum Kind { case offline, token, other }
+
+    let kind: Kind
+    let message: String
+
+    init(_ error: any Error) {
+        let message = (error as? APIError)?.message ?? error.localizedDescription
+        self.message = message
+        if case .network? = error as? APIError {
+            kind = .offline
+        } else if message.hasPrefix("Could not reach GitHub") {
+            kind = .offline
+        } else if (error as? APIError)?.isUnauthorized == true {
+            kind = .token
+        } else {
+            kind = .other
+        }
+    }
+}
+
 /// A pull request's detail and files, read together for Quick Review.
 struct ReviewSnapshot: Sendable {
     let detail: PrDetail
@@ -431,24 +474,40 @@ struct ReviewSnapshot: Sendable {
 /// An unfinished review: the overall comment and the line comments, as they'll be sent.
 struct ReviewDraft: Hashable, Sendable {
     var body = ""
+    /// By path, then by the line the comment is left on: the last line of one that covers several.
     var comments: [String: [DiffAnchor: String]] = [:]
+    /// The first line of a comment on several lines, by path and by its last line.
+    var starts: [String: [DiffAnchor: Int]] = [:]
 
     var lineComments: [ReviewLineComment] {
         comments.sorted { $0.key < $1.key }.flatMap { path, lines in
             lines.sorted { $0.key.line < $1.key.line }.map {
-                ReviewLineComment(path: path, line: $0.key.line, side: $0.key.side, body: $0.value)
+                ReviewLineComment(path: path, line: $0.key.line, side: $0.key.side, body: $0.value, startLine: starts[path]?[$0.key])
             }
         }
     }
 
     var isEmpty: Bool { body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && lineComments.isEmpty }
 
-    mutating func set(_ text: String, path: String, anchor: DiffAnchor) {
+    /// `startLine`: the first line when the comment covers several; an empty text removes the draft.
+    mutating func set(_ text: String, path: String, anchor: DiffAnchor, startLine: Int? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         var lines = comments[path] ?? [:]
         lines[anchor] = trimmed.isEmpty ? nil : trimmed
         comments[path] = lines.isEmpty ? nil : lines
+        var first = starts[path] ?? [:]
+        first[anchor] = trimmed.isEmpty ? nil : startLine.flatMap { $0 < anchor.line ? $0 : nil }
+        starts[path] = first.isEmpty ? nil : first
     }
 
     func comment(path: String, anchor: DiffAnchor) -> String? { comments[path]?[anchor] }
+
+    func startLine(path: String, anchor: DiffAnchor) -> Int? { starts[path]?[anchor] }
+
+    /// Whether a draft covers this line: the diff tints the lines a comment is about.
+    func covers(path: String, anchor: DiffAnchor) -> Bool {
+        (comments[path] ?? [:]).keys.contains { end in
+            end.side == anchor.side && (starts[path]?[end] ?? end.line) <= anchor.line && anchor.line <= end.line
+        }
+    }
 }

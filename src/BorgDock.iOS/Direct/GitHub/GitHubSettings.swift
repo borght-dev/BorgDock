@@ -9,6 +9,10 @@ struct GitHubSettings: Codable, Equatable, Sendable {
     var includeTeamRequests = true
     /// A pull request not updated for this many days counts as stale.
     var staleAfterDays = 7
+    /// How old the list may get before a screen that asks reads GitHub again. Nil: `GitHubDirect.pollEvery`.
+    var refreshSeconds: Int?
+
+    static let refreshChoices = [60, 120, 300]
 
     static let storeKey = "github.settings"
     static let maxRepositories = 200
@@ -22,6 +26,7 @@ struct GitHubSettings: Codable, Equatable, Sendable {
         includeInvolving = try container.decodeIfPresent(Bool.self, forKey: .includeInvolving) ?? true
         includeTeamRequests = try container.decodeIfPresent(Bool.self, forKey: .includeTeamRequests) ?? true
         staleAfterDays = try container.decodeIfPresent(Int.self, forKey: .staleAfterDays) ?? 7
+        refreshSeconds = try container.decodeIfPresent(Int.self, forKey: .refreshSeconds)
     }
 
     /// Valid owner/repo names, each once: GitHub ignores case, so the first spelling wins.
@@ -49,6 +54,12 @@ struct GitHubSettings: Codable, Equatable, Sendable {
     }
 
     static func repositorySearch(_ name: String) -> String { "is:open is:pr archived:false repo:\(name)" }
+
+    /// A repository's pull requests merged on or after `since` (`2026-11-16`).
+    static func mergedSearch(_ name: String, since: String) -> String { "is:merged is:pr merged:>=\(since) repo:\(name)" }
+
+    /// Merged pull requests that involve you, in any repository.
+    static func mergedInvolvingSearch(since: String) -> String { "is:merged is:pr merged:>=\(since) involves:@me archived:false" }
 }
 
 /// What the phone remembers about pull requests that GitHub doesn't keep: snoozes and when a review request was first seen.

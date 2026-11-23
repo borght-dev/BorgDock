@@ -5,8 +5,14 @@ import Foundation
 protocol PullRequestBackend: Sendable {
     /// The open pull requests. `fresh` reads GitHub now instead of answering from the last poll (pull to refresh).
     func focus(fresh: Bool) async throws -> Focus
+    /// Merged in the last week, in the repositories read and where it involves you: what BorgDock Review's search
+    /// shows beside the open ones. The server keeps no such list and answers none.
+    func mergedThisWeek() async throws -> [PrSummary]
     func pullRequest(_ key: PrKey) async throws -> PrDetail
     func pullRequestFiles(_ key: PrKey) async throws -> PrFiles
+    /// What changed between the commit you reviewed and the head: a re-review's own, shorter diff. Nil when there is
+    /// none to give: you never reviewed it, nothing was pushed since, or a force-push dropped the commit you reviewed.
+    func pullRequestFilesSinceReview(_ key: PrKey) async throws -> PrFiles?
     func conversation(_ key: PrKey) async throws -> PrConversation
     func postComment(_ key: PrKey, _ request: PostCommentRequest) async throws -> OKResponse
     func resolveThread(_ key: PrKey, threadId: String) async throws -> OKResponse
@@ -29,4 +35,9 @@ protocol WorkItemBackend: Sendable {
     func postItemComment(itemId: Int, text: String) async throws -> ItemComment
     /// Where an image or attachment in an item's text loads from.
     func resolve(_ pathOrURL: String) -> URL?
+}
+
+extension PullRequestBackend {
+    /// The server has no such read; its re-reviews mark the files that changed and show the whole diff.
+    func pullRequestFilesSinceReview(_ key: PrKey) async throws -> PrFiles? { nil }
 }

@@ -171,6 +171,29 @@ extension GitHubDirect {
         }
     }
 
+    /// The diff between the commit you reviewed and the head, file by file: what a re-review reads.
+    func pullRequestFilesSinceReview(_ key: PrKey) async throws -> PrFiles? {
+        let (record, _, _, account) = try await record(of: key)
+        guard let reviewed = record.myReview(account)?.commitSha, reviewed != record.headSha else { return nil }
+        do {
+            let compare = try await client(account).rest("GET", "/repos/\(key.owner)/\(key.repo)/compare/\(reviewed)...\(record.headSha)", as: RawCompare.self)
+            let statuses: [String: PrFileStatus] = ["added": .added, "removed": .removed, "renamed": .renamed, "copied": .added]
+            let files = (compare.files ?? []).map { file in
+                PrFile(
+                    path: file.filename, previousPath: file.previous_filename, status: statuses[file.status] ?? .modified,
+                    additions: file.additions, deletions: file.deletions, patch: file.patch, changedSinceReview: true,
+                    category: FileCategory.of(file.filename, hasPatch: file.patch != nil)
+                )
+            }
+            return PrFiles(headSha: record.headSha, reviewedHeadSha: reviewed, files: files)
+        } catch let error as GitHubError where error.status == 404 {
+            // A force-push dropped the commit you reviewed: there is nothing to compare with.
+            return nil
+        } catch let error as GitHubError {
+            throw error.shown
+        }
+    }
+
     /// The files touched after your last review; nil when every file counts, because a force-push dropped the
     /// commit you reviewed.
     private func changedSince(_ reviewed: String?, record: PrRecord, client: GitHubClient, repository: String) async throws -> Set<String>? {

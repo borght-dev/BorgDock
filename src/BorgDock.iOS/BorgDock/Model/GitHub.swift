@@ -111,6 +111,9 @@ struct PrSummary: Codable, Hashable, Sendable, Identifiable {
     let priorityScore: Int?
     /// The head commit's failed checks, one per check: what E2E reports and shared CI failures are judged by.
     let failedChecks: [FailedCheck]?
+    /// When the review that is still open was asked: yours while it waits on you, else the first of the reviewers
+    /// still pending. BorgDock Review's overview shows it as how long a row has waited; the server doesn't send it.
+    var reviewRequestedAt: String? = nil
 
     var id: String { key }
     var prKey: PrKey { PrKey(owner: owner, repo: repo, number: number) }
@@ -139,6 +142,10 @@ struct PrLatestReview: Codable, Hashable, Sendable {
     let login: String
     let state: State
     let commitSha: String?
+    /// When it was submitted; the server doesn't send it.
+    var submittedAt: String? = nil
+    /// Commits pushed after the one it reviewed; nil when that commit is older than the newest twenty, or unknown.
+    var commitsSince: Int? = nil
 }
 
 struct AgentWaiting: Codable, Hashable, Sendable, Identifiable {
@@ -401,6 +408,12 @@ struct ReviewThread: Codable, Hashable, Sendable, Identifiable {
     let diffHunk: String?
     let isResolved: Bool
     let comments: [PrComment]
+    /// Which side of the diff the thread is on, and the first line when it covers several. The server sends neither:
+    /// a thread without a side sits on the new file's line.
+    var side: DiffSide? = nil
+    var startLine: Int? = nil
+    /// The line the thread was left on has changed since.
+    var isOutdated: Bool? = nil
 }
 
 /// GET /api/prs/:owner/:repo/:number/comments
@@ -431,6 +444,11 @@ struct ReviewLineComment: Codable, Hashable, Sendable {
     let line: Int
     let side: DiffSide
     let body: String
+    /// The first line of a comment on several lines; `line` is its last. Left out for a comment on one line.
+    var startLine: Int? = nil
+
+    /// "15" or "15 to 17".
+    var lines: String { startLine.map { "\($0) to \(line)" } ?? "\(line)" }
 }
 
 /// POST /api/prs/:owner/:repo/:number/reviews (signed). 409 when headSha moved on.

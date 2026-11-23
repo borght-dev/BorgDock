@@ -12,6 +12,8 @@ let sources = [
     "BorgDock/Model/GitHub.swift",
     "BorgDock/Model/Platform.swift",
     "BorgDock/Model/PrKey.swift",
+    "BorgDock/Model/PrSummaryFacts.swift",
+    "BorgDock/Features/Ledger/Ledger.swift",
     "BorgDock/Networking/APIError.swift",
     "Shared/Model/Shared.swift",
     "Direct",

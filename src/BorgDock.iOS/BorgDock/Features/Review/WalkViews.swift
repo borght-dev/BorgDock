@@ -7,6 +7,8 @@ import UIKit
 /// Swipe sideways to move; the new page slides in from the side you moved to.
 struct WalkPager<Page: View>: View {
     let session: ReviewSession
+    /// While a comment is being written the page stays: taps on the diff pick its lines.
+    var locked = false
     @ViewBuilder let page: (ReviewWalk.Position) -> Page
     @State private var drag: CGFloat = 0
 
@@ -27,13 +29,13 @@ struct WalkPager<Page: View>: View {
     private var swipe: some Gesture {
         DragGesture(minimumDistance: 24)
             .onChanged { value in
-                guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
+                guard !locked, abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
                 let possible = value.translation.width < 0 ? session.canGoForward : session.canGoBack
                 drag = value.translation.width * (possible ? 0.45 : 0.15)
             }
             .onEnded { value in
                 let width = value.predictedEndTranslation.width
-                let horizontal = abs(value.translation.width) > abs(value.translation.height) * 1.5
+                let horizontal = !locked && abs(value.translation.width) > abs(value.translation.height) * 1.5
                 withAnimation(.snappy(duration: 0.28)) {
                     if horizontal, width < -120 { session.goForward() }
                     if horizontal, width > 120 { session.goBack() }
@@ -123,58 +125,122 @@ struct WalkProgressBar: View {
 
 struct LineDraftTarget: Identifiable, Hashable {
     let path: String
-    let anchor: DiffAnchor
-    let code: String
+    /// The line the comment is left on: the last one when it covers several.
+    var anchor: DiffAnchor
+    /// The first line of a comment on several lines.
+    var startLine: Int? = nil
+    /// The text of the lines it covers.
+    var code: String
+    /// Where the draft being edited is kept now; nil for a new one.
+    var saved: DiffAnchor? = nil
+    /// BorgDock Review keeps one sheet while the comment grows to more lines; BorgDock opens one per line.
+    var growing = false
 
-    var id: String { "\(path)#\(anchor.side.rawValue)\(anchor.line)" }
+    var id: String { growing ? "\(path)#\(anchor.side.rawValue)" : "\(path)#\(anchor.side.rawValue)\(anchor.line)" }
+
+    func covers(_ other: DiffAnchor) -> Bool {
+        other.side == anchor.side && (startLine ?? anchor.line) <= other.line && other.line <= anchor.line
+    }
 }
 
 /// One file: a slim line with its status, your drafts and its size, then the diff. The name is in the navigation bar.
+/// In BorgDock Review other people's threads sit under their lines, and the lines of the comment being written are tinted.
 struct FilePage: View {
+    @Environment(AppModel.self) private var app
     let session: ReviewSession
     let file: PrFile
     let draft: ReviewDraft
-    let onLine: (LineDraftTarget) -> Void
+    /// The comment being written, when it is on this file.
+    var selection: LineDraftTarget?
+    var onReply: (ReviewThread) -> Void = { _ in }
+    /// A tap on a line's number, or on the draft under it.
+    let onLine: (DiffLine) -> Void
+    /// BorgDock Review: a two-finger pinch changes the diff's type size, and the size is kept.
+    @AppStorage(FilePage.textSizeKey) private var textSize = FilePage.defaultTextSize
+    @State private var pinchStart: Double?
+
+    static let textSizeKey = "review.diffTextSize"
+    static let defaultTextSize = 11.5
+    static let textSizes = 9.0...17.0
 
     var body: some View {
         let language = SyntaxHighlighter.language(for: file.path)
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                meta
-                if file.patch == nil {
-                    Text(file.status == .removed ? "File removed." : "No diff to show: binary or too large.")
-                        .font(.subheadline).foregroundStyle(BD.text2).padding(16)
-                } else {
-                    LazyVStack(spacing: 0) {
-                        ForEach(session.lines(file)) { line in
-                            DiffLineRow(line: line, language: language, fontSize: 11.5) {
-                                if let anchor = line.anchor { onLine(LineDraftTarget(path: file.path, anchor: anchor, code: line.text)) }
-                            }
-                            if let anchor = line.anchor, let text = draft.comment(path: file.path, anchor: anchor) {
-                                DraftBubble(line: anchor.line, text: text)
-                                    .tappable({ onLine(LineDraftTarget(path: file.path, anchor: anchor, code: line.text)) }, label: "Edit your draft on line \(anchor.line)")
+        let lines = session.lines(file)
+        let threads = app.isReview
+            ? WalkThreads.place(app.focus.conversations[session.key.key]?.threads ?? [], path: file.path, lines: lines)
+            : WalkThreads.Placed()
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    meta(threads: threads.count)
+                    if app.isReview, session.sinceFiles != nil { ReReviewBanner(session: session) }
+                    if !threads.elsewhere.isEmpty {
+                        WalkThreadsElsewhere(key: session.key, threads: threads.elsewhere, sinceReview: session.scope == .sinceReview, onReply: onReply)
+                    }
+                    if file.patch == nil {
+                        Text(file.status == .removed ? "File removed." : "No diff to show: binary or too large.")
+                            .font(.subheadline).foregroundStyle(BD.text2).padding(16)
+                    } else {
+                        LazyVStack(spacing: 0) {
+                            ForEach(lines) { line in
+                                DiffLineRow(
+                                    line: line, language: language, fontSize: app.isReview ? textSize : Self.defaultTextSize,
+                                    selected: line.anchor.map { selection?.covers($0) ?? false } ?? false,
+                                    covered: line.anchor.map { draft.covers(path: file.path, anchor: $0) } ?? false
+                                ) { tap(line) }
+                                .id(line.id)
+                                ForEach(threads.byLine[line.id] ?? []) { thread in
+                                    WalkThreadView(key: session.key, thread: thread, changedSince: changedSince(thread, line), onReply: onReply)
+                                }
+                                if let anchor = line.anchor, let text = draft.comment(path: file.path, anchor: anchor) {
+                                    DraftBubble(line: anchor.line, startLine: draft.startLine(path: file.path, anchor: anchor), text: text)
+                                        .tappable({ tap(line) }, label: "Edit your draft on line \(anchor.line)")
+                                }
                             }
                         }
+                        .padding(.top, 4)
                     }
-                    .padding(.top, 4)
                 }
+                // Room to bring any line above the bar, or above the comment sheet while one is open.
+                .padding(.bottom, selection == nil ? 170 : 420)
             }
-            .padding(.bottom, 170)
+            .scrollIndicators(.hidden)
+            .simultaneousGesture(MagnifyGesture().onChanged { pinch in
+                guard app.isReview else { return }
+                let start = pinchStart ?? textSize
+                pinchStart = start
+                textSize = min(Self.textSizes.upperBound, max(Self.textSizes.lowerBound, (start * pinch.magnification * 2).rounded() / 2))
+            }.onEnded { _ in pinchStart = nil })
+            .onChange(of: selection?.anchor) { _, anchor in
+                guard let anchor, let line = lines.first(where: { $0.anchor == anchor }) else { return }
+                withAnimation(.snappy) { proxy.scrollTo(line.id, anchor: UnitPoint(x: 0, y: 0.3)) }
+            }
         }
-        .scrollIndicators(.hidden)
         .background(BD.bg)
         .accessibilityIdentifier("walk-page-\(file.path)")
     }
 
-    private var meta: some View {
+    private func tap(_ line: DiffLine) {
+        if line.anchor != nil { onLine(line) }
+    }
+
+    /// In the diff since your review, a thread on a line that was added answers it in code.
+    private func changedSince(_ thread: ReviewThread, _ line: DiffLine) -> Bool {
+        session.scope == .sinceReview && line.kind == .added
+    }
+
+    private func meta(threads: Int) -> some View {
         let drafts = draft.comments[file.path]?.count ?? 0
         return VStack(spacing: 0) {
             HStack(spacing: 8) {
                 ToneChip(text: file.status.label, small: true)
-                if session.isReReview, file.changedSinceReview {
+                if session.isReReview, file.changedSinceReview, session.sinceFiles == nil {
                     ToneChip(text: "Changed since your review", tone: .warn, small: true)
                 }
-                if drafts > 0 {
+                if app.isReview {
+                    let summary = WalkThreads.summary(threads: threads, drafts: drafts)
+                    if !summary.isEmpty { Text(summary).lineLimit(1).accessibilityIdentifier("walk-file-summary") }
+                } else if drafts > 0 {
                     Text(drafts == 1 ? "1 draft comment" : "\(drafts) draft comments").lineLimit(1)
                 }
                 Spacer(minLength: 6)

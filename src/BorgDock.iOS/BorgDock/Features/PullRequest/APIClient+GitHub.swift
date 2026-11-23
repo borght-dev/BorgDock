@@ -9,6 +9,8 @@ extension APIClient {
         try await get("/api/focus", query: fresh ? [URLQueryItem(name: "refresh", value: "1")] : [])
     }
 
+    func mergedThisWeek() async throws -> [PrSummary] { [] }
+
     func pullRequest(_ key: PrKey) async throws -> PrDetail { try await get(key.apiPath) }
 
     func pullRequestFiles(_ key: PrKey) async throws -> PrFiles { try await get(key.apiPath + "/files") }

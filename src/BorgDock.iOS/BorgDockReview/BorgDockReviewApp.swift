@@ -34,10 +34,9 @@ struct ReviewRootView: View {
     var body: some View {
         ZStack {
             BD.bg.ignoresSafeArea()
-            if app.isSignedIn {
-                ReviewHome()
-            } else if let direct = app.direct {
-                ConnectView(session: direct)
+            if let direct = app.direct {
+                // The first run's steps stay up until the last one is done, though the first already signs you in.
+                if app.isSignedIn, !direct.isSettingUp { ReviewHome() } else { SetupFlow(session: direct) }
             }
         }
         .overlay(alignment: .top) { ToastView() }
@@ -48,26 +47,22 @@ struct ReviewRootView: View {
     }
 }
 
-/// One stack: the pull request list, and everything opened from it.
+/// One stack: the overview, and everything opened from it. Settings sit behind the avatar of its title bar.
 struct ReviewHome: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
         @Bindable var router = app.router
         NavigationStack(path: $router.pullRequestsPath) {
-            PullRequestsView()
+            LedgerView()
                 .routeDestinations()
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button { app.router.present(.settings) } label: { Image(systemName: "gearshape").foregroundStyle(BD.text) }
-                            .accessibilityLabel("Settings")
-                            .accessibilityIdentifier("open-settings")
-                    }
-                }
         }
         .sheet(item: $router.sheet) { SheetHost(sheet: $0) }
         .fullScreenCover(item: $router.cover) { CoverHost(cover: $0) }
         .task { await app.focus.loadPreferences() }
         .task { await DebugRoute.apply(to: app) }
+        #if DEBUG
+        .task { await I1DebugRoute.apply(app) }
+        #endif
     }
 }

@@ -29,11 +29,13 @@ struct ReviewWalk: Hashable {
     private let byPath: [String: PrFile]
     private let groupByPath: [String: Group]
 
-    init(_ all: [PrFile]) {
+    /// `steps`: the kinds read as one step. A kind left out is read file by file, after the source and the docs.
+    init(_ all: [PrFile], steps kinds: Set<Group> = [.tests, .generated]) {
         let ordered = ReviewWalk.folderOrder(all)
-        let tests = all.filter { $0.kind == .tests }
-        let generated = all.filter { $0.kind == .generated }
-        files = ordered.filter { $0.kind == .source } + ordered.filter { $0.kind == .docs }
+        let tests = kinds.contains(.tests) ? all.filter { $0.kind == .tests } : []
+        let generated = kinds.contains(.generated) ? all.filter { $0.kind == .generated } : []
+        let single = (kinds.contains(.tests) ? [] : ordered.filter { $0.kind == .tests }) + (kinds.contains(.generated) ? [] : ordered.filter { $0.kind == .generated })
+        files = ordered.filter { $0.kind == .source } + ordered.filter { $0.kind == .docs } + single
         self.tests = tests
         self.generated = generated
         let groups: [Group] = (tests.isEmpty ? [] : [.tests]) + (generated.isEmpty ? [] : [.generated])

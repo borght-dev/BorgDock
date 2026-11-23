@@ -5,6 +5,7 @@ import SwiftUI
 /// The bottom holds the next step, or the reply box while you read the comments. Mockup: design/ios-flow, section 04.
 struct PullRequestView: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.pullRequestPeek) private var peek
     let key: PrKey
     @State private var selection: String?
     @State private var jumpingTo: PrPageSection?
@@ -60,6 +61,11 @@ struct PullRequestView: View {
                 Group {
                     if selection == PrPageSection.comments.rawValue {
                         CommentComposer(key: key, detail: detail)
+                    } else if peek {
+                        // Inside a work item's sheet the page only reads.
+                        EmptyView()
+                    } else if app.isReview {
+                        PrReviewBottomBar(detail: detail)
                     } else {
                         PrBottomBar(detail: detail, offersFix: selection == nil || selection == PrPageSection.checks.rawValue)
                     }
@@ -73,6 +79,7 @@ struct PullRequestView: View {
             }
         }
         .environment(\.markdownWorkItemTypes, Dictionary((detail?.workItems ?? []).map { ($0.id, $0.typeName) }, uniquingKeysWith: { first, _ in first }))
+        .transformEnvironment(\.linkNavigator) { $0.from = key }
         .refreshable { await reload() }
         .task {
             await reload()
@@ -121,7 +128,11 @@ struct PullRequestView: View {
         switch section {
         case .checks:
             VStack(alignment: .leading, spacing: 0) {
-                PrSectionLabel(title: "Checks", trailing: ChecksLabel.text(detail.checkRuns))
+                if app.isReview {
+                    PrChecksLabel(detail: detail)
+                } else {
+                    PrSectionLabel(title: "Checks", trailing: ChecksLabel.text(detail.checkRuns))
+                }
                 ChecksContent(detail: detail, files: app.focus.files[key.key]?.files ?? []).padding(.horizontal, 16)
             }
         case .proof:
@@ -133,9 +144,12 @@ struct PullRequestView: View {
             VStack(alignment: .leading, spacing: 0) {
                 PrSectionLabel(title: "Description")
                 PrDescription(detail: detail).padding(.horizontal, 16)
+                if app.isReview, let files = app.focus.files[key.key]?.files, !files.isEmpty { PrWhatChanged(files: files) }
             }
+        case .reviewers:
+            PrReviewersSection(rows: reviewers(detail))
         case .comments:
-            PrCommentsSection(key: key, detail: detail)
+            PrCommentsSection(key: key, detail: detail, conversation: app.isReview)
         case .files:
             PrFilesSection(detail: detail)
         }
@@ -143,14 +157,24 @@ struct PullRequestView: View {
 
     private func jumpBar(_ detail: PrDetail) -> some View {
         let comments = PrComments(conversation: app.focus.conversations[key.key], reviews: detail.reviews)
-        let items = PrPageSection.jumpItems(order(detail), proof: detail.proofImages.count, comments: comments.count, files: detail.changedFiles)
+        let items = PrPageSection.jumpItems(
+            order(detail), proof: detail.proofImages.count, comments: comments.count, files: detail.changedFiles,
+            reviewers: reviewers(detail).count, conversation: app.isReview
+        )
         return JumpBar(items: items, selection: $selection) { id in
             if let section = PrPageSection(rawValue: id) { jump(to: section) }
         }
     }
 
     private func order(_ detail: PrDetail) -> [PrPageSection] {
-        PrPageSection.order(failing: detail.checks.failed > 0, hasProof: !detail.proofImages.isEmpty)
+        PrPageSection.order(failing: detail.checks.failed > 0, hasProof: !detail.proofImages.isEmpty, hasReviewers: !reviewers(detail).isEmpty)
+    }
+
+    /// BorgDock Review's Reviewers section; BorgDock's page has none.
+    private func reviewers(_ detail: PrDetail) -> [PrReviewerRow] {
+        guard app.isReview else { return [] }
+        let teams = Array(Set((app.focus.focus?.teams ?? [:]).values.flatMap { $0 }))
+        return PrReviewers.rows(detail, myLogins: app.focus.myLogins.union(app.reviewAccounts.map(\.login)), myTeams: teams)
     }
 
     // MARK: Scrolling
@@ -220,14 +244,14 @@ struct PullRequestView: View {
                     if compactTitle, let url = URL(string: detail.url) {
                         ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
                     }
-                    if detail.checks.failed > 0 {
+                    if detail.checks.failed > 0, app.canRerunChecks(of: detail.summary) {
                         Button { Task { await app.focus.rerunFailed(key) } } label: { Label("Rerun failed checks", systemImage: "arrow.counterclockwise") }
                     }
                     if !detail.checkRuns.isEmpty {
                         Button { app.router.present(.checks(key)) } label: { Label("All checks", systemImage: "checklist") }
                     }
                     Divider()
-                    PrContextMenu(pr: detail.summary)
+                    if app.isReview { PrPageMenu(pr: detail.summary) } else { PrContextMenu(pr: detail.summary) }
                 } label: {
                     Image(systemName: "ellipsis")
                 }
@@ -240,6 +264,7 @@ struct PullRequestView: View {
 
 struct PrHeader: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.linkNavigator) private var navigator
     let detail: PrDetail
     let openChecks: () -> Void
 
@@ -278,6 +303,14 @@ struct PrHeader: View {
                 .padding(.top, 11)
             }
 
+            if app.isReview {
+                PrTrackLine(detail: detail, openChecks: openChecks).padding(.top, 9)
+                ForEach(detail.workItemIds, id: \.self) { id in
+                    let item = detail.workItems.first { $0.id == id }
+                    PrWorkItemCard(id: id, item: item) { navigator.openWorkItem(ItemRoute(id: id, prefill: item), app: app) }
+                        .padding(.top, 9)
+                }
+            } else {
             FlowLayout {
                 if let chip = checksChip {
                     Button(action: openChecks) { PrChipView(chip: chip) }.buttonStyle(.plain)
@@ -296,6 +329,7 @@ struct PrHeader: View {
                 }
             }
             .padding(.top, 11)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 4)
@@ -405,5 +439,34 @@ struct PrBottomBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 4)
+    }
+}
+
+/// The pull request page's menu in BorgDock Review: snooze and the links. Review, Merge and the work item are on the page.
+struct PrPageMenu: View {
+    @Environment(AppModel.self) private var app
+    let pr: PrSummary
+
+    var body: some View {
+        let focus = app.focus
+        if pr.state == .open {
+            if !pr.isMine, !pr.isDraft {
+                Button { app.router.reviewAuthor(pr.author.login, first: pr.prKey) } label: {
+                    Label("Review \(pr.author.firstName)'s pull requests, oldest first", systemImage: "person.2")
+                }
+            }
+            Button {
+                Task {
+                    await focus.snoozeUntilTomorrow(pr.prKey)
+                    app.router.pullRequestsPath.removeAll { $0 == .pullRequest(pr.prKey) }
+                }
+            } label: { Label("Snooze until tomorrow", systemImage: "moon") }
+        }
+        Button { focus.copyBranch(pr) } label: { Label("Copy branch name", systemImage: "arrow.triangle.branch") }
+        Button {
+            UIPasteboard.general.string = pr.url
+            app.toasts.show("Copied the link to #\(pr.number)")
+        } label: { Label("Copy link", systemImage: "link") }
+        Button { focus.openOnGitHub(pr) } label: { Label("Open on GitHub", systemImage: "arrow.up.right.square") }
     }
 }

@@ -11,10 +11,13 @@ struct DecideSheet: View {
     var onWalked: () -> Void = {}
     let onJump: (String) -> Void
     @FocusState private var focused: Bool
+    /// BorgDock Review: "Merge when checks pass", off until you turn it on.
+    @State private var mergeWhenReady = false
 
     var body: some View {
         let key = session.key
-        let locked = session.left > 0
+        // BorgDock Review's "Read every file before approving" can be turned off; then Approve is never locked.
+        let locked = session.left > 0 && !(app.isReview && !ReviewPreferences.readAll())
         let busy = app.busy.contains("review-\(key.key)")
         let own = session.detail?.isMine ?? false
         ScrollView {
@@ -47,7 +50,7 @@ struct DecideSheet: View {
                         ForEach(Array(comments.enumerated()), id: \.offset) { index, comment in
                             HStack(spacing: 10) {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(verbatim: "\(comment.path.splitPath.name):\(comment.line)")
+                                    Text(verbatim: app.isReview ? "\(comment.path.splitPath.name) · \(comment.lines)" : "\(comment.path.splitPath.name):\(comment.line)")
                                         .font(.system(size: 13, weight: .semibold))
                                         .foregroundStyle(BD.accentText)
                                     Text(comment.body).font(.system(size: 15.5)).foregroundStyle(BD.text).lineLimit(1)
@@ -74,6 +77,8 @@ struct DecideSheet: View {
                         .buttonStyle(.bdPrimary)
                         .disabled(busy)
                         .accessibilityIdentifier("decide-walked")
+                } else if app.isReview {
+                    reviewDecisions(locked: locked, busy: busy)
                 } else {
                     decisions(locked: locked, busy: busy)
                 }
@@ -117,6 +122,53 @@ struct DecideSheet: View {
                 .padding(.top, 2)
                 .disabled(locked || busy)
         }
+    }
+
+    /// BorgDock Review's order: the auto-merge switch, Approve, then the two decisions that post at once.
+    @ViewBuilder
+    private func reviewDecisions(locked: Bool, busy: Bool) -> some View {
+        if let detail = session.detail, !detail.autoMerge, detail.viewerCanMerge {
+            Toggle(isOn: $mergeWhenReady) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Merge when checks pass").font(.system(size: 16, weight: .medium)).foregroundStyle(BD.text)
+                    Text("GitHub's auto-merge, once you approve").font(.system(size: 13)).foregroundStyle(BD.text2)
+                }
+            }
+            .tint(BD.green)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(BD.fill, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .disabled(locked)
+            .accessibilityIdentifier("decide-auto-merge")
+        }
+
+        Button { approve(thenMerge: mergeWhenReady) } label: {
+            if locked {
+                Label("Approve · \(session.left) left", systemImage: "lock")
+            } else {
+                Label(mergeWhenReady ? "Approve and merge when ready" : "Approve", systemImage: "checkmark")
+            }
+        }
+        .buttonStyle(.bdPrimary)
+        .disabled(locked || busy)
+        .padding(.top, 2)
+        .accessibilityIdentifier("decide-approve")
+
+        HStack(spacing: 12) {
+            Button("Request changes") { post(.requestChanges) }
+                .buttonStyle(.bd(.danger, height: 50))
+                .disabled(busy || draft.isEmpty)
+            Button("Comment") { post(.comment) }
+                .buttonStyle(.bd(.plain, height: 50))
+                .disabled(busy || draft.isEmpty)
+        }
+
+        Text(locked ? "Approve unlocks when every file and step is reviewed." : "Approve posts after 5 seconds. Until then you can undo it.")
+            .font(.system(size: 13))
+            .foregroundStyle(BD.text3)
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
+            .padding(.top, 2)
     }
 
     private func post(_ event: ReviewEvent) {

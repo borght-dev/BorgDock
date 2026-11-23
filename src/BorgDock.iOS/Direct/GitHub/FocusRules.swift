@@ -68,6 +68,11 @@ struct PrRecord: Hashable, Sendable {
     let checks: [CheckContext]
     /// The newest commit ids, oldest first (at most 20).
     let recentCommits: [String]
+    /// When each reviewer was last asked, by `reviewerKey`; empty when the timeline wasn't read.
+    var reviewRequestTimes: [String: String] = [:]
+
+    static func reviewerKey(login: String) -> String { login.lowercased() }
+    static func reviewerKey(team: String) -> String { "@" + FocusRules.normalizeTeamSlug(team) }
 
     var key: String { "\(owner)/\(repo)#\(number)" }
     var prKey: PrKey { PrKey(owner: owner, repo: repo, number: number) }

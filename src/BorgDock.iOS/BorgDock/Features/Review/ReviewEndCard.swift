@@ -8,6 +8,9 @@ struct ReviewEndCard: View {
     let run: ReviewRun
     let onAuthorNext: (PrSummary) -> Void
     let onNext: (PrKey) -> Void
+    /// BorgDock Review: Merge on one of your own pull requests, and the way back to the overview.
+    var onMerge: (PrKey) -> Void = { _ in }
+    var onDone: () -> Void = {}
 
     var body: some View {
         let focus = app.focus
@@ -65,7 +68,9 @@ struct ReviewEndCard: View {
                     .accessibilityIdentifier("review-end-held")
                 }
 
-                if next.author != nil || next.next != nil {
+                if app.isReview, !run.filling, queueIsEmpty {
+                    yourOwn
+                } else if next.author != nil || next.next != nil {
                     sectionHeader("What's next")
                     VStack(spacing: 10) {
                         if let author = next.author {
@@ -79,12 +84,89 @@ struct ReviewEndCard: View {
                         }
                     }
                     .padding(.horizontal, 16)
+                } else if app.isReview, !run.filling {
+                    yourOwn
                 }
             }
             .padding(.bottom, 40)
         }
         .scrollIndicators(.hidden)
         .accessibilityIdentifier("review-end")
+    }
+
+    /// Nothing asks for your review any more, apart from what this run decided on: BorgDock Review then turns to your
+    /// own pull requests. With reviews left, the card offers the next one as it always did.
+    private var queueIsEmpty: Bool {
+        guard let focus = app.focus.focus else { return false }
+        let decided = Set(run.shown.map(\.key).filter { app.focus.reviewDecisions[$0] != nil })
+        let asked = Ledger(focus.pullRequests, LedgerContext(focus: focus, app: app, now: .now)).rows(in: .toReview)
+        return asked.allSatisfy { decided.contains($0.pr.key) }
+    }
+
+    /// The review queue is empty, so what's next is your own: what can merge first, then how many need you.
+    @ViewBuilder
+    private var yourOwn: some View {
+        let ledger = app.focus.focus.map { Ledger($0.pullRequests, LedgerContext(focus: $0, app: app, now: .now)) }
+        let ready = ledger?.rows(in: .ready) ?? []
+        let needs = ledger?.rows(in: .needsYou) ?? []
+        if !ready.isEmpty || !needs.isEmpty {
+            sectionHeader("Next, your own")
+            card {
+                ForEach(Array(ready.prefix(3).enumerated()), id: \.element.id) { index, row in
+                    if index > 0 { divider(leading: 16) }
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.pr.title).font(.system(size: 15.5, weight: .semibold)).foregroundStyle(BD.text).lineLimit(1)
+                            // The checks go first when the line runs out of room: "approved" already says it can merge.
+                            ViewThatFits(in: .horizontal) {
+                                Text(verbatim: "\(row.pr.repo) #\(row.pr.number) · \(row.reason.text), \(LedgerChecks.summary(row.pr.checks).lowercased())")
+                                Text(verbatim: "\(row.pr.repo) #\(row.pr.number) · \(row.reason.text)")
+                            }
+                            .font(.system(size: 13))
+                            .foregroundStyle(BD.text2)
+                            .lineLimit(1)
+                        }
+                        Spacer(minLength: 6)
+                        Button("Merge") { onMerge(row.pr.prKey) }
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(BD.onGreen)
+                            .padding(.horizontal, 14)
+                            .frame(height: 32)
+                            .background(BD.green, in: Capsule())
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Merge #\(row.pr.number)")
+                            .accessibilityIdentifier("review-end-merge-\(row.pr.key)")
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 11)
+                }
+                if !needs.isEmpty {
+                    if !ready.isEmpty { divider(leading: 16) }
+                    Button(action: onDone) {
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(needs.count == 1 ? "1 needs you" : "\(needs.count) need you")
+                                    .font(.system(size: 15.5, weight: .semibold))
+                                    .foregroundStyle(BD.text)
+                                Text(ReviewEndSummary.needs(needs.map(\.reason.kind))).font(.system(size: 13)).foregroundStyle(BD.text2).lineLimit(1)
+                            }
+                            Spacer(minLength: 6)
+                            Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(BD.text3)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 11)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("review-end-needs-you")
+                }
+            }
+        }
+        Button("Back to the overview", action: onDone)
+            .buttonStyle(.bd(.plain, height: 50))
+            .padding(.horizontal, 16)
+            .padding(.top, 18)
+            .accessibilityIdentifier("review-end-overview")
     }
 
     private func counts(_ summary: ReviewEndSummary) -> some View {

@@ -135,6 +135,8 @@ private struct ReviewCard<Content: View>: View {
 
 /// A pull request before its files: what it is and why (checks, proof, description), and what changed by kind.
 struct ReviewBrief: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.linkNavigator) private var navigator
     let session: ReviewSession
     /// Why a red pull request in an author run may be merged anyway: its failures are not its doing.
     var bypass: String?
@@ -149,7 +151,20 @@ struct ReviewBrief: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ReviewPrHeader(summary: detail.summary, commits: detail.commits)
-                    chips(detail.summary)
+                    if app.isReview {
+                        // The top of the pull request's page: where it stands, and what it is for.
+                        VStack(alignment: .leading, spacing: 9) {
+                            PrTrackLine(detail: detail, openChecks: {})
+                            ForEach(detail.workItemIds, id: \.self) { id in
+                                let item = detail.workItems.first { $0.id == id }
+                                PrWorkItemCard(id: id, item: item) { navigator.openWorkItem(ItemRoute(id: id, prefill: item), app: app) }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 9)
+                    } else {
+                        chips(detail.summary)
+                    }
                     if let bypass {
                         ReviewBanner(icon: "checkmark.shield", tone: .warn, title: "Red, but not its doing.", text: bypass)
                             .padding(.horizontal, 16)

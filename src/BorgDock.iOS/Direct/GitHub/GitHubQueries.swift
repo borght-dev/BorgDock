@@ -23,6 +23,9 @@ enum GitHubQueries {
       repository { name owner { login } defaultBranchRef { name } }
       labels(first: 20) { nodes { name color } }
       reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login } ... on Team { slug } } } }
+      requested: timelineItems(last: 20, itemTypes: [REVIEW_REQUESTED_EVENT]) {
+        nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { __typename ... on User { login } ... on Team { slug } } } }
+      }
       latestReviews(first: 25) { nodes { state submittedAt author { login } commit { oid } } }
       head: commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100) { \(checkContexts) } } } } }
       recent: commits(last: 20) { nodes { commit { oid } } }
@@ -78,7 +81,7 @@ enum GitHubQueries {
       query PrConversation($owner: String!, $repo: String!, $number: Int!) {
         repository(owner: $owner, name: $repo) {
           pullRequest(number: $number) {
-            reviewThreads(first: 100) { nodes { id path line originalLine isResolved
+            reviewThreads(first: 100) { nodes { id path line originalLine startLine diffSide isOutdated isResolved
               comments(first: 50) { nodes { id body createdAt diffHunk author { login avatarUrl ... on User { name } } reactionGroups { content reactors { totalCount } } } } } }
             comments(last: 100) { nodes { id body createdAt author { login avatarUrl ... on User { name } } reactionGroups { content reactors { totalCount } } } }
           }
@@ -207,6 +210,12 @@ struct RawPullRequest: Decodable, Sendable {
         let requestedReviewer: Reviewer?
     }
 
+    /// A review request as the timeline has it: who was asked, and when.
+    struct RequestEvent: Decodable, Sendable {
+        let createdAt: String
+        let requestedReviewer: ReviewRequest.Reviewer?
+    }
+
     struct LatestReview: Decodable, Sendable {
         struct Commit: Decodable, Sendable { let oid: String }
 
@@ -248,6 +257,8 @@ struct RawPullRequest: Decodable, Sendable {
     let repository: Repository
     let labels: Nodes<PrLabel>?
     let reviewRequests: Nodes<ReviewRequest>?
+    /// The newest review requests of the timeline; an answer without them still reads.
+    let requested: Nodes<Lenient<RequestEvent>>?
     let latestReviews: Nodes<LatestReview>?
     let head: RawHead
     let recent: Nodes<RecentCommit>
@@ -360,6 +371,9 @@ struct RawConversation: Decodable, Sendable {
         let path: String?
         let line: Int?
         let originalLine: Int?
+        let startLine: Int?
+        let diffSide: String?
+        let isOutdated: Bool?
         let isResolved: Bool
         let comments: Nodes<Comment>
     }
@@ -467,8 +481,21 @@ enum GitHubMapping {
                 return ReviewRecord(login: author.login, state: state, submittedAt: review.submittedAt, commitSha: review.commit?.oid)
             },
             checks: raw.head.checks,
-            recentCommits: raw.recent.nodes.map(\.commit.oid)
+            recentCommits: raw.recent.nodes.map(\.commit.oid),
+            reviewRequestTimes: requestTimes(raw.requested?.nodes.compactMap(\.value) ?? [])
         )
+    }
+
+    /// When each reviewer was last asked, by `PrRecord.reviewerKey`.
+    static func requestTimes(_ events: [RawPullRequest.RequestEvent]) -> [String: String] {
+        var times: [String: String] = [:]
+        for event in events {
+            guard let reviewer = event.requestedReviewer else { continue }
+            let key = reviewer.typename == "Team" ? reviewer.slug.map(PrRecord.reviewerKey(team:)) : reviewer.login.map(PrRecord.reviewerKey(login:))
+            guard let key, event.createdAt > times[key, default: ""] else { continue }
+            times[key] = event.createdAt
+        }
+        return times
     }
 
     static func reviews(_ nodes: [RawReview]) -> [PrReview] {
@@ -493,7 +520,8 @@ enum GitHubMapping {
                 ReviewThread(
                     id: thread.id, path: thread.path, line: thread.line ?? thread.originalLine,
                     diffHunk: lastHunkLines(thread.comments.nodes.first?.diffHunk), isResolved: thread.isResolved,
-                    comments: thread.comments.nodes.map(comment)
+                    comments: thread.comments.nodes.map(comment),
+                    side: thread.diffSide.flatMap(DiffSide.init(rawValue:)), startLine: thread.startLine, isOutdated: thread.isOutdated
                 )
             },
             comments: pullRequest.comments.nodes.map(comment)
