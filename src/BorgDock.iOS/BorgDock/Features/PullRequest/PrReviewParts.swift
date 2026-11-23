@@ -11,7 +11,7 @@ struct PrTrackLine: View {
     var body: some View {
         HStack(spacing: 8) {
             Button(action: openChecks) {
-                PrTrackView(steps: detail.summary.track)
+                PrTrackView(steps: steps)
                     .frame(minHeight: 30)
                     .contentShape(Rectangle())
             }
@@ -21,6 +21,15 @@ struct PrTrackLine: View {
             Spacer(minLength: 6)
             DiffStat(additions: detail.additions, deletions: detail.deletions)
         }
+    }
+
+    /// While your review is asked the middle step is yours, whoever else approved already.
+    private var steps: [PrTrackStep] {
+        var steps = detail.summary.track
+        if steps.count == 3, detail.requestedFromYou, !detail.isMine, detail.state == .open {
+            steps[1] = PrTrackStep(label: "Your review", mark: .yours)
+        }
+        return steps
     }
 }
 
@@ -68,7 +77,7 @@ struct PrWorkItemCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(item.map { "\($0.type.label(typeName: $0.typeName)) AB#\(id), \($0.state), \($0.title)" } ?? "Work item AB#\(id)")
+        .accessibilityLabel(Text(verbatim: item.map { "\($0.type.label(typeName: $0.typeName)) AB#\(id), \($0.state), \($0.title)" } ?? "Work item AB#\(id)"))
         .accessibilityHint("Opens the work item")
         .accessibilityIdentifier("pr-work-item-\(id)")
     }
@@ -203,7 +212,6 @@ struct PrWhatChanged: View {
             .bdCard(radius: 20)
             .padding(.horizontal, 16)
         }
-        .accessibilityIdentifier("pr-what-changed")
     }
 }
 

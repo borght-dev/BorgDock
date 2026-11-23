@@ -58,6 +58,8 @@ struct LedgerRowView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(spoken)
             .accessibilityAddTraits(.isButton)
+            // On the button, not on the row: an identifier on a container replaces the ones inside it, Merge's too.
+            .accessibilityIdentifier("ledger-row-\(row.pr.key)")
             if let merge {
                 Button(action: merge) {
                     Text("Merge")

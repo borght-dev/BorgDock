@@ -581,7 +581,6 @@ struct WorkItemSheet: View {
         ))
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .accessibilityIdentifier("work-item-sheet")
     }
 
     private func reading(root: Bool) -> ItemReading {

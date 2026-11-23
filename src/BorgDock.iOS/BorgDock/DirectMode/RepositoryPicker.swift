@@ -119,7 +119,6 @@ struct RepositoryPicker: View {
         }
         .task { await load() }
         .onDisappear { if finish == nil { Task { await apply() } } }
-        .accessibilityIdentifier("repositories")
     }
 
     // MARK: Rows

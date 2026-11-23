@@ -61,5 +61,8 @@ struct ReviewHome: View {
         .fullScreenCover(item: $router.cover) { CoverHost(cover: $0) }
         .task { await app.focus.loadPreferences() }
         .task { await DebugRoute.apply(to: app) }
+        #if DEBUG
+        .task { await I1DebugRoute.apply(app) }
+        #endif
     }
 }

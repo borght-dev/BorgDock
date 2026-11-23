@@ -35,6 +35,7 @@
   .decided { margin-top: 44px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
   .dbox { padding: 22px 26px; border-radius: 22px; background: #151618; border: 1px solid rgba(92, 201, 143, .3); font-size: 14.5px; line-height: 1.6; color: #c9cad0; }
   .dbox.open { border: 1px dashed rgba(229, 180, 84, .45); }
+  .dbox.built { grid-column: 1 / -1; border-color: rgba(127, 126, 255, .4); }
   .dbox h2 { margin: 0 0 6px; font-size: 19px; color: #ededef; letter-spacing: -.01em; }
   .dbox ul { margin: 0; padding-left: 18px; }
   .dbox li { margin: 5px 0; }
@@ -687,6 +688,19 @@
       <li><b>The pull request page, Quick Review, the work item and setup</b> <span class="why">as drawn below.</span></li>
     </ul>
     <p style="margin:10px 0 0;color:#8e8f96;font-size:13px">My calls, made while working C out. Build them as drawn unless Koen says otherwise.</p>
+  </div>
+  <div class="dbox built">
+    <h2>Built, and where the app differs</h2>
+    <ul>
+      <li><b>Everything on this page is in the app.</b> <span class="why">Branch <code>feat/ios-review-ui</code>, 23 November 2026. Each screen is behind <code>app.isReview</code>: BorgDock keeps its own.</span></li>
+      <li><b>A comment takes several lines with two taps, not a drag.</b> <span class="why">Tap the first line, then the last. The diff scrolls and pages under the same finger, so a drag from the line number fought both. The keyboard waits for a tap in the box, or the sheet would cover the lines you are picking.</span></li>
+      <li><b>The token screen shows what GitHub tells.</b> <span class="why">A classic token's scopes come with every answer. A fine-grained token's permissions never do, so the app tries one read of pull requests and one of Actions. Writing can't be tried: Rerun shows until GitHub refuses one for that account.</span></li>
+      <li><b>A repository's row says what involves you.</b> <span class="why">"3 open involve you", or when it was last pushed to. "You reviewed 12 here this quarter" needs a search per repository.</span></li>
+      <li><b>A team in Reviewers has no head count.</b> <span class="why">"Team, anyone of it". GitHub gives the count only with a read per team.</span></li>
+      <li><b>Refresh is a choice of one, two or five minutes.</b> <span class="why">A minute unless you change it.</span></li>
+      <li><b>"Tests and generated files" chooses which are one step.</b> <span class="why">Both, either, or file by file. Which paths count as tests stays the app's rule.</span></li>
+      <li><b>The end card keeps today's counts.</b> <span class="why">Approved, commented, skipped. It doesn't time the run.</span></li>
+    </ul>
   </div>
 </div>
 

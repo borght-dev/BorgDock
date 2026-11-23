@@ -80,6 +80,8 @@ struct LedgerSectionHeader: View {
     var toggle: () -> Void = {}
     var startReview: (() -> Void)?
     var startDisabled = false
+    /// For UI tests. It goes on the header's own element: an identifier on a container replaces the ones inside it.
+    var identifier = ""
 
     var body: some View {
         HStack(spacing: 7) {
@@ -97,8 +99,9 @@ struct LedgerSectionHeader: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint(folded == true ? "Shows the pull requests" : "Folds the section")
+                .accessibilityIdentifier(identifier)
             } else {
-                label
+                label.accessibilityIdentifier(identifier)
                 Spacer(minLength: 8)
                 if let startReview {
                     Button(action: startReview) {
@@ -176,7 +179,6 @@ struct LedgerRows: View {
                         .tint(Color(light: 0x7B7E89, dark: 0x55565E))
                 }
             }
-            .accessibilityIdentifier("ledger-row-\(row.pr.key)")
         }
     }
 }

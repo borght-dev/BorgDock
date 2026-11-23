@@ -334,15 +334,12 @@ struct LineRangeDraftSheet: View {
                 }
             }
         }
-        .presentationDetents([.fraction(0.42), .large])
-        .presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.42)))
+        .presentationDetents([.fraction(0.36), .large])
+        .presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.36)))
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        .onAppear {
-            text = target.saved.flatMap { draft.comment(path: target.path, anchor: $0) } ?? ""
-            focused = true
-        }
-        .accessibilityIdentifier("line-draft-sheet")
+        // The keyboard waits for a tap in the box: with it up the sheet covers the diff, and the lines are picked there.
+        .onAppear { text = target.saved.flatMap { draft.comment(path: target.path, anchor: $0) } ?? "" }
     }
 
     private var isNit: Bool { text.lowercased().hasPrefix("nit:") }

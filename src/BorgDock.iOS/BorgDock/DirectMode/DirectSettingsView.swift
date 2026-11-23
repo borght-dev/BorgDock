@@ -66,6 +66,7 @@ struct DirectSettingsView: View {
                         Text(seconds == 60 ? "Every minute while open" : "Every \(seconds / 60) min while open").tag(seconds)
                     }
                 }
+                .pickerStyle(.navigationLink)
                 .accessibilityIdentifier("settings-refresh")
             }
 
@@ -75,6 +76,7 @@ struct DirectSettingsView: View {
                 Picker("Tests and generated files", selection: $steps) {
                     ForEach(ReviewPreferences.Steps.allCases) { Text($0.title).tag($0.rawValue) }
                 }
+                .pickerStyle(.navigationLink)
                 .accessibilityIdentifier("settings-steps")
                 Toggle("Face ID for approvals and merges", isOn: $session.faceIdForActions)
                     .accessibilityIdentifier("settings-face-id")

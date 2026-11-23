@@ -129,7 +129,6 @@ struct AzureDevOpsScreen: View {
         }
         .task(id: organization + "\n" + token) { await readProjects() }
         .onAppear(perform: prefill)
-        .accessibilityIdentifier("ado-screen")
     }
 
     // MARK: Parts

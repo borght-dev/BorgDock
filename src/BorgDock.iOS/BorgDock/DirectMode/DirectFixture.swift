@@ -58,7 +58,11 @@ enum DirectFixture {
         configuration.protocolClasses = [DirectFixtureProtocol.self]
         let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("direct-fixture-\(UUID().uuidString)", isDirectory: true)
         let defaults = UserDefaults(suiteName: "direct-fixture") ?? .standard
-        return DirectSession(store: FileStore(directory: scratch), defaults: defaults, session: URLSession(configuration: configuration), credentials: startCredentials)
+        // Its own Keychain item: an account added while trying the first run never becomes the app's real one.
+        return DirectSession(
+            vault: DirectCredentialStore(service: "dev.borght.borgdock.direct.fixture"), store: FileStore(directory: scratch), defaults: defaults,
+            session: URLSession(configuration: configuration), credentials: startCredentials
+        )
     }
 
     static let now = Date()
@@ -217,14 +221,15 @@ private enum GitHubFixture {
     static let pullRequests: [PullRequest] = [
         PullRequest(
             number: 412, title: "Keep the basket on timeout AB#60379", author: ("sanne", "Sanne de Vries"), body: basketBody, updatedHoursAgo: 2,
-            additions: 148, deletions: 37, files: 5, labels: [("frontend", "1d76db"), ("checkout", "5319e7")], requested: ["koen"],
+            additions: 148, deletions: 37, files: 5, labels: [("frontend", "1d76db"), ("checkout", "5319e7")], requested: ["koen"], teams: ["checkout"],
+            reviews: [("tom", "APPROVED", "c410")],
             checks: [Check(name: "build"), Check(name: "unit"), Check(name: "lint"), Check(name: "e2e / checkout", conclusion: "FAILURE"), Check(name: "types")],
-            requestedHoursAgo: 4 * 24
+            commits: ["c409", "c410", "c411", "head412"], requestedHoursAgo: 4 * 24, reviewedHoursAgo: 2 * 24
         ),
         PullRequest(
             number: 409, title: "Round totals per line, not per order AB#60402", author: ("mira", "Mira Jansen"), updatedHoursAgo: 5, additions: 62, deletions: 18, files: 4,
             labels: [("pricing", "0e8a16")], requested: ["koen"], reviews: [("koen", "COMMENTED", "c1")], commits: ["c1", "c2", "head409"],
-            requestedHoursAgo: 26
+            requestedHoursAgo: 26, reviewedHoursAgo: 26
         ),
         PullRequest(
             number: 415, title: "Cache the price list for a minute", author: ("tom", "Tom Bakker"), updatedHoursAgo: 1, additions: 31, deletions: 4, files: 2,
@@ -399,10 +404,11 @@ private enum GitHubFixture {
             var detail = node(pr)
             detail["commits"] = ["totalCount": pr.commits?.count ?? 3]
             detail["reviews"] = ["nodes": pr.reviews.map {
-                ["state": $0.state, "submittedAt": DirectFixture.ago(hours: pr.updatedHoursAgo + 3), "body": $0.state == "APPROVED" ? "" : "Close. See the notes on the retry.",
-                 "author": actor($0.login, $0.login.capitalized)] as [String: Any]
+                ["state": $0.state, "submittedAt": DirectFixture.ago(hours: pr.reviewedHoursAgo ?? pr.updatedHoursAgo + 3), "body": $0.state == "APPROVED" ? "" : "Close. See the notes on the retry.",
+                 "author": actor($0.login, names[$0.login] ?? $0.login.capitalized)] as [String: Any]
             }]
-            detail["reviewRequestsFull"] = ["nodes": pr.requested.map { ["requestedReviewer": ["__typename": "User", "login": $0, "name": $0 == "koen" ? "Koen Example" : $0.capitalized, "avatarUrl": NSNull()]] }]
+            detail["reviewRequestsFull"] = ["nodes": pr.requested.map { ["requestedReviewer": ["__typename": "User", "login": $0, "name": names[$0] ?? $0.capitalized, "avatarUrl": NSNull()]] }
+                + pr.teams.map { ["requestedReviewer": ["__typename": "Team", "slug": $0, "name": $0.capitalized, "avatarUrl": NSNull()]] }]
             return data(["repository": [
                 "squashMergeAllowed": true, "mergeCommitAllowed": false, "rebaseMergeAllowed": true, "deleteBranchOnMerge": true,
                 "viewerPermission": "WRITE", "viewerDefaultMergeMethod": "SQUASH", "pullRequest": detail,
@@ -413,7 +419,8 @@ private enum GitHubFixture {
                 "id": "PR_\(pr.repo)_\(pr.number)", "headRefOid": pr.headSha, "state": "OPEN", "headRefName": pr.branch, "isCrossRepository": false, "head": node(pr)["head"]!,
             ]]])
         case "PrConversation":
-            return data(["repository": ["pullRequest": pr?.number == 412 ? conversation : ["reviewThreads": ["nodes": [Any]()], "comments": ["nodes": [Any]()]]]])
+            let none: [String: Any] = ["reviewThreads": ["nodes": [Any]()], "comments": ["nodes": [Any]()]]
+            return data(["repository": ["pullRequest": pr?.number == 412 ? conversation : pr?.number == 409 ? reReviewConversation : none]])
         case "Reply", "Resolve", "AutoMerge":
             return data(["ok": true])
         default:
@@ -422,6 +429,88 @@ private enum GitHubFixture {
     }
 
     private static func data(_ value: Any) -> [String: Any] { ["data": value] }
+
+    /// The people of the acme shop by login.
+    private static let names = [
+        "koen": "Koen Example", "sanne": "Sanne de Vries", "mira": "Mira Jansen", "tom": "Tom Bakker", "lena": "Lena Visser",
+        "ines": "Ines Duarte", "sam": "Sam Okafor", "mateo": "Mateo Ruiz",
+    ]
+
+    /// #409, the re-review: Koen's question on the rounding, and Mira's answer after she changed the line.
+    private static var reReviewConversation: [String: Any] {
+        [
+        "reviewThreads": ["nodes": [
+            [
+                "id": "RT_409", "path": "src/pricing/round.ts", "line": 7, "originalLine": 7, "startLine": NSNull(), "diffSide": "RIGHT", "isOutdated": false, "isResolved": false,
+                "comments": ["nodes": [
+                    comment("C_409a", "koen", "Koen Example", "Half up, or half even? The invoice rounds half even.", hours: 26, hunk: roundSincePatch),
+                    comment("C_409b", "mira", "Mira Jansen", "Half even now, same as the invoice.", hours: 5),
+                ]],
+            ],
+        ]],
+        "comments": ["nodes": [Any]()],
+        ]
+    }
+
+    /// `src/pricing/round.ts` over the whole of #409.
+    private static let roundPatch = """
+    @@ -4,10 +4,14 @@ import { Money } from '../money';
+     
+     export function roundLine(line: Line): Money {
+    -  return Money.round(line.qty * line.price);
+    +  const raw = line.qty * line.price;
+    +  return Money.round(raw, 'half-even');
+     }
+     
+     export function roundOrder(lines: Line[]): Money {
+    -  return Money.round(lines.reduce((sum, l) => sum + l.qty * l.price, 0));
+    +  // Each line rounds on its own, like the invoice.
+    +  return lines.map(roundLine).reduce((sum, line) => sum.add(line), Money.zero);
+     }
+    """
+
+    /// The same file between the commit Koen reviewed and the head: one line changed in answer to his comment.
+    private static let roundSincePatch = """
+    @@ -5,5 +5,5 @@ import { Money } from '../money';
+     export function roundLine(line: Line): Money {
+       const raw = line.qty * line.price;
+    -  return Money.round(raw, 'half-up');
+    +  return Money.round(raw, 'half-even');
+     }
+    """
+
+    private static var reReviewFiles: [[String: Any]] {
+        [
+        ["filename": "src/pricing/round.ts", "status": "modified", "additions": 4, "deletions": 2, "patch": roundPatch],
+        [
+            "filename": "src/cart/total.ts", "status": "modified", "additions": 3, "deletions": 4,
+            "patch": """
+            @@ -10,8 +10,7 @@ import { roundOrder } from '../pricing/round';
+             export function orderTotal(lines: Line[]): Money {
+            -  const raw = lines.reduce((sum, l) => sum + l.qty * l.price, 0);
+            -  return Money.round(raw);
+            +  return roundOrder(lines);
+             }
+            """,
+        ],
+        [
+            "filename": "src/invoice/Invoice.tsx", "status": "modified", "additions": 5, "deletions": 3,
+            "patch": """
+            @@ -31,7 +31,9 @@ export function Invoice({ order }: Props) {
+               return (
+                 <Table rows={order.lines}>
+            -      <Column field="total" value={(line) => line.qty * line.price} />
+            +      <Column field="total" value={(line) => roundLine(line)} />
+                 </Table>
+               );
+            """,
+        ],
+        [
+            "filename": "src/pricing/round.test.ts", "status": "modified", "additions": 50, "deletions": 9,
+            "patch": "@@ -1,6 +1,12 @@\n import { roundLine, roundOrder } from './round';\n+\n+test('three lines of 4.133 come to 12.40', () => {\n+  expect(roundOrder(threeLines).toString()).toBe('12.40');\n+});",
+        ],
+        ]
+    }
 
     private static var conversation: [String: Any] {
         [
@@ -491,8 +580,13 @@ private enum GitHubFixture {
         }
         // The default branches are green: no failure here is shared with main.
         if method == "GET", path.hasSuffix("/actions/runs") { return ["workflow_runs": [Any]()] }
-        if method == "GET", path.hasSuffix("/files") { return path.contains("/pulls/412/") && !query.contains("page=2") ? files : [Any]() }
-        if method == "GET", path.contains("/compare/") { return ["files": [["filename": "src/pricing/round.ts", "status": "modified", "additions": 4, "deletions": 1]]] }
+        if method == "GET", path.hasSuffix("/files") {
+            if query.contains("page=2") { return [Any]() }
+            return path.contains("/pulls/412/") ? files : path.contains("/pulls/409/") ? reReviewFiles : [Any]()
+        }
+        if method == "GET", path.contains("/compare/") {
+            return ["files": [["filename": "src/pricing/round.ts", "status": "modified", "additions": 1, "deletions": 1, "patch": roundSincePatch]]]
+        }
         if method == "POST", path.hasSuffix("/reviews") { return ["id": 9001] }
         if method == "PUT", path.hasSuffix("/merge") { return ["merged": true, "message": "Pull Request successfully merged"] }
         if method == "POST" || method == "DELETE" { return ["ok": true] }

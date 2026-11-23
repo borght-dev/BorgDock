@@ -35,8 +35,7 @@ struct LedgerSearchView: View {
                             Section {
                                 LedgerRows(rows: rows, now: now, stale: stale, workItems: workItems)
                             } header: {
-                                LedgerSectionHeader(title: section == .alsoOpen ? "Also open" : section.title, count: rows.count)
-                                    .accessibilityIdentifier("ledger-found-\(section.rawValue)")
+                                LedgerSectionHeader(title: section == .alsoOpen ? "Also open" : section.title, count: rows.count, identifier: "ledger-found-\(section.rawValue)")
                             }
                         }
                     }
@@ -44,6 +43,7 @@ struct LedgerSearchView: View {
             }
         }
         .ledgerList()
+        .accessibilityIdentifier("ledger-search-results")
         .scrollDismissesKeyboard(.immediately)
         .safeAreaInset(edge: .top, spacing: 0) { bar }
         .task {
@@ -51,7 +51,6 @@ struct LedgerSearchView: View {
             typing = true
             if let read = try? await app.pullRequests.mergedThisWeek() { merged = read }
         }
-        .accessibilityIdentifier("ledger-search-results")
     }
 
     private var bar: some View {

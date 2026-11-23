@@ -90,7 +90,6 @@ struct WelcomeView: View {
                 .accessibilityIdentifier("welcome-connect")
         }
         .toolbar(.hidden, for: .navigationBar)
-        .accessibilityIdentifier("welcome")
     }
 
     private var divider: some View {

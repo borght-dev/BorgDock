@@ -64,8 +64,9 @@ final class LedgerUITests: XCTestCase {
         let waiting = app.buttons["ledger-section-waiting"]
         XCTAssertTrue(waiting.waitForExistence(timeout: 15))
         waiting.tap()
-        XCTAssertTrue(row(app, "acme/shop#407").waitForExistence(timeout: 5))
+        // The section opens at the bottom edge of the screen: its rows come into view with a scroll.
         app.swipeUp()
+        XCTAssertTrue(row(app, "acme/shop#407").waitForExistence(timeout: 5))
         let alsoOpen = app.buttons["ledger-section-alsoOpen"]
         for _ in 0..<4 where !alsoOpen.isHittable { app.swipeUp() }
         alsoOpen.tap()

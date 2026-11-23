@@ -45,6 +45,11 @@ struct LedgerView: View {
             if route.unfold { folds = LedgerFolds(rawValue: LedgerSection.allCases.map(\.rawValue).joined(separator: ",")) }
             if route.fold { folds = LedgerFolds() }
             debugScrollToEnd = route.end
+            if route.refresh {
+                for _ in 0..<40 where store.focus == nil { try? await Task.sleep(for: .milliseconds(250)) }
+                if route.late { try? await Task.sleep(for: .seconds(6)) }
+                await store.load(reportErrors: true, fresh: true)
+            }
             if let search = route.search {
                 for _ in 0..<40 where store.focus == nil { try? await Task.sleep(for: .milliseconds(250)) }
                 debugSearch = search
@@ -158,9 +163,8 @@ struct LedgerView: View {
                     folded: section.folds ? folded : nil,
                     toggle: { withAnimation(.snappy) { folds.toggle(section) } },
                     startReview: section == .toReview && !rows.isEmpty ? { app.router.review(ledger.reviewQueue) } : nil,
-                    startDisabled: stale
+                    startDisabled: stale, identifier: "ledger-section-\(section.rawValue)"
                 )
-                .accessibilityIdentifier("ledger-section-\(section.rawValue)")
             }
         }
     }
@@ -434,12 +438,15 @@ struct LedgerBanner: View {
 
 #if DEBUG
 /// `-BorgDockRoute ledger/<open|fold>[/end]` unfolds or folds every section and can scroll to the end;
-/// `ledger/search/<words>` opens search on those words.
+/// `ledger/search/<words>` opens search on those words; `ledger/refresh` reads the list again once it is there, as a
+/// pull down does (with the fixture's `offline` mode that read fails).
 enum LedgerDebugRoute {
     struct Request {
         var unfold = false
         var fold = false
         var end = false
+        var refresh = false
+        var late = false
         var search: String?
     }
 
@@ -450,6 +457,7 @@ enum LedgerDebugRoute {
         switch parts.first {
         case "open": return Request(unfold: true, end: parts.last == "end")
         case "fold": return Request(fold: true, end: parts.last == "end")
+        case "refresh": return Request(fold: true, refresh: true, late: parts.last == "late")
         case "search": return Request(search: parts.count > 1 ? parts[1].removingPercentEncoding ?? "" : "")
         default: return nil
         }

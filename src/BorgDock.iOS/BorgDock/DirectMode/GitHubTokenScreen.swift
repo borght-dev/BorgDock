@@ -83,7 +83,6 @@ struct GitHubTokenScreen: View {
         .safeAreaInset(edge: .bottom) { addButton }
         .task(id: token) { await checkToken() }
         .onAppear(perform: prefill)
-        .accessibilityIdentifier("github-token-screen")
     }
 
     // MARK: Parts
