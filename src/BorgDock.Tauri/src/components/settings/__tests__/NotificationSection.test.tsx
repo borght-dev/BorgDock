@@ -53,6 +53,18 @@ describe('NotificationSection', () => {
     expect(reports.checked).toBe(false);
   });
 
+  it("offers a merge of someone else's PR beside a merge of mine", () => {
+    render(<NotificationSection notifications={makeNotifications()} onChange={onChange} />);
+    const theirs = screen.getByRole('checkbox', {
+      name: "Popup: Someone else's PR was merged",
+    }) as HTMLInputElement;
+    expect(theirs.checked).toBe(true);
+    fireEvent.click(theirs);
+    expect(onChange.mock.calls[0]![0].activity?.categories).toEqual({
+      'pr.merged-other': { popup: false },
+    });
+  });
+
   it('turning a popup off stores it for that category only', () => {
     render(<NotificationSection notifications={makeNotifications()} onChange={onChange} />);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Popup: An agent finished its turn' }));

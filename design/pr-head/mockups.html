@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BorgDock · Pull requests header mockups</title>
+<style>
+  body { margin: 0; padding: 24px; background: #e9eaee; font-family: Inter, system-ui, sans-serif; color: #17181c; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { margin: 0 0 20px; color: #5d606a; font-size: 13px; max-width: 760px; line-height: 1.5; }
+  h2 { font-size: 14px; margin: 28px 0 8px; }
+  iframe { display: block; border: 1px solid #c9cbd2; border-radius: 8px; background: #fff; max-width: 100%; }
+</style>
+</head>
+<body>
+<h1>Pull requests header</h1>
+<p>The section's name is in the title bar only. The view tabs come first, with this session's review
+progress at their end; one toolbar follows, with search, the filter chips and Filter on the left and
+Group, Sort and Display pinned on the right. Each frame is a Design canvas artboard
+(<code>*.dc.html</code>); <code>support.js</code> is a small stand-in for the canvas runtime so they open
+from a local static server (<code>python3 -m http.server</code> in this folder).</p>
+<h2>A · After: tabs and one toolbar (119 px above the first strip)</h2>
+<iframe src="Main.dc.html" width="1280" height="600" title="After"></iframe>
+<h2>B · Before: title, search, tabs, filter bar and session line (198 px)</h2>
+<iframe src="Before.dc.html" width="1280" height="600" title="Before"></iframe>
+<h2>C · Filters on and a saved view edited: the chips wrap under the search</h2>
+<iframe src="Filtered.dc.html" width="1280" height="330" title="Filters on"></iframe>
+<h2>D · Narrow, rail folded: icons only</h2>
+<iframe src="Narrow.dc.html" width="640" height="330" title="Narrow"></iframe>
+</body>
+</html>

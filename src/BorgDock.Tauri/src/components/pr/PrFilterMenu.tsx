@@ -130,13 +130,14 @@ export function AddFilterButton({ facts, ctx }: FilterProps) {
         ref={pop.anchor}
         type="button"
         className={clsx('bd-prl-chipbtn bd-prl-chipbtn--ghost', pop.open && 'bd-prl-chipbtn--on')}
+        aria-label="Filter"
         aria-haspopup="menu"
         aria-expanded={pop.open}
         onClick={() => (pop.open ? close() : pop.setOpen(true))}
         data-add-filter=""
       >
         <ListFilter size={13} strokeWidth={2} aria-hidden="true" />
-        Filter
+        <span className="bd-prl-chipbtn__label">Filter</span>
       </button>
       {pop.open && (
         <PrPopover

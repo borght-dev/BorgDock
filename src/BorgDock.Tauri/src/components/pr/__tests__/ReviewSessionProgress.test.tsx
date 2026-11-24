@@ -10,6 +10,14 @@ afterEach(() => {
 });
 
 describe('ReviewSessionProgress', () => {
+  it('shows nothing before the first review of the session', () => {
+    useQuickReviewStore.setState({
+      activity: { a: { pr: makePr({ number: 1 }), decision: 'skipped' } },
+    });
+    render(<ReviewSessionProgress />);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
   it('counts walk-throughs of my own PRs apart from reviews', () => {
     const own = makePr({ number: 1 });
     const theirs = makePr({ number: 2 });

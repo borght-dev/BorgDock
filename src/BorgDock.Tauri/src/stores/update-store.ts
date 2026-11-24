@@ -1,46 +1,38 @@
 import { create } from 'zustand';
+import type { UpdatePhase, UpdateStatus_Serialize } from '@/generated/commands';
 
-interface UpdateState {
-  available: boolean;
-  version: string | null;
-  downloading: boolean;
-  progress: number;
-  checking: boolean;
+/** The status as Rust sends it. */
+export type UpdateStatus = UpdateStatus_Serialize;
+export type { UpdatePhase };
+
+/**
+ * The update status as Rust keeps it (`updater/`), the same in every window:
+ * `runtime/update-status.ts` fills it. Nothing here schedules a check.
+ */
+interface UpdateState extends UpdateStatus {
+  /** This window asked for the restart and the installer is starting. */
   restarting: boolean;
-  statusText: string;
-  currentVersion: string;
 }
 
 interface UpdateActions {
-  setAvailable: (version: string) => void;
-  setDownloading: (downloading: boolean) => void;
-  setProgress: (progress: number) => void;
-  setChecking: (checking: boolean) => void;
+  setStatus: (status: UpdateStatus) => void;
   setRestarting: (restarting: boolean) => void;
-  setStatusText: (text: string) => void;
-  setCurrentVersion: (version: string) => void;
   reset: () => void;
 }
 
 const initialState: UpdateState = {
-  available: false,
-  version: null,
-  downloading: false,
-  progress: 0,
-  checking: false,
-  restarting: false,
-  statusText: '',
+  phase: 'idle',
   currentVersion: '',
+  version: null,
+  progress: 0,
+  lastCheckedAt: null,
+  lastError: null,
+  restarting: false,
 };
 
 export const useUpdateStore = create<UpdateState & UpdateActions>((set) => ({
   ...initialState,
-  setAvailable: (version) => set({ available: true, version }),
-  setDownloading: (downloading) => set({ downloading }),
-  setProgress: (progress) => set({ progress }),
-  setChecking: (checking) => set({ checking }),
+  setStatus: (status) => set(status),
   setRestarting: (restarting) => set({ restarting }),
-  setStatusText: (text) => set({ statusText: text }),
-  setCurrentVersion: (version) => set({ currentVersion: version }),
   reset: () => set(initialState),
 }));

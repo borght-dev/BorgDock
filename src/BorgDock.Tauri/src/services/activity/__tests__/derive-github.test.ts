@@ -269,6 +269,49 @@ describe('deriveGitHub', () => {
     expect(prsToVerify(merged.baseline, observe([]))).toEqual([]);
   });
 
+  it("reports someone else's merge under its own category, once, and not their close", () => {
+    const theirs = pr({ number: 77, title: 'Cheaper shipping', author: 'mira' });
+    const verified = (state: 'merged' | 'closed') => ({
+      number: 77,
+      title: 'Cheaper shipping',
+      url: 'https://github.com/acme/app/pull/77',
+      author: 'mira',
+      state,
+      mergedAt: state === 'merged' ? '2026-10-27T09:45:00Z' : null,
+      mergedBy: state === 'merged' ? 'ann' : null,
+      closedAt: '2026-10-27T09:45:00Z',
+    });
+    const gone = deriveGitHub(ctx(), seeded([theirs]), observe([]));
+    expect(prsToVerify(gone.baseline, observe([]))).toEqual([77]);
+
+    const merged = deriveGitHub(
+      ctx(),
+      gone.baseline,
+      observe([], { verified: [verified('merged')] }),
+    );
+    expect(merged.entries).toHaveLength(1);
+    expect(merged.entries[0]).toMatchObject({
+      category: 'pr.merged-other',
+      id: `${SOURCE}|#77:merged`,
+      needsYou: false,
+      summary: 'ann merged #77 Cheaper shipping',
+    });
+    // The same read again finds the merge already known.
+    const again = deriveGitHub(
+      ctx(),
+      merged.baseline,
+      observe([], { verified: [verified('merged')] }),
+    );
+    expect(again.entries).toEqual([]);
+
+    const closed = deriveGitHub(
+      ctx(),
+      gone.baseline,
+      observe([], { verified: [verified('closed')] }),
+    );
+    expect(closed.entries).toEqual([]);
+  });
+
   it('reports each close of a PR that was closed, reopened and closed again', () => {
     const closed = (closedAt: string) => ({
       number: 412,

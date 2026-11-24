@@ -492,9 +492,12 @@ export function deriveGitHub(
     const changed =
       before.state !== verified.state ||
       (verified.state === 'closed' && normalizeTime(verified.closedAt) !== before.closedAt);
-    if (ctx.seed || !changed || !same(verified.author, observation.login)) continue;
-    const key = entityKey.pr(observation.owner, observation.repo, verified.number);
+    if (ctx.seed || !changed) continue;
+    const mine = same(verified.author, observation.login);
     const merged = verified.state === 'merged';
+    // Someone else's PR: its merge is news, its close is not.
+    if (!mine && !merged) continue;
+    const key = entityKey.pr(observation.owner, observation.repo, verified.number);
     out.resolutions.push(
       resolveCategories(
         key,
@@ -509,7 +512,7 @@ export function deriveGitHub(
           : `#${verified.number}:closed:${normalizeTime(verified.closedAt) ?? ctx.now}`,
         entity: { kind: 'pr', key, title: verified.title, url: verified.url },
         links: { prUrls: [verified.url] },
-        category: merged ? 'pr.merged' : 'pr.closed',
+        category: !merged ? 'pr.closed' : mine ? 'pr.merged' : 'pr.merged-other',
         severity: merged ? 'success' : 'info',
         needsYou: false,
         sourceAt: merged ? verified.mergedAt : verified.closedAt,

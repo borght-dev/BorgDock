@@ -90,6 +90,18 @@ polls.
 - Display, saved views, the active view and the CI summary switch persist in `ui-state.json`
   (`prListDisplay`, `prSavedViews`, `prActiveView`, `prCiSummary`).
 
+### Header
+
+Design: `design/pr-head/mockups.html`. Two rows above the list instead of four:
+
+- **The section's name is in the title bar only.** The list keeps an `h1` for screen readers.
+- **Tabs first**, since a view owns everything under it. This session's review progress sits at
+  their end, before "+ View", and shows nothing until the first review; below 900 px of list it
+  gives its room to the tabs.
+- **One toolbar.** The query leads on the left: the search box, then the chips it holds, Filter
+  and Clear. That cluster wraps under itself, so Group, Sort and Display (with Discard and Update
+  view) stay on the first line on the right.
+
 ### Changes and animation
 
 A filter, group or sort change waits for the leaving rows to fade (FLIP). Until then the stores

@@ -36,7 +36,7 @@ import {
   type RowSetup,
   WorkbenchGroup,
 } from './PrGroups';
-import { PrListHead } from './PrToolbar';
+import { PrSearchField } from './PrToolbar';
 import { type PrViewChoice, PrViewTabs } from './PrViewTabs';
 import { ReviewSessionProgress } from './ReviewSessionProgress';
 import { ReviewSlaIndicator } from './ReviewSlaIndicator';
@@ -92,11 +92,12 @@ function flipKeys(model: ReturnType<typeof readPrListModel>): Set<string> {
 /**
  * PrList — the Pull requests section.
  *
- * - Head: title and search (free text and `field:value` qualifiers).
  * - View tabs: All, Your turn, Mine, Failing, Ready to merge, Stale, then
- *   the saved views and "+ View".
- * - View bar: the query's qualifiers as chips, "+ Filter", and Group, Sort
- *   and Display.
+ *   the saved views, this session's review progress and "+ View".
+ * - View bar, one row: search (free text and `field:value` qualifiers), the
+ *   query's qualifiers as chips and "+ Filter" on the left, where they wrap;
+ *   Group, Sort and Display pinned on the right. The section's name is in
+ *   the title bar only (design/pr-head).
  * - One line each for the shared CI failures and the dependency updates.
  * - The PRs as a table (sortable column headings), a list, or a board, in
  *   the display's groups (`services/pr-list/model.ts` builds them); Review
@@ -306,71 +307,76 @@ export function PrList() {
   const canSave = !activeViewId && (hasTerms(searchQuery) || filter !== 'all');
   const head = (
     <>
-      <PrListHead />
+      {/* The title bar shows the section's name; this one is for screen readers. */}
+      <h1 className="sr-only">Pull requests</h1>
       <PrViewTabs
         pending={pending}
         counts={model.counts}
         savedCounts={model.savedCounts}
         onPick={handlePick}
+        aside={<ReviewSessionProgress />}
       />
       <div className="bd-prl-bar" data-view-bar="">
-        <FilterChips terms={terms} facts={tabFacts} ctx={ctx} />
-        <AddFilterButton facts={tabFacts} ctx={ctx} />
-        {hideFailing && filter !== 'failing' && (
-          <span className="bd-prl-fchip bd-prl-fchip--state" data-hide-failing-chip="">
-            <span className="bd-prl-fchip__body bd-prl-fchip__body--static">
-              <EyeOff size={11} strokeWidth={2.25} aria-hidden="true" />
-              {hideFailing === 'except-unrelated' ? 'PR failures hidden' : 'Failing hidden'}
+        <div className="bd-prl-bar__query">
+          <PrSearchField />
+          <FilterChips terms={terms} facts={tabFacts} ctx={ctx} />
+          <AddFilterButton facts={tabFacts} ctx={ctx} />
+          {hideFailing && filter !== 'failing' && (
+            <span className="bd-prl-fchip bd-prl-fchip--state" data-hide-failing-chip="">
+              <span className="bd-prl-fchip__body bd-prl-fchip__body--static">
+                <EyeOff size={11} strokeWidth={2.25} aria-hidden="true" />
+                {hideFailing === 'except-unrelated' ? 'PR failures hidden' : 'Failing hidden'}
+              </span>
+              <button
+                type="button"
+                className="bd-prl-fchip__x"
+                aria-label="Show PRs with failing checks again"
+                onClick={() => handleHideFailing(false)}
+              >
+                <X size={11} strokeWidth={2.25} aria-hidden="true" />
+              </button>
             </span>
-            <button
-              type="button"
-              className="bd-prl-fchip__x"
-              aria-label="Show PRs with failing checks again"
-              onClick={() => handleHideFailing(false)}
-            >
-              <X size={11} strokeWidth={2.25} aria-hidden="true" />
-            </button>
-          </span>
-        )}
-        {terms.length > 0 && (
-          <button
-            type="button"
-            className="bd-prl-btn bd-prl-btn--quiet"
-            onClick={() => usePrStore.getState().setSearchQuery(clearTerms(searchQuery))}
-          >
-            Clear
-          </button>
-        )}
-        <span className="bd-prl-bar__spacer" />
-        {activeViewId && edited && (
-          <>
+          )}
+          {terms.length > 0 && (
             <button
               type="button"
               className="bd-prl-btn bd-prl-btn--quiet"
-              onClick={() => usePrViewStore.getState().revertActiveView()}
+              onClick={() => usePrStore.getState().setSearchQuery(clearTerms(searchQuery))}
             >
-              Discard
+              Clear
             </button>
-            <button
-              type="button"
-              className="bd-prl-btn bd-prl-btn--outline"
-              onClick={() => usePrViewStore.getState().updateActiveView()}
-              data-update-view=""
-            >
-              Update view
-            </button>
-          </>
-        )}
-        {canSave && <span className="bd-prl-bar__hint">“+ View” saves these filters</span>}
-        <GroupButton display={display} onChange={handleDisplay} />
-        <SortButton display={display} onChange={handleDisplay} />
-        <DisplayButton
-          display={display}
-          onChange={handleDisplay}
-          onHideFailing={handleHideFailing}
-        />
+          )}
+        </div>
+        <div className="bd-prl-bar__view">
+          {activeViewId && edited && (
+            <>
+              <button
+                type="button"
+                className="bd-prl-btn bd-prl-btn--quiet"
+                onClick={() => usePrViewStore.getState().revertActiveView()}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                className="bd-prl-btn bd-prl-btn--outline"
+                onClick={() => usePrViewStore.getState().updateActiveView()}
+                data-update-view=""
+              >
+                Update view
+              </button>
+            </>
+          )}
+          {canSave && <span className="bd-prl-bar__hint">“+ View” saves these filters</span>}
+          <GroupButton display={display} onChange={handleDisplay} />
+          <SortButton display={display} onChange={handleDisplay} />
+          <DisplayButton
+            display={display}
+            onChange={handleDisplay}
+            onHideFailing={handleHideFailing}
+          />
+        </div>
       </div>
-      <ReviewSessionProgress />
     </>
   );
 

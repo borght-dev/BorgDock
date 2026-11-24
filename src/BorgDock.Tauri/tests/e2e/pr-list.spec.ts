@@ -102,7 +102,9 @@ test('rows render as a table: status, title, meta, checks, reviews, next step', 
 }) => {
   await bootPrList(page);
 
-  await expect(page.getByRole('heading', { name: 'Pull requests' })).toBeVisible();
+  // The section is named once, in the title bar; the list's own heading is for screen readers.
+  await expect(page.locator('.bd-title-bar__title')).toHaveText('Pull requests');
+  await expect(page.getByRole('heading', { name: 'Pull requests' })).toHaveClass(/sr-only/);
   // The default: grouped by status, Your turn first, with column headings.
   await expect(page.locator('.bd-wb-group__label').first()).toHaveText('Your turn');
   await expect(page.locator('[data-table-head]')).toBeVisible();
@@ -215,7 +217,7 @@ test('Ctrl+click opens the pop-out and selects only the PR of that repository', 
 test('J moves the selection down the rows as drawn and Enter opens it', async ({ page }) => {
   await bootPrList(page);
   // Somewhere neutral: a click on the page centre would land on a row.
-  await page.getByRole('heading', { name: 'Pull requests' }).click();
+  await page.locator('.bd-title-bar__title').click();
 
   await page.keyboard.press('j');
   const first = rows(page).first();
@@ -233,7 +235,7 @@ test('J moves the selection down the rows as drawn and Enter opens it', async ({
 
 test('Ctrl+Enter opens the selected row in its own window', async ({ page }) => {
   await bootPrList(page);
-  await page.getByRole('heading', { name: 'Pull requests' }).click();
+  await page.locator('.bd-title-bar__title').click();
   await page.keyboard.press('j');
   const key = await rows(page).first().getAttribute('data-pr-key');
   const [owner, rest] = key!.split('/');
@@ -283,7 +285,7 @@ test('E collapses every group on screen, and a heading click opens one again', a
   const heads = page.locator('.bd-wb-list .bd-wb-group__head');
   const count = await heads.count();
   expect(count).toBeGreaterThan(1);
-  await page.locator('.bd-wb-head__title').click();
+  await page.locator('.bd-title-bar__title').click();
 
   await page.keyboard.press('e');
   for (let i = 0; i < count; i++) {

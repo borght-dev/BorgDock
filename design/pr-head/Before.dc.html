@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pull requests: the header today</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+sc-for,sc-if{display:contents}
+a{color:#4f46e5}a:hover{color:#3730a3}
+button{font:inherit}
+.app{font-family:Inter,system-ui,sans-serif;color:#17181c;background:#ffffff;display:flex;font-size:13px;box-sizing:border-box;overflow:hidden}
+.rail{flex:none;width:200px;box-sizing:border-box;border-right:1px solid #e5e6ea;padding:12px 10px;display:flex;flex-direction:column;gap:2px;background:#fafafb}
+.brand{display:flex;align-items:center;gap:8px;font-weight:650;font-size:14px;padding:2px 8px 14px}
+.brand i{width:16px;height:16px;border-radius:4px;background:#4f46e5;display:block}
+.ri{display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;color:#5d606a}
+.ri b{font-weight:500;color:#6d707a;font-variant-numeric:tabular-nums}
+.ri.on{background:rgba(79,70,229,.08);color:#17181c;font-weight:500}
+.ri.on b{color:#4f46e5}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{display:flex;align-items:center;gap:2px;height:36px;flex:none;padding:0 6px 0 16px;border-bottom:1px solid #e5e6ea;background:#fbfbfc}
+.tb .t{font-size:13px;font-weight:600}
+.tb .sp{flex:1}
+.wbtn{width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#5d606a;display:grid;place-items:center;padding:0}
+.sdot{width:8px;height:8px;border-radius:50%;background:#d64560;margin:0 8px}
+.ic{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.head{display:flex;flex:none;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #e5e6ea}
+.head h1{margin:0;font-size:14px;font-weight:600}
+.head .search{flex:0 1 360px;margin-left:auto}
+.search{display:flex;align-items:center;gap:8px;height:28px;box-sizing:border-box;border:1px solid #e5e6ea;border-radius:7px;padding:0 6px 0 10px;color:#6d707a;font-size:12.5px;min-width:0;background:#ffffff}
+.search input{border:0;outline:0;flex:1;min-width:0;font:inherit;color:#17181c;background:transparent}
+.search input::placeholder{color:#6d707a}
+.kbd{font-family:"JetBrains Mono",monospace;font-size:10.5px;border:1px solid #e5e6ea;border-radius:4px;padding:1px 5px;color:#6d707a;white-space:nowrap}
+.views{display:flex;flex:none;align-items:flex-end;padding-right:12px;border-bottom:1px solid #e5e6ea}
+.tabs{display:flex;flex:1;min-width:0;align-items:flex-end;gap:2px;padding:0 12px;overflow-x:auto;scrollbar-width:none}
+.tab{font-size:12.5px;border:0;background:transparent;color:#5d606a;padding:8px 9px 9px;border-bottom:2px solid transparent;white-space:nowrap;display:inline-flex;gap:6px;align-items:center;margin-bottom:-1px;flex:none}
+.tab i{font-style:normal;color:#6d707a;font-variant-numeric:tabular-nums;font-size:11.5px;font-weight:500}
+.tab.on{color:#17181c;border-bottom-color:#4f46e5;font-weight:600}
+.tab.on i{color:#4f46e5}
+.tab.add{color:#6d707a}
+.bar{display:flex;flex:none;align-items:center;gap:6px;padding:8px 16px}
+.bar .sp{flex:1}
+.chipbtn{font-size:12px;height:26px;box-sizing:border-box;border:1px solid #d4d6dc;background:#ffffff;color:#17181c;border-radius:7px;padding:0 9px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:none}
+.chipbtn span{color:#6d707a}
+.chipbtn.ghost{border-style:dashed;color:#5d606a}
+.prog{display:flex;flex:none;align-items:center;gap:16px;padding:6px 16px;border-bottom:1px solid #e5e6ea;color:#6d707a;font-size:12px;font-variant-numeric:tabular-nums}
+.prog b{color:#1a7f57;font-weight:600}
+.strip{display:flex;flex:none;align-items:center;gap:10px;margin:8px 16px;border:1px solid #e5e6ea;border-radius:8px;padding:6px 6px 6px 12px;font-size:12.5px}
+.strip .ic{color:#1f9d6b}
+.strip b{font-weight:600}
+.strip .sub{color:#5d606a;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.primary{font-size:12px;border:0;background:#4f46e5;color:#ffffff;border-radius:6px;height:26px;padding:0 10px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.list{flex:1;min-height:0;overflow:hidden}
+.gh{display:flex;align-items:center;gap:10px;height:34px;padding:0 16px}
+.gh .lab{font-weight:600}
+.gh .n{color:#6d707a;font-variant-numeric:tabular-nums}
+.gh .gline{flex:1;height:1px;background:#e5e6ea}
+.gbar{display:flex;width:84px;height:5px;border-radius:3px;overflow:hidden;background:#ececf0}
+.gbar span{display:block;height:100%}
+.b-turn{background:#4f46e5}.b-waiting{background:#c98a12}
+.gstats{font-size:12px;color:#5d606a}
+.gsize{font-family:"JetBrains Mono",monospace;font-size:11px;color:#6d707a}
+.av{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font-size:8px;font-weight:700;color:#ffffff;background:#1a7f57;flex:none}
+.r{display:grid;grid-template-columns:14px minmax(0,1fr) 240px 170px;column-gap:14px;align-items:center;height:42px;box-sizing:border-box;border-bottom:1px solid #f1f1f4;padding:0 16px}
+.ct{min-width:0;display:flex;flex-direction:column;gap:1px}
+.tl{display:flex;align-items:center;gap:6px;min-width:0}
+.scope{color:#6d707a;flex:none}
+.subj{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ab{flex:none;font-size:11px;color:#4f46e5;background:rgba(79,70,229,.08);border-radius:4px;padding:1px 5px;font-weight:500}
+.lbl{flex:none;font-size:10.5px;color:#5d606a;border:1px solid #e5e6ea;border-radius:999px;padding:0 6px}
+.meta{font-size:11.5px;color:#6d707a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glyph{width:10px;height:10px;border-radius:50%;display:block;box-sizing:border-box}
+.g-turn{background:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.18)}
+.g-waiting{border:2px solid #c98a12}
+.g-ready{background:#1f9d6b}
+.cb{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums}
+.cbar{display:flex;width:40px;height:4px;border-radius:2px;overflow:hidden;background:#ececf0;flex:none}
+.cbar span{display:block;height:100%}
+.s-ok{background:#1f9d6b}.s-fail{background:#d64560}
+.w0{width:0}.w10{width:10%}.w20{width:20%}.w30{width:30%}.w40{width:40%}.w60{width:60%}.w70{width:70%}.w80{width:80%}.w90{width:90%}.w100{width:100%}
+.t-bad{color:#bf3552}.t-muted{color:#5d606a}
+.shared{font-size:10.5px;color:#bf3552;border:1px solid rgba(214,69,96,.5);border-radius:4px;padding:0 5px}
+.next{display:inline-flex;align-items:center;height:22px;font-size:11.5px;border-radius:999px;padding:0 10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;border:1px solid #d4d6dc;color:#5d606a;background:#ffffff}
+.n-you{background:#4f46e5;border-color:#4f46e5;color:#ffffff;font-weight:600}
+.n-go{background:#1a7f57;border-color:#1a7f57;color:#ffffff;font-weight:600}
+.foot{display:flex;flex:none;justify-content:space-between;gap:16px;height:28px;align-items:center;padding:0 16px;border-top:1px solid #e5e6ea;font-size:11.5px;color:#6d707a;background:#fbfbfc;white-space:nowrap;overflow:hidden}
+</style>
+</helmet>
+<div class="app" style="width: 1280px; height: 600px">
+  <nav class="rail" aria-label="Sections">
+    <div class="brand"><i></i>BorgDock</div>
+    <span class="ri">Focus <b>12</b></span>
+    <span class="ri on">Pull requests <b>37</b></span>
+    <span class="ri">Work items <b>28</b></span>
+    <span class="ri">Dispatch <b>10</b></span>
+    <span class="ri">Workstreams</span>
+    <span class="ri">Activity <b>41</b></span>
+    <span class="ri">Notes</span>
+    <span class="ri">Worktrees <b>9</b></span>
+  </nav>
+  <div class="main">
+    <div class="tb">
+      <span class="t">Pull requests</span>
+      <span class="sp"></span>
+      <span class="sdot" role="img" aria-label="Checks failing"></span>
+      <button type="button" class="wbtn" aria-label="Open a window"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect><path d="M14 17.5h7"></path><path d="M17.5 14v7"></path></svg></button>
+      <button type="button" class="wbtn" aria-label="Refresh"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg></button>
+      <button type="button" class="wbtn" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="m4.9 4.9 2.1 2.1"></path><path d="m17 17 2.1 2.1"></path><path d="M2 12h3"></path><path d="M19 12h3"></path><path d="m4.9 19.1 2.1-2.1"></path><path d="m17 7 2.1-2.1"></path></svg></button>
+      <button type="button" class="wbtn" aria-label="Minimize"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"></path></svg></button>
+      <button type="button" class="wbtn" aria-label="Maximize"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="12" height="12" x="6" y="6" rx="1"></rect></svg></button>
+      <button type="button" class="wbtn" aria-label="Close"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12"></path><path d="m18 6-12 12"></path></svg></button>
+    </div>
+
+    <header class="head">
+      <h1>Pull requests</h1>
+      <label class="search">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input type="text" placeholder="Search, or author:me is:failing repo:…" aria-label="Search pull requests">
+        <span class="kbd">Ctrl+K</span>
+      </label>
+    </header>
+
+    <div class="views">
+      <div class="tabs" role="tablist" aria-label="Pull request views">
+        <button type="button" role="tab" aria-selected="true" class="tab on">All <i>66</i></button>
+        <button type="button" role="tab" aria-selected="false" class="tab">Your turn <i>37</i></button>
+        <button type="button" role="tab" aria-selected="false" class="tab">Mine <i>18</i></button>
+        <button type="button" role="tab" aria-selected="false" class="tab">Failing <i>31</i></button>
+        <button type="button" role="tab" aria-selected="false" class="tab">Ready to merge <i>3</i></button>
+        <button type="button" role="tab" aria-selected="false" class="tab">Stale <i>4</i></button>
+        <button type="button" role="tab" aria-selected="false" class="tab">Default <i>66</i></button>
+        <button type="button" role="tab" aria-selected="false" class="tab">Green PRs <i>35</i></button>
+      </div>
+      <button type="button" class="tab add"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>View</button>
+    </div>
+
+    <div class="bar">
+      <button type="button" class="chipbtn ghost"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>Filter</button>
+      <span class="sp"></span>
+      <button type="button" class="chipbtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path></svg><span>Group</span> Author</button>
+      <button type="button" class="chipbtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 16 4 4 4-4"></path><path d="M7 20V4"></path><path d="m21 8-4-4-4 4"></path><path d="M17 4v16"></path></svg><span>Sort</span> Created <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg></button>
+      <button type="button" class="chipbtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10"></path><path d="M18 6h2"></path><path d="M4 12h2"></path><path d="M10 12h10"></path><path d="M4 18h8"></path><path d="M16 18h4"></path><circle cx="16" cy="6" r="2"></circle><circle cx="8" cy="12" r="2"></circle><circle cx="14" cy="18" r="2"></circle></svg>Display</button>
+    </div>
+
+    <div class="prog" role="status" aria-label="Review progress this app session"><span>This app session</span><b>2 approved</b><span>2 reviewed</span></div>
+
+    <div class="strip">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5Z"></path><path d="m3 8 9 5 9-5"></path><path d="M12 13v8"></path></svg>
+      <b>2 dependency updates</b>
+      <span class="sub">1 ready to approve · 1 failing</span>
+      <button type="button" class="primary"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Approve 1…</button>
+    </div>
+
+    <div class="list">
+      <div class="gh">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        <span class="av" aria-hidden="true">MA</span>
+        <span class="lab">mira-acme (you)</span><span class="n">18</span>
+        <span class="gbar" aria-hidden="true"><span class="b-turn w80"></span><span class="b-waiting w20"></span></span>
+        <span class="gstats">14 your turn</span>
+        <span class="gline"></span>
+        <span class="gsize">+17,909 −1,146</span>
+      </div>
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+        <div class="r">
+          <span class="glyph {{r.mark}}" aria-hidden="true"></span>
+          <div class="ct">
+            <div class="tl">
+              <span class="scope">{{r.scope}}</span><span class="subj">{{r.subj}}</span>
+              <sc-if value="{{r.ab}}" hint-placeholder-val="{{ true }}"><span class="ab">{{r.ab}}</span></sc-if>
+              <sc-for list="{{r.labels}}" as="l" hint-placeholder-count="1"><span class="lbl">{{l.t}}</span></sc-for>
+            </div>
+            <div class="meta">{{r.meta}}</div>
+          </div>
+          <div class="cb">
+            <span class="cbar" aria-hidden="true"><span class="s-ok {{r.okW}}"></span><span class="s-fail {{r.failW}}"></span></span>
+            <span class="{{r.ccls}}">{{r.checks}}</span>
+            <sc-if value="{{r.shared}}" hint-placeholder-val="{{ false }}"><span class="shared">{{r.shared}}</span></sc-if>
+          </div>
+          <div><button type="button" class="next {{r.acls}}">{{r.action}}</button></div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div class="foot"><span>synced 12s ago · rate mira-acme 4,812/5,000 (graphql)</span><span>/ search · R refresh · Ctrl+F7 worktrees · Ctrl+F8 quick note</span></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = (mark, scope, subj, ab, labels, meta, okW, failW, checks, shared, action, acls) => ({
+      mark, scope, subj, ab, labels: labels.map((t) => ({ t })), meta, okW, failW, checks,
+      ccls: failW === 'w0' ? 't-muted' : 't-bad', shared, action, acls,
+    });
+    return {
+      rows: [
+        row('g-turn', 'feat(checkout):', 'split a payment across two cards', 'AB#4127', ['core-api', 'database'], 'storefront #812 · opened 12 d ago', 'w80', 'w20', '4 failing', 'shared ×2', 'Fix checks', 'n-you'),
+        row('g-turn', 'chore(catalog):', 'migrate to the new image pipeline', 'AB#4190', ['web'], 'storefront #840 · opened 6 d ago', 'w90', 'w10', '1 failing', '', 'Resolve conflicts', 'n-you'),
+        row('g-turn', 'feat(quotes):', 'recover missing prices from the supplier feed', 'AB#4203', ['core-api', 'database'], 'storefront #866 · opened 2 d ago', 'w80', 'w20', '3 failing', 'also on base', 'Fix checks', 'n-you'),
+        row('g-waiting', 'docs(database):', 'date the retired order archive table', 'AB#4215', ['docs'], 'storefront #871 · opened 2 d ago', 'w40', 'w0', '4 passing', '', 'Review · @platform-team', ''),
+        row('g-turn', 'fix(admin):', 'name what a switch covers', 'AB#4209', ['admin', 'database'], 'storefront #874 · opened 2 d ago', 'w100', 'w0', '114 passing', '', 'Reply to comments', 'n-you'),
+        row('g-turn', 'ci(e2e):', 'bound retries for the bulk import test', '', ['web', 'ci'], 'storefront #880 · opened yesterday', 'w70', 'w30', '2 failing', '', 'Fix checks', 'n-you'),
+        row('g-waiting', '', 'Importer: read an empty optional date as no value', 'AB#4231', [], 'importer #131 · opened 22 h ago', 'w100', 'w0', '9 passing', '', 'Review · @platform-team', ''),
+        row('g-ready', 'feat(search):', 'tolerate typos in product search', 'AB#4240', ['web'], 'storefront #884 · opened 20 h ago', 'w100', 'w0', '31 passing', '', 'Merge', 'n-go'),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

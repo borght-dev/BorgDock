@@ -34,8 +34,8 @@ async function bootPrList(page: Page) {
   await expect(row(page, 42)).toHaveCount(1);
   await expect(row(page, 43)).toHaveCount(1);
   // useKeyboardNav listens on document, but only when focus isn't in an
-  // input/textarea: click the head row's title so the body has focus.
-  await page.locator('.bd-wb-head__title').click();
+  // input/textarea: click the title bar's title so the body has focus.
+  await page.locator('.bd-title-bar__title').click();
 }
 
 /** The rows in the order the list draws them, by PR number. */
