@@ -35,7 +35,7 @@ The repo has `core.autocrlf=true` set locally, so a **fresh `git worktree add` c
 
 Two other fresh-worktree facts: run `bun install` at the worktree root before anything else (node_modules is per-worktree), and Playwright e2e (`bun run test:e2e`) reuses any server already listening on :1420 (`reuseExistingServer`) — if the main checkout's dev server is running, e2e silently tests the *main checkout's* code, not the worktree's. Stop it first or the results are meaningless. A new Tauri command needs a default in `tests/e2e/helpers/mock-tauri.ts` when anything calls it at boot: an unhandled command logs an error and the boot smoke check fails every e2e test.
 
-Cargo in a fresh worktree builds every C dependency (`ring`, `libgit2-sys`) again, and outside a VS developer prompt `cl.exe` fails them with exit code 2. Point `CARGO_TARGET_DIR` at the main checkout's `src/BorgDock.Tauri/src-tauri/target` (Windows path, from PowerShell) to reuse what is built there; `bun run bindings` then works too.
+Cargo in a fresh worktree builds every C dependency (`ring`, `libgit2-sys`) again, and outside a VS developer prompt `cl.exe` fails them with exit code 2. Point `CARGO_TARGET_DIR` at the main checkout's `src/BorgDock.Tauri/src-tauri/target` (Windows path, from PowerShell) to reuse what is built there; `bun run bindings` then works too. If cargo rebuilds them anyway (it did on 2026-11-24, `libgit2-sys`), run it inside the VS environment, from PowerShell: ``cmd /c "call `"C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat`" >nul && cargo test --lib"``. `Blocking waiting for file lock on artifact directory` is another session's cargo on the same target; it ends when theirs does.
 
 If every e2e test hangs on the splash screen (`waitForSelector('[data-app-ready="true"]')` timeout) and the WebServer log shows `ENOENT ... src/BorgDock.Tauri/node_modules/react-dom/index.js`, Vite's pre-bundle cache is stale: `rm -rf src/BorgDock.Tauri/node_modules/.vite/deps`.
 
@@ -453,6 +453,10 @@ Right-click a PR → "Review <author>'s PRs, oldest first", or the end card's "N
 ## Vitest: a hook that returns a function
 
 `beforeEach(() => someMock.mockReset())` returns the mock, and Vitest runs a function returned from `beforeEach` as that test's teardown. A mock that later rejects then fails the test with its own error after every assertion passed. Give hooks a block body: `beforeEach(() => { someMock.mockReset(); })`. The same goes for `onTestFinished`.
+
+## Vitest on a saturated machine
+
+`Failed to start forks worker … Timeout waiting for worker to respond` with "no tests" is machine load, not a test failure: with other sessions building, jsdom setup alone takes longer than the worker's 60 s start limit. Run one file per invocation with `vitest run --pool=threads --maxWorkers=1 <file>`, and wait for your own cargo or Storybook to finish first. `App.test.tsx` has a 30 s `beforeAll` that only passes once the load drops.
 
 ## Quick Review approvals wait for Undo
 
