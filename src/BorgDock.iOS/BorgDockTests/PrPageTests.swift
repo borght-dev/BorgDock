@@ -17,6 +17,13 @@ final class PrPageTests: XCTestCase {
         XCTAssertEqual(items.map(\.count), [nil, 3, nil, 8, 52])
     }
 
+    func testTheProofLabelCountsImagesAndRecordings() {
+        XCTAssertEqual(PrProofCount.text(images: 1, recordings: 0), "1 image")
+        XCTAssertEqual(PrProofCount.text(images: 3, recordings: 0), "3 images")
+        XCTAssertEqual(PrProofCount.text(images: 0, recordings: 1), "1 recording")
+        XCTAssertEqual(PrProofCount.text(images: 2, recordings: 2), "2 images · 2 recordings")
+    }
+
     func testTheSectionOnScreenIsTheLastOneUnderTheBar() {
         let sections: [PrPageSection] = [.checks, .proof, .description]
         let tops: [PrPageSection: CGFloat] = [.checks: 300, .proof: 700, .description: 900]

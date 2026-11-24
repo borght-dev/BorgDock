@@ -137,8 +137,8 @@ struct PullRequestView: View {
             }
         case .proof:
             VStack(alignment: .leading, spacing: 0) {
-                PrSectionLabel(title: "Proof", trailing: detail.proofImages.count == 1 ? "1 image" : "\(detail.proofImages.count) images")
-                ProofRow(images: detail.proofImages)
+                PrSectionLabel(title: "Proof", trailing: PrProofCount.text(images: detail.proofImages.count, recordings: detail.proofRecordings.count))
+                ProofRow(detail: detail)
             }
         case .description:
             VStack(alignment: .leading, spacing: 0) {
@@ -158,7 +158,7 @@ struct PullRequestView: View {
     private func jumpBar(_ detail: PrDetail) -> some View {
         let comments = PrComments(conversation: app.focus.conversations[key.key], reviews: detail.reviews)
         let items = PrPageSection.jumpItems(
-            order(detail), proof: detail.proofImages.count, comments: comments.count, files: detail.changedFiles,
+            order(detail), proof: detail.proofImages.count + detail.proofRecordings.count, comments: comments.count, files: detail.changedFiles,
             reviewers: reviewers(detail).count, conversation: app.isReview
         )
         return JumpBar(items: items, selection: $selection) { id in
@@ -167,7 +167,7 @@ struct PullRequestView: View {
     }
 
     private func order(_ detail: PrDetail) -> [PrPageSection] {
-        PrPageSection.order(failing: detail.checks.failed > 0, hasProof: !detail.proofImages.isEmpty, hasReviewers: !reviewers(detail).isEmpty)
+        PrPageSection.order(failing: detail.checks.failed > 0, hasProof: !detail.proofImages.isEmpty || !detail.proofRecordings.isEmpty, hasReviewers: !reviewers(detail).isEmpty)
     }
 
     /// BorgDock Review's Reviewers section; BorgDock's page has none.

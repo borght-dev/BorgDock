@@ -80,4 +80,32 @@ final class DirectModeTests: XCTestCase {
         XCTAssertEqual(String(decoding: data, as: UTF8.self), "image")
         XCTAssertEqual(StubURLProtocol.requests.map { $0.headers["Authorization"] }, ["Bearer personal", "Bearer work"])
     }
+
+    func testARecordingIsFetchedOnlyWhereARuleNamesATokenAndASignInPageIsNoRecording() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "recording-test-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        StubURLProtocol.respond { _ in (200, "<html>Sign in</html>") }
+        let loader = ImageLoader(session: StubURLProtocol.session(), rules: [ImageLoader.Rule { GitHubUploads.isUpload($0) ? ["Bearer work"] : [] }])
+
+        let streamed = try await loader.recording(from: URL(string: "https://example.com/proofs/main.webm")!, into: folder)
+        XCTAssertNil(streamed, "the player asks for this one itself")
+        XCTAssertTrue(StubURLProtocol.requests.isEmpty)
+
+        do {
+            _ = try await loader.recording(from: URL(string: "https://github.com/user-attachments/assets/0f3a")!, into: folder)
+            XCTFail("a page is not a video")
+        } catch {
+            XCTAssertEqual(StubURLProtocol.requests.map { $0.headers["Authorization"] }, ["Bearer work"])
+        }
+    }
+
+    func testAVideoIsNamedByWhatTheServerCallsItElseByItsAddress() {
+        let upload = URL(string: "https://github.com/user-attachments/assets/0f3a")!
+        XCTAssertEqual(ImageLoader.videoExtension(type: "video/webm", address: upload), "webm")
+        XCTAssertEqual(ImageLoader.videoExtension(type: "video/quicktime", address: upload), "mov")
+        XCTAssertEqual(ImageLoader.videoExtension(type: "application/octet-stream", address: URL(string: "https://example.com/a/flow.MP4?x=1")!), "mp4")
+        XCTAssertNil(ImageLoader.videoExtension(type: "application/octet-stream", address: upload))
+        XCTAssertNil(ImageLoader.videoExtension(type: "text/html", address: URL(string: "https://example.com/a/flow.mp4")!))
+    }
 }

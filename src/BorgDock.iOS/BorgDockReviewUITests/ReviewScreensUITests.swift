@@ -60,6 +60,65 @@ final class ReviewScreensUITests: XCTestCase {
         capture("pr-reviewers")
     }
 
+    /// The page of the gallery that shows this picture; its neighbours stay in the hierarchy beside it.
+    private func picture(_ app: XCUIApplication, _ label: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'zoom-view' AND label == %@", label)).firstMatch
+    }
+
+    private func wait(_ element: XCUIElement, toSay words: String, file: StaticString = #filePath, line: UInt = #line) {
+        let said = expectation(for: NSPredicate(format: "value CONTAINS %@ OR label CONTAINS %@", words, words), evaluatedWith: element)
+        XCTAssertEqual(XCTWaiter().wait(for: [said], timeout: 15), .completed, "\(element.value ?? element.label)", file: file, line: line)
+    }
+
+    @MainActor
+    func testAScreenshotZoomsAndMovesAndARecordingPlaysAndZoomsToo() {
+        let app = launch(route: "i1/pr/proof/acme/shop/412")
+        let after = app.buttons["The basket is kept, with Try again"]
+        XCTAssertTrue(after.waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["Recording"].exists, "the description's recording stands beside its screenshots")
+        XCTAssertTrue(text(app, containing: "2 images · 1 recording").exists)
+        capture("proof-row")
+
+        after.tap()
+        let position = app.staticTexts["proof-gallery-position"]
+        XCTAssertTrue(position.waitForExistence(timeout: 10))
+        XCTAssertEqual(position.label, "2 of 3")
+        let screenshot = picture(app, "The basket is kept, with Try again")
+        wait(screenshot, toSay: "Fits the screen")
+        // In on the title, where it was tapped.
+        screenshot.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.12)).doubleTap()
+        wait(screenshot, toSay: "Zoomed")
+        let atTheTitle = screenshot.value as? String
+        // A drag moves the zoomed picture, and the page stays where it is.
+        screenshot.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: screenshot.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.5)))
+        XCTAssertNotEqual(screenshot.value as? String, atTheTitle, "dragging moved nothing")
+        XCTAssertTrue((screenshot.value as? String)?.hasPrefix("Zoomed") == true)
+        XCTAssertEqual(position.label, "2 of 3")
+        capture("proof-zoomed")
+        screenshot.doubleTap()
+        wait(screenshot, toSay: "Fits the screen")
+
+        app.swipeLeft()
+        XCTAssertEqual(position.label, "3 of 3")
+        XCTAssertTrue(app.buttons["recording-play"].waitForExistence(timeout: 30), "the recording never became playable")
+        XCTAssertEqual(app.staticTexts["recording-duration"].label, "0:03")
+        // It plays by itself once it is on screen; three seconds later it has reached its end.
+        wait(app.staticTexts["recording-time"], toSay: "0:03")
+        capture("proof-recording")
+        let recording = picture(app, "Recording")
+        recording.doubleTap()
+        wait(recording, toSay: "Zoomed")
+        capture("proof-recording-zoomed")
+        // The bar moves through the recording; it doesn't turn the page.
+        app.sliders["Position"].adjust(toNormalizedSliderPosition: 0.3)
+        let earlier = expectation(for: NSPredicate(format: "label != '0:03'"), evaluatedWith: app.staticTexts["recording-time"])
+        XCTAssertEqual(XCTWaiter().wait(for: [earlier], timeout: 10), .completed, "the bar moved nothing")
+        XCTAssertEqual(position.label, "3 of 3")
+        app.buttons["Close"].tap()
+        XCTAssertTrue(after.waitForExistence(timeout: 10))
+    }
+
     @MainActor
     func testTheWorkItemComesUpAsASheetAndClosesBackOntoThePullRequest() {
         let app = launch(route: "url/borgdock://pr/acme/shop/412")

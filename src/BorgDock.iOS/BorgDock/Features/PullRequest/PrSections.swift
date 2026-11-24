@@ -9,7 +9,8 @@ struct PrDescription: View {
             if detail.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text("No description.").font(.system(size: 14.5)).foregroundStyle(BD.text3)
             } else {
-                GitHubMarkdown(detail.body, size: 14.5, omittingImages: Set(detail.proofImages.map(\.url)))
+                // The Proof row shows the images and the uploaded recordings, so the description leaves them out.
+                GitHubMarkdown(ProofRecordings.withoutUploadLines(detail.body), size: 14.5, omittingImages: Set(detail.proofImages.map(\.url)))
             }
         }
         .padding(.horizontal, 16)
@@ -19,28 +20,28 @@ struct PrDescription: View {
     }
 }
 
-/// The description's screenshots in a row; tap one to zoom.
+/// The description's screenshots and recordings in a row; tap one to open it full screen.
 struct ProofRow: View {
-    let images: [ProofImage]
-    @State private var zoomed: ZoomedImage?
+    let detail: PrDetail
+    @State private var opened: ZoomedMedia?
 
     var body: some View {
+        let media = detail.proofMedia
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: 10) {
-                ForEach(images, id: \.self) { image in
-                    Button { zoomed = URL(string: image.url).map { ZoomedImage(url: $0, caption: image.alt) } } label: {
-                        ImageThumbnail(url: URL(string: image.url), caption: image.alt)
+                ForEach(media) { item in
+                    Button { opened = item } label: {
+                        switch item.kind {
+                        case .image: ImageThumbnail(url: item.url, caption: item.caption)
+                        case .recording: RecordingThumbnail(caption: item.caption)
+                        }
                     }
                     .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 16)
         }
-        .fullScreenCover(item: $zoomed) {
-            ImageZoomView(image: $0, images: images.compactMap { image in
-                URL(string: image.url).map { ZoomedImage(url: $0, caption: image.alt) }
-            })
-        }
+        .fullScreenCover(item: $opened) { MediaGallery(showing: $0, in: media) }
     }
 }
 
@@ -108,17 +109,5 @@ struct PrFileRow: View {
         case .removed: return BD.red.opacity(0.7)
         default: return BD.text3.opacity(0.6)
         }
-    }
-}
-
-extension ProofImage: Identifiable {
-    var id: String { url }
-}
-
-struct ProofImageView: View {
-    let image: ProofImage
-
-    var body: some View {
-        RemoteImage(url: URL(string: image.url), contentMode: .fill)
     }
 }

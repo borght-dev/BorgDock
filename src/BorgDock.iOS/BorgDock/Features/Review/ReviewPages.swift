@@ -142,7 +142,7 @@ struct ReviewBrief: View {
     var bypass: String?
     @State private var readsAll = false
     @State private var descriptionHeight: CGFloat = 0
-    @State private var zoomed: ProofImage?
+    @State private var opened: ZoomedMedia?
 
     private static let foldedHeight: CGFloat = 92
 
@@ -179,20 +179,14 @@ struct ReviewBrief: View {
                             .padding(.horizontal, 16)
                             .padding(.top, 12)
                     }
-                    if !detail.proofImages.isEmpty { proof(detail.proofImages) }
+                    if !detail.proofMedia.isEmpty { proof(detail) }
                     if !detail.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { description(detail.body) }
                     changes(detail.summary)
                 }
                 .padding(.bottom, 120)
             }
             .scrollIndicators(.hidden)
-            .fullScreenCover(item: $zoomed) { image in
-                if let url = URL(string: image.url) {
-                    ImageZoomView(image: ZoomedImage(url: url, caption: image.alt), images: detail.proofImages.compactMap { proof in
-                        URL(string: proof.url).map { ZoomedImage(url: $0, caption: proof.alt) }
-                    })
-                }
-            }
+            .fullScreenCover(item: $opened) { MediaGallery(showing: $0, in: detail.proofMedia) }
         }
     }
 
@@ -205,20 +199,26 @@ struct ReviewBrief: View {
         .padding(.top, 11)
     }
 
-    private func proof(_ images: [ProofImage]) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ReviewSectionLabel(title: "Proof") { Text(images.count == 1 ? "1 image" : "\(images.count) images") }
+    private func proof(_ detail: PrDetail) -> some View {
+        let tile = CGSize(width: 150, height: 70)
+        return VStack(alignment: .leading, spacing: 0) {
+            ReviewSectionLabel(title: "Proof") { Text(PrProofCount.text(images: detail.proofImages.count, recordings: detail.proofRecordings.count)) }
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 10) {
-                    ForEach(images, id: \.self) { image in
-                        Button { zoomed = image } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                ProofImageView(image: image)
-                                    .frame(width: 150, height: 70)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(BD.separator, lineWidth: 0.5))
-                                Text(image.alt).font(.system(size: 12)).foregroundStyle(BD.text2).lineLimit(2).multilineTextAlignment(.leading)
-                                    .frame(width: 150, alignment: .leading)
+                    ForEach(detail.proofMedia) { item in
+                        Button { opened = item } label: {
+                            switch item.kind {
+                            case .recording:
+                                RecordingThumbnail(caption: item.caption, size: tile)
+                            case .image:
+                                VStack(alignment: .leading, spacing: 6) {
+                                    RemoteImage(url: item.url, contentMode: .fill)
+                                        .frame(width: tile.width, height: tile.height)
+                                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(BD.separator, lineWidth: 0.5))
+                                    Text(item.caption).font(.system(size: 12)).foregroundStyle(BD.text2).lineLimit(2).multilineTextAlignment(.leading)
+                                        .frame(width: tile.width, alignment: .leading)
+                                }
                             }
                         }
                         .buttonStyle(.plain)

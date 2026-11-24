@@ -3,7 +3,8 @@ import SwiftUI
 /// The one markdown renderer for pull request descriptions, PR comments and reviews, and ADO rich text (which the server
 /// sends as markdown): headings, lists and task lists, tables, code, quotes, images and folded `<details>`, with HTML
 /// comments, bot footers and badges dropped. Links open in Safari, BorgDock and GitHub pull request links in the app,
-/// `AB#123` chips on the item. Mockup: design/ios-flow/mockups.html, section 04.
+/// `AB#123` chips on the item, and a link to a video file in the app's own player. Mockup: design/ios-flow/mockups.html,
+/// section 04.
 struct GitHubMarkdown: View {
     @Environment(AppModel.self) private var app
     @Environment(\.linkNavigator) private var navigator
@@ -11,6 +12,7 @@ struct GitHubMarkdown: View {
     var size: CGFloat = 15
     /// Images shown elsewhere on the screen (a PR's Proof row), left out here.
     var omittedImages: Set<String> = []
+    @State private var playing: ZoomedMedia?
 
     init(_ markdown: String, size: CGFloat = 15, omittingImages omittedImages: Set<String> = []) {
         self.markdown = markdown
@@ -23,7 +25,13 @@ struct GitHubMarkdown: View {
             .foregroundStyle(BD.text)
             .tint(BD.accentText)
             .environment(\.markdownOmittedImages, omittedImages)
-            .environment(\.openURL, OpenURLAction { MarkdownLinks.open($0, app: app, navigator: navigator) })
+            .environment(\.openURL, OpenURLAction { url in
+                // A recording plays here, where it zooms: Safari only shows it small.
+                guard MarkdownLinks.isRecording(url) else { return MarkdownLinks.open(url, app: app, navigator: navigator) }
+                playing = ZoomedMedia(url: url, caption: "", kind: .recording)
+                return .handled
+            })
+            .fullScreenCover(item: $playing) { MediaGallery(showing: $0, in: [$0]) }
     }
 }
 
@@ -76,6 +84,11 @@ enum MarkdownLinks {
     }
 
     static func url(forWorkItem id: Int) -> URL { URL(string: "borgdock://item/\(id)")! }
+
+    /// A link to a video file on the web: `[Recording](https://…/flow.webm)`.
+    static func isRecording(_ url: URL) -> Bool {
+        ["http", "https"].contains(url.scheme?.lowercased()) && ProofRecordings.isVideoFile(url.absoluteString)
+    }
 
     @MainActor
     static func open(_ url: URL, app: AppModel, navigator: LinkNavigator = LinkNavigator()) -> OpenURLAction.Result {
@@ -344,7 +357,7 @@ struct MarkdownImagesView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.markdownOmittedImages) private var omitted
     let images: [MarkdownImage]
-    @State private var zoomed: ZoomedImage?
+    @State private var zoomed: ZoomedMedia?
 
     var body: some View {
         let shown = images.filter { !omitted.contains($0.url) }
@@ -377,11 +390,11 @@ struct MarkdownImagesView: View {
                 }
             }
         }
-        .fullScreenCover(item: $zoomed) { ImageZoomView(image: $0, images: shown.compactMap(zoom)) }
+        .fullScreenCover(item: $zoomed) { MediaGallery(showing: $0, in: shown.compactMap(zoom)) }
     }
 
-    private func zoom(_ image: MarkdownImage) -> ZoomedImage? {
-        app.workItems.resolve(image.url).map { ZoomedImage(url: $0, caption: image.alt) }
+    private func zoom(_ image: MarkdownImage) -> ZoomedMedia? {
+        app.workItems.resolve(image.url).map { ZoomedMedia(url: $0, caption: image.alt) }
     }
 }
 
@@ -415,81 +428,6 @@ struct RemoteImage: View {
             case .empty: BD.fill
             }
         }
-    }
-}
-
-struct ZoomedImage: Identifiable, Hashable {
-    let url: URL
-    let caption: String
-
-    var id: URL { url }
-}
-
-/// Swipe between images; each page keeps its own pinch and double-tap zoom.
-struct ImageZoomView: View {
-    @Environment(\.dismiss) private var dismiss
-    let images: [ZoomedImage]
-    @State private var index: Int
-
-    init(image: ZoomedImage, images: [ZoomedImage]) {
-        self.images = images.isEmpty ? [image] : images
-        _index = State(initialValue: images.firstIndex(of: image) ?? 0)
-    }
-
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Color.black.ignoresSafeArea()
-            TabView(selection: $index) {
-                ForEach(images.indices, id: \.self) { page in
-                    ZoomableImagePage(image: images[page])
-                        .tag(page)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .accessibilityIdentifier("proof-gallery")
-            GlassIconButton(systemImage: "xmark", label: "Close") { dismiss() }.padding()
-        }
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 12) {
-                if !images[index].caption.isEmpty {
-                    Text(images[index].caption)
-                        .font(.system(size: 14))
-                        .multilineTextAlignment(.center)
-                }
-                if images.count > 1 {
-                    HStack(spacing: 24) {
-                        GlassIconButton(systemImage: "chevron.left", label: "Previous image") { index -= 1 }
-                            .disabled(index == 0)
-                        Text("\(index + 1) of \(images.count)")
-                            .monospacedDigit()
-                            .accessibilityIdentifier("proof-gallery-position")
-                        GlassIconButton(systemImage: "chevron.right", label: "Next image") { index += 1 }
-                            .disabled(index == images.count - 1)
-                    }
-                }
-            }
-            .foregroundStyle(.white.opacity(0.8))
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(.black)
-        }
-        .environment(\.colorScheme, .dark)
-    }
-}
-
-private struct ZoomableImagePage: View {
-    let image: ZoomedImage
-    @State private var scale: CGFloat = 1
-    @GestureState private var pinch: CGFloat = 1
-
-    var body: some View {
-        RemoteImage(url: image.url, contentMode: .fit)
-            .scaleEffect(scale * pinch)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-            .gesture(MagnifyGesture().updating($pinch) { value, state, _ in state = value.magnification }
-                .onEnded { scale = min(max(scale * $0.magnification, 1), 5) })
-            .onTapGesture(count: 2) { withAnimation(.snappy) { scale = scale > 1 ? 1 : 2.5 } }
     }
 }
 
