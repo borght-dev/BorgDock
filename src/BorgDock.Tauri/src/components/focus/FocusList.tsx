@@ -12,6 +12,7 @@ import {
 import { flushSync } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { SinceLastCheckedCard } from '@/components/activity/SinceLastCheckedCard';
+import { AiUsageFocusCard } from '@/components/ai-usage/AiUsageFocusCard';
 import { CiFailuresFocusCard } from '@/components/ci-failures/CiFailuresFocusCard';
 import { DispatchFocusCard } from '@/components/dispatch/DispatchFocusCard';
 import { NotesFocusCard } from '@/components/notes/NotesFocusCard';
@@ -466,6 +467,7 @@ export function FocusList() {
         )}
       </div>
       <SinceLastCheckedCard />
+      <AiUsageFocusCard />
       <DispatchFocusCard />
       <CiFailuresFocusCard />
       <NotesFocusCard />

@@ -1,9 +1,8 @@
-import { invoke } from '@tauri-apps/api/core';
 import clsx from 'clsx';
 import type { ReactNode } from 'react';
-import { RefreshIcon, SettingsIcon } from '@/components/shared/icons';
+import { AiAccountsIntro } from '@/components/ai-usage/AiAccountsIntro';
+import { RefreshIcon } from '@/components/shared/icons';
 import { TitleBar, WindowControls } from '@/components/shared/primitives';
-import { WindowLauncher } from '@/components/shared/WindowLauncher';
 import { useStatusBar } from '@/hooks/useStatusBar';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, type MainView, selectTopView, useUiStore } from '@/stores/ui-store';
@@ -14,17 +13,10 @@ function dispatchRefresh() {
   document.dispatchEvent(new CustomEvent('borgdock-refresh'));
 }
 
-function openSettings() {
-  void invoke('open_settings_window', {}).catch((e) =>
-    console.error('open_settings_window failed', e),
-  );
-}
-
 function TitleBarActions({ hasFailing }: { hasFailing: boolean }) {
   return (
     <span className="bd-mainwindow__right" data-tauri-drag-region="false">
       <span className={clsx('bd-status-dot', hasFailing && 'bd-status-dot--red')} aria-hidden />
-      <WindowLauncher />
       <button
         type="button"
         className="bd-icon-btn"
@@ -33,15 +25,6 @@ function TitleBarActions({ hasFailing }: { hasFailing: boolean }) {
         data-tauri-drag-region="false"
       >
         <RefreshIcon />
-      </button>
-      <button
-        type="button"
-        className="bd-icon-btn"
-        aria-label="Settings"
-        onClick={openSettings}
-        data-tauri-drag-region="false"
-      >
-        <SettingsIcon />
       </button>
       <WindowControls />
     </span>
@@ -99,6 +82,7 @@ export function MainWindow({ children }: MainWindowProps) {
         <main className="bd-mainwindow__body">{children}</main>
         <StatusBar left={sb.left} right={sb.right} />
       </div>
+      <AiAccountsIntro />
     </div>
   );
 }
