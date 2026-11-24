@@ -112,28 +112,28 @@
   }
 
   /* ── The bar the rail ends in: Settings, Open window, Recent, fold ── */
-  .bd-rail__bar {
+  .bd-rail__tools {
     display: flex;
     align-items: center;
     gap: 2px;
     padding: 6px 4px 0;
   }
-  .bd-rail__bar .bd-icon-btn,
-  .bd-rail__bar .bd-rail__toggle {
+  .bd-rail__tools .bd-icon-btn,
+  .bd-rail__tools .bd-rail__toggle {
     flex-shrink: 0;
     width: 28px;
     height: 28px;
   }
-  .bd-rail__bar .bd-rail__toggle {
+  .bd-rail__tools .bd-rail__toggle {
     justify-content: center;
     margin: 0 0 0 auto;
     padding: 0;
   }
-  .bd-rail--collapsed .bd-rail__bar {
+  .bd-rail--collapsed .bd-rail__tools {
     flex-direction: column-reverse;
     padding: 6px 0 0;
   }
-  .bd-rail--collapsed .bd-rail__bar .bd-rail__toggle {
+  .bd-rail--collapsed .bd-rail__tools .bd-rail__toggle {
     margin-left: 0;
   }
 

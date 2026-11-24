@@ -127,7 +127,7 @@ function openSettings() {
 function RailBar({ collapsed }: { collapsed: boolean }) {
   const toggleRail = useUiStore((s) => s.toggleRail);
   return (
-    <div className="bd-rail__bar">
+    <div className="bd-rail__tools">
       <IconButton
         icon={<Settings size={15} strokeWidth={2} />}
         tooltip="Settings"

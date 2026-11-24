@@ -344,6 +344,35 @@ Disk health has three places (design: `design/rail-five/mockups.html`, artboard 
 - **A T3 environment's disks are `hostOfEnvironment(hosts, environmentId)`**: `HostDisks.t3Host.id` is the environment id, `HostDisks.id` is what `clean()` takes. Where T3 puts a new worktree is T3's setting, so the launch sheet warns on the host's worst disk and promises no number.
 - **A low disk notifies once**, and again when it gets worse (`DiskAlertGate`). The six-hourly reminder is gone: the Focus card stays until the disk recovers.
 
+## The rail's foot: Limits left, Machines, Recent
+
+The rail has five sections (Focus, Dispatch, Pull requests, Work items, Notes; keys `1` to `5`) and three status blocks at its foot. Design: `design/rail-five/mockups.html`. Each block is a `RailFlyout` (`components/layout/rail-blocks/`): one button that opens a card beside the rail. A block's trigger holds no interactive elements; the card does.
+
+- **The foot, top to bottom:** Limits left (`components/ai-usage/RailLimits`), Machines (`components/machines/RailMachines`), the "Synced" line, then a bar of icon buttons (`.bd-rail__tools` in `Rail.tsx`): Settings in the corner, Open window, Recent (the bell, `components/activity/RailRecent`) and the fold toggle at the far end. Folded, the bar stacks with Settings still at the bottom (`column-reverse`). The title bar keeps the status dot, Refresh and the window buttons.
+- **The folder is `rail-blocks`, not `rail`.** `@/components/layout/rail` resolves to `Rail.tsx` on Windows and to the folder on Linux CI.
+- **`.bd-rail__bar` is the meter bar, 5 px tall.** The icon bar first reused that class and collapsed to its padding, with its buttons drawn over the block above. A new class in `rail-blocks.css` needs a grep first.
+- **A card places itself again when it resizes** (`RailFlyout`'s `ResizeObserver`): a card that loads its rows after opening would otherwise run past the bottom of the window.
+- **Worktrees and Activity are not sections any more.** Worktrees is the Ctrl+F7 tool window; Activity is the Recent card and the history window.
+- **Open window lives in the bar** (`WindowLauncher anchor="rail"`): its menu opens beside the rail, growing upward, without a Settings item because Settings is the button next to it.
+- Stories: every `Main Window/MainWindow` story seeds the foot (`seedRailFoot`), so heroes and site captures show it.
+
+## AI account usage
+
+What is left of each Claude and Codex account on this machine: rows in the rail's "Limits left" block, a ring per account when the rail is folded, the AI usage card, and a Focus card while an account has nothing left. Design: artboards E and F of `design/rail-five/mockups.html`.
+
+- **Rust reads, the webview gets percentages** (`src-tauri/src/ai_usage/`). `ai_usage_accounts` finds accounts without the network; `ai_usage_read` reads the ones asked for. Tokens never leave Rust.
+- **Claude**: every `~/.claude*` folder with a `.credentials.json` (plus `CLAUDE_CONFIG_DIR`), read at `api.anthropic.com/api/oauth/usage` with that folder's token, the `anthropic-beta: oauth-2025-04-20` header and BorgDock's own user agent. The endpoint is the one Claude Code's usage screen reads; nobody documents it. `limits[]` holds `weekly_all`, `weekly_scoped` (one model) and `session`; `five_hour` / `seven_day` are the older shape. It answers 429 when read often: the poller reads every ten minutes and the card only when the last read is a minute old.
+- **BorgDock never refreshes a Claude token.** Two programs refreshing one token race each other. An expired token is a problem of kind `expired`; the store keeps the numbers read before it (`mergeReading`) and the card says "Open Claude Code with this account to refresh its sign-in."
+- **Codex**: every `~/.codex*` home whose `auth.json` holds a ChatGPT sign-in (plus `CODEX_HOME`), read by starting `codex app-server --listen stdio://` in that home and sending `initialize`, `initialized`, `account/rateLimits/read`. Codex refreshes its own token. A home with only an API key has no plan limits and is not an account.
+- **macOS keeps the default folder's Claude credentials in the Keychain** (`Claude Code-credentials`). The read goes through `security find-generic-password`; it was written from the documented service name and not tried on a Mac.
+- **T3 Code's settings link a thread to an account.** `~/.t3/userdata/settings.json` lists `providerInstances` with a `displayName` and a `config.homePath` (empty: the provider's default folder). `AiAccount.t3Instances` holds the instances that sign in from the account's folder; a Dispatch thread's `modelInstance` is one of them (`services/ai-usage/threads.ts`). Only this machine's T3: another machine's instances sign in from its own folders.
+- **Labels and colours** (`services/ai-usage/model.ts`, pure): the suggested label is the first two letters of T3's name for the account, else of its email domain; a clash within one provider takes the folder's suffix (`~/.claude-ops` is OP). One identity colour per label (`--color-identity-1` … `-5`), never red or amber: those say how much is left. Settings holds a preference only once the user changed it or answered the first-start sheet (`settings.aiUsage`).
+- **Nothing is read before the first-start sheet is answered** (`AiAccountsIntro`, `aiUsage.introduced`), and never an account the rail hides. "Not now" saves every account as hidden. An account found later gets its suggested label and a toast.
+- **A reading outlives its window only as "unknown".** A limit whose `resetsAt` passed since it was read is dropped (`currentLimits`): nobody knows what the new window holds until the next read.
+- The hand-written types in `services/ai-usage/types.ts` are what the commands return; the store calls `invoke` with them rather than the generated bindings.
+- e2e: `tests/e2e/helpers/mock-tauri.ts` answers `ai_usage_accounts` and `ai_usage_read` with no accounts, so the sheet never opens in a spec that doesn't seed one.
+- Checking against the real accounts: `cargo test --lib ai_usage::tests::live -- --ignored --nocapture` (read-only).
+
 ## Diagnosing a hung / frozen BorgDock (AppHang)
 
 Start with `grep responsiveness` in `%APPDATA%\BorgDock\logs\borgdock.log`. The watchdog (`platform/responsiveness.rs`, renderer half `src/services/responsiveness.ts`) writes:

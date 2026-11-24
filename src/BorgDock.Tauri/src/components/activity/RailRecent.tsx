@@ -45,7 +45,9 @@ export function RailRecent({ collapsed, defaultOpen, now }: RailRecentProps) {
         <span className="bd-rail__glyph">
           <Bell size={16} strokeWidth={2} aria-hidden="true" className="bd-rail__icon" />
           {needsYou > 0 && (
-            <span className="bd-rail__count bd-rail__count--badge">{badgeText(needsYou)}</span>
+            <span className="bd-rail__count bd-rail__count--badge bd-rail__count--hot">
+              {badgeText(needsYou)}
+            </span>
           )}
         </span>
       </span>

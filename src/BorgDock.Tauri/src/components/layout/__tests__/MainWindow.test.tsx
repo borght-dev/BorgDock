@@ -45,12 +45,27 @@ describe('MainWindow', () => {
         </MainWindow>,
       );
       const nav = screen.getByRole('navigation', { name: 'Sections' });
-      expect(within(nav).getAllByRole('button')).toHaveLength(7);
+      expect(within(nav).getAllByRole('button')).toHaveLength(5);
       expect(screen.queryByRole('tab')).not.toBeInTheDocument();
       expect(screen.getByTestId('content')).toBeInTheDocument();
       expect(screen.getByLabelText('Refresh')).toBeInTheDocument();
       expect(screen.getByLabelText('Settings')).toBeInTheDocument();
       expect(screen.getByLabelText('Close')).toBeInTheDocument();
+    });
+
+    it('keeps Settings and Open window in the rail, not in the title bar', () => {
+      const { container } = render(
+        <MainWindow>
+          <div />
+        </MainWindow>,
+      );
+      const titleBarActions = container.querySelector<HTMLElement>('.bd-mainwindow__right')!;
+      expect(within(titleBarActions).queryByLabelText('Settings')).toBeNull();
+      expect(within(titleBarActions).queryByLabelText('Open window')).toBeNull();
+      expect(within(titleBarActions).getByLabelText('Refresh')).toBeInTheDocument();
+      const rail = screen.getByRole('complementary', { name: 'Navigation' });
+      expect(within(rail).getByLabelText('Settings')).toBeInTheDocument();
+      expect(within(rail).getByLabelText('Open window')).toBeInTheDocument();
     });
 
     it('titles the title bar with the active section', () => {

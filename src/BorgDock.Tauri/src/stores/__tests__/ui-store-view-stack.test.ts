@@ -87,23 +87,30 @@ describe('ui-store view stack', () => {
   });
 
   it('lists the sections in rail order, new sections last', () => {
-    expect(SECTION_ORDER).toEqual([
-      'focus',
-      'dispatch',
-      'prs',
-      'workitems',
-      'worktrees',
-      'activity',
-      'notes',
-    ]);
+    expect(SECTION_ORDER).toEqual(['focus', 'dispatch', 'prs', 'workitems', 'notes']);
   });
 
-  it('restores a persisted worktrees section', async () => {
+  it('restores a persisted section', async () => {
     readFromTauriStore.mockImplementation((_store: string, key: string) =>
-      Promise.resolve(key === 'activeSection' ? 'worktrees' : undefined),
+      Promise.resolve(key === 'activeSection' ? 'notes' : undefined),
     );
     useUiStore.getState().restorePersistedSection();
-    await vi.waitFor(() => expect(useUiStore.getState().activeSection).toBe('worktrees'));
+    await vi.waitFor(() => expect(useUiStore.getState().activeSection).toBe('notes'));
+  });
+
+  it.each([
+    'worktrees',
+    'activity',
+    'workstreams',
+  ])('ignores a persisted %s section, which 4.17.0 removed', async (section) => {
+    useUiStore.setState({ activeSection: 'focus' });
+    readFromTauriStore.mockImplementation((_store: string, key: string) =>
+      Promise.resolve(key === 'activeSection' ? section : undefined),
+    );
+    useUiStore.getState().restorePersistedSection();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(useUiStore.getState().activeSection).toBe('focus');
   });
 
   it('ignores an unknown persisted section', async () => {

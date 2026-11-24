@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { LaunchAccountHint } from '@/components/ai-usage/LaunchAccountHint';
 import { SearchSelect, type SearchSelectSection, Seg2 } from '@/components/shared/primitives';
 import { configuredHosts } from '@/services/dispatch/hosts';
 import { type LaunchModel, launchModels, preferredModel } from '@/services/dispatch/launch';
@@ -226,6 +227,7 @@ export function LaunchChoiceFields({
           )}
         </div>
       )}
+      {needsModel && model && <LaunchAccountHint hostId={place.hostId} modelId={modelId} />}
       {needsModel && catalogueError && <p className="bd-dp-sheet__hint">{catalogueError}</p>}
     </>
   );

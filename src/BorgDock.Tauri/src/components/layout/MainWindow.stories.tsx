@@ -19,6 +19,7 @@ import {
   makeRunScene,
   WIDE_CATALOGUE,
 } from '@/components/dispatch/__fixtures__/dispatch-data';
+import { machineDisks, machineWorktrees } from '@/components/machines/__fixtures__/machines-data';
 import {
   bugWithReproSteps,
   epicWithCustomFields,
@@ -28,9 +29,13 @@ import {
   taskMinimalFields,
   userStoryWithRichBody,
 } from '@/components/work-items/__fixtures__/work-item-data';
+import { ACCOUNTS, INTRODUCED, readingsAt } from '@/services/ai-usage/__fixtures__/accounts';
 import type { BriefFilter } from '@/services/dispatch/walk';
 import { DEFAULT_DISPLAY } from '@/services/pr-list/display';
 import { reviewRequestKey } from '@/services/priority-scoring';
+import { useActivityStore } from '@/stores/activity-store';
+import { useAiUsageStore } from '@/stores/ai-usage-store';
+import { useDiskSpaceStore } from '@/stores/disk-space-store';
 import { type DispatchViewMode, type RunIntent, useDispatchStore } from '@/stores/dispatch-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -367,6 +372,32 @@ function seedDispatch(
   } as never);
 }
 
+/**
+ * What the rail's foot shows: what is left of each AI account, each machine's
+ * disk, and how many things need you.
+ */
+function seedRailFoot() {
+  const now = Date.now();
+  const ctrl = getControl();
+  ctrl.invokeResponses.host_disk_space = () => machineDisks('low');
+  ctrl.invokeResponses.worktree_cache_get_all = machineWorktrees();
+  ctrl.invokeResponses.worktree_cache_refresh = machineWorktrees();
+  ctrl.invokeResponses.ai_usage_accounts = ACCOUNTS;
+  ctrl.invokeResponses.ai_usage_read = [];
+  useDiskSpaceStore.setState({ hosts: machineDisks('low', now), cleanup: {}, error: null });
+  useAiUsageStore.setState({
+    accounts: ACCOUNTS,
+    looked: true,
+    readings: readingsAt(now),
+    lastReadAt: now - 30_000,
+    isReading: false,
+  });
+  useSettingsStore.setState((s) => ({ settings: { ...s.settings, aiUsage: INTRODUCED } }));
+  useActivityStore.setState({
+    counts: { unread: 7, needsYou: 3, byCategory: {}, bySource: {}, revision: 1 },
+  });
+}
+
 // ── harness ──────────────────────────────────────────────────────────────────
 
 function Harness({
@@ -415,6 +446,7 @@ function Harness({
   // Items selection restore) observe the data before they run.
   useState(() => {
     seedPrStore();
+    seedRailFoot();
     if (section === 'workitems') seedWorkItems();
     if (section === 'dispatch' || agentsWaiting) {
       seedDispatch(
@@ -475,6 +507,24 @@ export const RailCollapsed: Story = { args: { section: 'prs', railCollapsed: tru
 export const RailCollapsedLight: Story = {
   args: { section: 'prs', railCollapsed: true },
   globals: { theme: 'light' },
+};
+
+/** The AI usage card, opened from the rail's Limits block. */
+export const RailLimitsOpen: Story = {
+  args: { section: 'prs' },
+  play: async ({ canvasElement }) => {
+    const rail = within(canvasElement).getByRole('complementary', { name: 'Navigation' });
+    await userEvent.click(within(rail).getByRole('button', { name: 'Limits left' }));
+  },
+};
+
+/** The Machines card, opened from the rail. */
+export const RailMachinesOpen: Story = {
+  args: { section: 'prs' },
+  play: async ({ canvasElement }) => {
+    const rail = within(canvasElement).getByRole('complementary', { name: 'Navigation' });
+    await userEvent.click(within(rail).getByRole('button', { name: /^Machines/ }));
+  },
 };
 
 /** Compact density: one 32 px line per pull request. */

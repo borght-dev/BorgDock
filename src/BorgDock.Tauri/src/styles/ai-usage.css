@@ -189,6 +189,22 @@
     gap: 6px;
   }
 
+  /* ── Under a launch sheet's model picker ─────────────── */
+  .bd-ai-launch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .bd-ai-launch .bd-ai-mark {
+    min-width: 0;
+  }
+  .bd-ai-launch[data-tone='low'] {
+    color: var(--color-status-yellow);
+  }
+  .bd-ai-launch[data-tone='critical'] {
+    color: var(--color-status-red);
+  }
+
   /* ── Naming the accounts: the first-start sheet and Settings ─ */
   .bd-ai-lblrow {
     display: flex;

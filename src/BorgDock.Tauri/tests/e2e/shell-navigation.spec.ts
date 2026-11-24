@@ -48,15 +48,69 @@ async function bootRail(page: Page) {
 test('the rail replaces the title-bar tabs', async ({ page }) => {
   await bootRail(page);
   await expect(page.getByRole('tab', { name: 'PRs' })).toHaveCount(0);
-  for (const name of [
-    /^Focus/,
-    /^Dispatch/,
-    /^Pull requests/,
-    /^Work items/,
-    /^Worktrees/,
-  ]) {
+  for (const name of [/^Focus/, /^Dispatch/, /^Pull requests/, /^Work items/, /^Notes/]) {
     await expect(railButton(page, name)).toBeVisible();
   }
+  // Workstreams, Worktrees and Activity are not sections any more.
+  await expect(
+    page.getByRole('navigation', { name: 'Sections' }).getByRole('button'),
+  ).toHaveCount(5);
+});
+
+test('the rail ends in a bar: Settings in the corner, Open window, Recent and the fold toggle', async ({
+  page,
+}) => {
+  await bootRail(page);
+  const rail = page.getByRole('complementary', { name: 'Navigation' });
+  const bar = rail.locator('.bd-rail__tools');
+  await expect(bar.getByRole('button')).toHaveCount(4);
+
+  // Settings sits in the bottom left corner of the window.
+  const settings = bar.getByRole('button', { name: 'Settings' });
+  const corner = await settings.boundingBox();
+  const viewport = page.viewportSize();
+  expect(corner?.x ?? 999).toBeLessThan(40);
+  expect((viewport?.height ?? 0) - ((corner?.y ?? 0) + (corner?.height ?? 0))).toBeLessThan(40);
+  await settings.click();
+  await expect
+    .poll(async () => (await getInvokeLog(page)).some((e) => e.cmd === 'open_settings_window'))
+    .toBe(true);
+
+  // Open window lists the tool windows beside the rail, without Settings.
+  await bar.getByRole('button', { name: 'Open window' }).click();
+  const menu = page.getByRole('menu', { name: 'Windows' });
+  await expect(menu.getByRole('menuitem')).toHaveCount(5);
+  await expect(menu.getByRole('menuitem', { name: 'Settings' })).toHaveCount(0);
+  const railBox = await rail.boundingBox();
+  const menuBox = await menu.boundingBox();
+  expect(menuBox?.x ?? 0).toBeGreaterThanOrEqual((railBox?.x ?? 0) + (railBox?.width ?? 0));
+  await menu.getByRole('menuitem', { name: /Worktrees/ }).click();
+  await expect
+    .poll(async () =>
+      (await getInvokeLog(page)).some(
+        (e) => e.cmd === 'open_tool_window' && (e.args as { tool?: string }).tool === 'worktrees',
+      ),
+    )
+    .toBe(true);
+
+  // The bell opens Recent; the title bar keeps Refresh and loses the other two.
+  await bar.getByRole('button', { name: /^Recent/ }).click();
+  await expect(page.getByRole('dialog', { name: /^Recent/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  const titleBar = page.locator('.bd-mainwindow__right');
+  await expect(titleBar.getByRole('button', { name: 'Refresh' })).toBeVisible();
+  await expect(titleBar.getByRole('button', { name: 'Settings' })).toHaveCount(0);
+  await expect(titleBar.getByRole('button', { name: 'Open window' })).toHaveCount(0);
+});
+
+test("the rail's foot shows this machine and opens its card", async ({ page }) => {
+  await bootRail(page);
+  const machines = page.getByRole('button', { name: /^Machines/ });
+  await expect(machines).toBeVisible();
+  await machines.click();
+  const card = page.getByRole('dialog', { name: /^Machines/ });
+  await expect(card).toBeVisible();
+  await expect(card.getByText('Open worktrees')).toBeVisible();
 });
 
 test('switching section in the rail persists it across a restart', async ({ page }) => {
@@ -86,8 +140,7 @@ test('number keys switch sections', async ({ page }) => {
   await page.locator('body').click();
 
   await page.keyboard.press('5');
-  await expect(railButton(page, /^Worktrees/)).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByRole('button', { name: 'Open worktrees window' })).toBeVisible();
+  await expect(railButton(page, /^Notes/)).toHaveAttribute('aria-current', 'page');
 
   await page.keyboard.press('4');
   await expect(railButton(page, /^Work items/)).toHaveAttribute('aria-current', 'page');
