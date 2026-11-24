@@ -14,10 +14,10 @@ Current as of **3.0.0** (2026-09-25). `/CHANGELOG.md` records what changed per r
   - BorgDock logo and name
   - Sections **Focus**, **Dispatch**, **Pull requests**, **Work items**, **Notes** (keys `1`–`5`), with a sliding highlight on the active one
   - Counts: Pull requests always (red when any PR is failing); Focus, Dispatch (the items waiting on you) and Work items when above zero
-  - Sync block: "Syncing…" / "Synced 12 s ago" (updates every 10 s), a GitHub rate meter (marked low under 10%) and "N of M requests left (GraphQL|REST)" for the tightest pool across accounts
+  - Foot, top to bottom: **Limits left** (what is left of each Claude and Codex account on this machine, and the GitHub rate for the tightest pool; opens the AI usage card), **Machines** (free disk space per machine; opens a card with prunable worktrees and cache cleanup), "Syncing…" / "Synced 12 s ago", and a bar of icon buttons: **Settings** in the corner, **Open window**, **Recent** (a bell counting what needs you now; opens the Recent card) and **Collapse**
   - Last section remembered (default Focus)
-  - Folds to icons (`[`, or **Collapse** at its foot): counts become badges (99+ above 99), names show on hover, the rate meter stands alone (its numbers on hover); remembered across launches
-- Title bar: the section name, or "Pull request" / "Work item" when a detail view is open; status dot (red when any PR is failing), **Open window** launcher, Refresh, Settings, min/max/close
+  - Folds to icons (`[`, or **Collapse**): counts become badges (99+ above 99), names show on hover, each account becomes a ring of what is left; remembered across launches
+- Title bar: the section name, or "Pull request" / "Work item" when a detail view is open; the update chip when an update needs something, status dot (red when any PR is failing), Refresh, min/max/close
 - Status bar per view:
 
   | View | Left | Right |
@@ -28,7 +28,7 @@ Current as of **3.0.0** (2026-09-25). `/CHANGELOG.md` records what changed per r
   | Work items | `ado: org/project` | `/` search · `R` refresh · `J K` move · `Enter` open |
   | PR / work item detail | `owner/repo #n` / `work item AB#id` | `Esc` back · `Alt+←` back |
 
-- **Open window** launcher (also in the flyout): Worktrees, Files, Work items, SQL (with their hotkeys), Settings, What's new
+- **Open window** launcher (in the rail's bar, and in the flyout): Worktrees, Quick note, Work items, SQL (with their hotkeys), What's new; the flyout's adds Settings
 - Closing hides to tray (tool windows hide too and reopen fast); single-instance (a second launch focuses the existing window)
 - Window size and position restored per window, DPI-safe across mixed-DPI monitors, only onto connected displays
 - Start minimized to tray and run at startup
