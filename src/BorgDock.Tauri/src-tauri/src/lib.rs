@@ -333,16 +333,15 @@ pub fn run() {
         .on_window_event(|window, event| {
             match event {
                 tauri::WindowEvent::CloseRequested { api, .. }
-                    if window.label() == "main"
-                        || platform::hotkey::is_reusable_tool_window(window.label()) =>
+                    if platform::window::hides_when_closed(window.label()) =>
                 {
                     api.prevent_close();
                     let _ = window.hide();
                 }
                 // Once a window is truly gone, forget its first-reveal flag so
                 // a future window reusing the same label (e.g. a reopened
-                // pr-detail / settings) reveals again instead of staying
-                // hidden. See platform::window::revealed().
+                // pr-detail) reveals again instead of staying hidden. See
+                // platform::window::revealed().
                 tauri::WindowEvent::Destroyed => {
                     crate::platform::window::mark_window_destroyed(window.label());
                     window
@@ -428,6 +427,7 @@ pub fn run() {
             platform::tray::setup_tray(app)?;
             activity::push::start(app.handle().clone());
             phone_link::start(app.handle().clone());
+            settings::window::prewarm(app.handle().clone());
             platform::tray::start_initializing_animation(app.handle().clone());
 
             // Window geometry store: load once, register, spawn flusher,

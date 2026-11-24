@@ -1,7 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@tauri-apps/api/event', () => ({ listen: () => Promise.resolve(() => {}) }));
+const listeners = vi.hoisted(() => new Map<string, (event: { payload: unknown }) => void>());
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: (name: string, handler: (event: { payload: unknown }) => void) => {
+    listeners.set(name, handler);
+    return Promise.resolve(() => {});
+  },
+}));
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => ({
     minimize: vi.fn(),
@@ -86,6 +92,7 @@ function defaultMockSettings(): any {
   };
 }
 
+import { flushSettings } from '@/stores/settings-store';
 import { SettingsApp } from '../SettingsApp';
 
 describe('SettingsApp', () => {
@@ -94,6 +101,27 @@ describe('SettingsApp', () => {
     location.hash = '';
     saveSettings.mockClear();
     updateSettings.mockClear();
+    vi.mocked(flushSettings).mockClear();
+    listeners.clear();
+  });
+
+  it('starts a visit clean when the kept window is shown again', () => {
+    render(<SettingsApp />);
+    const search = screen.getByPlaceholderText('Search settings…');
+    fireEvent.change(search, { target: { value: 'poll' } });
+    expect(search).toHaveValue('poll');
+
+    act(() => listeners.get('settings:shown')?.({ payload: null }));
+
+    expect(screen.getByPlaceholderText('Search settings…')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Repositories' })).toBeInTheDocument();
+  });
+
+  it('saves pending edits when the window is closed, which only hides it', () => {
+    render(<SettingsApp />);
+    expect(flushSettings).not.toHaveBeenCalled();
+    fireEvent.blur(window);
+    expect(flushSettings).toHaveBeenCalledTimes(1);
   });
 
   it('renders rail with all four group headers', () => {
