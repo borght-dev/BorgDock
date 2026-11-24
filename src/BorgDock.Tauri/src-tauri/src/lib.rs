@@ -148,6 +148,7 @@ macro_rules! app_commands {
             platform::window::show_setup_wizard,
             platform::window::open_pr_detail_window,
             platform::window::open_whats_new_window,
+            platform::window::open_activity_history_window,
             platform::window::resize_flyout,
             flyout::toast::show_flyout_toast,
             // Process

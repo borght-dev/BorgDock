@@ -59,10 +59,18 @@ export function RailFlyout({
     const trigger = triggerRef.current;
     const element = cardRef.current;
     if (!trigger || !element) return;
-    const rect = trigger.getBoundingClientRect();
-    const lowest = window.innerHeight - element.offsetHeight - GAP;
-    setPosition({ left: railEdge(trigger), top: Math.max(GAP, Math.min(rect.top, lowest)) });
+    const place = () => {
+      const rect = trigger.getBoundingClientRect();
+      const lowest = window.innerHeight - element.offsetHeight - GAP;
+      setPosition({ left: railEdge(trigger), top: Math.max(GAP, Math.min(rect.top, lowest)) });
+    };
+    place();
     element.focus({ preventScroll: true });
+    // A card that fills in after it opened (a journal read, a disk check)
+    // grows: place it again, or it runs past the bottom of the window.
+    const resized = new ResizeObserver(place);
+    resized.observe(element);
+    return () => resized.disconnect();
   }, [open]);
 
   useEffect(() => {

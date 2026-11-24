@@ -318,4 +318,127 @@
     font-size: 11px;
     color: var(--color-text-muted);
   }
+
+  /* ── All history: the list in a window of its own ──────── */
+  .bd-act-window {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--color-background);
+  }
+  .bd-act-window__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* ── Recent: the bell in the bar at the rail's foot, and its card ──
+     Built on rail-blocks.css (.bd-rail__flyout, .bd-railcard__*); these are
+     the parts only Recent has. Design: design/rail-five/mockups.html, C1.
+     The trigger is one icon button in both rail states; two classes, so it
+     wins over .bd-rail__flyout, which is imported later. */
+  .bd-rail__flyout.bd-rail__recent {
+    display: inline-flex;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-rail__flyout.bd-rail__recent:hover,
+  .bd-rail__flyout.bd-rail__recent[aria-expanded='true'] {
+    color: var(--color-text-primary);
+  }
+  .bd-rail__recent-face {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+  }
+  /* The badge is ringed in the surface behind it, which is the hover tint here. */
+  .bd-rail__recent:hover .bd-rail__count--badge,
+  .bd-rail__recent[aria-expanded='true'] .bd-rail__count--badge {
+    --bd-rail-badge-surface: color-mix(in srgb, var(--color-text-primary) 6%, var(--color-background));
+  }
+
+  .bd-recent__dot {
+    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-status-gray);
+  }
+  .bd-recent__dot[data-tone='red'] {
+    background: var(--color-status-red);
+  }
+  .bd-recent__dot[data-tone='amber'] {
+    background: var(--color-status-yellow);
+  }
+  .bd-recent__dot[data-tone='green'] {
+    background: var(--color-status-green);
+  }
+  .bd-recent__dot[data-tone='accent'] {
+    background: var(--color-accent);
+  }
+  .bd-recent__open,
+  .bd-recent__quiet {
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .bd-recent__quiet {
+    width: 100%;
+  }
+  /* A summary runs to 160 characters: two lines, then the rest is in history. */
+  .bd-recent__summary {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+  }
+  .bd-recent__open:hover .bd-recent__summary,
+  .bd-recent__quiet:hover .bd-recent__summary {
+    color: var(--color-text-primary);
+    text-decoration: underline;
+    text-decoration-color: var(--color-strong-border);
+    text-underline-offset: 3px;
+  }
+  .bd-recent__open:focus-visible,
+  .bd-recent__quiet:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .bd-recent__earlier {
+    margin-top: 4px;
+  }
+  .bd-recent__time {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-tertiary);
+  }
+  /* Two classes: .bd-railcard__link is imported later and resets colour and size. */
+  .bd-railcard__link.bd-recent__more {
+    align-self: flex-start;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+  }
+  .bd-railcard__link.bd-recent__settings {
+    color: var(--color-text-tertiary);
+  }
+  .bd-railcard__link.bd-recent__settings:hover {
+    color: var(--color-text-primary);
+  }
+  .bd-recent__calm {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+  .bd-recent__calm--faint {
+    color: var(--color-text-tertiary);
+  }
 }

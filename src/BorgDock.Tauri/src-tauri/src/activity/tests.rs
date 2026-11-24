@@ -1161,7 +1161,11 @@ async fn a_retired_source_needs_nothing_until_it_comes_back() {
         ("read".into(), Some("user".into()))
     );
     assert_eq!(
-        count(&store, "SELECT COUNT(*) FROM entries WHERE status <> 'open'").await,
+        count(
+            &store,
+            "SELECT COUNT(*) FROM entries WHERE status <> 'open'"
+        )
+        .await,
         0
     );
 }
@@ -1338,8 +1342,18 @@ async fn upgrading_ends_what_the_old_rules_left_needing_me() {
                 ..old("comment-older", ADO, ITEM, "ado.comment")
             },
             old("comment-newer", ADO, ITEM, "ado.comment"),
-            old("failed-gone", SOURCE, "t3:local:thread:gone", "agent.failed"),
-            old("failed-here", SOURCE, "t3:local:thread:here", "agent.failed"),
+            old(
+                "failed-gone",
+                SOURCE,
+                "t3:local:thread:gone",
+                "agent.failed",
+            ),
+            old(
+                "failed-here",
+                SOURCE,
+                "t3:local:thread:here",
+                "agent.failed",
+            ),
             old("grew", CI, "ci:group-1", "ci.group-grew"),
             OldRow {
                 payload: r#"{"schema":1,"links":{"prUrls":["https://github.com/Acme/Shop/pull/11"]}}"#,

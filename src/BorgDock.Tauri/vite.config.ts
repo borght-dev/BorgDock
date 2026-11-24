@@ -187,6 +187,7 @@ export default defineConfig({
         'whats-new': path.resolve(__dirname, "whats-new.html"),
         'note-capture': path.resolve(__dirname, "note-capture.html"),
         settings: path.resolve(__dirname, "settings.html"),
+        'activity-history': path.resolve(__dirname, "activity-history.html"),
       },
     },
   },

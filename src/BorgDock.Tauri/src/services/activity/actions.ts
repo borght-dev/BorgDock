@@ -73,11 +73,15 @@ function hostOffline(hostId: string, world: World): string | null {
   return host && !host.ok ? `${host.label} is offline` : null;
 }
 
-/** Whether `entry`'s action may still run, and what to offer when not. */
+/**
+ * Whether `entry`'s action may still run, and what to offer when not. A
+ * window without the live stores passes `null` for the world: the action is
+ * offered as the entry has it, and the main window checks it when it runs.
+ */
 export function revalidate(
   entry: ActivityEntry,
   retired = false,
-  world: World = currentWorld(),
+  world: World | null = currentWorld(),
 ): Check {
   const action = entry.action;
   if (!action) return { ok: false, reason: 'Nothing to do', fallback: null };
@@ -85,7 +89,7 @@ export function revalidate(
     return { ok: false, reason: 'Its source was removed from settings', fallback: null };
   }
   if (entry.status !== 'open' && (action.kind === 'answer' || action.kind === 'approve-plan')) {
-    const thread = threadOf(action.hostId, action.threadId, world);
+    const thread = !world || threadOf(action.hostId, action.threadId, world);
     return {
       ok: false,
       reason: entry.resolvedBy === 'answered' ? 'Answered on another device' : 'No longer waiting',
@@ -94,6 +98,7 @@ export function revalidate(
         : null,
     };
   }
+  if (!world) return { ok: true, action };
   switch (action.kind) {
     case 'answer':
     case 'approve-plan':

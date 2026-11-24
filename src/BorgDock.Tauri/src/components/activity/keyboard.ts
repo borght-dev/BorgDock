@@ -1,7 +1,8 @@
-import { act } from '@/services/activity/actions';
+import type { ActivityEntry } from '@/services/activity/types';
 import { useActivityViewStore } from '@/stores/activity-view-store';
 import { showToast } from '@/stores/toast-store';
 import { useUiStore } from '@/stores/ui-store';
+import { actHere } from './take-action';
 
 const ROW_SELECTOR = '.bd-act-row[data-activity-id]';
 
@@ -14,11 +15,14 @@ function liveRows(): HTMLElement[] {
 /**
  * The Activity list's keys: J/K (and the arrows) move, Enter takes the
  * selected entry's action, E marks it read, U unread, # dismisses, Z undoes,
- * Shift+E marks everything shown read. Returns true when the key was the
- * list's.
+ * Shift+E marks everything shown read. `takeAction` is what Enter does: the
+ * main window acts itself, the history window asks the main window. Returns
+ * true when the key was the list's.
  */
-export function handleActivityKey(e: KeyboardEvent): boolean {
-  if (useUiStore.getState().activeSection !== 'activity') return false;
+export function handleActivityListKey(
+  e: KeyboardEvent,
+  takeAction: (entry: ActivityEntry) => Promise<void> = actHere,
+): boolean {
   const view = useActivityViewStore.getState();
   const selected = view.entries.find((entry) => entry.id === view.selectedId) ?? null;
   const key = e.key;
@@ -69,10 +73,7 @@ export function handleActivityKey(e: KeyboardEvent): boolean {
   switch (key) {
     case 'Enter':
       e.preventDefault();
-      void act(selected).then(({ reason }) => {
-        if (reason) showToast({ message: `${reason}. Opened it instead.` });
-        void useActivityViewStore.getState().refresh();
-      });
+      void takeAction(selected);
       return true;
     case 'e':
       e.preventDefault();
@@ -93,4 +94,10 @@ export function handleActivityKey(e: KeyboardEvent): boolean {
       return true;
   }
   return false;
+}
+
+/** The list's keys in the main window, while the Activity section is the one shown. */
+export function handleActivityKey(e: KeyboardEvent): boolean {
+  if (useUiStore.getState().activeSection !== 'activity') return false;
+  return handleActivityListKey(e);
 }

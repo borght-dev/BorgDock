@@ -1,13 +1,12 @@
 import { expect, type Page, test } from '@playwright/test';
 import type { MockHandlers } from './helpers/mock-tauri';
 import { getInvokeLog } from './helpers/mock-tauri';
-import { SAMPLE_PRS } from './helpers/seed';
-import { bootApp, seedMainWindow } from './helpers/test-utils';
+import { bootApp } from './helpers/test-utils';
 
 /**
- * Activity against an in-browser journal kept in sessionStorage. The
- * handlers run in the page (they are serialized), so they read and write
- * the journal there, with the same filters Rust applies.
+ * The history window (All history) against an in-browser journal kept in
+ * sessionStorage. The handlers run in the page (they are serialized), so
+ * they read and write the journal there, with the same filters Rust applies.
  */
 
 interface Row {
@@ -36,8 +35,8 @@ function row(id: string, summary: string, overrides: Partial<Row> = {}): Row {
     id,
     sourceId: 't3:local',
     entityKey: `t3:local:thread:${id}`,
-    category: 'agent.turn',
-    severity: 'success',
+    category: 'agent.report',
+    severity: 'info',
     needsYou: false,
     status: 'open',
     resolvedBy: null,
@@ -62,8 +61,6 @@ function row(id: string, summary: string, overrides: Partial<Row> = {}): Row {
 
 function journalHandlers(): MockHandlers {
   return {
-    // The local T3 answers, unchanged, so its threads stay as seeded and it counts as online.
-    t3_snapshot: { changed: false, sequence: 1, projects: [], threads: [] },
     activity_list: (args: Record<string, unknown>) => {
       const query = args.query as { filter: string; limit: number };
       const rows = JSON.parse(sessionStorage.getItem('e2e-activity') ?? '[]') as Row[];
@@ -145,24 +142,27 @@ async function boot(page: Page, rows: Row[], arriving?: Row) {
     },
     { rows, arriving: arriving ?? null },
   );
-  await bootApp(page, '', 'happy-path', journalHandlers());
-  await seedMainWindow(page, { prs: SAMPLE_PRS });
-  await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: /Activity/ }).click();
-  await expect(page.getByRole('heading', { name: 'Activity', level: 1 })).toBeVisible();
+  await bootApp(page, 'activity-history.html', 'happy-path', journalHandlers());
+  await expect(page.getByRole('heading', { name: 'History', level: 1 })).toBeVisible();
 }
+
+const show = (page: Page, filter: 'Needs you' | 'Unread' | 'All') =>
+  page.getByRole('group', { name: 'Show entries' }).getByRole('button', { name: filter }).click();
 
 const activityRows = (page: Page) => page.locator('.bd-act-row[data-activity-id]');
 
 test('marking what is shown read leaves an entry that arrives meanwhile unread', async ({ page }) => {
   const shown = [
-    row('a', 'W1 finished its turn on Rename the board'),
-    row('b', 'W2 finished its turn on Split the export', { observedAt: '2026-01-01T08:00:00.000Z' }),
+    row('a', 'Vera reported on 4821 Rename the board'),
+    row('b', 'Vera reported on 4822 Split the export', { observedAt: '2026-01-01T08:00:00.000Z' }),
   ];
-  const arriving = row('c', 'W3 finished its turn on Fix login', {
+  const arriving = row('c', 'Vera reported on 4823 Fix login', {
     observedAt: '2026-01-01T09:30:00.000Z',
     sourceAt: '2026-01-01T09:30:00.000Z',
   });
   await boot(page, shown, arriving);
+  // History opens on everything; this is about what is unread.
+  await show(page, 'Unread');
   await expect(activityRows(page)).toHaveCount(2);
 
   await page.evaluate(() => sessionStorage.setItem('e2e-arrive', '1'));
@@ -176,8 +176,8 @@ test('marking what is shown read leaves an entry that arrives meanwhile unread',
 
 test('undo puts back exactly the states a mark replaced', async ({ page }) => {
   const rows = [
-    row('a', 'W1 finished its turn on Rename the board'),
-    row('b', 'W2 finished its turn on Split the export', {
+    row('a', 'Vera reported on 4821 Rename the board'),
+    row('b', 'Vera reported on 4822 Split the export', {
       read: 'read',
       readReason: 'seen-in-t3',
       readAt: '2026-01-01T09:05:00.000Z',
@@ -185,7 +185,6 @@ test('undo puts back exactly the states a mark replaced', async ({ page }) => {
     }),
   ];
   await boot(page, rows);
-  await page.getByRole('group', { name: 'Show entries' }).getByRole('button', { name: 'All' }).click();
   await expect(activityRows(page)).toHaveCount(2);
 
   await activityRows(page).first().click();
@@ -202,7 +201,7 @@ test('undo puts back exactly the states a mark replaced', async ({ page }) => {
   expect(journal.find((r: Row) => r.id === 'b')).toMatchObject({ read: 'read', readReason: 'seen-in-t3' });
 });
 
-test('an answer the thread no longer asks falls back to Open', async ({ page }) => {
+test('an entry\'s action runs in the main window, which has the live threads to check it against', async ({ page }) => {
   const question = row('q', 'W3 asks: Keep the old cookie?', {
     category: 'agent.question',
     severity: 'warning',
@@ -215,35 +214,37 @@ test('an answer the thread no longer asks falls back to Open', async ({ page }) 
     }),
   });
   await boot(page, [question]);
-  await seedMainWindow(page, {
-    threads: [
-      {
-        id: 'q',
-        hostId: 'local',
-        hostLabel: 'This laptop',
-        available: true,
-        projectId: 'p',
-        place: 'W3',
-        title: 'Fix login',
-        branch: null,
-        createdAt: '2026-01-01T08:00:00.000Z',
-        lastActivityAt: '2026-01-01T09:10:00.000Z',
-        open: true,
-        status: 'running',
-        interactionMode: 'default',
-        model: 'm',
-        modelInstance: null,
-        effort: null,
-        pullRequests: [],
-        firstUserMessage: '',
-        questionRequestId: null,
-        questions: [],
-        lastAgentMessage: null,
-      },
-    ],
-  });
+  // This window has no threads, so it offers the action as the journal has it.
   const entry = activityRows(page).first();
-  await expect(entry.getByText('Answered on another device')).toBeVisible();
+  await entry.getByRole('button', { name: 'Answer: Keep it' }).click();
+
+  await expect
+    .poll(async () => (await getInvokeLog(page)).filter((call) => call.cmd === 'plugin:event|emit_to'))
+    .toHaveLength(1);
+  const [sent] = (await getInvokeLog(page)).filter((call) => call.cmd === 'plugin:event|emit_to');
+  expect(sent?.args).toMatchObject({ event: 'activity-act', payload: { id: 'q' } });
+});
+
+test('an entry that ended says how, and offers to open its thread instead', async ({ page }) => {
+  const answered = row('q', 'W3 asks: Keep the old cookie?', {
+    category: 'agent.question',
+    severity: 'warning',
+    needsYou: true,
+    status: 'resolved',
+    resolvedBy: 'answered',
+    read: 'read',
+    readReason: 'resolved',
+    readAt: '2026-01-01T09:20:00.000Z',
+    payload: JSON.stringify({
+      schema: 1,
+      entity: { kind: 'thread', key: 't3:local:thread:q', title: 'Fix login', url: null },
+      action: { kind: 'answer', hostId: 'local', threadId: 'q', requestId: 'req-1', option: 'Keep it' },
+      links: { itemIds: [], prUrls: [], workstreamIds: [], ciGroupIds: [] },
+    }),
+  });
+  await boot(page, [answered]);
+  const entry = activityRows(page).first();
+  await expect(entry.getByText('Answered', { exact: true })).toBeVisible();
   await expect(entry.getByRole('button', { name: 'Open' })).toBeVisible();
   await expect(entry.getByRole('button', { name: /Answer/ })).toHaveCount(0);
 });

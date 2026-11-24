@@ -174,6 +174,7 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   open_pr_detail_window: null,
   open_settings_window: null,
   open_whats_new_window: null,
+  open_activity_history_window: null,
   open_workitem_detail_window: null,
   show_or_focus_main: null,
   show_flyout_toast: null,
