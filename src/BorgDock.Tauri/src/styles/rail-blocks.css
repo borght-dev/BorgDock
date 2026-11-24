@@ -1,0 +1,231 @@
+/* The status blocks at the foot of the rail (Limits left, Machines, Recent)
+   and the cards they open. Design: design/rail-five/mockups.html. */
+@layer components {
+  .bd-rail__foot {
+    display: grid;
+    flex-shrink: 0;
+    gap: 2px;
+    margin-top: auto;
+    padding-top: 8px;
+  }
+  .bd-rail__flyout {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .bd-rail__flyout:hover,
+  .bd-rail__flyout[aria-expanded='true'] {
+    background: var(--color-surface-hover);
+  }
+  .bd-rail__flyout:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .bd-rail__block {
+    display: grid;
+    gap: 5px;
+    padding: 8px 10px;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
+  }
+  .bd-rail__foot > * + * {
+    border-top: 1px solid var(--color-subtle-border);
+  }
+  .bd-rail__blockhead {
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+  .bd-rail__stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--color-text-primary);
+  }
+  .bd-rail__statlabel {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-rail__statvalue {
+    flex-shrink: 0;
+    min-width: 2.2rem;
+    margin-left: auto;
+    font-family: var(--font-code);
+    font-size: 11px;
+    text-align: right;
+    color: var(--color-text-secondary);
+  }
+  .bd-rail__stat[data-tone='low'] .bd-rail__statvalue {
+    color: var(--color-status-yellow);
+  }
+  .bd-rail__stat[data-tone='critical'] .bd-rail__statvalue {
+    color: var(--color-status-red);
+  }
+  .bd-rail__bar {
+    position: relative;
+    display: block;
+    flex: 1;
+    min-width: 0;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--color-subtle-border);
+  }
+  .bd-rail__bar i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 3px;
+    background: var(--color-status-gray);
+    transition: width var(--motion-move) var(--ease-std);
+  }
+  .bd-rail__bar[data-tone='low'] i {
+    background: var(--color-status-yellow);
+  }
+  .bd-rail__bar[data-tone='critical'] i {
+    background: var(--color-status-red);
+  }
+  .bd-rail__bar u {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: var(--color-text-primary);
+  }
+
+  /* Folded rail: a block is a column of icons. */
+  .bd-rail--collapsed .bd-rail__block {
+    justify-items: center;
+    padding: 6px 0;
+  }
+  .bd-rail--collapsed .bd-rail__blockhead {
+    display: none;
+  }
+
+  /* ── The card a block opens ──────────────────────────── */
+  .bd-railcard-layer {
+    position: fixed;
+    z-index: 60;
+    outline: none;
+  }
+  .bd-railcard {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 16px);
+    border: 1px solid var(--color-strong-border);
+    border-radius: 10px;
+    background: var(--color-modal-bg);
+    box-shadow: var(--elevation-2);
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    line-height: 1.35;
+    color: var(--color-text-primary);
+  }
+  .bd-railcard__head {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-subtle-border);
+  }
+  .bd-railcard__title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .bd-railcard__meta {
+    margin-left: auto;
+    font-size: 11.5px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-railcard__body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    padding: 10px 12px;
+    overflow-y: auto;
+  }
+  .bd-railcard__group {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+  }
+  .bd-railcard__group + .bd-railcard__group {
+    padding-top: 10px;
+    border-top: 1px solid var(--color-subtle-border);
+  }
+  .bd-railcard__grouphead {
+    display: flex;
+    gap: 6px;
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+  .bd-railcard__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .bd-railcard__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .bd-railcard__sub {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-railcard__dim {
+    color: var(--color-text-secondary);
+  }
+  .bd-railcard__foot {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--color-subtle-border);
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+  }
+  .bd-railcard__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .bd-railcard__link:hover {
+    color: var(--color-text-primary);
+  }
+  .bd-railcard__link:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .bd-railcard__link--end {
+    margin-left: auto;
+  }
+}

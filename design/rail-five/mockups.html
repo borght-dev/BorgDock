@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BorgDock · Five sections, and what the rail's foot shows</title>
+<style>
+/* Layout: one reading column. Evidence as plain figures and bar lists.
+   Each design is a lettered artboard drawn with BorgDock's own tokens and fonts. */
+:root {
+  --page: #ffffff;
+  --surface: #ffffff;
+  --tint: #f5f5f7;
+  --raised: #ffffff;
+  --ink: #17181c;
+  --ink-2: #5d606a;
+  --ink-3: #6d707a;
+  --line: #e5e6ea;
+  --line-strong: #d4d6dc;
+  --accent: #4f46e5;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(79, 70, 229, 0.09);
+  --green: #1f9d6b;
+  --red: #d64560;
+  --red-soft: rgba(214, 69, 96, 0.1);
+  --amber: #b97a08;
+  --amber-soft: rgba(201, 138, 18, 0.13);
+  --gray: #8f929c;
+  --id-1: #6d4fe0;
+  --id-2: #0b7f95;
+  --id-3: #b8357f;
+  --id-4: #2f7d4f;
+  --id-5: #5b6472;
+  --id-ink: #ffffff;
+  --track: #e9eaee;
+  --shadow: 0 10px 30px rgba(23, 24, 28, 0.12), 0 1px 3px rgba(23, 24, 28, 0.08);
+  --font-read: "Instrument Sans", "Inter", -apple-system, "Segoe UI", sans-serif;
+  --font-ui: "Inter", -apple-system, "Segoe UI", sans-serif;
+  --font-code: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #151618;
+    --surface: #1b1c1f;
+    --tint: #1b1c1f;
+    --raised: #212226;
+    --ink: #ededef;
+    --ink-2: #9c9da4;
+    --ink-3: #8e8f96;
+    --line: #2a2b30;
+    --line-strong: #37383e;
+    --accent: #7f7eff;
+    --accent-ink: #101114;
+    --accent-soft: rgba(127, 126, 255, 0.15);
+    --green: #5cc98f;
+    --red: #f0616d;
+    --red-soft: rgba(240, 97, 109, 0.14);
+    --amber: #e5b454;
+    --amber-soft: rgba(229, 180, 84, 0.14);
+    --gray: #77787f;
+    --id-1: #a394ff;
+    --id-2: #4cc0d3;
+    --id-3: #e582bd;
+    --id-4: #6fcf97;
+    --id-5: #a5adba;
+    --id-ink: #101114;
+    --track: #2a2b30;
+    --shadow: 0 12px 34px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #151618;
+  --surface: #1b1c1f;
+  --tint: #1b1c1f;
+  --raised: #212226;
+  --ink: #ededef;
+  --ink-2: #9c9da4;
+  --ink-3: #8e8f96;
+  --line: #2a2b30;
+  --line-strong: #37383e;
+  --accent: #7f7eff;
+  --accent-ink: #101114;
+  --accent-soft: rgba(127, 126, 255, 0.15);
+  --green: #5cc98f;
+  --red: #f0616d;
+  --red-soft: rgba(240, 97, 109, 0.14);
+  --amber: #e5b454;
+  --amber-soft: rgba(229, 180, 84, 0.14);
+  --gray: #77787f;
+  --id-1: #a394ff;
+  --id-2: #4cc0d3;
+  --id-3: #e582bd;
+  --id-4: #6fcf97;
+  --id-5: #a5adba;
+  --id-ink: #101114;
+  --track: #2a2b30;
+  --shadow: 0 12px 34px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: 16px;
+  line-height: 1.55;
+}
+.page {
+  max-width: 68rem;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 3.5rem 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+}
+section { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+h1, h2, h3, p, ul, ol, figure { margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.05; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+h2 { font-size: 1.6rem; line-height: 1.2; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
+h3 { font-size: 1.05rem; line-height: 1.3; font-weight: 650; }
+p, li { max-width: 68ch; }
+.lede { font-size: 1.2rem; line-height: 1.5; color: var(--ink-2); max-width: 60ch; }
+.muted { color: var(--ink-2); }
+.small { font-size: 0.875rem; color: var(--ink-2); }
+code, .mono { font-family: var(--font-code); font-size: 0.86em; }
+a { color: var(--accent); }
+.eyebrow {
+  font-family: var(--font-code);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.prose { display: flex; flex-direction: column; gap: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.45rem; }
+
+/* The short version */
+.verdicts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0;
+  border-top: 2px solid var(--ink);
+}
+.verdicts > div {
+  padding: 1.1rem 1.25rem 1.1rem 0;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.verdicts h3 { font-size: 1.05rem; }
+.verdicts p { font-size: 0.95rem; color: var(--ink-2); }
+.pill {
+  align-self: flex-start;
+  font-family: var(--font-code);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.pill--cut { color: var(--red); background: var(--red-soft); }
+.pill--move { color: var(--amber); background: var(--amber-soft); }
+.pill--add { color: var(--accent); background: var(--accent-soft); }
+
+/* Evidence */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1.5rem 2rem;
+}
+.stat { display: flex; flex-direction: column; gap: 0.3rem; border-top: 1px solid var(--line-strong); padding-top: 0.9rem; }
+.stat b {
+  font-family: var(--font-code);
+  font-weight: 500;
+  font-size: 2.1rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.stat b small { font-size: 1rem; color: var(--ink-3); letter-spacing: 0; }
+.stat span { font-weight: 600; }
+.stat p { font-size: 0.9rem; color: var(--ink-2); }
+
+.chart { display: flex; flex-direction: column; gap: 0.75rem; }
+.chart h3 { font-size: 1rem; }
+.bars { display: flex; flex-direction: column; gap: 0.55rem; }
+.bar {
+  display: grid;
+  grid-template-columns: minmax(0, 22rem) minmax(0, 1fr) 7rem;
+  align-items: center;
+  gap: 0.9rem;
+  font-size: 0.92rem;
+}
+.bar__label { min-width: 0; }
+.bar__track { height: 10px; display: block; border-left: 1px solid var(--line-strong); }
+.bar__track i { display: block; height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; }
+.bar__track i.hair { min-width: 2px; }
+.bar__val { font-family: var(--font-code); font-size: 0.82rem; font-variant-numeric: tabular-nums; text-align: right; color: var(--ink); white-space: nowrap; }
+.bar__val em { font-style: normal; color: var(--ink-3); }
+.bar--key .bar__label { font-weight: 650; }
+@media (max-width: 640px) {
+  .bar { grid-template-columns: minmax(0, 1fr) auto; gap: 0.2rem 0.75rem; }
+  .bar__label { grid-column: 1 / -1; }
+}
+.charts { display: flex; flex-direction: column; gap: 2.25rem; max-width: 58rem; }
+table.t-wide { min-width: 46rem; }
+
+/* Tables */
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; vertical-align: top; padding: 0.7rem 1rem 0.7rem 0; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-code); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; border-bottom-color: var(--line-strong); white-space: nowrap; }
+td:first-child { font-weight: 650; white-space: nowrap; }
+td .mono { color: var(--ink-2); }
+.num { font-family: var(--font-code); font-size: 0.86em; font-variant-numeric: tabular-nums; }
+
+/* Artboards */
+.art { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+.art__head { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+.art__letter {
+  font-family: var(--font-code);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 0.05rem 0.45rem;
+}
+.art__stage {
+  background: var(--tint);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: clamp(1rem, 3vw, 2rem);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+.art figcaption, .cap { font-size: 0.875rem; color: var(--ink-2); max-width: 68ch; }
+.tag { font-family: var(--font-code); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 0.5rem; }
+.col { display: flex; flex-direction: column; min-width: 0; }
+.notes { flex: 1 1 16rem; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.92rem; }
+.notes li { max-width: 46ch; }
+
+/* BorgDock UI pieces */
+.ui { font-family: var(--font-ui); font-size: 12.5px; line-height: 1.35; color: var(--ink); }
+.ui .dim { color: var(--ink-2); }
+.ui .faint { color: var(--ink-3); }
+.rail {
+  width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 430px;
+}
+.rail__ws { display: flex; align-items: center; gap: 8px; padding: 2px 8px 10px; font-weight: 600; font-size: 13px; }
+.logo { width: 18px; height: 18px; border-radius: 5px; background: var(--accent); display: inline-block; position: relative; }
+.logo::after { content: ""; position: absolute; inset: 5px 4px 5px 8px; background: var(--accent-ink); border-radius: 1px; }
+.rail__item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 6px; }
+.rail__item.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.rail__item.is-cut { outline: 1px dashed var(--red); outline-offset: -1px; color: var(--ink-2); }
+.cnt { font-family: var(--font-code); font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cnt--hot { color: var(--red); font-weight: 500; }
+.cutmark { font-family: var(--font-code); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--red); margin-left: auto; }
+.rail__spacer { flex: 1; }
+.rail__foot { border-top: 1px solid var(--line); padding: 8px 8px 0; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; color: var(--ink-2); }
+.rail__foot + .rail__foot { margin-top: 6px; }
+.rail__foothead { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); }
+.hostline { display: flex; align-items: center; gap: 6px; color: var(--ink); }
+.hostline .free { margin-left: auto; font-family: var(--font-code); font-size: 11px; color: var(--ink-2); }
+.hostline.is-low .free { color: var(--amber); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gray); flex: none; display: inline-block; }
+.dot--green { background: var(--green); }
+.dot--red { background: var(--red); }
+.dot--amber { background: var(--amber); }
+.dot--blue { background: var(--accent); }
+.meter { height: 4px; border-radius: 2px; background: var(--track); display: block; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--gray); border-radius: 2px; }
+.meter--low i { background: var(--amber); }
+.meter--crit i { background: var(--red); }
+.ring { width: 14px; height: 14px; flex: none; color: var(--gray); }
+.ring circle { fill: none; stroke-width: 2.5; }
+.ring .t { stroke: var(--track); }
+.ring .v { stroke: currentColor; stroke-linecap: round; }
+.is-low > .ring, .ring.is-low { color: var(--amber); }
+.is-crit > .ring, .ring.is-crit { color: var(--red); }
+.hostline.is-crit .free { color: var(--red); }
+.rail--folded { width: 56px; align-items: center; padding-inline: 6px; min-height: 0; gap: 4px; }
+.rail--folded .ring { width: 20px; height: 20px; }
+.rail__gap { height: 44px; width: 28px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.railicon { width: 36px; height: 30px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-2); }
+.railicon.is-active { background: var(--accent-soft); color: var(--accent); }
+.tip { background: var(--ink); color: var(--page); border-radius: 99px; padding: 4px 10px; font-size: 11.5px; white-space: nowrap; }
+.acct { display: flex; flex-direction: column; gap: 6px; }
+.acct + .acct { border-top: 1px solid var(--line); padding-top: 10px; }
+.acct__head { display: flex; align-items: center; gap: 7px; font-weight: 600; }
+.acct__head .plan { margin-left: auto; font-weight: 400; font-size: 10.5px; color: var(--ink-2); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 5px; }
+.limit { display: grid; grid-template-columns: 3.6rem minmax(0, 1fr) 4.4rem 2.8rem; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-2); }
+.limit b { font-weight: 500; color: var(--ink); text-align: right; font-family: var(--font-code); font-size: 11px; white-space: nowrap; }
+.limit .when { text-align: right; font-family: var(--font-code); font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
+.lmeter { position: relative; height: 5px; border-radius: 3px; background: var(--track); display: block; }
+.lmeter i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--gray); }
+.lmeter.is-low i { background: var(--amber); }
+.lmeter.is-crit i { background: var(--red); }
+.lmeter u { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
+.pv { display: inline-flex; align-items: center; gap: 3px; flex: none; min-width: 2.75rem; color: var(--ink-2); }
+.pv--bare { min-width: 0; }
+.pv--text { font-size: 11px; }
+.pvi { width: 14px; height: 14px; flex: none; }
+.bdg { font-family: var(--font-ui); font-style: normal; font-size: 8.5px; font-weight: 700; letter-spacing: 0.02em; line-height: 1; padding: 2px 3px; border-radius: 4px; color: var(--id-ink); background: var(--id-1); }
+.bdg--1 { background: var(--id-1); }
+.bdg--2 { background: var(--id-2); }
+.bdg--3 { background: var(--id-3); }
+.bdg--4 { background: var(--id-4); }
+.bdg--5 { background: var(--id-5); }
+.hostline .lmeter { flex: 1; }
+.hostline .lmeter + .free { margin-left: 0; min-width: 2.2rem; text-align: right; }
+.ring--thin circle { stroke-width: 1.7; }
+.acctring { position: relative; width: 36px; height: 36px; display: grid; place-items: center; color: var(--gray); }
+.acctring > * { grid-area: 1 / 1; }
+.acctring .ring { width: 28px; height: 28px; }
+.acctring .pvi { width: 12px; height: 12px; color: var(--ink-2); margin-bottom: 3px; }
+.acctring .bdg { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); box-shadow: 0 0 0 1.5px var(--surface); }
+.acctring.is-low { color: var(--amber); }
+.acctring.is-crit { color: var(--red); }
+.acct__where { font-weight: 400; font-size: 11px; font-family: var(--font-code); }
+.lblrows { display: flex; flex-direction: column; gap: 8px; }
+.lblrow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.inp { border: 1px solid var(--line-strong); border-radius: 5px; background: var(--surface); padding: 2px 6px; min-width: 2.4rem; text-align: center; font-weight: 600; font-size: 11.5px; flex: none; }
+.sw { width: 12px; height: 12px; border-radius: 50%; flex: none; display: inline-block; }
+.sws { display: inline-flex; gap: 4px; flex: none; }
+.sws i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+.sws i.is-on { box-shadow: 0 0 0 2px var(--raised), 0 0 0 3.5px var(--ink-2); }
+.grip { width: 6px; height: 12px; flex: none; background-image: radial-gradient(var(--gray) 1px, transparent 1.2px); background-size: 3px 4px; }
+.toggle.toggle--on { background: var(--accent); }
+.toggle.toggle--on::after { left: 13px; box-shadow: none; }
+.settings__group { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); padding: 8px 8px 2px; }
+.settings__group:first-child { padding-top: 0; }
+.rail__row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; color: var(--ink); }
+.rail__row .cnt { margin-left: auto; }
+.ico { width: 14px; height: 14px; flex: none; }
+
+.card {
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.card--flat { box-shadow: none; }
+.card__head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); font-weight: 600; font-size: 13px; }
+.card__head .faint { margin-left: auto; font-weight: 400; font-size: 11.5px; }
+.card__body { padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+.card__foot { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 11.5px; }
+.card__foot .kbd { margin-left: auto; }
+.kbd { font-family: var(--font-code); font-size: 10.5px; border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 4px; color: var(--ink-2); }
+.host { display: flex; flex-direction: column; gap: 7px; }
+.host + .host { border-top: 1px solid var(--line); padding-top: 10px; }
+.host__name { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.host__name .faint { font-weight: 400; }
+.disk { display: grid; grid-template-columns: 2.2rem 1fr 5.6rem; align-items: center; gap: 8px; font-family: var(--font-code); font-size: 11px; color: var(--ink-2); }
+.disk span:last-child { text-align: right; }
+.disk.is-low span:last-child { color: var(--amber); }
+.btnrow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; }
+.btn--sec { border-color: var(--line-strong); background: var(--surface); color: var(--ink); }
+.btn--ghost { color: var(--ink-2); }
+.btn--primary { background: var(--accent); color: var(--accent-ink); }
+.notice { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 6px; background: var(--amber-soft); color: var(--ink); font-size: 11.5px; }
+.notice--crit { background: var(--red-soft); }
+.field { display: grid; grid-template-columns: 6.5rem 1fr; gap: 8px; align-items: center; }
+.field > span:first-child { color: var(--ink-2); }
+.select { border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); padding: 4px 8px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.select .free { margin-left: auto; font-family: var(--font-code); font-size: 10.5px; color: var(--ink-2); white-space: nowrap; }
+.options { border: 1px solid var(--line-strong); border-radius: 6px; background: var(--raised); display: flex; flex-direction: column; overflow: hidden; }
+.options > div { display: flex; align-items: center; gap: 6px; padding: 5px 8px; }
+.options > div.is-on { background: var(--accent-soft); }
+.options .free { margin-left: auto; font-family: var(--font-code); font-size: 10.5px; color: var(--ink-2); white-space: nowrap; }
+.options .is-low .free { color: var(--amber); }
+.row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.row__text .faint { font-size: 11px; }
+.grouphead { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); display: flex; gap: 6px; }
+.w-340 { width: 340px; max-width: 100%; }
+.w-380 { width: 380px; max-width: 100%; }
+.w-300 { width: 300px; max-width: 100%; }
+
+/* Note mock */
+.note { padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; font-size: 13px; }
+.note h4 { margin: 0; font-size: 17px; font-weight: 650; font-family: var(--font-read); }
+.note p { max-width: none; color: var(--ink-2); }
+.chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line-strong); border-radius: 5px; padding: 1px 7px; font-size: 11.5px; background: var(--surface); white-space: nowrap; }
+.chip .faint { font-size: 11px; }
+.task { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+.box { width: 13px; height: 13px; border: 1.5px solid var(--line-strong); border-radius: 3px; flex: none; margin-top: 2px; }
+.box--done { background: var(--accent); border-color: var(--accent); }
+.task--done > span:nth-child(2) { color: var(--ink-3); text-decoration: line-through; }
+
+/* Settings mock */
+.settings { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); width: 640px; max-width: 100%; }
+.settings__nav { border-right: 1px solid var(--line); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+.settings__nav div { padding: 5px 8px; border-radius: 6px; color: var(--ink-2); }
+.settings__nav div.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.settings__main { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.settings__main h4 { margin: 0; font-size: 14px; font-weight: 600; }
+.ubars { display: flex; flex-direction: column; gap: 5px; }
+.ubar { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr) 2.6rem; gap: 8px; align-items: center; }
+.ubar span:nth-child(2) { height: 6px; display: block; }
+.ubar i { display: block; height: 100%; background: var(--accent); border-radius: 0 3px 3px 0; }
+.ubar span:last-child { font-family: var(--font-code); font-size: 11px; text-align: right; color: var(--ink-2); }
+.toggle { width: 26px; height: 15px; border-radius: 99px; background: var(--track); position: relative; flex: none; display: inline-block; }
+.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 1px var(--line-strong); }
+.unused { display: flex; flex-wrap: wrap; gap: 5px; }
+@media (max-width: 560px) {
+  .settings { grid-template-columns: minmax(0, 1fr); }
+  .settings__nav { display: none; }
+}
+pre {
+  margin: 0;
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-family: var(--font-code);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  color: var(--ink);
+  flex: none;
+  min-width: 0;
+  max-width: 100%;
+}
+pre .c { color: var(--ink-3); }
+
+.steps { counter-reset: step; list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line-strong); }
+.steps li { counter-increment: step; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); gap: 0.5rem; padding: 0.9rem 0; border-bottom: 1px solid var(--line); max-width: none; }
+.steps li::before { content: counter(step); font-family: var(--font-code); color: var(--ink-3); }
+.steps b { font-weight: 650; }
+.steps p { color: var(--ink-2); font-size: 0.95rem; }
+</style>
+</head>
+<body>
+<div class="page">
+<header class="prose">
+  <p class="eyebrow">BorgDock · design reference · 4.17.0</p>
+  <h1>Five sections, and what the rail's foot shows</h1>
+  <p class="lede">The rail went from eight sections to five. Workstreams is gone. Activity and Worktrees left the rail: Activity became Recent behind a bell and a history window, Worktrees stays as the Ctrl+F7 palette. The foot of the rail shows what is left of each AI account, each machine's disk, and what needs you.</p>
+  <p class="muted">Six artboards, lettered. Every name and number is made up.</p>
+</header>
+<section>
+  <figure class="art">
+    <div class="art__head"><span class="art__letter">A</span><h3>The rail</h3></div>
+    <div class="art__stage">
+      <div class="col">
+        <p class="tag">Today</p>
+        <div class="ui rail">
+          <div class="rail__ws"><span class="logo"></span>BorgDock</div>
+          <div class="rail__item is-active"><span>Focus</span><span class="cnt">6</span></div>
+          <div class="rail__item"><span>Dispatch</span><span class="cnt">3</span></div>
+          <div class="rail__item is-cut"><span>Workstreams</span><span class="cutmark">delete</span></div>
+          <div class="rail__item"><span>Pull requests</span><span class="cnt">31</span></div>
+          <div class="rail__item"><span>Work items</span><span class="cnt">18</span></div>
+          <div class="rail__item is-cut"><span>Worktrees</span><span class="cnt">67</span></div>
+          <div class="rail__item is-cut"><span>Activity</span><span class="cnt cnt--hot">2642</span></div>
+          <div class="rail__item"><span>Notes</span></div>
+          <div class="rail__spacer"></div>
+          <div class="rail__foot">
+            <span>Synced 12 s ago</span>
+            <span class="meter"><i style="width:88%"></i></span>
+            <span>4,412 of 5,000 requests left</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <p class="tag">Proposed</p>
+        <div class="ui rail">
+          <div class="rail__ws"><span class="logo"></span>BorgDock</div>
+          <div class="rail__item is-active"><span>Focus</span><span class="cnt">6</span></div>
+          <div class="rail__item"><span>Dispatch</span><span class="cnt">3</span></div>
+          <div class="rail__item"><span>Pull requests</span><span class="cnt">31</span></div>
+          <div class="rail__item"><span>Work items</span><span class="cnt">18</span></div>
+          <div class="rail__item"><span>Notes</span></div>
+          <div class="rail__spacer"></div>
+          <div class="rail__foot">
+            <span class="rail__foothead">Limits left</span>
+            <span class="hostline is-crit"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg><b class="bdg bdg--3">OP</b></span><span class="lmeter is-crit"><i style="width:8%"></i></span><span class="free">8%</span></span>
+            <span class="hostline is-low"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg><b class="bdg bdg--2">EX</b></span><span class="lmeter is-low"><i style="width:22%"></i></span><span class="free">22%</span></span>
+            <span class="hostline"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg><b class="bdg bdg--1">AC</b></span><span class="lmeter"><i style="width:62%"></i></span><span class="free">62%</span></span>
+            <span class="hostline"><span class="pv pv--text">GitHub</span><span class="lmeter"><i style="width:88%"></i></span><span class="free">88%</span></span>
+            <span class="hostline"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.4 3.1v6.2L8 14.2 2.6 11.1V4.9z" fill="none"/><circle cx="8" cy="8" r="1.7" fill="none"/></svg><b class="bdg bdg--2">EX</b></span><span class="lmeter"><i style="width:89%"></i></span><span class="free">89%</span></span>
+            <span class="hostline"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.4 3.1v6.2L8 14.2 2.6 11.1V4.9z" fill="none"/><circle cx="8" cy="8" r="1.7" fill="none"/></svg><b class="bdg bdg--1">AC</b></span><span class="lmeter"><i style="width:100%"></i></span><span class="free">100%</span></span>
+          </div>
+          <div class="rail__foot">
+            <span class="rail__foothead">Machines</span>
+            <span class="hostline"><span class="dot"></span>Laptop<span class="free">212 GiB</span></span>
+            <span class="hostline is-low"><span class="dot dot--amber"></span>Mac mini<span class="free">18 GiB</span></span>
+          </div>
+          <div class="rail__foot">
+            <span>Synced 12 s ago</span>
+          </div>
+          <div class="rail__foot" style="padding-inline:0">
+            <span class="rail__row">
+              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11V7a4 4 0 0 1 8 0v4l1 1.5H3L4 11Z" fill="none"/><path d="M6.5 14h3" fill="none"/></svg>
+              Recent<span class="cnt">3</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li>Keys 1 to 5. Notes moves from 8 to 5.</li>
+        <li>A count on the rail now always means work waiting. Nothing counts folders or log lines.</li>
+        <li>Machines shows the tightest disk per host. Grey while healthy, amber when low, red when critical. Same thresholds as today, under 10% or 20 GiB and under 5% or 5 GiB.</li>
+        <li>Recent counts what still needs you now. It reads live state, so it falls when the thing is handled, wherever you handled it.</li>
+        <li>Limits left has one row per AI account on this machine, least left first. The icon says which provider, the label which account. E has the card behind it, F the labels.</li>
+        <li>Folded rail: a ring per account, a monitor icon that takes the worst host's colour, and the bell with its count.</li>
+      </ul>
+    </div>
+  </figure>
+
+  <figure class="art">
+    <div class="art__head"><span class="art__letter">B</span><h3>Disk health in three places</h3></div>
+    <div class="art__stage">
+      <div class="col">
+        <p class="tag">B1 · Click Machines in the rail</p>
+        <div class="ui card w-340">
+          <div class="card__head">Machines<span class="faint">checked 40 s ago</span></div>
+          <div class="card__body">
+            <div class="host">
+              <div class="host__name"><span class="dot"></span>Laptop <span class="faint">this machine</span></div>
+              <div class="disk"><span>C:</span><span class="meter"><i style="width:62%"></i></span><span>96 GiB free</span></div>
+              <div class="disk"><span>D:</span><span class="meter"><i style="width:55%"></i></span><span>212 GiB free</span></div>
+              <div class="btnrow"><span class="dim">41 worktrees, 12 with a merged or closed PR</span></div>
+              <div class="btnrow"><span class="btn btn--sec">Prune 12</span></div>
+            </div>
+            <div class="host">
+              <div class="host__name"><span class="dot dot--amber"></span>Mac mini <span class="faint">remote</span></div>
+              <div class="disk is-low"><span>/</span><span class="meter meter--low"><i style="width:93%"></i></span><span>18 GiB free</span></div>
+              <div class="btnrow"><span class="dim">26 worktrees, 9 with a merged or closed PR</span></div>
+              <div class="btnrow"><span class="btn btn--primary">Clean up in T3</span><span class="btn btn--sec">Prune 9</span></div>
+            </div>
+          </div>
+          <div class="card__foot">Open worktrees<span class="kbd">Ctrl+F7</span></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <p class="tag">B2 · The launch sheet</p>
+        <div class="ui card w-340">
+          <div class="card__head">Start an agent on AB#4821</div>
+          <div class="card__body">
+            <div class="field"><span>Environment</span>
+              <div class="options">
+                <div><span class="dot"></span>Laptop<span class="free">212 GiB free</span></div>
+                <div class="is-on is-low"><span class="dot dot--amber"></span>Mac mini<span class="free">18 GiB free</span></div>
+              </div>
+            </div>
+            <div class="field"><span>Project</span><div class="select">acme/storefront</div></div>
+            <div class="field"><span>Workspace</span><div class="select">New worktree from main</div></div>
+            <div class="notice">
+              <span class="dot dot--amber" style="margin-top:4px"></span>
+              <span>Mac mini is low on disk. A new worktree and its build need about 6 GiB here.</span>
+            </div>
+            <div class="btnrow" style="justify-content:flex-end"><span class="btn btn--ghost">Clean up first</span><span class="btn btn--primary">Start thread in T3</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <p class="tag">B3 · Focus, only when a disk is low</p>
+        <div class="ui card card--flat w-300">
+          <div class="card__body">
+            <div class="row"><span class="dot dot--red"></span><b>Mac mini is almost full</b></div>
+            <span class="dim">Only 4 GiB free on /. Builds and checkouts on this host may start failing.</span>
+            <div class="btnrow"><span class="btn btn--primary">Clean up in T3</span><span class="btn btn--ghost">Prune 9 worktrees</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption>B2 is the one I care about most. The launch sheet is where you choose a host, so free space there changes the choice before a build fails. The "about 6 GiB" figure would need a measured average per repository. Without one, drop the number and keep the warning. B3 replaces the six-hourly reminder popup with a card that stays until the disk recovers.</figcaption>
+  </figure>
+
+  <figure class="art">
+    <div class="art__head"><span class="art__letter">C</span><h3>Recent, behind the bell</h3></div>
+    <div class="art__stage">
+      <div class="col">
+        <p class="tag">C1 · Click Recent in the rail</p>
+        <div class="ui card w-380">
+          <div class="card__head">Recent<span class="faint">since 09:12</span></div>
+          <div class="card__body">
+            <span class="grouphead">Needs you now <span>3</span></span>
+            <div class="row"><span class="dot dot--red"></span><span class="row__text"><span>Checks failed on #431 Cart totals rounding</span><span class="faint">acme/storefront · 14 min ago</span></span><span class="btn btn--sec">Open checks</span></div>
+            <div class="row"><span class="dot dot--amber"></span><span class="row__text"><span>Agent asks which rounding rule to use</span><span class="faint">Fix cart totals · Mac mini · 31 min ago</span></span><span class="btn btn--sec">Answer</span></div>
+            <div class="row"><span class="dot dot--blue"></span><span class="row__text"><span>Review requested on #428 Gift card field</span><span class="faint">acme/storefront · 1 h ago</span></span><span class="btn btn--sec">Review</span></div>
+            <span class="grouphead" style="margin-top:4px">Earlier today</span>
+            <div class="row"><span class="dot dot--green"></span><span class="row__text dim"><span>#412 Price table migration merged</span></span><span class="faint">10:02</span></div>
+            <div class="row"><span class="dot"></span><span class="row__text dim"><span>Staging got #412 and #409</span></span><span class="faint">10:20</span></div>
+            <div class="row"><span class="dot"></span><span class="row__text dim"><span>Agent finished Migrate price tables, report ready</span></span><span class="faint">10:41</span></div>
+            <div class="row"><span class="dot"></span><span class="row__text dim"><span>2 CI failure groups grew, none on your PRs</span></span><span class="faint">11:15</span></div>
+          </div>
+          <div class="card__foot">All history<span class="faint" style="margin-left:auto">Notification settings</span></div>
+        </div>
+      </div>
+
+      <div class="col" style="flex:1 1 22rem">
+        <p class="tag">C2 · The rules that change</p>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>Today</th><th>Proposed</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight:400;white-space:normal">Every agent turn becomes an entry. <span class="num">5,763</span> in four weeks, plus <span class="num">2,013</span> "turns missed".</td><td>Record a turn only when it fails, asks, waits for approval or hits a limit. T3 shows the rest.</td></tr>
+              <tr><td style="font-weight:400;white-space:normal">"Needs you" lasts until you read the entry. <span class="num">441</span> resolved entries still count.</td><td>It lasts until the fact ends. Checks pass, the review is posted, the question is answered, and the entry reads itself.</td></tr>
+              <tr><td style="font-weight:400;white-space:normal">A CI failure group growing pops up every time. <span class="num">447</span> popups.</td><td>One popup per group per day, and only when one of your PRs is in the group. The rest go into the roll-up line.</td></tr>
+              <tr><td style="font-weight:400;white-space:normal">The rail shows unread entries that need you. <span class="num">2,642</span>.</td><td>The bell shows what needs you now. On a normal day that is a single digit.</td></tr>
+              <tr><td style="font-weight:400;white-space:normal">An ADO assignment needs you until read. <span class="num">279</span> unread.</td><td>Quiet entry. Dispatch already lists the item.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <figcaption>All history opens the existing Activity list in a window of its own, with search, filters and export intact. That costs almost nothing now. If you have not opened it in two months, delete the list then.</figcaption>
+  </figure>
+
+  <figure class="art">
+    <div class="art__head"><span class="art__letter">D</span><h3>A goal is a note</h3></div>
+    <div class="art__stage">
+      <div class="col">
+        <p class="tag">D1 · The same goal as a note</p>
+        <div class="ui card card--flat w-380">
+          <div class="note">
+            <h4>Checkout redesign</h4>
+            <p>Ship the new cart totals before the December freeze.</p>
+            <div class="task task--done"><span class="box box--done"></span><span>Price tables</span><span class="chip"><span class="dot dot--green"></span>#412 <span class="faint">merged</span></span></div>
+            <div class="task"><span class="box"></span><span>Rounding</span><span class="chip"><span class="dot dot--red"></span>#431 <span class="faint">checks failing</span></span><span class="chip"><span class="dot dot--amber"></span>Fix cart totals <span class="faint">asks you</span></span></div>
+            <div class="task"><span class="box"></span><span>Gift cards</span><span class="chip"><span class="dot dot--blue"></span>AB#4821 <span class="faint">In Progress</span></span><span class="chip"><span class="dot"></span>#428 <span class="faint">review requested</span></span></div>
+            <p>Decided on 18 Nov to round per line, since finance reconciles per line.</p>
+          </div>
+        </div>
+      </div>
+      <div class="notes" style="list-style:none;padding-left:0">
+        <p class="tag">D2 · What goes, and what needs care</p>
+        <ul class="notes" style="flex:none">
+          <li>Gone: the section, its Focus card, chips on PR rows, the settings page and agent prompts, <code>src-tauri/src/workstreams</code>, the stores, the poller, the Activity category group, the workstream chip in Notes.</li>
+          <li>Notes keeps its vault in the workstreams sync folder. Keep that setting and show it under Notes.</li>
+          <li>Dispatch runs a separate pass for workstream context items, and <code>combinedPullRequests</code> exists only for them. Both go. Dispatch's own overview must not move, and <code>engine-context.test.ts</code> already pins it.</li>
+          <li><code>pr-lookup</code> stays. Activity uses it to confirm a merge.</li>
+          <li>The site still describes Workstreams. Grep its pages, <code>screens.json</code> and recordings, as after 4.9.0.</li>
+          <li>An install that did save workstreams keeps its JSON files untouched. Converting each to a note is about a day of work. I would skip it until someone asks.</li>
+        </ul>
+      </div>
+    </div>
+    <figcaption>What you lose is the model for outcomes, evidence and decisions, and the answer to "is this goal verified". The ADO epic holds the grouping. Nothing replaces the verification, and you did not miss it.</figcaption>
+  </figure>
+
+  <figure class="art">
+    <div class="art__head"><span class="art__letter">E</span><h3>AI account usage</h3></div>
+    <div class="art__stage">
+      <div class="col">
+        <p class="tag">E1 · Folded rail</p>
+        <div class="row" style="align-items:flex-end;gap:10px">
+          <div class="ui rail rail--folded">
+            <span class="logo" style="margin-bottom:8px"></span>
+            <span class="railicon is-active"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="4.5" fill="none"/><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3" fill="none"/></svg></span>
+            <span class="railicon"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8l11-5-4 11-2-4.5L2 8Z" fill="none"/></svg></span>
+            <span class="railicon"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="4" cy="4" r="1.7" fill="none"/><circle cx="4" cy="12" r="1.7" fill="none"/><circle cx="12" cy="12" r="1.7" fill="none"/><path d="M4 5.7v4.6M12 10.3V7a2 2 0 0 0-2-2H8" fill="none"/></svg></span>
+            <span class="railicon"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h8M6 8h8M6 12h8M2.5 4h.5M2.5 8h.5M2.5 12h.5" fill="none"/></svg></span>
+            <span class="railicon"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 2h9v12h-9z" fill="none"/><path d="M6 5.5h4M6 8h4M6 10.5h2.5" fill="none"/></svg></span>
+            <span class="rail__gap"></span>
+            <span class="acctring is-crit"><svg class="ring ring--thin" viewBox="0 0 16 16" aria-hidden="true"><circle class="t" cx="8" cy="8" r="6"/><circle class="v" cx="8" cy="8" r="6" stroke-dasharray="3.0 37.7" transform="rotate(-90 8 8)"/></svg><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg><b class="bdg bdg--3">OP</b></span>
+            <span class="acctring is-low"><svg class="ring ring--thin" viewBox="0 0 16 16" aria-hidden="true"><circle class="t" cx="8" cy="8" r="6"/><circle class="v" cx="8" cy="8" r="6" stroke-dasharray="8.3 37.7" transform="rotate(-90 8 8)"/></svg><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg><b class="bdg bdg--2">EX</b></span>
+            <span class="acctring"><svg class="ring ring--thin" viewBox="0 0 16 16" aria-hidden="true"><circle class="t" cx="8" cy="8" r="6"/><circle class="v" cx="8" cy="8" r="6" stroke-dasharray="23.4 37.7" transform="rotate(-90 8 8)"/></svg><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg><b class="bdg bdg--1">AC</b></span>
+            <span class="acctring"><svg class="ring ring--thin" viewBox="0 0 16 16" aria-hidden="true"><circle class="t" cx="8" cy="8" r="6"/><circle class="v" cx="8" cy="8" r="6" stroke-dasharray="33.6 37.7" transform="rotate(-90 8 8)"/></svg><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.4 3.1v6.2L8 14.2 2.6 11.1V4.9z" fill="none"/><circle cx="8" cy="8" r="1.7" fill="none"/></svg><b class="bdg bdg--2">EX</b></span>
+            <span class="acctring"><svg class="ring ring--thin" viewBox="0 0 16 16" aria-hidden="true"><circle class="t" cx="8" cy="8" r="6"/><circle class="v" cx="8" cy="8" r="6" stroke-dasharray="37.7 37.7" transform="rotate(-90 8 8)"/></svg><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.4 3.1v6.2L8 14.2 2.6 11.1V4.9z" fill="none"/><circle cx="8" cy="8" r="1.7" fill="none"/></svg><b class="bdg bdg--1">AC</b></span>
+          </div>
+          <span class="ui tip" style="margin-bottom:168px">Claude OP · Weekly · 8% left</span>
+        </div>
+      </div>
+
+      <div class="col">
+        <p class="tag">E2 · Click an account or the Limits block</p>
+        <div class="ui card w-380">
+          <div class="card__head">AI usage<span class="faint">updated 2 min ago</span></div>
+          <div class="card__body">
+            <div class="acct">
+              <div class="acct__head"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg><b class="bdg bdg--3">OP</b></span>Claude<span class="faint acct__where">~/.claude-ops</span><span class="plan">Max 20x</span></div>
+              <div class="limit"><span>Weekly</span><span class="lmeter is-crit"><i style="width:8%"></i><u style="left:18%"></u></span><b>8% left</b><span class="when">1d 6h</span></div>
+              <div class="limit"><span>Fable</span><span class="lmeter is-crit"><i style="width:3%"></i><u style="left:18%"></u></span><b>3% left</b><span class="when">1d 6h</span></div>
+            </div>
+            <div class="acct">
+              <div class="acct__head"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg><b class="bdg bdg--2">EX</b></span>Claude<span class="faint acct__where">~/.claude-home</span><span class="plan">Max 20x</span></div>
+              <div class="limit"><span>Weekly</span><span class="lmeter is-low"><i style="width:22%"></i><u style="left:31%"></u></span><b>22% left</b><span class="when">2d 4h</span></div>
+              <div class="limit"><span>Fable</span><span class="lmeter"><i style="width:35%"></i><u style="left:31%"></u></span><b>35% left</b><span class="when">2d 4h</span></div>
+            </div>
+            <div class="acct">
+              <div class="acct__head"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg><b class="bdg bdg--1">AC</b></span>Claude<span class="faint acct__where">~/.claude</span><span class="plan">Max 20x</span></div>
+              <div class="limit"><span>Weekly</span><span class="lmeter"><i style="width:62%"></i><u style="left:63%"></u></span><b>62% left</b><span class="when">4d 9h</span></div>
+            </div>
+            <div class="acct">
+              <div class="acct__head"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.4 3.1v6.2L8 14.2 2.6 11.1V4.9z" fill="none"/><circle cx="8" cy="8" r="1.7" fill="none"/></svg><b class="bdg bdg--2">EX</b></span>Codex<span class="faint acct__where">~/.codex</span><span class="plan">Pro</span></div>
+              <div class="limit"><span>Weekly</span><span class="lmeter"><i style="width:89%"></i><u style="left:89%"></u></span><b>89% left</b><span class="when">6d 5h</span></div>
+              <div class="limit"><span>Credits</span><span></span><b>45,138</b><span class="when"></span></div>
+            </div>
+            <div class="acct">
+              <div class="acct__head"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.4 3.1v6.2L8 14.2 2.6 11.1V4.9z" fill="none"/><circle cx="8" cy="8" r="1.7" fill="none"/></svg><b class="bdg bdg--1">AC</b></span>Codex<span class="faint acct__where">~/.codex-acme</span><span class="plan">Team</span></div>
+              <div class="limit"><span>Weekly</span><span class="lmeter"><i style="width:100%"></i></span><b>100% left</b><span class="when">7d</span></div>
+            </div>
+          </div>
+          <div class="card__foot">Manage usage<span class="faint" style="margin-left:auto">Refresh</span></div>
+        </div>
+      </div>
+
+      <div class="col" style="flex:1 1 17rem">
+        <p class="tag">E3 · Focus, when an account runs out</p>
+        <div class="ui card card--flat w-300">
+          <div class="card__body">
+            <div class="row"><span class="pv"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg><b class="bdg bdg--3">OP</b></span><b>Out until Thu 09:00</b></div>
+            <span class="dim">2 threads stopped on its limit. Claude AC has 62% of its week left.</span>
+            <div class="btnrow"><span class="btn btn--sec">Open the threads</span><span class="btn btn--ghost">Manage usage</span></div>
+          </div>
+        </div>
+        <ul class="notes" style="margin-top:1.25rem;flex:none">
+          <li>The icon says which provider, the label which account, the way T3 Code shows them. The ring or bar is what is left.</li>
+          <li>Least left comes first, in the rail and in the card. Amber under 25% left, red under 10%.</li>
+          <li>The tick on a bar is the share of the week still to come. A bar shorter than its tick runs out before the reset.</li>
+          <li>The accounts and percentages are examples.</li>
+        </ul>
+      </div>
+    </div>
+    <figcaption>Glyphkin already reads all of this, and BorgDock can read it the same way from Rust. Claude: every <code>~/.claude*</code> folder with a <code>.credentials.json</code>, asked at <code>api.anthropic.com/api/oauth/usage</code> with that folder's token. The plan comes from the credentials file and the account from <code>.claude.json</code>. Codex: every <code>~/.codex*</code> home, asked through <code>codex app-server</code> with <code>account/rateLimits/read</code>, which returns both windows, the credit balance and the plan.</figcaption>
+    <div class="prose">
+      <h3>What to know before building E</h3>
+      <ul>
+        <li>The Claude endpoint is the one Claude Code uses for its own usage screen. Nobody documents it, it can change, and it answers 429 when asked often. Read every ten minutes and when the card opens.</li>
+        <li>BorgDock should never refresh a token. Two programs refreshing one token race each other. An expired one shows "Open Claude Code to refresh", as Glyphkin does.</li>
+        <li>On macOS Claude Code keeps its token in the Keychain, so the Mac needs a Keychain read instead of the file.</li>
+        <li>Only this machine's accounts. The Mac mini's accounts stay invisible from the laptop unless the mini reports them.</li>
+        <li>Open question for the launch sheet: BorgDock does not know which account a T3 thread spends. If T3 can say, the model picker gets that account's icon, label and ring, and a warning under 10%.</li>
+        <li>GitHub's request meter can become a row in the same Limits block, as in A. That replaces two lines of the rail footer with one.</li>
+      </ul>
+    </div>
+  </figure>
+
+  <figure class="art">
+    <div class="art__head"><span class="art__letter">F</span><h3>Naming the accounts</h3></div>
+    <div class="art__stage">
+      <div class="col">
+        <p class="tag">F1 · First start after the update</p>
+        <div class="ui card w-380">
+          <div class="card__head">BorgDock found 5 AI accounts</div>
+          <div class="card__body">
+            <span class="dim">Each gets a short label next to its provider icon. Change a label, or switch off an account you do not want in the rail.</span>
+            <div class="lblrow"><span class="pv pv--bare"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg></span><span class="inp">AC</span><i class="sw bdg--1"></i><span class="row__text"><span>Claude · acme.com</span><span class="faint">~/.claude · Max 20x</span></span><span class="toggle toggle--on"></span></div>
+            <div class="lblrow"><span class="pv pv--bare"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg></span><span class="inp">EX</span><i class="sw bdg--2"></i><span class="row__text"><span>Claude · example.com</span><span class="faint">~/.claude-home · Max 20x</span></span><span class="toggle toggle--on"></span></div>
+            <div class="lblrow"><span class="pv pv--bare"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg></span><span class="inp">OP</span><i class="sw bdg--3"></i><span class="row__text"><span>Claude · acme.com</span><span class="faint">~/.claude-ops · Max 20x</span></span><span class="toggle toggle--on"></span></div>
+            <div class="lblrow"><span class="pv pv--bare"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.4 3.1v6.2L8 14.2 2.6 11.1V4.9z" fill="none"/><circle cx="8" cy="8" r="1.7" fill="none"/></svg></span><span class="inp">EX</span><i class="sw bdg--2"></i><span class="row__text"><span>Codex · example.com</span><span class="faint">~/.codex · Pro</span></span><span class="toggle toggle--on"></span></div>
+            <div class="lblrow"><span class="pv pv--bare"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.4 3.1v6.2L8 14.2 2.6 11.1V4.9z" fill="none"/><circle cx="8" cy="8" r="1.7" fill="none"/></svg></span><span class="inp">AC</span><i class="sw bdg--1"></i><span class="row__text"><span>Codex · acme.com</span><span class="faint">~/.codex-acme · Team</span></span><span class="toggle toggle--on"></span></div>
+          </div>
+          <div class="card__foot"><span>Later in Settings, AI, Accounts</span><span class="btnrow" style="margin-left:auto"><span class="btn btn--ghost">Not now</span><span class="btn btn--primary">Show in the rail</span></span></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <p class="tag">F2 · Settings, AI, Accounts</p>
+        <div class="ui card card--flat settings">
+          <div class="settings__nav">
+            <span class="settings__group">Data sources</span><div>GitHub</div><div>Repositories</div><div>Azure DevOps</div>
+            <span class="settings__group">Application</span><div>Appearance</div><div>Notifications</div><div>Notes</div>
+            <span class="settings__group">AI</span><div>Agents</div><div class="is-active">Accounts</div>
+            <span class="settings__group">System</span><div>Updates</div><div>Maintenance</div>
+          </div>
+          <div class="settings__main">
+            <div>
+              <h4>AI accounts on this machine</h4>
+              <span class="dim">Drag to order. The rail still puts the account with the least left first unless you pin the order.</span>
+            </div>
+            <div class="lblrows">
+              <div class="lblrow"><span class="grip"></span><span class="pv pv--bare"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg></span><span class="inp">AC</span><span class="sws"><i class="bdg--1 is-on"></i><i class="bdg--2"></i><i class="bdg--3"></i><i class="bdg--4"></i><i class="bdg--5"></i></span><span class="row__text"><span>Claude · acme.com</span><span class="faint">~/.claude · Max 20x</span></span><span class="toggle toggle--on"></span></div>
+              <div class="lblrow"><span class="grip"></span><span class="pv pv--bare"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg></span><span class="inp">EX</span><span class="sws"><i class="bdg--1"></i><i class="bdg--2 is-on"></i><i class="bdg--3"></i><i class="bdg--4"></i><i class="bdg--5"></i></span><span class="row__text"><span>Claude · example.com</span><span class="faint">~/.claude-home · Max 20x</span></span><span class="toggle toggle--on"></span></div>
+              <div class="lblrow"><span class="grip"></span><span class="pv pv--bare"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" fill="none"/></svg></span><span class="inp">OP</span><span class="sws"><i class="bdg--1"></i><i class="bdg--2"></i><i class="bdg--3 is-on"></i><i class="bdg--4"></i><i class="bdg--5"></i></span><span class="row__text"><span>Claude · acme.com</span><span class="faint">~/.claude-ops · Max 20x</span></span><span class="toggle toggle--on"></span></div>
+              <div class="lblrow"><span class="grip"></span><span class="pv pv--bare"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.4 3.1v6.2L8 14.2 2.6 11.1V4.9z" fill="none"/><circle cx="8" cy="8" r="1.7" fill="none"/></svg></span><span class="inp">EX</span><span class="sws"><i class="bdg--1"></i><i class="bdg--2 is-on"></i><i class="bdg--3"></i><i class="bdg--4"></i><i class="bdg--5"></i></span><span class="row__text"><span>Codex · example.com</span><span class="faint">~/.codex · Pro</span></span><span class="toggle toggle--on"></span></div>
+              <div class="lblrow"><span class="grip"></span><span class="pv pv--bare"><svg class="pvi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8l5.4 3.1v6.2L8 14.2 2.6 11.1V4.9z" fill="none"/><circle cx="8" cy="8" r="1.7" fill="none"/></svg></span><span class="inp">AC</span><span class="sws"><i class="bdg--1 is-on"></i><i class="bdg--2"></i><i class="bdg--3"></i><i class="bdg--4"></i><i class="bdg--5"></i></span><span class="row__text"><span>Codex · acme.com</span><span class="faint">~/.codex-acme · Team</span></span><span class="toggle toggle--on"></span></div>
+            </div>
+            <div class="row"><span class="toggle toggle--on"></span><span class="row__text"><span>Show GitHub API with the limits</span></span></div>
+            <div class="row"><span class="toggle"></span><span class="row__text"><span>Keep my order in the rail</span><span class="faint">Off: least left first.</span></span></div>
+            <div class="row"><span class="inp">10</span><span class="row__text"><span>Warn under this percentage left</span></span></div>
+            <div class="btnrow"><span class="btn btn--sec">Look for accounts again</span><span class="btn btn--ghost">Reset labels</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption>The suggested label is the first two letters of the account's email domain, so AC stands for acme.com and EX for example.com. When two accounts of one provider would get the same label, the second takes its folder's suffix, which is how <code>.claude-ops</code> becomes OP.</figcaption>
+    <div class="prose">
+      <ul>
+        <li>One colour per label, across providers, so AC reads as one identity. Red and amber are not offered because the limit bars use them.</li>
+        <li>A label holds up to three characters.</li>
+        <li>F1 opens once, on the first start after the update that brings this, through the same one-time flags as the Focus and Quick Review hints in <code>onboarding-store</code>. Not now keeps the suggested labels and leaves the rail without the block until you switch it on in Settings.</li>
+        <li>An account found later shows up in the rail with its suggested label, and a toast offers Label it.</li>
+      </ul>
+    </div>
+  </figure>
+</section>
+</div>
+</body>
+</html>
