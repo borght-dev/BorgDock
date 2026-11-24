@@ -8,7 +8,7 @@ A desktop app for keeping on top of GitHub pull requests, Azure DevOps work item
 
 ### Rail and full-screen pull requests
 
-A rail on the left switches between Focus, Pull requests, Work items and Worktrees, with sync state and your GitHub rate at the bottom. A pull request opens full screen with its checks, files, commits and discussion; Esc or Back returns you to the same row.
+A rail on the left switches between Focus, Dispatch, Pull requests, Work items and Notes, with sync state and your GitHub rate at the bottom. A pull request opens full screen with its checks, files, commits and discussion; Esc or Back returns you to the same row.
 
 ![The rail with a pull request open full screen](docs/whats-new/3.0.0/layout.png)
 
@@ -41,13 +41,13 @@ Azure DevOps queries live in the Work items section, grouped by state. SQL, the 
 ## Features
 
 - **Pull request monitoring** — Polls GitHub for open pull requests across your repositories (one `gh` account per repo if you need to), with CI checks, reviews and merge state.
-- **Main window with a rail** — Focus, Pull requests, Work items and Worktrees, keys `1`–`4`. Pull requests and work items open full screen with Back; Ctrl+click opens a PR in its own window.
+- **Main window with a rail** — Focus, Dispatch, Pull requests, Work items and Notes, keys `1`–`5`. Pull requests and work items open full screen with Back; Ctrl+click opens a PR in its own window.
 - **Focus** — A ranked list or board of what needs you, with the reason for each item, snooze with Undo, and one action per card: Review, Fix with Claude, Rerun or Merge.
 - **Quick Review** — A two-column overview with required-check status, expandable file groups, progress and developer proof. Hover linked ADO items for context; click to read the existing work-item panel without leaving the review. Proof comments show their source and commit association, with hover previews and an image viewer for zoom, pan and navigation. File-by-file review retains skip-generated, inline drafts and approval gating.
 - **Rerun failed checks** — Reruns the failed jobs of each GitHub Actions workflow and re-requests other apps' check suites.
 - **Coding agents** — Fix, Monitor and Resolve conflicts with Claude Code or Codex in a worktree for the PR branch; open a PR-linked thread in T3 Code.
 - **Tray and flyout** — Tray icon with the open-PR count on the worst state colour, and a flyout (`Ctrl+Win+Shift+F`) with compact rows, Review / Merge and a context menu.
-- **Worktrees** (`Ctrl+F7`) — Every worktree of every watched repo, favourites, its changes beside the list, and the linked pull request.
+- **Worktrees** (`Ctrl+F7`) — Every worktree of every watched repo in a window of its own, grouped by machine under its free disk space, with favourites and a terminal, folder or editor one click away.
 - **File palette** (`Ctrl+F8`) — Filename, content (`>`) and symbol (`@`) search across worktrees with a syntax-highlighted preview and a pop-out file viewer.
 - **Azure DevOps work items** (`Ctrl+F9`) — Queries, a work item palette and editable item detail, with `az` CLI or PAT auth.
 - **SQL** (`Ctrl+F10`) — Queries against SQL Server with Windows or SQL auth, snippets, and a virtualized result grid.

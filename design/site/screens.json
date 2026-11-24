@@ -485,21 +485,6 @@
     "page": "Quick review"
   },
   {
-    "slug": "worktrees",
-    "storyId": {
-      "light": "worktree-worktreessection--light",
-      "dark": "worktree-worktreessection--default"
-    },
-    "viewport": {
-      "width": 1360,
-      "height": 860
-    },
-    "theme": "both",
-    "delay": 2500,
-    "alt": "The Worktrees section: your worktrees grouped by the machine they live on, under that machine's free disk space, each row with its branch, changes and pull request",
-    "page": "Tools"
-  },
-  {
     "slug": "worktrees-window",
     "storyId": "worktree-worktreepaletteapp--two-repos-balanced",
     "viewport": {
