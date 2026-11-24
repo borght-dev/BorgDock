@@ -193,6 +193,21 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   sql_snippets_save: null,
   sql_snippets_delete: null,
   t3_environment: 'env-test',
+  // The rail's Machines block reads the disk probe and the worktree cache at
+  // boot: one healthy disk on this machine and no worktrees.
+  host_disk_space: () => [
+    {
+      id: 'local',
+      label: 'Test machine',
+      checkedAt: Date.now(),
+      error: null,
+      t3Host: { id: 'local' },
+      disks: [{ drive: 'C:', totalBytes: 512 * 1024 ** 3, freeBytes: 256 * 1024 ** 3 }],
+    },
+  ],
+  worktree_cache_get_all: [],
+  worktree_cache_refresh: [],
+  open_tool_window: null,
   // Activity journal: an empty one that accepts every commit. Specs that
   // exercise the section override these with an in-page journal.
   activity_open_source: (args: Record<string, unknown>) => {

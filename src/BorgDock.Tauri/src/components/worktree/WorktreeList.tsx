@@ -28,12 +28,13 @@ import { minuteNow } from '@/utils/relative-time';
 import { shortcutLabel } from '@/utils/shortcut-label';
 import { useLinkedPrs, useWorktreeStatuses } from './useWorktreeDetails';
 import { useWorktreeFavorites } from './useWorktreeFavorites';
-import { hostDisplayName, useHostDisks, WorktreeHostHeader } from './WorktreeHostHeader';
+import { useHostDisks, WorktreeHostHeader } from './WorktreeHostHeader';
 import { WorktreePruneDialog } from './WorktreePruneDialog';
 import { PaletteWorktreeRow, SectionWorktreeRow } from './WorktreeRows';
 import {
   flattenSnapshot,
   groupByHost,
+  hostDisplayName,
   rowsInOrder,
   visibleEntries,
   type WorktreeListEntry,

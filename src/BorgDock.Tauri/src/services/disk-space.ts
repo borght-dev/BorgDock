@@ -17,7 +17,6 @@ export interface HostDisks {
 
 export const DISK_POLL_MS = 60_000;
 export const DISK_TTL_MS = 180_000;
-export const DISK_REMINDER_MS = 6 * 60 * 60 * 1000;
 export const CLEAN_DISK_ACTION = 'clean-host-disk';
 const GIB = 1024 ** 3;
 
@@ -35,13 +34,28 @@ export function diskSeverity(disk: DiskSpace): 0 | 1 | 2 {
   return 0;
 }
 
-export function freeSpaceLabel(disk: DiskSpace): string {
+/** "212 GiB", "0.4 GiB": what is free on a disk. */
+export function freeSpace(disk: DiskSpace): string {
   const gib = disk.freeBytes / GIB;
-  return `${gib < 1 ? gib.toFixed(1) : Math.round(gib)} GiB free`;
+  return `${gib < 1 ? gib.toFixed(1) : Math.round(gib)} GiB`;
+}
+
+export function freeSpaceLabel(disk: DiskSpace): string {
+  return `${freeSpace(disk)} free`;
 }
 
 export function freshDisks(host: HostDisks, now = Date.now()): boolean {
   return !host.error && host.disks.length > 0 && now - host.checkedAt <= DISK_TTL_MS;
+}
+
+/** The measured host T3 environment `environmentId` runs on, while its measurement is fresh. */
+export function hostOfEnvironment(
+  hosts: readonly HostDisks[],
+  environmentId: string | null,
+  now = Date.now(),
+): HostDisks | undefined {
+  const host = hosts.find((h) => h.t3Host?.id === environmentId);
+  return host && freshDisks(host, now) ? host : undefined;
 }
 
 /** The worst severity of a host's disks: 0 healthy, 1 low, 2 critical. */
@@ -50,6 +64,23 @@ export function hostSeverity(disks: readonly DiskSpace[]): 0 | 1 | 2 {
     (worst, disk) => Math.max(worst, diskSeverity(disk)) as 0 | 1 | 2,
     0,
   );
+}
+
+/** The disk closest to running out: the worst severity, then the least free space. */
+export function tightestDisk(disks: readonly DiskSpace[]): DiskSpace | undefined {
+  return [...disks].sort(
+    (a, b) => diskSeverity(b) - diskSeverity(a) || a.freeBytes - b.freeBytes,
+  )[0];
+}
+
+/** How full a disk is, 0 to 100, for its meter. */
+export function usedPercent(disk: DiskSpace): number {
+  return disk.totalBytes > 0 ? (1 - disk.freeBytes / disk.totalBytes) * 100 : 0;
+}
+
+/** "18 GiB free on /, 14 GiB free on D:": the disks of a host, each with its drive. */
+export function freeSpaceByDrive(disks: readonly DiskSpace[]): string {
+  return disks.map((disk) => `${freeSpaceLabel(disk)} on ${disk.drive}`).join(', ');
 }
 
 function holds(drive: string, path: string): boolean {
@@ -68,8 +99,12 @@ export function diskForPath(path: string, disks: readonly DiskSpace[]): DiskSpac
   return best;
 }
 
+/**
+ * One notice per disk that turns low, and another when it gets worse. Nothing
+ * repeats while it stays low: the Focus card stays until the disk recovers.
+ */
 export class DiskAlertGate {
-  private sent = new Map<string, { hostId: string; severity: number; at: number }>();
+  private sent = new Map<string, { hostId: string; severity: number }>();
 
   notices(hosts: HostDisks[], now = Date.now()): HostDisks[] {
     const notices: HostDisks[] = [];
@@ -86,12 +121,8 @@ export class DiskAlertGate {
           continue;
         }
         const previous = this.sent.get(key);
-        if (!previous || severity > previous.severity || now - previous.at >= DISK_REMINDER_MS) {
-          this.sent.set(key, { hostId: host.id, severity, at: now });
-          notify = true;
-        } else if (severity < previous.severity) {
-          this.sent.set(key, { ...previous, severity });
-        }
+        if (!previous || severity > previous.severity) notify = true;
+        if (severity !== previous?.severity) this.sent.set(key, { hostId: host.id, severity });
       }
       if (notify) notices.push(host);
     }
