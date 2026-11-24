@@ -2,6 +2,7 @@ import * as ciStore from '@/services/ci-failures/store-api';
 import type { GitHubClient } from '@/services/github/client';
 import { resolvedLogin } from '@/services/github/login';
 import {
+  isDue,
   type LookupResult,
   lookUpPullRequests,
   type PullRequestTarget,
@@ -245,15 +246,36 @@ async function fetchFindings(
   return found;
 }
 
+/**
+ * The pull requests to read back now: those not read lately, the longest
+ * unread first. Taking the first ten numbers every poll starved the rest
+ * whenever those ten stayed open (a pull request beyond the list's page) or
+ * could not be read, and what the rest left needing me never ended.
+ */
+export function dueForVerification(
+  owner: string,
+  repo: string,
+  numbers: readonly number[],
+  known: ReadonlyMap<string, LookupResult>,
+  now: number = Date.now(),
+): PullRequestTarget[] {
+  return numbers
+    .map((number) => ({ owner, repo, number }))
+    .filter((target) => isDue(known.get(targetKey(target)), now))
+    .sort(
+      (a, b) =>
+        (known.get(targetKey(a))?.checkedAt ?? 0) - (known.get(targetKey(b))?.checkedAt ?? 0),
+    )
+    .slice(0, VERIFY_PER_POLL);
+}
+
 async function verify(
   client: GitHubClient,
   owner: string,
   repo: string,
   numbers: readonly number[],
 ): Promise<VerifiedPr[]> {
-  const targets: PullRequestTarget[] = numbers
-    .slice(0, VERIFY_PER_POLL)
-    .map((number) => ({ owner, repo, number }));
+  const targets = dueForVerification(owner, repo, numbers, lookups);
   if (targets.length === 0) return [];
   const results = await lookUpPullRequests(targets, () => client, lookups);
   const verified: VerifiedPr[] = [];
@@ -282,7 +304,7 @@ async function verify(
   return verified;
 }
 
-/** Verified merges and closes join the closed list now, so Dispatch and workstreams see them. */
+/** Verified merges and closes join the closed list now, so Dispatch sees them. */
 function addToClosed(owner: string, repo: string, verified: readonly VerifiedPr[]): void {
   const closed = verified.flatMap((pr) => {
     if (pr.state === 'open') return [];

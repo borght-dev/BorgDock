@@ -53,16 +53,10 @@ export const CATEGORY_DEFAULTS: Record<ActivityCategory, CategoryChannels> = {
   'ci.fix-merged': BOTH,
   'ci.seen-after-fix': BOTH,
   'ci.resolved': QUIET,
-  'workstream.unblocked': BOTH,
-  'workstream.invalidated': BOTH,
-  'workstream.reopened': BOTH,
-  'workstream.conflict': BOTH,
-  'workstream.proposal': BOTH,
-  'workstream.ready': POPUP,
   'deploy.pr': BOTH,
   'deploy.reached': POPUP,
   'deploy.failed': BOTH,
-  'ado.assigned': BOTH,
+  'ado.assigned': QUIET,
   'ado.state': BOTH,
   'ado.comment': BOTH,
   'activity.rollup': QUIET,
@@ -81,9 +75,13 @@ export function categoryChannels(
   ) as Record<ActivityCategory, CategoryChannels>;
 }
 
+/** Categories that pop up only for an entry that needs me; the rest is recorded quietly. */
+const POPUP_NEEDS_YOU: ReadonlySet<ActivityCategory> = new Set(['ci.group-grew']);
+
 /**
  * The outbox rows a new entry gets. A push only ever goes out for an entry
- * that needs me; the category toggles choose among those.
+ * that needs me; the category toggles choose among those. A CI failure group
+ * that grew pops up only when one of my PRs is in it.
  */
 export function channelsFor(
   entry: Pick<NewActivityEntry, 'category' | 'needsYou'>,
@@ -92,7 +90,7 @@ export function channelsFor(
   const channels = categoryChannels(settings)[entry.category];
   const push = settings.notifications.activity?.push;
   const out: ActivityChannel[] = [];
-  if (channels.popup) out.push('popup');
+  if (channels.popup && (entry.needsYou || !POPUP_NEEDS_YOU.has(entry.category))) out.push('popup');
   if (channels.push && entry.needsYou && push?.enabled) out.push('push');
   return out;
 }
@@ -131,7 +129,7 @@ function popupOf(entry: ActivityEntry): OsNotificationOptions {
     severity: popupSeverity(entry),
     actions: [
       ...(action ? [{ label: actionLabel(action), action: 'activity-act', url: entry.id }] : []),
-      { label: action ? 'Show' : 'Open Activity', action: 'activity-open', url: entry.id },
+      { label: action ? 'Show' : 'Open history', action: 'activity-open', url: entry.id },
     ],
   };
 }
@@ -146,7 +144,7 @@ function summaryOf(entries: readonly ActivityEntry[], away: boolean): OsNotifica
     title: away ? 'While you were away' : `${entries.length} updates`,
     body: (line ?? '').replace(/^[^:]*:\s*/, ''),
     severity: needsYou ? 'warning' : 'info',
-    actions: [{ label: 'Open Activity', action: 'activity-open', url: '' }],
+    actions: [{ label: 'Open history', action: 'activity-open', url: '' }],
   };
 }
 

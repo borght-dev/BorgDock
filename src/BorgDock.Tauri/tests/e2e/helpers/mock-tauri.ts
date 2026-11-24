@@ -137,11 +137,8 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   scan_repos_under: [],
   list_worktrees: [],
   list_worktrees_bare: [],
-  list_worktree_changes: [],
   create_worktree: null,
   checkout_pr: null,
-  diff_worktree_vs_base: '',
-  diff_worktree_vs_head: '',
   search_content: [],
   cache_load_sql_schema: null,
   fetch_sql_schema: null,
@@ -185,6 +182,7 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   open_pr_detail_window: null,
   open_settings_window: null,
   open_whats_new_window: null,
+  open_activity_history_window: null,
   open_workitem_detail_window: null,
   show_or_focus_main: null,
   show_flyout_toast: null,
@@ -204,6 +202,21 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   sql_snippets_save: null,
   sql_snippets_delete: null,
   t3_environment: 'env-test',
+  // The rail's Machines block reads the disk probe and the worktree cache at
+  // boot: one healthy disk on this machine and no worktrees.
+  host_disk_space: () => [
+    {
+      id: 'local',
+      label: 'Test machine',
+      checkedAt: Date.now(),
+      error: null,
+      t3Host: { id: 'local' },
+      disks: [{ drive: 'C:', totalBytes: 512 * 1024 ** 3, freeBytes: 256 * 1024 ** 3 }],
+    },
+  ],
+  worktree_cache_get_all: [],
+  worktree_cache_refresh: [],
+  open_tool_window: null,
   // Activity journal: an empty one that accepts every commit. Specs that
   // exercise the section override these with an in-page journal.
   activity_open_source: (args: Record<string, unknown>) => {
@@ -228,6 +241,9 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   activity_read_since: [],
   phone_link_state: { linked: false, server: null, serverName: null },
   phone_link_pr_views_get: null,
+  // No AI account on the test machine: the rail shows GitHub's row alone and no sheet opens.
+  ai_usage_accounts: [],
+  ai_usage_read: [],
   activity_outbox_take: [],
   activity_outbox_ack: 0,
   activity_prune: 0,
@@ -253,53 +269,6 @@ export const DEFAULT_HANDLERS: MockHandlers = {
     return URL.createObjectURL(new Blob([bytes], { type: 'text/html' }));
   },
   file_preview_release: null,
-  // Workstreams: an in-page folder (window.__wsFiles) with the same revision
-  // rule as the Rust storage, so specs can create, edit and reload them.
-  workstreams_folder_path: 'memory',
-  workstreams_device_name: 'Test machine',
-  workstreams_trashed: [],
-  workstreams_restore: null,
-  workstreams_restore_backup: null,
-  workstreams_list: () => {
-    const files = (window as unknown as { __wsFiles?: Record<string, { contents: string; modifiedMs: number }> })
-      .__wsFiles ?? {};
-    return Object.entries(files).map(([fileName, file]) => ({
-      id: fileName.slice(0, 36),
-      fileName,
-      modifiedMs: file.modifiedMs,
-      size: file.contents.length,
-      conflictCopy: fileName !== `${fileName.slice(0, 36)}.json`,
-    }));
-  },
-  workstreams_read: (args: Record<string, unknown>) => {
-    const files = (window as unknown as { __wsFiles?: Record<string, { contents: string }> }).__wsFiles ?? {};
-    const file = files[args.fileName as string];
-    if (!file) throw 'missing';
-    return file.contents;
-  },
-  workstreams_write: (args: Record<string, unknown>) => {
-    const w = window as unknown as {
-      __wsFiles?: Record<string, { contents: string; modifiedMs: number }>;
-      __wsClock?: number;
-    };
-    w.__wsFiles = w.__wsFiles ?? {};
-    const name = `${args.id as string}.json`;
-    const disk = w.__wsFiles[name];
-    if (disk) {
-      const revision = (JSON.parse(disk.contents) as { revision?: number }).revision;
-      if (args.expectedRevision === null || revision !== args.expectedRevision) {
-        return { status: 'conflict', disk: disk.contents };
-      }
-    }
-    w.__wsClock = (w.__wsClock ?? 0) + 1;
-    w.__wsFiles[name] = { contents: args.contents as string, modifiedMs: w.__wsClock };
-    return { status: 'written' };
-  },
-  workstreams_trash: (args: Record<string, unknown>) => {
-    const w = window as unknown as { __wsFiles?: Record<string, unknown> };
-    if (w.__wsFiles) delete w.__wsFiles[args.fileName as string];
-    return null;
-  },
   // Notes: an in-page vault (window.__notes) with the same write rule as the
   // Rust storage: a write over text the writer didn't read is a conflict.
   notes_folder_path: 'C:/Vault/BorgDock Notes',

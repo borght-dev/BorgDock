@@ -10,8 +10,6 @@ import {
 } from '@/components/shared/primitives';
 import { DEFAULT_LAUNCH_PROMPTS, type LaunchPrompts } from '@/services/dispatch/launch';
 import { SUMMARY_EFFORTS } from '@/services/summary-agent';
-import { DEFAULT_WORKSTREAM_PROMPTS } from '@/services/workstreams/brief';
-import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import type {
   AgentProvider,
   AgentSettings,
@@ -72,29 +70,6 @@ const PROMPT_FIELDS: { key: keyof LaunchPrompts; label: string; hint: string }[]
     label: 'Suggest my next item',
     hint: 'One agent recommends what to pick up. {iteration} is the sprint, {assigned} your items.',
   },
-];
-
-type PromptKey = keyof NonNullable<AgentSettings['dispatchPrompts']>;
-
-/** Every editable first message: Dispatch's, then the workstreams' when they are on. */
-const ALL_PROMPT_FIELDS: { key: PromptKey; label: string; hint: string; placeholder: string }[] = [
-  ...PROMPT_FIELDS.map((field) => ({ ...field, placeholder: DEFAULT_LAUNCH_PROMPTS[field.key] })),
-  ...(WORKSTREAMS_ENABLED
-    ? [
-        {
-          key: 'workstreamReview' as const,
-          label: 'Review a workstream',
-          hint: 'One agent reads a workstream and proposes. {brief} is the workstream, {title} its title.',
-          placeholder: DEFAULT_WORKSTREAM_PROMPTS.review,
-        },
-        {
-          key: 'workstreamWork' as const,
-          label: "Work on a workstream's next action",
-          hint: '{brief} is the workstream, {nextAction} its next action, {title} its title.',
-          placeholder: DEFAULT_WORKSTREAM_PROMPTS.work,
-        },
-      ]
-    : []),
 ];
 
 export function AgentSection({ agents, summaries, onAgentsChange, onSummariesChange }: Props) {
@@ -325,7 +300,7 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
           The first message an agent gets when you start it from Dispatch. Write {'{id}'},{' '}
           {'{title}'} and {'{branch}'} where the work item goes. An empty prompt uses the one shown.
         </p>
-        {ALL_PROMPT_FIELDS.map((field) => (
+        {PROMPT_FIELDS.map((field) => (
           <Field
             key={field.key}
             label={field.label}
@@ -337,7 +312,7 @@ export function AgentSection({ agents, summaries, onAgentsChange, onSummariesCha
               rows={4}
               className={TEXTAREA_CLASS}
               value={agents.dispatchPrompts?.[field.key] ?? ''}
-              placeholder={field.placeholder}
+              placeholder={DEFAULT_LAUNCH_PROMPTS[field.key]}
               onChange={(e) =>
                 onAgentsChange({
                   ...agents,

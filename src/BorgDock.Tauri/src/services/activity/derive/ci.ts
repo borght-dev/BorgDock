@@ -33,6 +33,8 @@ export interface CiObservation {
 export interface CiBaseline {
   /** The previous summaries, as `eventsBetween` compares them. */
   groups: CiGroupSummary[];
+  /** The groups that held one of my PRs: a group that grew needs me only while it does. */
+  mine?: string[];
 }
 
 const CATEGORY: Record<CiFailureEventKind, ActivityCategory> = {
@@ -62,7 +64,11 @@ function entryOf(
 ): NewActivityEntry {
   const category = CATEGORY[event.kind];
   const needsYou =
-    event.kind === 'fix-merged' ? mineIn(group, observation.myRedPrs) : event.kind !== 'resolved';
+    event.kind === 'group-grew'
+      ? mineIn(group, observation.myPrs)
+      : event.kind === 'fix-merged'
+        ? mineIn(group, observation.myRedPrs)
+        : event.kind !== 'resolved';
   const sourceAt =
     event.kind === 'fix-merged'
       ? group.fixMergedAt
@@ -77,7 +83,8 @@ function entryOf(
     resolved: () => sentence.ciResolved(group.title),
   }[event.kind]();
   return makeEntry(ctx, {
-    nativeKey: event.id,
+    // A group can cross the threshold again; it counts once a day.
+    nativeKey: event.kind === 'group-grew' ? `${event.id}:${ctx.now.slice(0, 10)}` : event.id,
     entity: { kind: 'ci-group', key: entityKey.ciGroup(group.id), title: group.title, url: null },
     links: { ciGroupIds: [group.id] },
     category,
@@ -96,7 +103,8 @@ function entryOf(
  * `eventsBetween` against a baseline that survives restarts, so a fix
  * merged while BorgDock was closed still shows up. Events count when one of
  * my PRs is in the group, when I own its claim, or when shared work crossed
- * the threshold with nobody on it.
+ * the threshold with nobody on it. That last one needs me only while one of
+ * my PRs is in the group; for the others it is a quiet entry.
  */
 export function deriveCi(
   ctx: DeriveContext,
@@ -107,7 +115,10 @@ export function deriveCi(
   const kept = (baseline?.groups ?? []).filter(
     (group) => !present.has(group.id) && group.status !== 'resolved',
   );
-  const result = emptyResult<CiBaseline>({ groups: [...observation.groups, ...kept] });
+  const mine = observation.groups
+    .filter((group) => group.status !== 'resolved' && mineIn(group, observation.myPrs))
+    .map((group) => group.id);
+  const result = emptyResult<CiBaseline>({ groups: [...observation.groups, ...kept], mine });
   if (ctx.seed) return result;
 
   const before = new Map((baseline?.groups ?? []).map((group) => [group.id, group]));
@@ -157,6 +168,25 @@ export function deriveCi(
         resolveCategories(key, ['ci.owner-stale'], group.claim ? 'renewed' : 'released'),
       );
     }
+  }
+  // A group that grew needs me while one of my PRs is in it.
+  const ended = new Set(
+    resolutions
+      .filter((resolution) => resolution.categories.includes('ci.group-grew'))
+      .map((resolution) => resolution.entityKey),
+  );
+  const stillMine = new Set(mine);
+  for (const groupId of baseline?.mine ?? []) {
+    const key = entityKey.ciGroup(groupId);
+    if (stillMine.has(groupId) || ended.has(key)) continue;
+    resolutions.push(resolveCategories(key, ['ci.group-grew'], 'no longer on your PRs'));
+  }
+  // It counts once a day: a new day's entry takes over from the earlier one.
+  for (const entry of entries) {
+    if (entry.category !== 'ci.group-grew') continue;
+    resolutions.push(
+      resolveCategories(entry.entity.key, ['ci.group-grew'], entry.id, 'superseded'),
+    );
   }
   return { ...result, entries, resolutions };
 }

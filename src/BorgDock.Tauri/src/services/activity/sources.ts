@@ -8,14 +8,11 @@ export const sourceId = {
   ci: (scope: string) => `ci:${scope}`,
   ado: (organization: string, project: string) =>
     `ado:${organization.toLowerCase()}/${project.toLowerCase()}`,
-  workstreams: () => 'workstreams:local',
 } as const;
 
 export function sourceKindOf(id: string): ActivitySourceKind | null {
   const kind = id.slice(0, id.indexOf(':'));
-  return (
-    (['t3', 'gh', 'deploy', 'ci', 'ado', 'workstreams'] as const).find((k) => k === kind) ?? null
-  );
+  return (['t3', 'gh', 'deploy', 'ci', 'ado'] as const).find((k) => k === kind) ?? null;
 }
 
 /**
@@ -32,7 +29,6 @@ export const entityKey = {
   workItem: (organization: string, project: string, id: number) =>
     `ado:${organization.toLowerCase()}/${project.toLowerCase()}:${id}`,
   ciGroup: (groupId: string) => `ci:${groupId}`,
-  workstream: (documentId: string) => `workstream:${documentId}`,
 } as const;
 
 /** The same fact always gets the same id. */
@@ -75,12 +71,6 @@ export const CATEGORY_GROUP: Record<ActivityCategory, ActivityCategoryGroup | nu
   'ci.fix-merged': 'ci',
   'ci.seen-after-fix': 'ci',
   'ci.resolved': 'ci',
-  'workstream.unblocked': 'workstreams',
-  'workstream.invalidated': 'workstreams',
-  'workstream.reopened': 'workstreams',
-  'workstream.conflict': 'workstreams',
-  'workstream.proposal': 'workstreams',
-  'workstream.ready': 'workstreams',
   'deploy.pr': 'deployments',
   'deploy.reached': 'deployments',
   'deploy.failed': 'deployments',

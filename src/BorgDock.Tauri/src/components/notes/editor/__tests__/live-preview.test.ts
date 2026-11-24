@@ -166,12 +166,18 @@ describe('previewRanges: links and references', () => {
     expect(spans(ranges, 'hide')).toEqual([]);
   });
 
-  it('makes a chip of a workstream link', () => {
-    const [chip] = only(previewRanges('[Plan](borgdock://workstreams/ws1)\nx', at(36)), 'chip');
-    expect(chip).toMatchObject({
-      url: 'borgdock://workstreams/ws1',
-      token: { kind: 'workstream', id: 'ws1', label: 'Plan' },
-    });
+  it('shows a link to a workstream, which BorgDock no longer has, as its label in plain text', () => {
+    const text = '[Plan](borgdock://workstreams/ws1) end\nx';
+    const ranges = previewRanges(text, at(40));
+    expect(only(ranges, 'chip')).toEqual([]);
+    expect(only(ranges, 'link')).toEqual([]);
+    expect(spans(ranges, 'hide')).toEqual([
+      [0, 1],
+      [5, 34],
+    ]);
+    const editing = previewRanges(text, at(2));
+    expect(only(editing, 'link')).toEqual([]);
+    expect(only(editing, 'ref')).toEqual([]);
   });
 
   it('styles references on the cursor line instead of replacing them', () => {
@@ -237,10 +243,10 @@ describe('previewRanges: blocks', () => {
     expect(spans(ranges, 'chip')).toEqual([[35, 40]]);
   });
 
-  it('renders a quoted thread or workstream link and a wikilink in a frontmatter value', () => {
+  it('renders a quoted thread link and a wikilink in a frontmatter value', () => {
     const doc = [
       '---',
-      'workstream: "[Q4 auth](borgdock://workstreams/ws1)"',
+      'thread: "[Q4 auth](t3code://threads/env-1/th-9)"',
       'related: [[Roadmap]]',
       'note: about #idea',
       '---',
@@ -249,20 +255,20 @@ describe('previewRanges: blocks', () => {
     const ranges = previewRanges(doc, at(doc.length));
     expect(only(ranges, 'chip')).toEqual([
       expect.objectContaining({
-        from: 17,
-        to: 54,
-        url: 'borgdock://workstreams/ws1',
-        token: expect.objectContaining({ kind: 'workstream', id: 'ws1' }),
+        from: 13,
+        to: 51,
+        url: 't3code://threads/env-1/th-9',
+        token: expect.objectContaining({ kind: 't3', threadId: 'th-9' }),
       }),
     ]);
     expect(spans(ranges, 'hide')).toEqual([
-      [16, 17],
-      [54, 55],
-      [65, 67],
-      [74, 76],
+      [12, 13],
+      [51, 52],
+      [62, 64],
+      [71, 73],
     ]);
     expect(only(ranges, 'wikilink')).toEqual([
-      { kind: 'wikilink', from: 67, to: 74, target: 'Roadmap', raw: false },
+      { kind: 'wikilink', from: 64, to: 71, target: 'Roadmap', raw: false },
     ]);
     expect(only(ranges, 'tag')).toEqual([]);
     expect(lineClass(ranges, 4)).toBe('bd-note-frontmatter');
@@ -270,11 +276,11 @@ describe('previewRanges: blocks', () => {
     const editing = previewRanges(doc, at(20));
     expect(only(editing, 'chip')).toEqual([]);
     expect(only(editing, 'ref').map((r) => [r.from, r.to, r.url])).toEqual([
-      [17, 54, 'borgdock://workstreams/ws1'],
+      [13, 51, 't3code://threads/env-1/th-9'],
     ]);
     expect(spans(editing, 'hide')).toEqual([
-      [65, 67],
-      [74, 76],
+      [62, 64],
+      [71, 73],
     ]);
   });
 

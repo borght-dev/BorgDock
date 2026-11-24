@@ -1,41 +1,35 @@
+import { invoke } from '@tauri-apps/api/core';
 import clsx from 'clsx';
 import {
-  Activity,
   Crosshair,
-  FolderGit2,
   GitPullRequest,
-  Layers,
   ListChecks,
   type LucideIcon,
   NotebookPen,
   PanelLeftClose,
   PanelLeftOpen,
   Send,
+  Settings,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { RailRecent } from '@/components/activity/RailRecent';
+import { RailLimits } from '@/components/ai-usage/RailLimits';
+import { RailMachines } from '@/components/machines';
 import { BorgDockLogo } from '@/components/shared/icons';
-import { SlidingHighlight } from '@/components/shared/primitives';
-import { useWorktreeCount } from '@/hooks/useWorktreeMap';
+import { IconButton, SlidingHighlight } from '@/components/shared/primitives';
+import { WindowLauncher } from '@/components/shared/WindowLauncher';
 import { showSection } from '@/services/navigation';
-import { selectNeedsYou, useActivityStore } from '@/stores/activity-store';
 import { selectWaitingCount, useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, SECTION_ORDER, useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import {
-  selectWorkstreamsNeedingYou,
-  useWorkstreamSourcesStore,
-} from '@/stores/workstream-sources-store';
 
 /** Sentence-case section names, shared by the rail and the title bar. */
 export const SECTION_LABELS: Record<ActiveSection, string> = {
   focus: 'Focus',
   dispatch: 'Dispatch',
-  workstreams: 'Workstreams',
   prs: 'Pull requests',
   workitems: 'Work items',
-  worktrees: 'Worktrees',
-  activity: 'Activity',
   notes: 'Notes',
 };
 
@@ -43,11 +37,8 @@ export const SECTION_LABELS: Record<ActiveSection, string> = {
 const SECTION_ICONS: Record<ActiveSection, LucideIcon> = {
   focus: Crosshair,
   dispatch: Send,
-  workstreams: Layers,
   prs: GitPullRequest,
   workitems: ListChecks,
-  worktrees: FolderGit2,
-  activity: Activity,
   notes: NotebookPen,
 };
 
@@ -58,8 +49,6 @@ function badgeText(value: number): string {
 
 /** How often the "Synced … ago" line re-renders. */
 const SYNC_TICK_MS = 10_000;
-
-const numberFormat = new Intl.NumberFormat('en-US');
 
 /** "Synced 12 s ago", "Synced 4 min ago", "Synced 2 h ago". */
 export function formatSyncedAgo(lastPollTime: Date | null, now: number): string {
@@ -86,26 +75,20 @@ function useRailCounts(): Partial<Record<ActiveSection, RailCount>> {
   const focusCount = usePrStore((s) => s.focusCount());
   const waitingCount = useDispatchStore(selectWaitingCount);
   const workItemCount = useWorkItemsStore((s) => s.workItems.length);
-  const worktreeCount = useWorktreeCount();
-  const workstreamCount = useWorkstreamSourcesStore(selectWorkstreamsNeedingYou);
-  const activityCount = useActivityStore(selectNeedsYou);
 
   const counts: Partial<Record<ActiveSection, RailCount>> = {
     prs: { value: openCount, hot: failing > 0 },
   };
   if (focusCount > 0) counts.focus = { value: focusCount };
   if (waitingCount > 0) counts.dispatch = { value: waitingCount };
-  if (workstreamCount > 0) counts.workstreams = { value: workstreamCount };
   if (workItemCount > 0) counts.workitems = { value: workItemCount };
-  if (worktreeCount > 0) counts.worktrees = { value: worktreeCount };
-  if (activityCount > 0) counts.activity = { value: activityCount, hot: true };
   return counts;
 }
 
-function SyncBlock({ collapsed }: { collapsed: boolean }) {
+/** "Synced 12 s ago": when the pull requests were last read. Folded, only screen readers hear it. */
+function SyncLine({ collapsed }: { collapsed: boolean }) {
   const lastPollTime = usePrStore((s) => s.lastPollTime);
   const isPolling = usePrStore((s) => s.isPolling);
-  const rate = usePrStore((s) => s.rateLimit);
   const [now, setNow] = useState(() => Date.now());
 
   // A poll that lands between ticks reads as "just now" until the next tick
@@ -115,94 +98,80 @@ function SyncBlock({ collapsed }: { collapsed: boolean }) {
     return () => window.clearInterval(id);
   }, []);
 
-  const fraction =
-    rate && rate.limit > 0 ? Math.min(1, Math.max(0, rate.remaining / rate.limit)) : 0;
-  const synced = isPolling ? 'Syncing…' : formatSyncedAgo(lastPollTime, now);
-
-  // Folded: the meter alone, with the words on hover.
-  if (collapsed)
-    return (
-      <div
-        className="bd-rail__sync bd-rail__sync--compact"
-        title={
-          rate
-            ? `${synced} · ${numberFormat.format(rate.remaining)} of ${numberFormat.format(rate.limit)} requests left`
-            : synced
-        }
-      >
-        <span className="sr-only" aria-live="polite">
-          {isPolling ? 'Syncing' : lastPollTime ? 'Synced' : ''}
-        </span>
-        <div
-          className={clsx(
-            'bd-rail__meter',
-            fraction < 0.1 && 'bd-rail__meter--low',
-            isPolling && 'bd-rail__meter--syncing',
-          )}
-          role="meter"
-          aria-label="GitHub requests left"
-          aria-valuemin={0}
-          aria-valuemax={rate?.limit ?? 0}
-          aria-valuenow={rate?.remaining ?? 0}
-        >
-          <span
-            className="bd-rail__meter-fill"
-            style={{ width: `${(fraction * 100).toFixed(2)}%` }}
-          />
-        </div>
-      </div>
-    );
-
   return (
-    <div className="bd-rail__sync">
-      <span className="bd-rail__sync-line">{synced}</span>
+    <div className={clsx('bd-rail__sync', collapsed && 'sr-only')}>
+      {!collapsed && (
+        <span className="bd-rail__sync-line">
+          {isPolling ? 'Syncing…' : formatSyncedAgo(lastPollTime, now)}
+        </span>
+      )}
       {/* Announce the sync state changing, not the ticking relative time. */}
       <span className="sr-only" aria-live="polite">
         {isPolling ? 'Syncing' : lastPollTime ? 'Synced' : ''}
       </span>
-      {rate && (
-        <>
-          <div
-            className={clsx('bd-rail__meter', fraction < 0.1 && 'bd-rail__meter--low')}
-            role="meter"
-            aria-label="GitHub requests left"
-            aria-valuemin={0}
-            aria-valuemax={rate.limit}
-            aria-valuenow={rate.remaining}
-          >
-            {/* style: fill width is the live remaining/limit ratio */}
-            <span
-              className="bd-rail__meter-fill"
-              style={{ width: `${(fraction * 100).toFixed(2)}%` }}
-            />
-          </div>
-          <span className="bd-rail__sync-line">
-            {numberFormat.format(rate.remaining)} of {numberFormat.format(rate.limit)} requests left
-            {rate.pool ? ` (${rate.pool === 'graphql' ? 'GraphQL' : 'REST'})` : ''}
-          </span>
-        </>
-      )}
+    </div>
+  );
+}
+
+function openSettings() {
+  void invoke('open_settings_window', {}).catch((e) =>
+    console.error('open_settings_window failed', e),
+  );
+}
+
+/**
+ * The bar the rail ends in: Settings in the corner, Open window, Recent
+ * (the bell with what needs you), and the fold toggle at the far end.
+ * Folded, the same buttons stack with Settings still at the bottom.
+ */
+function RailBar({ collapsed }: { collapsed: boolean }) {
+  const toggleRail = useUiStore((s) => s.toggleRail);
+  return (
+    <div className="bd-rail__tools">
+      <IconButton
+        icon={<Settings size={15} strokeWidth={2} />}
+        tooltip="Settings"
+        aria-label="Settings"
+        onClick={openSettings}
+      />
+      <WindowLauncher anchor="rail" settingsItem={false} />
+      <RailRecent collapsed={collapsed} />
+      <button
+        type="button"
+        className="bd-rail__toggle"
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+        aria-keyshortcuts="["
+        title={collapsed ? 'Expand navigation ([)' : 'Collapse navigation ([)'}
+        onClick={toggleRail}
+        data-rail-toggle=""
+      >
+        {collapsed ? (
+          <PanelLeftOpen size={15} strokeWidth={2} aria-hidden="true" />
+        ) : (
+          <PanelLeftClose size={15} strokeWidth={2} aria-hidden="true" />
+        )}
+      </button>
     </div>
   );
 }
 
 /**
- * Rail — the main window's left navigation (plans/ui-overhaul-workbench.md,
- * phase 1): workspace name, the five sections with their counts and a
- * sliding highlight behind the active one, and the sync state with the
- * GitHub rate meter at the bottom. Keys `1`–`8` pick the same sections
- * (wired in useKeyboardNav). Dispatch counts the items waiting on you,
- * Workstreams the workstreams that need you, Activity the unread entries
- * that need you.
+ * Rail — the main window's left navigation (design/rail-five/mockups.html):
+ * the workspace name, the five sections with their counts and a sliding
+ * highlight behind the active one, and a foot of status blocks (what is left
+ * of each AI account, each machine's disk, when the pull requests were last
+ * read) that ends in a bar with Settings in the corner. Keys `1`–`5` pick
+ * the sections (wired in useKeyboardNav). Dispatch counts the items waiting
+ * on you.
  *
- * Folded (the button at the bottom, or `[`): icons with their counts as
- * badges, the name on hover, and the rate meter alone. The choice is
- * remembered (`ui-store.railCollapsed`).
+ * Folded (the toggle in the bar, or `[`): icons with their counts as badges,
+ * the name on hover, a ring per AI account, and the bar stacked. The choice
+ * is remembered (`ui-store.railCollapsed`).
  */
 export function Rail() {
   const activeSection = useUiStore((s) => s.activeSection);
   const collapsed = useUiStore((s) => s.railCollapsed);
-  const toggleRail = useUiStore((s) => s.toggleRail);
   const counts = useRailCounts();
 
   return (
@@ -270,26 +239,12 @@ export function Rail() {
           })}
         </SlidingHighlight>
       </nav>
-      <SyncBlock collapsed={collapsed} />
-      <button
-        type="button"
-        className="bd-rail__toggle"
-        aria-expanded={!collapsed}
-        aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-        aria-keyshortcuts="["
-        title={collapsed ? 'Expand navigation ([)' : 'Collapse navigation ([)'}
-        onClick={toggleRail}
-        data-rail-toggle=""
-      >
-        {collapsed ? (
-          <PanelLeftOpen size={15} strokeWidth={2} aria-hidden="true" />
-        ) : (
-          <>
-            <PanelLeftClose size={15} strokeWidth={2} aria-hidden="true" />
-            <span>Collapse</span>
-          </>
-        )}
-      </button>
+      <div className="bd-rail__foot">
+        <RailLimits collapsed={collapsed} />
+        <RailMachines collapsed={collapsed} />
+        <SyncLine collapsed={collapsed} />
+        <RailBar collapsed={collapsed} />
+      </div>
     </aside>
   );
 }

@@ -8,10 +8,8 @@ import {
   HoverPopover,
   isTextClipped,
 } from '@/components/shared/primitives';
-import { TitleWithChips } from '@/components/workstreams/Membership';
 import type { CiGroupSummary } from '@/services/ci-failures/types';
 import { isStaleUpdate } from '@/services/focus-bucket';
-import { pullRequestRef } from '@/services/workstreams/membership';
 import type { PrDensity } from '@/types';
 import { formatAgo, STALE_AFTER_DAYS } from '@/utils/relative-time';
 import { CHECKS_CARD_SIZE } from './checks-card-data';
@@ -300,11 +298,9 @@ export function PrRowCore({
         aria-hidden="true"
       />
       <span className="bd-wb-row__text">
-        <TitleWithChips refs={[pullRequestRef(pr.repoOwner, pr.repoName, pr.number)]}>
-          <span className="bd-wb-row__title" title={pr.title}>
-            {pr.title}
-          </span>
-        </TitleWithChips>
+        <span className="bd-wb-row__title" title={pr.title}>
+          {pr.title}
+        </span>
         {density === 'comfortable' &&
           (meta !== undefined ? (
             <span className="bd-wb-row__meta">{meta}</span>

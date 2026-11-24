@@ -67,9 +67,26 @@ describe('NotificationSection', () => {
 
   it('turning a popup off stores it for that category only', () => {
     render(<NotificationSection notifications={makeNotifications()} onChange={onChange} />);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Popup: An agent finished its turn' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Popup: An agent stopped with an error' }),
+    );
     const next = onChange.mock.calls[0]![0];
-    expect(next.activity?.categories).toEqual({ 'agent.turn': { popup: false } });
+    expect(next.activity?.categories).toEqual({ 'agent.failed': { popup: false } });
+  });
+
+  it('offers no switches for what nothing produces any more', () => {
+    render(<NotificationSection notifications={makeNotifications()} onChange={onChange} />);
+    expect(
+      screen.queryByRole('checkbox', { name: 'Popup: An agent finished its turn' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Popup: Turns finished while you were away' }),
+    ).toBeNull();
+    // An assignment is quiet unless I ask for its popup.
+    const assigned = screen.getByRole('checkbox', {
+      name: 'Popup: An item was assigned to you',
+    }) as HTMLInputElement;
+    expect(assigned.checked).toBe(false);
   });
 
   it('keeps the phone boxes off until push is on', () => {

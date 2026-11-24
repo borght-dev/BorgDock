@@ -25,8 +25,6 @@ export function actionLabel(action: ActionTarget): string {
       return 'Merge';
     case 'open-ci-group':
       return 'Open failure group';
-    case 'open-workstream':
-      return 'Open workstream';
     case 'open-url':
       return /\/actions\/runs\//.test(action.url) ? 'Open run log' : 'Open';
   }
@@ -53,17 +51,11 @@ export const CATEGORY_LABEL: Record<ActivityCategory, string> = {
   'pr.merged': 'Your PR was merged',
   'pr.merged-other': "Someone else's PR was merged",
   'pr.closed': 'Your PR was closed',
-  'ci.group-grew': 'A shared CI failure nobody owns',
+  'ci.group-grew': 'A shared CI failure with your PR in it',
   'ci.owner-stale': 'A CI investigation went quiet',
   'ci.fix-merged': 'A CI failure fix was merged',
   'ci.seen-after-fix': 'A fixed CI failure came back',
   'ci.resolved': 'A CI failure was resolved',
-  'workstream.unblocked': 'A workstream was unblocked',
-  'workstream.invalidated': 'A workstream outcome stopped holding',
-  'workstream.reopened': 'A completed workstream changed',
-  'workstream.conflict': 'A workstream changed on another machine',
-  'workstream.proposal': 'Agent proposals for a workstream',
-  'workstream.ready': 'A workstream is ready to complete',
   'deploy.pr': 'Your PR head was deployed',
   'deploy.reached': 'Your merged PR reached an environment',
   'deploy.failed': 'A deploy carrying your PR failed',

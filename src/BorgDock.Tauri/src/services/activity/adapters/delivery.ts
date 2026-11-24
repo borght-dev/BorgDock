@@ -73,6 +73,9 @@ export function ingestDeliveryHeads(
     repo,
     heads,
     inclusions: [],
+    myOpenPrs: prs
+      .filter((pr) => pr.pullRequest.authorLogin.toLowerCase() === login)
+      .map((pr) => pr.pullRequest.number),
   } satisfies DeliveryObservation);
 }
 

@@ -9,7 +9,7 @@ import { toastError } from '@/stores/toast-store';
 import { excerpt } from './MentionsPane';
 
 export interface NotesTabProps {
-  /** The `RefKey` (or `ws:<id>`) notes mention this thing by. */
+  /** The `RefKey` notes mention this thing by. */
   refKey: string;
   /** How a new note about it is titled. */
   newTitle: string;
@@ -24,7 +24,7 @@ export function useNoteCount(refKey: string): number {
 }
 
 /**
- * NotesTab — the notes that mention a pull request, work item or workstream,
+ * NotesTab — the notes that mention a pull request or work item,
  * with the lines that mention it, and "New note about this". Opening a note
  * shows it in the main window's Notes section.
  */

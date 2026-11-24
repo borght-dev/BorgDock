@@ -79,7 +79,7 @@ function parsePayload(text: string): Partial<Payload> {
   }
 }
 
-const NO_LINKS: ActivityLinks = { itemIds: [], prUrls: [], workstreamIds: [], ciGroupIds: [] };
+const NO_LINKS: ActivityLinks = { itemIds: [], prUrls: [], ciGroupIds: [] };
 
 export function toEntry(row: ActivityEntryRow_Serialize): ActivityEntry {
   const payload = parsePayload(row.payload);

@@ -9,7 +9,7 @@ export const FIXTURE_NOW = new Date('2026-10-27T15:30:00.000Z');
 const at = (minutesAgo: number) =>
   new Date(FIXTURE_NOW.getTime() - minutesAgo * 60_000).toISOString();
 
-const NO_LINKS = { itemIds: [], prUrls: [], workstreamIds: [], ciGroupIds: [] };
+const NO_LINKS = { itemIds: [], prUrls: [], ciGroupIds: [] };
 
 function entry(
   overrides: Partial<ActivityEntry> & Pick<ActivityEntry, 'id' | 'category' | 'summary'>,
@@ -168,20 +168,6 @@ export const ciEntry = entry({
   observedAt: at(130),
 });
 
-export const workstreamEntry = entry({
-  id: 'workstreams:local|ws1:unblocked:r1#1',
-  sourceId: 'workstreams:local',
-  entity: { kind: 'workstream', key: 'workstream:ws1', title: 'Checkout rewrite', url: null },
-  category: 'workstream.unblocked',
-  severity: 'success',
-  needsYou: true,
-  summary: 'Unblocked: Checkout rewrite. #401 merged, so the payment step can start',
-  action: { kind: 'open-workstream', id: 'ws1' },
-  sourceAt: null,
-  observedAt: at(180),
-  coverage: 'catch-up',
-});
-
 export const adoEntry = entry({
   id: 'ado:org/proj|ado-comment:9001',
   sourceId: 'ado:org/proj',
@@ -220,7 +206,6 @@ export const FIXTURE_ENTRIES: ActivityEntry[] = [
   checksEntry,
   reachedEntry,
   ciEntry,
-  workstreamEntry,
   adoEntry,
   answeredEntry,
 ];

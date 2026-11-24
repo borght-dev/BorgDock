@@ -9,7 +9,6 @@ import { useNotesStore } from '@/stores/notes-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import { useWorkstreamsStore } from '@/stores/workstreams-store';
 import { trackPolling } from './visibility';
 
 /**
@@ -79,14 +78,10 @@ export function startNotesSync(): () => void {
         redrawChips();
     }),
     useDispatchStore.subscribe((s, p) => {
-      if (s.items !== p.items || s.threads !== p.threads || s.contextItems !== p.contextItems)
-        redrawChips();
+      if (s.items !== p.items || s.threads !== p.threads) redrawChips();
     }),
     useWorkItemsStore.subscribe((s, p) => {
       if (s.workItems !== p.workItems) redrawChips();
-    }),
-    useWorkstreamsStore.subscribe((s, p) => {
-      if (s.entries !== p.entries) redrawChips();
     }),
   ];
   const stopWriteback = startThreadWriteback();

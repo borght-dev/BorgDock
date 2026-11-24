@@ -21,12 +21,11 @@ import { shareValue } from '@/utils/structural-sharing';
 import { buildOverview } from './engine';
 import { forgetHostsExcept, rememberHost } from './host-memory';
 import { configuredHosts, type DispatchHost, hostRef, isRemote, rawId, scopedId } from './hosts';
-import { loadContextItems, loadDispatchItems } from './items';
+import { loadDispatchItems } from './items';
 import { candidateRepositories, fetchFromGitHub, lookUpLinkedPullRequests } from './linked-prs';
 import {
   type AgentProject,
   type AgentThread,
-  type DispatchItem,
   type KnownPullRequest,
   NEEDS_YOU,
   type Overview,
@@ -158,7 +157,6 @@ export function recomputeOverview(): void {
     tracked,
     dispatch.hiddenSuggestions,
     dispatch.manualLinks,
-    dispatch.contextItems,
     Math.floor(Date.now() / 60_000),
   ];
   if (
@@ -178,7 +176,6 @@ export function recomputeOverview(): void {
     queued: tracked,
     hiddenSuggestions: dispatch.hiddenSuggestions,
     manualLinks: dispatch.manualLinks,
-    contextItems: dispatch.contextItems,
   });
   if (!sameOverview(dispatch.overview, overview)) {
     dispatch.setOverview(overview);
@@ -188,19 +185,6 @@ export function recomputeOverview(): void {
   for (const id of dequeue) {
     if (tracked.has(id)) toggleTrackedWorkItem(id);
   }
-}
-
-/** Sources that have been read to the end at least once this session. */
-const sourcesRead = new Set<string>();
-const ADO_SOURCE = 'ado';
-
-/**
- * True once Azure DevOps and every host have been read, detail included.
- * Until then the overview is still filling up, and nothing in it is news.
- */
-export function everySourceRead(): boolean {
-  const hosts = configuredHosts(useSettingsStore.getState().settings);
-  return sourcesRead.has(ADO_SOURCE) && hosts.every((host) => sourcesRead.has(host.id));
 }
 
 function errorText(error: unknown): string {
@@ -255,7 +239,6 @@ function stillFollowed(host: DispatchHost, state: HostState): boolean {
 /** Forget what was read from every host (tests, and hosts that were removed). */
 export function resetHostSync(): void {
   hostStates.clear();
-  sourcesRead.clear();
   syncGeneration++;
   itemsInFlight = null;
   itemsConnection = null;
@@ -447,7 +430,6 @@ export async function syncHost(host: DispatchHost, force = false): Promise<void>
     } while (refresh && stillFollowed(host, state));
   })().finally(() => {
     if (state.inFlight === poll) state.inFlight = null;
-    if (stillFollowed(host, state)) sourcesRead.add(host.id);
   });
   state.inFlight = poll;
   return poll;
@@ -463,7 +445,6 @@ export function followHostList(): void {
   for (const [id, state] of hostStates) {
     if (addresses.get(id) === state.address) continue;
     hostStates.delete(id);
-    sourcesRead.delete(id);
   }
   const followed = hosts.map((host) => host.id);
   useDispatchStore.getState().retainHosts(followed);
@@ -474,14 +455,6 @@ export function followHostList(): void {
 }
 
 // ── Azure DevOps ────────────────────────────────────────────
-
-/** The ids of the items a workstream links; read with the items, never shown in Dispatch. */
-let contextIdSource: () => readonly number[] = () => [];
-
-/** Let another feature (workstreams) name the extra items it needs read. */
-export function followContextItems(source: () => readonly number[]): void {
-  contextIdSource = source;
-}
 
 /** The client Dispatch reads and writes ADO with, or `null` when ADO is not set up. */
 export function dispatchAdoClient(): AdoClient | null {
@@ -506,7 +479,7 @@ function refreshLinkedPullRequests(): Promise<void> {
     );
     try {
       const { pullRequests, repositories } = await lookUpLinkedPullRequests(
-        [...store().items, ...store().contextItems],
+        store().items,
         candidates,
         store().linkedRepositories,
         fetchFromGitHub,
@@ -532,7 +505,6 @@ async function loadItems(): Promise<void> {
   const client = adoClient(ado);
   if (!client) {
     store().setItems([], { ok: false, at: null, error: 'Azure DevOps is not set up.' });
-    store().setContextItems([], [], { ok: false, at: null, error: null });
     recomputeOverview();
     return;
   }
@@ -544,28 +516,8 @@ async function loadItems(): Promise<void> {
       tracked,
     );
     if (generation !== syncGeneration) return;
-    const listed = new Set(items.map((item) => item.id));
-    const contextIds = [...new Set(contextIdSource())].filter((id) => !listed.has(id));
-    let context: { items: DispatchItem[]; missing: number[] } | null = { items: [], missing: [] };
-    let contextError: string | null = null;
-    if (contextIds.length > 0) {
-      context = await loadContextItems(
-        client,
-        { organization: ado.organization, project: ado.project },
-        contextIds,
-      ).catch((error) => {
-        contextError = errorText(error);
-        return null;
-      });
-    }
-    if (generation !== syncGeneration) return;
-    const at = new Date().toISOString();
-    store().setItems(items, { ok: true, at, error: null });
+    store().setItems(items, { ok: true, at: new Date().toISOString(), error: null });
     ingestAdoItems(items, startedAt);
-    // A failed read of the context items keeps the last ones, as of when they were read.
-    if (context)
-      store().setContextItems(context.items, context.missing, { ok: true, at, error: null });
-    else store().setContextStatus({ ok: false, at: store().contextStatus.at, error: contextError });
     void refreshLinkedPullRequests();
   } catch (error) {
     if (generation !== syncGeneration) return;
@@ -588,9 +540,7 @@ export function syncItems(force = false): Promise<void> {
     syncGeneration++;
     itemsInFlight = null;
     linkedInFlight = null;
-    sourcesRead.delete(ADO_SOURCE);
     useDispatchStore.getState().setItems([], { ok: false, at: null, error: null });
-    useDispatchStore.getState().setContextItems([], [], { ok: false, at: null, error: null });
     useDispatchStore.getState().setLinkedPullRequests([], {});
     recomputeOverview();
   }
@@ -607,7 +557,6 @@ export function syncItems(force = false): Promise<void> {
     } while (itemsRefreshRequested && generation === syncGeneration);
   })().finally(() => {
     if (itemsInFlight === poll) itemsInFlight = null;
-    if (generation === syncGeneration) sourcesRead.add(ADO_SOURCE);
   });
   itemsInFlight = poll;
   return poll;

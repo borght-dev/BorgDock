@@ -1,6 +1,12 @@
 import { sentence } from '../copy';
-import { entityKey, normalizeTime } from '../sources';
-import type { ActivityResolution, DeriveContext, DeriveResult, NewActivityEntry } from '../types';
+import { entityKey, entryId, normalizeTime } from '../sources';
+import type {
+  ActivityCategory,
+  ActivityResolution,
+  DeriveContext,
+  DeriveResult,
+  NewActivityEntry,
+} from '../types';
 import { emptyResult, keepMissing, later, makeEntry, resolveCategories } from './shared';
 
 export interface AdoCommentFacts {
@@ -50,6 +56,9 @@ export interface AdoBaseline {
   items: Record<string, AdoItemBaseline>;
 }
 
+/** What an item can leave needing me; none of it does once the item left my list. */
+const ENDS_WITH_THE_ITEM: ActivityCategory[] = ['ado.assigned', 'ado.state', 'ado.comment'];
+
 function baselineOf(item: AdoItemFacts): AdoItemBaseline {
   return {
     rev: item.rev,
@@ -62,7 +71,9 @@ function baselineOf(item: AdoItemFacts): AdoItemBaseline {
 /**
  * Changes someone else made to the items Dispatch lists. My own changes
  * create nothing; comments from my account count only when an agent signed
- * them. An item that leaves the query creates nothing either.
+ * them. An assignment is a quiet entry: Dispatch lists the item. Of several
+ * state changes or comments on one item the newest is the open one, and an
+ * item that leaves the query, or is no longer mine, ends what it left open.
  */
 export function deriveAdo(
   ctx: DeriveContext,
@@ -97,7 +108,7 @@ export function deriveAdo(
         nativeKey: `item:${item.id}:rev:${item.rev}:assigned`,
         category: 'ado.assigned',
         severity: 'info',
-        needsYou: true,
+        needsYou: false,
         sourceAt: item.changedAt,
         summary: sentence.assigned(item.id, item.title, changedBy),
         action,
@@ -105,14 +116,25 @@ export function deriveAdo(
     }
 
     // An Up next item of someone else is listed, but its changes are theirs.
-    if (!item.assignedToMe) continue;
+    if (!item.assignedToMe) {
+      if (wasMine) resolutions.push(resolveCategories(key, ENDS_WITH_THE_ITEM, 'no longer yours'));
+      continue;
+    }
 
-    if (before && item.rev !== before.rev && item.state !== before.state && !item.changedByMe) {
+    const moved = before && item.rev !== before.rev && item.state !== before.state;
+    if (moved && item.changedByMe) {
+      resolutions.push(resolveCategories(key, ['ado.state'], 'you moved it'));
+    }
+    if (moved && !item.changedByMe) {
       const from = item.states.indexOf(before.state);
       const to = item.states.indexOf(item.state);
       const backwards = from !== -1 && to !== -1 && to < from;
+      const nativeKey = `item:${item.id}:rev:${item.rev}:state`;
+      resolutions.push(
+        resolveCategories(key, ['ado.state'], entryId(ctx.sourceId, nativeKey), 'superseded'),
+      );
       add({
-        nativeKey: `item:${item.id}:rev:${item.rev}:state`,
+        nativeKey,
         category: 'ado.state',
         severity: backwards ? 'warning' : 'info',
         needsYou: backwards,
@@ -136,8 +158,12 @@ export function deriveAdo(
           action,
         });
       } else if (!comment.byMe) {
+        const nativeKey = `ado-comment:${comment.id}`;
+        resolutions.push(
+          resolveCategories(key, ['ado.comment'], entryId(ctx.sourceId, nativeKey), 'superseded'),
+        );
         add({
-          nativeKey: `ado-comment:${comment.id}`,
+          nativeKey,
           category: 'ado.comment',
           severity: 'info',
           needsYou: true,
@@ -157,5 +183,15 @@ export function deriveAdo(
     items: { ...keepMissing(ctx, previous, present, true), ...items },
   });
   if (ctx.seed) return result;
+  for (const [id, before] of Object.entries(previous)) {
+    if (present.has(id) || before.missingSince) continue;
+    resolutions.push(
+      resolveCategories(
+        entityKey.workItem(organization, project, Number(id)),
+        ENDS_WITH_THE_ITEM,
+        'no longer on your list',
+      ),
+    );
+  }
   return { ...result, entries, resolutions };
 }

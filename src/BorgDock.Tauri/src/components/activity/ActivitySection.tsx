@@ -26,7 +26,6 @@ const GROUPS: readonly { value: ActivityCategoryGroup; label: string }[] = [
   { value: 'agents', label: 'Agents' },
   { value: 'pull-requests', label: 'Pull requests' },
   { value: 'ci', label: 'CI' },
-  { value: 'workstreams', label: 'Workstreams' },
   { value: 'deployments', label: 'Deployments' },
   { value: 'work-items', label: 'Work items' },
 ];
@@ -39,7 +38,7 @@ function emptyText(filter: ActivityFilter, visitedAt: string | null): string {
     const time = new Date(visitedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return `Nothing new since ${time}.`;
   }
-  return 'No activity yet. Entries appear as your agents, PRs, CI, workstreams and items change.';
+  return 'No activity yet. Entries appear as your agents, PRs, CI and items change.';
 }
 
 async function exportJournal(): Promise<void> {
@@ -129,14 +128,22 @@ function OfflineHosts() {
   );
 }
 
+export interface ActivitySectionProps {
+  /**
+   * In the history window: this window has no live stores, so an entry's
+   * action is offered as the journal has it and runs in the main window.
+   */
+  remote?: boolean;
+}
+
 /**
  * ActivitySection — what changed since you last checked, kept until you read
  * or dismiss it: one row per change with the action that fits, grouped by
  * day, an entity's updates of one day folded together. J/K move, Enter acts,
  * E reads, U unreads, # dismisses, Z undoes, Shift+E marks what is shown
- * read (keyboard.ts).
+ * read (keyboard.ts). It is the body of the history window (All history).
  */
-export function ActivitySection() {
+export function ActivitySection({ remote = false }: ActivitySectionProps = {}) {
   const filter = useActivityViewStore((s) => s.filter);
   const group = useActivityViewStore((s) => s.group);
   const sourceId = useActivityViewStore((s) => s.sourceId);
@@ -208,7 +215,7 @@ export function ActivitySection() {
   return (
     <div className="bd-wb-prs bd-act">
       <header className="bd-wb-head bd-act-head">
-        <h1 className="bd-wb-head__title">Activity</h1>
+        <h1 className="bd-wb-head__title">{remote ? 'History' : 'Activity'}</h1>
         <Seg2
           ariaLabel="Show entries"
           size="sm"
@@ -345,6 +352,7 @@ export function ActivitySection() {
                       expanded={row.entry.id === expandedId}
                       sourceLabel={labels.get(row.entry.sourceId)?.label ?? row.entry.sourceId}
                       retired={!!labels.get(row.entry.sourceId)?.retiredAt}
+                      remote={remote}
                     />
                   )}
                 </div>

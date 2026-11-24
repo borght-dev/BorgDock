@@ -3,7 +3,11 @@ import { Button, Card, SectionHeader, Select, ToggleRow } from '@/components/sha
 import { CATEGORY_LABEL } from '@/services/activity/labels';
 import { CATEGORY_DEFAULTS, type CategoryChannels } from '@/services/activity/policy';
 import { categoriesOf } from '@/services/activity/sources';
-import type { ActivityCategory, ActivityCategoryGroup } from '@/services/activity/types';
+import {
+  type ActivityCategory,
+  type ActivityCategoryGroup,
+  RETIRED_CATEGORIES,
+} from '@/services/activity/types';
 import { sendOsNotification } from '@/services/notification';
 import {
   type ActivityNotificationSettings,
@@ -30,7 +34,6 @@ const GROUPS: readonly { group: ActivityCategoryGroup; label: string }[] = [
   { group: 'agents', label: 'Agents' },
   { group: 'pull-requests', label: 'Pull requests' },
   { group: 'ci', label: 'CI failures' },
-  { group: 'workstreams', label: 'Workstreams' },
   { group: 'deployments', label: 'Deployments' },
   { group: 'work-items', label: 'Work items' },
 ];
@@ -43,6 +46,11 @@ export const DEFAULT_ACTIVITY: ActivityNotificationSettings = {
   push: { enabled: false, preset: 'home-assistant', awayMinutes: 10, hideTitles: false },
   phoneLink: DEFAULT_PHONE_LINK,
 };
+
+/** The categories of a group that still produce entries: the others get no switches. */
+function switchableCategories(group: ActivityCategoryGroup): ActivityCategory[] {
+  return categoriesOf(group).filter((category) => !RETIRED_CATEGORIES.includes(category));
+}
 
 function channelsOf(
   activity: ActivityNotificationSettings,
@@ -69,7 +77,7 @@ export function NotificationSection({ notifications, onChange }: Props) {
     <>
       <SectionHeader
         title="Notifications"
-        subtitle="Every popup comes from an entry in Activity, so a restart never repeats one and time away becomes one summary."
+        subtitle="Every popup comes from an entry in the history, so a restart never repeats one and time away becomes one summary."
       />
 
       <Card variant="default" padding="md">
@@ -106,7 +114,7 @@ export function NotificationSection({ notifications, onChange }: Props) {
               <span className="col-span-3 mt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                 {label}
               </span>
-              {categoriesOf(group).map((category) => {
+              {switchableCategories(group).map((category) => {
                 const channels = channelsOf(activity, category);
                 return (
                   <Fragment key={category}>
@@ -155,7 +163,7 @@ export function NotificationSection({ notifications, onChange }: Props) {
         <div id="field-read-on-open">
           <ToggleRow
             label="Opening something marks its updates read"
-            hint="A PR's detail, an item in Dispatch, a workstream, a CI failure group."
+            hint="A PR's detail, an item in Dispatch, a CI failure group."
             on={activity.markReadOnOpen}
             onChange={(markReadOnOpen) => updateActivity({ markReadOnOpen })}
           />

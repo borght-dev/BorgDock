@@ -1,36 +1,21 @@
 import { create } from 'zustand';
 import type { WorktreeBranchMapping } from '@/hooks/useWorktreeMap';
 import type { FocusFilter } from '@/services/focus-bucket';
-import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
-export type ActiveSection =
-  | 'prs'
-  | 'focus'
-  | 'dispatch'
-  | 'workstreams'
-  | 'workitems'
-  | 'worktrees'
-  | 'activity'
-  | 'notes';
+export type ActiveSection = 'prs' | 'focus' | 'dispatch' | 'workitems' | 'notes';
 
 /**
- * Sections in rail order; keys `1`–`8` pick them by position. New sections
+ * Sections in rail order; keys `1`–`5` pick them by position. New sections
  * go last, so the keys of the sections before them stay the same.
  */
 export const SECTION_ORDER: readonly ActiveSection[] = [
   'focus',
   'dispatch',
-  ...(WORKSTREAMS_ENABLED ? (['workstreams'] as const) : []),
   'prs',
   'workitems',
-  'worktrees',
-  'activity',
   'notes',
 ];
-
-/** Tabs of a workstream's detail view. */
-export type WorkstreamTab = 'overview' | 'members' | 'map' | 'activity' | 'notes';
 
 const ACTIVITY_VISITED_STORE_KEY = 'activityVisitedAt';
 
@@ -52,8 +37,7 @@ export type PrDetailTab = 'overview' | 'commits' | 'files' | 'checks' | 'discuss
 export type MainView =
   | { kind: 'list' }
   | { kind: 'pr-detail'; owner: string; repo: string; number: number; initialTab?: PrDetailTab }
-  | { kind: 'work-item-detail'; id: number }
-  | { kind: 'workstream'; id: string; tab?: WorkstreamTab };
+  | { kind: 'work-item-detail'; id: number };
 
 const LIST_VIEW: MainView = { kind: 'list' };
 

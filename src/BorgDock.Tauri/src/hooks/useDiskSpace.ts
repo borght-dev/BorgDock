@@ -1,5 +1,5 @@
 import { listen } from '@tauri-apps/api/event';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   CLEAN_DISK_ACTION,
   DISK_POLL_MS,
@@ -11,6 +11,23 @@ import { sendOsNotification } from '@/services/notification';
 import { useDiskSpaceStore } from '@/stores/disk-space-store';
 
 const gate = new DiskAlertGate();
+
+/**
+ * What the disk probe last measured, with a clock that moves every poll so a
+ * measurement that stopped arriving goes stale. Reads only: `useDiskSpace`
+ * does the probing, once per window.
+ */
+export function useDiskMeasurements() {
+  const hosts = useDiskSpaceStore((s) => s.hosts);
+  const error = useDiskSpaceStore((s) => s.error);
+  const cleanup = useDiskSpaceStore((s) => s.cleanup);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), DISK_POLL_MS);
+    return () => clearInterval(timer);
+  }, []);
+  return { hosts, error, cleanup, now };
+}
 
 export function useDiskSpace(enabled = true, notify = false): void {
   useEffect(() => {

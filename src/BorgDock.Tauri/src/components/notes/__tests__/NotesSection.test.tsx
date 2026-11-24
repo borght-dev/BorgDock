@@ -13,7 +13,6 @@ vi.mock('@/services/navigation', () => ({
   showSection: vi.fn(() => Promise.resolve()),
   showPr: vi.fn(() => Promise.resolve()),
   showWorkItem: vi.fn(() => Promise.resolve()),
-  showWorkstream: vi.fn(() => Promise.resolve()),
 }));
 
 const context: RefContext = {

@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Button, Dot } from '@/components/shared/primitives';
-import { act, actionLabel, revalidate } from '@/services/activity/actions';
 import * as api from '@/services/activity/api';
 import { summaryLine } from '@/services/activity/copy';
+import { openActivityHistory } from '@/services/activity/history';
 import type { ActivityCategory, ActivityEntry } from '@/services/activity/types';
-import { showSection } from '@/services/navigation';
 import { useActivityStore } from '@/stores/activity-store';
-import { useActivityViewStore } from '@/stores/activity-view-store';
-import { useCiFailuresStore } from '@/stores/ci-failures-store';
-import { useDispatchStore } from '@/stores/dispatch-store';
-import { usePrStore } from '@/stores/pr-store';
-import { showToast } from '@/stores/toast-store';
 import { useUiStore } from '@/stores/ui-store';
+import { EntryAction } from './EntryAction';
 
 /** At most this many entries that need you are named. */
 const SHOWN = 5;
@@ -58,18 +53,15 @@ function useNeedingYou(revision: number): ActivityEntry[] {
 
 /**
  * SinceLastCheckedCard — first on Focus: the unread counts per category
- * since Activity was last open, and the five newest entries that need you,
- * each with its action. Renders nothing when nothing is unread.
+ * since you last looked, and the five newest entries that need you, each
+ * with its action. A row opens in the history window. Renders nothing when
+ * nothing is unread.
  */
 export function SinceLastCheckedCard() {
   const counts = useActivityStore((s) => s.counts);
   const revision = counts?.revision ?? 0;
   const visitedAt = useUiStore((s) => s.activityVisitedAt);
   const needing = useNeedingYou(revision);
-  const threads = useDispatchStore((s) => s.threads);
-  const hosts = useDispatchStore((s) => s.hosts);
-  const pullRequests = usePrStore((s) => s.pullRequests);
-  const groups = useCiFailuresStore((s) => s.groups);
   if (!counts || counts.unread === 0) return null;
   const byCategory = Object.fromEntries(
     Object.entries(counts.byCategory).map(([category, count]) => [category, count?.unread ?? 0]),
@@ -84,48 +76,28 @@ export function SinceLastCheckedCard() {
             ? `${counts.needsYou} need${counts.needsYou === 1 ? 's' : ''} you`
             : `${counts.unread} new`}
         </span>
-        <Button variant="ghost" size="sm" onClick={() => void showSection('activity')}>
-          Open Activity
+        <Button variant="ghost" size="sm" onClick={() => void openActivityHistory()}>
+          All history
         </Button>
       </header>
       {line && <p className="bd-act-fcard__counts">{line}</p>}
       {needing.length > 0 && (
         <ul className="bd-dp-fcard__items">
-          {needing.map((entry) => {
-            const check = revalidate(entry, false, { threads, hosts, pullRequests, groups });
-            const target = check.ok ? check.action : check.fallback;
-            return (
-              <li key={entry.id} className="bd-act-fcard__row">
-                <button
-                  type="button"
-                  className="bd-dp-fcard__item"
-                  onClick={() => {
-                    void showSection('activity').then(() =>
-                      useActivityViewStore.getState().reveal(entry.id),
-                    );
-                  }}
-                >
-                  <span className="bd-dp-fcard__line">
-                    <Dot tone={TONE[entry.severity]} size={7} />
-                    <span className="bd-dp-fcard__title">{entry.summary}</span>
-                  </span>
-                </button>
-                {target && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() =>
-                      void act(entry).then(({ reason }) => {
-                        if (reason) showToast({ message: `${reason}. Opened it instead.` });
-                      })
-                    }
-                  >
-                    {check.ok ? actionLabel(target) : 'Open'}
-                  </Button>
-                )}
-              </li>
-            );
-          })}
+          {needing.map((entry) => (
+            <li key={entry.id} className="bd-act-fcard__row">
+              <button
+                type="button"
+                className="bd-dp-fcard__item"
+                onClick={() => void openActivityHistory(entry.id)}
+              >
+                <span className="bd-dp-fcard__line">
+                  <Dot tone={TONE[entry.severity]} size={7} />
+                  <span className="bd-dp-fcard__title">{entry.summary}</span>
+                </span>
+              </button>
+              <EntryAction entry={entry} />
+            </li>
+          ))}
         </ul>
       )}
     </section>

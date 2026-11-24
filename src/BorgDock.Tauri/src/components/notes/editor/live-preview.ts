@@ -39,7 +39,7 @@ export type PreviewRange =
   | { kind: 'wikilink'; from: number; to: number; target: string; raw: boolean }
   /** A markdown link's label (preview) or URL (raw), or a bare URL. */
   | { kind: 'link'; from: number; to: number; url: string; raw: boolean }
-  /** A pull request, work item, thread or workstream to show as a chip. */
+  /** A pull request, work item or thread to show as a chip. */
   | {
       kind: 'chip';
       from: number;
@@ -73,6 +73,8 @@ const TASK_BOX = /^(\s*(?:[-*+]|\d+[.)]) +\[)([ xX])\](?=\s|$)/;
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])(?: +|$)/;
 const COMMENT_LINE = /^\s*<!--\s*(\/?)([\s\S]*?)-->\s*$/;
 const QUOTES = new Set(['"', "'"]);
+/** Old notes link to things BorgDock no longer has (`borgdock://workstreams/…`): only the label shows. */
+const RETIRED_ADDRESS = /^borgdock:\/\//i;
 
 /**
  * YAML between `---` lines at the very top is a block of its own, so the
@@ -151,8 +153,8 @@ function rawLineTest(doc: Text, selection: readonly Span[]): (line: number) => b
 /**
  * Decorations from the syntax tree or from one inline token. A container is
  * a link, URL or image: tokens inside one belong to it. A link token (a T3
- * thread or workstream address) is itself a markdown link and wins over the
- * container the tree sees.
+ * thread address) is itself a markdown link and wins over the container the
+ * tree sees.
  */
 interface Group extends Span {
   ranges: PreviewRange[];
@@ -210,7 +212,7 @@ function tokenGroups(
       });
     } else if (isRefToken(token)) {
       if ((token.kind === 'pr' || token.kind === 'ado') && token.url) continue;
-      const linkToken = token.kind === 't3' || token.kind === 'workstream';
+      const linkToken = token.kind === 't3';
       const url = linkToken ? addressOf(raw) : null;
       if (!preview) {
         groups.push({ from, to, linkToken, ranges: [{ kind: 'ref', from, to, token, url }] });
@@ -226,7 +228,7 @@ function tokenGroups(
 /**
  * References in frontmatter values, as in the body but without tags (the
  * vault index reads tags from `tags:` only). A value that is exactly one
- * quoted reference (`workstream: "[Q4](borgdock://…)"`) loses its quotes
+ * quoted reference (`thread: "[Q4](t3code://…)"`) loses its quotes
  * on a preview line too.
  */
 function frontmatterGroups(
@@ -405,19 +407,21 @@ function collectRange(
         const labelFrom = marks[0]!.to;
         const labelTo = marks[1]!.from;
         const span = { from: node.from, to: node.to, container: true };
+        const opens = !RETIRED_ADDRESS.test(address);
         if (preview(node.from) && labelTo > labelFrom && sameLine(node.from, node.to)) {
+          const label: PreviewRange[] = opens
+            ? [{ kind: 'link', from: labelFrom, to: labelTo, url: address, raw: false }]
+            : [];
           syntax.push({
             ...span,
-            ranges: [
-              hide(node.from, labelFrom),
-              { kind: 'link', from: labelFrom, to: labelTo, url: address, raw: false },
-              hide(labelTo, node.to),
-            ],
+            ranges: [hide(node.from, labelFrom), ...label, hide(labelTo, node.to)],
           });
         } else {
           syntax.push({
             ...span,
-            ranges: [{ kind: 'link', from: url.from, to: url.to, url: address, raw: true }],
+            ranges: opens
+              ? [{ kind: 'link', from: url.from, to: url.to, url: address, raw: true }]
+              : [],
           });
         }
         return undefined;
@@ -589,8 +593,6 @@ function chipKey(token: RefToken): string {
       return `pr:${token.owner ?? ''}/${token.repo}/${token.number}`;
     case 't3':
       return `t3:${token.environmentId}/${token.threadId}|${token.label}`;
-    case 'workstream':
-      return `workstream:${token.id}|${token.label}`;
   }
 }
 

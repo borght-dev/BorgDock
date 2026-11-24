@@ -12,12 +12,12 @@ Current as of **3.0.0** (2026-09-25). `/CHANGELOG.md` records what changed per r
 - Regular resizable window (default 1400×900, minimum 1200×720) with a custom title bar
 - **Rail** on the left:
   - BorgDock logo and name
-  - Sections **Focus**, **Dispatch**, **Pull requests**, **Work items**, **Worktrees** (keys `1`–`5`), with a sliding highlight on the active one
-  - Counts: Pull requests always (red when any PR is failing); Focus, Dispatch (the items waiting on you), Work items and Worktrees when above zero
-  - Sync block: "Syncing…" / "Synced 12 s ago" (updates every 10 s), a GitHub rate meter (marked low under 10%) and "N of M requests left (GraphQL|REST)" for the tightest pool across accounts
+  - Sections **Focus**, **Dispatch**, **Pull requests**, **Work items**, **Notes** (keys `1`–`5`), with a sliding highlight on the active one
+  - Counts: Pull requests always (red when any PR is failing); Focus, Dispatch (the items waiting on you) and Work items when above zero
+  - Foot, top to bottom: **Limits left** (what is left of each Claude and Codex account on this machine, and the GitHub rate for the tightest pool; opens the AI usage card), **Machines** (free disk space per machine; opens a card with prunable worktrees and cache cleanup), "Syncing…" / "Synced 12 s ago", and a bar of icon buttons: **Settings** in the corner, **Open window**, **Recent** (a bell counting what needs you now; opens the Recent card) and **Collapse**
   - Last section remembered (default Focus)
-  - Folds to icons (`[`, or **Collapse** at its foot): counts become badges (99+ above 99), names show on hover, the rate meter stands alone (its numbers on hover); remembered across launches
-- Title bar: the section name, or "Pull request" / "Work item" when a detail view is open; status dot (red when any PR is failing), **Open window** launcher, Refresh, Settings, min/max/close
+  - Folds to icons (`[`, or **Collapse**): counts become badges (99+ above 99), names show on hover, each account becomes a ring of what is left; remembered across launches
+- Title bar: the section name, or "Pull request" / "Work item" when a detail view is open; the update chip when an update needs something, status dot (red when any PR is failing), Refresh, min/max/close
 - Status bar per view:
 
   | View | Left | Right |
@@ -26,17 +26,16 @@ Current as of **3.0.0** (2026-09-25). `/CHANGELOG.md` records what changed per r
   | Dispatch | your work in Azure DevOps and its T3 threads | `J K` move · `Enter` open · `A` act · `S` start · `M` move state · `O` open in T3 |
   | Pull requests | synced time · rate for the tightest account and pool | `/` search · `R` refresh · `Ctrl+F7` worktrees · `Ctrl+F8` files · `Ctrl+F9` ADO |
   | Work items | `ado: org/project` | `/` search · `R` refresh · `J K` move · `Enter` open |
-  | Worktrees | worktrees from every watched repository | `/` search · `R` refresh · `J K` move · `Enter` changes · `T` T3 · `O` terminal · `F` favourite · `Ctrl+F7` window |
   | PR / work item detail | `owner/repo #n` / `work item AB#id` | `Esc` back · `Alt+←` back |
 
-- **Open window** launcher (also in the flyout): Worktrees, Files, Work items, SQL (with their hotkeys), Settings, What's new
+- **Open window** launcher (in the rail's bar, and in the flyout): Worktrees, Quick note, Work items, SQL (with their hotkeys), What's new; the flyout's adds Settings
 - Closing hides to tray (tool windows hide too and reopen fast); single-instance (a second launch focuses the existing window)
 - Window size and position restored per window, DPI-safe across mixed-DPI monitors, only onto connected displays
 - Start minimized to tray and run at startup
 
 ### Full-Screen Detail & Back
 - Clicking a PR or work item row (or `Enter`) opens it full screen over the list
-- Opening a PR switches to Pull requests, except from Focus or Worktrees, which stay put so Back returns there; opening another PR replaces the view instead of stacking
+- Opening a PR switches to Pull requests, except from Focus, which stays put so Back returns there; opening another PR replaces the view instead of stacking
 - Back button, `Esc` (no text field focused, no dialog, menu or Quick Review open), `Alt+←` or the mouse back button return to the list
 - The list stays mounted while hidden, so scroll position and selection survive the round trip; focus returns to where it was
 - The row's title and avatar morph into the header (View Transitions); clicking a rail section from a detail view goes straight to that list
@@ -242,7 +241,7 @@ Full screen: Overview, Checks, Files, Commits, Discussion. Pop-out: Overview, Co
 - Copy helpers: errors for Claude (failed checks as Markdown), fix prompt, monitor prompt
 
 ### T3 Code
-- **Open a new thread in T3** from the detail view, PR list, Worktrees section, or flyout
+- **Open a new thread in T3** from the detail view, PR list, or flyout
 - Uses the worktree that already has the branch, or opens the checkout picker first
 - Creates an empty PR-linked thread through T3's orchestration API (creating the T3 project if needed), using the project's default model, then the last thread's, then your T3 model setting; brings T3 to the front
 - Pairing in Settings → Agents: **Pair with T3 on this machine** takes one click (T3's own CLI issues a token that can read and operate threads, valid for 30 days), or paste a pairing link or raw token; the token is kept in the OS keychain
@@ -271,19 +270,11 @@ Full screen: Overview, Checks, Files, Commits, Discussion. Pop-out: Overview, Co
 
 ## 6. Worktrees & Repositories
 
-### Worktrees Section
-- Rail section listing every worktree of every configured repo (local and remote), grouped by repo with a count and an error pill for repos that failed to load
-- Header: "Worktrees", count, search ("Search worktrees"), favourites-only star, **Prune**, Refresh, open the worktrees window (`Ctrl+F7`)
-- Row: star (branch icon on the main worktree), branch name, meta line (folder, main worktree / remote, clean / N changed / conflicts, last used), and the linked PR as a check bar and `#number` that opens the PR full screen
-- Hover actions: open a T3 thread for the linked PR, open terminal, open folder, open in editor
-- Click or `Enter` opens a **changes pane** beside the list: "Uncommitted" and "Ahead of <base>" groups; click a file for its diff; `Esc` or X closes it
-- Keys: `J`/`K` move, `Enter` changes, `T` T3, `O` terminal, `F` favourite, `Esc` steps back
-- Favourites shared with the worktrees window; Refresh also rescans worktrees
-
 ### Worktrees Window (Ctrl+F7)
-- Frameless, resizable window with the same list; size and position remembered
+- Frameless, resizable window listing every worktree of every configured repo (local and remote), with a count and an error pill for repos that failed to load; size and position remembered
 - Hotkey hides a focused window, raises a buried one, or opens it fresh
-- Filter by branch, folder, or repo; grouped by repo, main worktree first, natural folder ordering
+- Filter by branch, folder, or repo; grouped by machine (with its free disk space) and repo, main worktree first, natural folder ordering
+- Toolbar: count, favorites-only star, **Prune**, Refresh
 - Star favorites and toggle favorites-only (main worktree always shown)
 - Row actions: open terminal (click / Enter), open folder, open in VS Code
 - **Remote Mac worktrees** over SSH, shown beside local ones with host labels, a "remote" chip, and view-only rows (starrable)
@@ -292,7 +283,7 @@ Full screen: Overview, Checks, Files, Commits, Discussion. Pop-out: Overview, Co
 - Shallow worktree creation for PR branches (fetch `--depth 1`, `worktree add -B`)
 - Shared, event-driven worktree cache refreshed at startup, every 5 minutes, and after create / checkout / remove; failed repos keep their last good list
 - Worktree status in the checkout panel: clean / dirty / conflict, uncommitted count, ahead / behind
-- **Prune worktrees**: classifies worktrees as Open PR / Closed / Orphaned from the Worktrees section's **Prune**; bulk removal with progress. From Settings → Maintenance, PR states are unknown and nothing is marked orphaned.
+- **Prune worktrees**: classifies worktrees as Open PR / Closed / Orphaned from the rail's Machines card; bulk removal with progress. From the worktrees window and Settings → Maintenance, PR states are unknown and nothing is marked orphaned.
 
 ### Repositories
 - **+ Add repository** by folder picker, or **Scan folder…** to discover every git repo up to 4 levels deep and read owner/name from `origin` (HTTPS, SSH, and SSH host aliases)
@@ -535,7 +526,6 @@ Tool-window hotkeys hide a focused window, raise a buried one without losing inp
   - `O` open on GitHub, `E` collapse groups, `R` refresh, `Shift+R` Quick Review over everything waiting on you
   - Focus: `R` Quick Review for the selected PR, `M` merge with Undo, `H`/`L` or `←`/`→` board columns
   - Dispatch: `A` the selected item's first action, `S` start an agent on it, `M` move its state, `O` open its thread in T3, `Esc` close the board's drawer
-  - Worktrees: `Enter` changes, `T` T3, `O` terminal, `F` favourite, `Esc` step back
 - **Detail views**: `Esc`, `Alt+←` or mouse back to go back, `J`/`K` switch tabs; PR detail `R` rerun failed and `F` fix when checks fail
 - **Quick Review**: card `→` approve, `←` review later, `Enter` review files, `Esc` close; file walk `v` mark reviewed, `n`/`j` next, `p`/`k` previous, `Esc` back to the card
 - **PR Files tab**: `Ctrl+Shift+M` unified / split, `[` / `]` previous / next file, `p` / `n` previous / next hunk
@@ -660,7 +650,7 @@ Code or settings that exist but aren't connected to anything yet, and known defe
 | UI libraries | lucide-react, CodeMirror 6, @tanstack/react-virtual, focus-trap-react |
 | Markdown | react-markdown 10, remark-gfm, rehype-raw, rehype-sanitize, DOMPurify |
 | Syntax highlighting | web-tree-sitter 0.26 (grammars built from source) |
-| Backend | Rust, Tokio, reqwest, git2, ignore / grep-searcher, keyring |
+| Backend | Rust, Tokio, reqwest, ignore / grep-searcher, keyring |
 | Data | SQLite via rusqlite (cache, snippets); SQL Server via tiberius |
 | APIs | GitHub GraphQL + REST, GitHub CLI, Azure DevOps REST, Azure CLI, T3 orchestration API |
 | Testing & tooling | Vitest 4, Playwright (+ axe-core), Storybook 10, Biome 2 |

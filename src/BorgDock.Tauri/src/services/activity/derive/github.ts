@@ -2,6 +2,7 @@ import { sentence } from '../copy';
 import { entityKey, entryId, normalizeTime } from '../sources';
 import type {
   ActionTarget,
+  ActivityCategory,
   ActivityEnrichment,
   ActivityEntity,
   ActivityResolution,
@@ -133,6 +134,16 @@ export interface PrBaseline {
 export interface GitHubBaseline {
   prs: Record<string, PrBaseline>;
 }
+
+/** What a pull request can leave needing me; none of it does once it merged or closed. */
+const ENDS_WITH_THE_PR: ActivityCategory[] = [
+  'pr.ready',
+  'pr.conflict',
+  'pr.checks-failed',
+  'pr.review-request',
+  'pr.review',
+  'pr.findings',
+];
 
 const SEVERITY_RANK: Record<FindingItem['severity'], number> = {
   critical: 0,
@@ -493,18 +504,13 @@ export function deriveGitHub(
       before.state !== verified.state ||
       (verified.state === 'closed' && normalizeTime(verified.closedAt) !== before.closedAt);
     if (ctx.seed || !changed) continue;
+    const key = entityKey.pr(observation.owner, observation.repo, verified.number);
     const mine = same(verified.author, observation.login);
     const merged = verified.state === 'merged';
+    // Whoever wrote it: a review request ends with the pull request too.
+    out.resolutions.push(resolveCategories(key, ENDS_WITH_THE_PR, merged ? 'merged' : 'closed'));
     // Someone else's PR: its merge is news, its close is not.
     if (!mine && !merged) continue;
-    const key = entityKey.pr(observation.owner, observation.repo, verified.number);
-    out.resolutions.push(
-      resolveCategories(
-        key,
-        ['pr.ready', 'pr.conflict', 'pr.checks-failed', 'pr.review-request', 'pr.review'],
-        merged ? 'merged' : 'closed',
-      ),
-    );
     out.entries.push(
       makeEntry(ctx, {
         nativeKey: merged
@@ -535,7 +541,12 @@ export function deriveGitHub(
       findingsSince: normalizeTime(findings.at) ?? base.findingsSince,
     };
     if (ctx.seed || findings.items.length === 0 || !same(pr.author, observation.login)) continue;
-    out.entries.push(deriveFindings(ctx, observation, findings, pr));
+    const entry = deriveFindings(ctx, observation, findings, pr);
+    // Of several reviews, the newest is the one to read.
+    out.resolutions.push(
+      resolveCategories(entry.entity.key, ['pr.findings'], entry.id, 'superseded'),
+    );
+    out.entries.push(entry);
   }
 
   const present = new Set(Object.keys(prs));

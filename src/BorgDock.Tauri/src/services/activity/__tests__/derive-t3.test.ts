@@ -45,6 +45,8 @@ const running = (ordinal: number) =>
   thread({ runId: `run:thread:a:ordinal:${ordinal}`, runStatus: 'running', runCompletedAt: null });
 const completed = (ordinal: number, at = '2026-10-27T09:30:00.000Z') =>
   thread({ runId: `run:thread:a:ordinal:${ordinal}`, runStatus: 'completed', runCompletedAt: at });
+const failed = (ordinal: number, at = '2026-10-27T09:30:00.000Z') =>
+  thread({ ...completed(ordinal, at), runStatus: 'failed' });
 
 describe('deriveT3', () => {
   it('seeds quietly', () => {
@@ -56,56 +58,30 @@ describe('deriveT3', () => {
 
   it('gives nothing new for the same observation twice', () => {
     const first = deriveT3(context(), seeded(), observe([running(4)]));
-    const finished = deriveT3(context(), first.baseline, observe([completed(4)]));
-    expect(finished.entries.map((e) => e.category)).toEqual(['agent.turn']);
-    const again = deriveT3(context(), finished.baseline, observe([completed(4)]));
+    const stopped = deriveT3(context(), first.baseline, observe([failed(4)]));
+    expect(stopped.entries.map((e) => e.category)).toEqual(['agent.failed']);
+    const again = deriveT3(context(), stopped.baseline, observe([failed(4)]));
     expect(again.entries).toEqual([]);
+    expect(again.resolutions).toEqual([]);
   });
 
-  it('keys a finished turn by its run and supersedes the previous one', () => {
-    const result = deriveT3(context(), seeded(), observe([completed(4)]));
-    const [turn] = result.entries;
-    expect(turn?.id).toBe('t3:local|thread:a:run:run:thread:a:ordinal:4:completed');
-    expect(turn?.sourceAt).toBe('2026-10-27T09:30:00.000Z');
-    expect(turn?.needsYou).toBe(false);
-    expect(result.resolutions).toContainEqual(
-      expect.objectContaining({
-        entityKey: 't3:local:thread:a',
-        categories: ['agent.turn'],
-        status: 'superseded',
-      }),
-    );
+  it('makes no entry for a turn that just finishes: T3 shows it', () => {
+    const first = deriveT3(context(), seeded(), observe([running(4)]));
+    expect(first.entries).toEqual([]);
+    const finished = deriveT3(context(), first.baseline, observe([completed(4)]));
+    expect(finished.entries).toEqual([]);
+    expect(finished.enrichments).toEqual([]);
   });
 
-  it('gives one entry for an ordinal gap', () => {
+  it('makes no entry for turns that finished while nobody looked', () => {
     const result = deriveT3(context({ coverage: 'catch-up' }), seeded(), observe([completed(7)]));
-    expect(result.entries.map((e) => e.category).sort()).toEqual([
-      'agent.turn',
-      'agent.turns-missed',
-    ]);
-    const missed = result.entries.find((e) => e.category === 'agent.turns-missed');
-    expect(missed?.id).toBe('t3:local|thread:a:runs:4-6');
-    expect(missed?.summary).toContain('3 more turns');
-    expect(missed?.coverage).toBe('catch-up');
+    expect(result.entries).toEqual([]);
+    expect(result.baseline.threads.a?.ordinal).toBe(7);
   });
 
-  it('counts the running run in the gap when it was never seen to finish', () => {
-    const base = deriveT3(context(), seeded(), observe([running(4)])).baseline;
-    const result = deriveT3(context(), base, observe([completed(6)]));
-    expect(result.entries.find((e) => e.category === 'agent.turns-missed')?.id).toBe(
-      't3:local|thread:a:runs:4-5',
-    );
-  });
-
-  it('gives up on gaps when the run id does not parse, and still reports the turn', () => {
+  it('reads the run ordinal, or null when T3 changed the run id format', () => {
+    expect(ordinalOf('run:thread:a:ordinal:12')).toBe(12);
     expect(ordinalOf('run-42')).toBeNull();
-    const base = seeded([thread({ runId: 'run-41' })]);
-    const result = deriveT3(
-      context(),
-      base,
-      observe([thread({ runId: 'run-42', runCompletedAt: '2026-10-27T09:00:00.000Z' })]),
-    );
-    expect(result.entries.map((e) => e.category)).toEqual(['agent.turn']);
   });
 
   it('makes a question that the detail read fills in later', () => {
@@ -188,7 +164,7 @@ describe('deriveT3', () => {
   });
 
   it('reports failures, and interruptions only when nobody asked for them', () => {
-    const failed = deriveT3(
+    const broken = deriveT3(
       context(),
       seeded(),
       observe([
@@ -200,7 +176,7 @@ describe('deriveT3', () => {
         }),
       ]),
     );
-    expect(failed.entries[0]).toMatchObject({
+    expect(broken.entries[0]).toMatchObject({
       category: 'agent.failed',
       needsYou: true,
       detail: 'provider_error: Out of context',
@@ -219,13 +195,62 @@ describe('deriveT3', () => {
     );
     expect(interrupted.entries.map((e) => e.category)).toEqual(['agent.interrupted']);
 
-    const recovered = deriveT3(context(), failed.baseline, observe([completed(5)]));
+    const recovered = deriveT3(context(), broken.baseline, observe([completed(5)]));
     expect(recovered.resolutions).toContainEqual(
       expect.objectContaining({
         categories: ['agent.failed', 'agent.interrupted'],
         resolvedBy: 'a later run completed',
       }),
     );
+  });
+
+  it('ends a failure when a retry failed too between two reads', () => {
+    const stopped = deriveT3(context(), seeded(), observe([failed(4)]));
+    const again = deriveT3(context(), stopped.baseline, observe([failed(5)]));
+    expect(again.entries.map((e) => e.category)).toEqual(['agent.failed']);
+    expect(again.resolutions).toContainEqual(
+      expect.objectContaining({
+        ids: [stopped.entries[0]!.id, expect.stringContaining(':interrupted')],
+        resolvedBy: 'a later run',
+      }),
+    );
+  });
+
+  it('lets a failure need me only until the thread runs again', () => {
+    const stopped = deriveT3(context(), seeded(), observe([failed(4)]));
+    const retried = deriveT3(context(), stopped.baseline, observe([running(5)]));
+    expect(retried.entries).toEqual([]);
+    expect(retried.resolutions).toContainEqual(
+      expect.objectContaining({
+        entityKey: 't3:local:thread:a',
+        categories: ['agent.failed', 'agent.interrupted'],
+        status: 'resolved',
+        resolvedBy: 'running again',
+      }),
+    );
+  });
+
+  it('ends what a thread left needing me once the thread is gone, and says so once', () => {
+    const asking = thread({
+      runStatus: 'waiting',
+      pendingRequest: { id: 'req-1', kind: 'user_input', createdAt: null },
+    });
+    const base = deriveT3(context(), seeded(), observe([asking])).baseline;
+    const gone = deriveT3(context(), base, observe([]));
+    expect(gone.entries).toEqual([]);
+    expect(gone.resolutions).toEqual([
+      expect.objectContaining({
+        entityKey: 't3:local:thread:a',
+        status: 'resolved',
+        resolvedBy: 'the thread is gone',
+      }),
+    ]);
+    expect(gone.resolutions[0]?.categories).toEqual(
+      expect.arrayContaining(['agent.question', 'agent.plan', 'agent.approval', 'agent.failed']),
+    );
+    expect(deriveT3(context(), gone.baseline, observe([])).resolutions).toEqual([]);
+    // A host that answered only in part says nothing about what is missing.
+    expect(deriveT3(context(), base, observe([], { complete: false })).resolutions).toEqual([]);
   });
 
   it('reports a usage limit once and resolves it when the run moves on', () => {
@@ -257,7 +282,7 @@ describe('deriveT3', () => {
     expect(resumed.resolutions).toContainEqual(
       expect.objectContaining({ ids: ['t3:local|limit:limit-1'], resolvedBy: 'resumed' }),
     );
-    expect(resumed.entries.map((e) => e.category)).toEqual(['agent.turn']);
+    expect(resumed.entries).toEqual([]);
   });
 
   it('resolves a usage limit once, not on every read after the run resumed', () => {
@@ -308,12 +333,12 @@ describe('deriveT3', () => {
       seeded(),
       observe([thread({ ...completed(4), limitRecovery: limit })]),
     );
-    expect(result.entries.map((e) => e.category)).toEqual(['agent.turn']);
+    expect(result.entries).toEqual([]);
   });
 
   it('marks what a visit in T3 covered read', () => {
     const watched = {
-      ...completed(4, '2026-10-27T09:30:00.000Z'),
+      ...failed(4, '2026-10-27T09:30:00.000Z'),
       lastVisitedAt: '2026-10-27T09:30:05.000Z',
     };
     const result = deriveT3(context(), seeded(), observe([watched]));
@@ -326,11 +351,11 @@ describe('deriveT3', () => {
   });
 
   it('keeps two hosts with the same thread id apart', () => {
-    const local = deriveT3(context(), seeded(), observe([completed(4)]));
+    const local = deriveT3(context(), seeded(), observe([failed(4)]));
     const mini = deriveT3(
       context({ sourceId: 't3:mini' }),
       seeded(),
-      observe([completed(4)], { hostId: 'mini', hostLabel: 'Mac mini' }),
+      observe([failed(4)], { hostId: 'mini', hostLabel: 'Mac mini' }),
     );
     expect(local.entries[0]?.id).not.toBe(mini.entries[0]?.id);
     expect(local.entries[0]?.entity.key).toBe('t3:local:thread:a');
@@ -342,11 +367,13 @@ describe('deriveT3', () => {
       rawId: 'old',
       createdAt: '2026-01-01T00:00:00.000Z',
       runId: 'run:thread:old:ordinal:9',
+      runStatus: 'failed',
     });
     const fresh = thread({
       rawId: 'new',
       createdAt: '2026-10-27T09:00:00.000Z',
       runId: 'run:thread:new:ordinal:1',
+      runStatus: 'failed',
     });
     const result = deriveT3(context(), { threads: {} }, observe([old, fresh]));
     expect(result.entries.map((e) => e.entity.key)).toEqual(['t3:local:thread:new']);
@@ -354,10 +381,9 @@ describe('deriveT3', () => {
 
   it('creates nothing for subagents or a thread that disappeared', () => {
     const sub = thread({ rawId: 'sub', subagent: true, createdAt: '2026-10-27T09:00:00.000Z' });
-    expect(deriveT3(context(), seeded(), observe([sub])).entries).toEqual([]);
+    expect(deriveT3(context(), seeded([sub]), observe([sub])).entries).toEqual([]);
     const gone = deriveT3(context(), seeded(), observe([]));
     expect(gone.entries).toEqual([]);
-    expect(gone.resolutions).toEqual([]);
     expect(gone.baseline.threads.a?.missingSince).toBe('2026-10-27T10:00:00.000Z');
     const partial = deriveT3(context(), seeded(), observe([], { complete: false }));
     expect(partial.baseline.threads.a?.missingSince).toBeUndefined();

@@ -197,64 +197,40 @@
     "page": "Dispatch"
   },
   {
-    "slug": "workstreams",
-    "storyId": "workstreams-workstreams--overview",
+    "slug": "recent",
+    "storyId": "main-window-mainwindow--rail-recent-open",
     "viewport": {
       "width": 1360,
       "height": 860
     },
     "theme": "both",
     "delay": 2500,
-    "alt": "A workstream: its goal, the outcomes it needs with the evidence behind each, and the next action",
-    "page": "Workstreams"
+    "alt": "Recent, opened from the bell in the rail's corner: three things that need you with the action for each, then the morning's merge, deployment and review",
+    "page": "Rail"
   },
   {
-    "slug": "workstreams-map",
-    "storyId": "workstreams-workstreams--relation-map",
+    "slug": "ai-limits",
+    "storyId": "main-window-mainwindow--rail-limits-open",
     "viewport": {
       "width": 1360,
       "height": 860
     },
     "theme": "both",
     "delay": 2500,
-    "alt": "The relation map: which pull request blocks which outcome, which one replaced an earlier attempt, and the decisions still open",
-    "page": "Workstreams"
+    "alt": "Limits left: what remains of each Claude and Codex account this week and this session, with when it resets, opened from the rail",
+    "page": "Rail"
   },
   {
-    "slug": "workstreams-review",
-    "storyId": "workstreams-workstreams--review-with-agent",
+    "slug": "machines",
+    "storyId": "main-window-mainwindow--rail-machines-open",
     "viewport": {
       "width": 1360,
       "height": 860
     },
     "theme": "both",
     "delay": 2500,
-    "alt": "An agent's proposals for a workstream, each to accept or reject",
-    "page": "Workstreams"
-  },
-  {
-    "slug": "workstreams-chips",
-    "storyId": "workstreams-workstreams--dispatch-chips",
-    "viewport": {
-      "width": 1360,
-      "height": 860
-    },
-    "theme": "both",
-    "delay": 2500,
-    "alt": "Dispatch rows with the workstream each item belongs to",
-    "page": "Workstreams"
-  },
-  {
-    "slug": "activity",
-    "storyId": "activity-activity--unread",
-    "viewport": {
-      "width": 1360,
-      "height": 860
-    },
-    "theme": "both",
-    "delay": 2500,
-    "alt": "Activity: what changed since you last checked, one row per change with the action that fits, grouped by day",
-    "page": "Activity"
+    "alt": "Machines: free disk space per machine and the worktrees whose pull request already merged, opened from the rail",
+    "page": "Rail"
   },
   {
     "slug": "notes",
@@ -531,21 +507,6 @@
     "delay": 3500,
     "alt": "A re-review: only the files changed since your last review, the commits in between, stale proof flagged, and Undo for the approval you just gave",
     "page": "Quick review"
-  },
-  {
-    "slug": "worktrees",
-    "storyId": {
-      "light": "worktree-worktreessection--light",
-      "dark": "worktree-worktreessection--default"
-    },
-    "viewport": {
-      "width": 1360,
-      "height": 860
-    },
-    "theme": "both",
-    "delay": 2500,
-    "alt": "The Worktrees section: your worktrees grouped by the machine they live on, under that machine's free disk space, each row with its branch, changes and pull request",
-    "page": "Tools"
   },
   {
     "slug": "worktrees-window",

@@ -12,13 +12,14 @@ import {
 import { flushSync } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { SinceLastCheckedCard } from '@/components/activity/SinceLastCheckedCard';
+import { AiUsageFocusCard } from '@/components/ai-usage/AiUsageFocusCard';
 import { CiFailuresFocusCard } from '@/components/ci-failures/CiFailuresFocusCard';
 import { DispatchFocusCard } from '@/components/dispatch/DispatchFocusCard';
+import { DiskFocusCard } from '@/components/machines';
 import { NotesFocusCard } from '@/components/notes/NotesFocusCard';
 import { PrRow } from '@/components/pr/PrRow';
 import { prRowKey } from '@/components/pr/pr-card-data';
 import { Button, SlidingHighlight } from '@/components/shared/primitives';
-import { WorkstreamsFocusCard } from '@/components/workstreams/WorkstreamsFocusCard';
 import {
   bucketFor,
   countBuckets,
@@ -467,8 +468,9 @@ export function FocusList() {
         )}
       </div>
       <SinceLastCheckedCard />
+      <AiUsageFocusCard />
+      <DiskFocusCard />
       <DispatchFocusCard />
-      <WorkstreamsFocusCard />
       <CiFailuresFocusCard />
       <NotesFocusCard />
       <div className="bd-focus-body">

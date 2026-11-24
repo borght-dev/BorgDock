@@ -50,8 +50,8 @@ Current as of 3.0.0 (2026-09-25) plus the Workbench logo. Mockups: `design/mocku
 
 `components/layout/MainWindow.tsx`: a two-column grid, `200px | 1fr` (`.bd-mainwindow--rail`).
 
-- **Rail** (`Rail.tsx`, `.bd-rail`) — logo and "BorgDock" at the top (36 px, drag region), then the five sections in order: Focus, Dispatch, Pull requests, Work items, Worktrees (keys `1`–`5`). A `SlidingHighlight` moves behind the active item. Counts sit on the right; the Pull requests count turns red when a PR is failing, and the Dispatch count is the number of items waiting on you. The bottom block shows "Synced … ago" (or "Syncing…"), a 3 px GitHub rate meter and "N of M requests left (GraphQL|REST)".
-- **Title bar** (`TitleBar` primitive, 36 px) — the section name, or "Pull request" / "Work item" when a detail view is on top; then the status dot, the window launcher, Refresh, Settings and the window controls.
+- **Rail** (`Rail.tsx`, `.bd-rail`) — logo and "BorgDock" at the top (36 px, drag region), then the five sections in order: Focus, Dispatch, Pull requests, Work items, Notes (keys `1`–`5`). A `SlidingHighlight` moves behind the active item. Counts sit on the right; the Pull requests count turns red when a PR is failing, and the Dispatch count is the number of items waiting on you. The foot holds Limits left (AI accounts and the GitHub rate), Machines, the "Synced … ago" line and a bar of icon buttons: Settings in the corner, Open window, the Recent bell and Collapse. Each foot block is a `RailFlyout` (`components/layout/rail-blocks/`) that opens a card beside the rail.
+- **Title bar** (`TitleBar` primitive, 36 px) — the section name, or "Pull request" / "Work item" when a detail view is on top; then the update chip, the status dot, Refresh and the window controls.
 - **Body** — `ViewStack` (below).
 - **Status bar** (`StatusBar`, 28 px) — per-view text and key hints from `hooks/useStatusBar.ts`.
 
@@ -379,7 +379,7 @@ Named exports from `primitives/index.ts`. Each selects `.bd-*` classes with `cls
 | PR detail (header, action bar, tabs, checkout, composer, diff) | `components/pr-detail/` (`diff/` subdir) | main (`PrDetailView`), `pr-detail.html` |
 | Tray flyout, flyout toasts | `components/flyout/` | `flyout.html` |
 | Work items section and detail | `components/work-items/` | main (`WorkItemDetailView`), `workitem-detail.html` |
-| Worktrees section, prune dialog | `components/worktree/` (changes panel from `components/worktree-changes/`) | main, settings |
+| Worktree list, prune dialog | `components/worktree/` | `worktree.html`, main (the rail's Machines card), settings |
 | Work item palette | `components/work-item-palette/` | `work-item-palette.html` |
 | Worktree palette | `components/worktree-palette/` | `worktree.html` |
 | File palette, code view | `components/file-palette/` | `file-palette.html` |

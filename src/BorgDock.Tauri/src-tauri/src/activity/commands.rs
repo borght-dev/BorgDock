@@ -55,12 +55,8 @@ where
 pub(crate) async fn open_source(
     store: &ActivityDb,
     source: ActivitySourceRequest,
-) -> Result<ActivitySourceState, String> {
-    let (state, _) = write(store, move |tx, _| {
-        Ok((queries::open_source(tx, &source)?, false))
-    })
-    .await?;
-    Ok(state)
+) -> Result<(ActivitySourceState, Option<ActivityChanged>), String> {
+    write(store, move |tx, _| queries::open_source(tx, &source)).await
 }
 
 pub(crate) async fn commit(
@@ -99,10 +95,13 @@ async fn list_revision(store: &ActivityDb) -> Result<i64, String> {
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
 pub async fn activity_open_source(
+    app: AppHandle,
     state: State<'_, ActivityDb>,
     source: ActivitySourceRequest,
 ) -> Result<ActivitySourceState, String> {
-    open_source(state.inner(), source).await
+    let (opened, changed) = open_source(state.inner(), source).await?;
+    notify(&app, changed);
+    Ok(opened)
 }
 
 #[tauri::command]
@@ -117,7 +116,8 @@ pub async fn activity_sources(
         .await
 }
 
-/// Settings dropped the source: its entries stay, with actions disabled.
+/// Settings dropped the source, or another account reads its repository now:
+/// its entries stay, with actions disabled, and none of them needs me.
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
 pub async fn activity_retire_source(

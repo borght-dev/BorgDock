@@ -1,4 +1,3 @@
-import { seedWorkstreams } from '@/components/workstreams/__fixtures__/workstreams-data';
 import { parseNote } from '@/services/notes/parse';
 import { dailyPath, dayKey } from '@/services/notes/paths';
 import { refContextOf } from '@/services/notes/settings';
@@ -21,14 +20,13 @@ export interface NotesScene {
 }
 
 /** The vault the stories and e2e specs show: a week of notes about the shop's exports. */
-export function vaultNotes(workstreamId: string, now = new Date()): Record<string, string> {
+export function vaultNotes(now = new Date()): Record<string, string> {
   const today = dayKey(now);
   const yesterday = dayKey(new Date(now.getTime() - DAY));
   return {
     'Projects/CSV export drops the last column.md': [
       '---',
       'tags: [exports, bug]',
-      `workstream: "[Exports keep every column](borgdock://workstreams/${workstreamId})"`,
       '---',
       '# CSV export drops the last column',
       '',
@@ -88,7 +86,6 @@ export function vaultNotes(workstreamId: string, now = new Date()): Record<strin
     'Decisions/2026-10-21 Fix the writer or the exporter.md': [
       '# Fix the writer or the exporter?',
       '',
-      `Workstream: [Exports keep every column](borgdock://workstreams/${workstreamId})`,
       'Decided: 2026-10-21',
       '',
       '## Chosen',
@@ -111,9 +108,7 @@ export function vaultNotes(workstreamId: string, now = new Date()): Record<strin
 
 /** Seed every store the Notes section reads, synchronously, for a story or a test. */
 export function seedNotes(scene: NotesScene = {}) {
-  const { ids } = seedWorkstreams({});
-  const workstreamId = ids[2] ?? 'ws';
-  const notes = scene.empty ? {} : vaultNotes(workstreamId);
+  const notes = scene.empty ? {} : vaultNotes();
   setNotesStorage(memoryNotesStorage(notes));
   const context = refContextOf(useSettingsStore.getState().settings);
   const parsed = Object.fromEntries(
@@ -152,5 +147,4 @@ export function seedNotes(scene: NotesScene = {}) {
     openPath,
     view: scene.view ?? 'note',
   });
-  return { workstreamId };
 }

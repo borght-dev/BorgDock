@@ -8,6 +8,7 @@ import { applyTheme } from '@/utils/theme';
 import { revealWindow } from '@/utils/window-reveal';
 import { AdoSection } from './AdoSection';
 import { AgentSection } from './AgentSection';
+import { AiAccountsSection } from './AiAccountsSection';
 import { AppearanceSection } from './AppearanceSection';
 // Existing section components — bodies are rewritten in later tasks.
 import { CiFailuresCard } from './CiFailuresCard';
@@ -23,7 +24,6 @@ import { SqlSection } from './SqlSection';
 import { SETTINGS_SECTIONS, type SettingsSectionId } from './sections-catalog';
 import { UpdateSection } from './UpdateSection';
 import { PulseProvider } from './useFieldPulse';
-import { WorkstreamsSection } from './WorkstreamsSection';
 
 const STORAGE_KEY = 'settings.lastSection';
 
@@ -200,20 +200,15 @@ export function SettingsApp() {
             onSummariesChange={(summaries) => update({ summaries })}
           />
         );
-      case 'workstreams':
+      case 'accounts':
         return (
-          <WorkstreamsSection
-            workstreams={settings.workstreams ?? {}}
-            onChange={(workstreams) => update({ workstreams })}
+          <AiAccountsSection
+            aiUsage={settings.aiUsage}
+            onChange={(aiUsage) => update({ aiUsage })}
           />
         );
       case 'notes':
-        return (
-          <NotesSettingsSection
-            settings={settings}
-            onChange={(dailyNoteFolder) => update({ dailyNoteFolder })}
-          />
-        );
+        return <NotesSettingsSection settings={settings} onChange={update} />;
       case 'updates':
         return (
           <UpdateSection updates={settings.updates} onChange={(updates) => update({ updates })} />

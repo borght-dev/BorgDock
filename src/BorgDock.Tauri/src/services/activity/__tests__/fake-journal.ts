@@ -22,7 +22,40 @@ export class FakeJournal {
   entries = new Map<string, ActivityEntryInput_Deserialize & { read: string; status: string }>();
   outbox: { entryId: string; channel: string }[] = [];
   commits: ActivityCommit_Deserialize[] = [];
+  /** Source id → its kind, for every source ever opened. */
+  kinds = new Map<string, string>();
+  retired = new Set<string>();
   failNext = false;
+
+  listSources() {
+    return Promise.resolve(
+      [...this.sources].map(([sourceId, state]) => ({
+        sourceId,
+        kind: this.kinds.get(sourceId) ?? '',
+        label: sourceId,
+        configKey: state.configKey,
+        generation: state.generation,
+        revision: state.revision,
+        baseline: state.baseline,
+        seededAt: state.seededAt,
+        committedAt: null,
+        retiredAt: this.retired.has(sourceId) ? '2026-10-27T10:00:00.000Z' : null,
+      })),
+    );
+  }
+
+  /** Retiring ends what the source left needing me, as the Rust journal does. */
+  retireSource(sourceId: string) {
+    const changed = this.sources.has(sourceId) && !this.retired.has(sourceId);
+    this.retired.add(sourceId);
+    for (const entry of this.entries.values()) {
+      if (entry.sourceId === sourceId && entry.status === 'open' && entry.needsYou) {
+        entry.status = 'resolved';
+        entry.read = 'read';
+      }
+    }
+    return Promise.resolve(changed);
+  }
 
   openSource(request: ActivitySourceRequest) {
     const existing = this.sources.get(request.sourceId);
@@ -45,6 +78,8 @@ export class FakeJournal {
       };
     }
     this.sources.set(request.sourceId, state!);
+    this.kinds.set(request.sourceId, request.kind);
+    this.retired.delete(request.sourceId);
     return Promise.resolve({
       sourceId: request.sourceId,
       kind: request.kind,
@@ -84,7 +119,10 @@ export class FakeJournal {
         const byEntity =
           resolution.entityKey === entry.entityKey &&
           resolution.categories.includes(entry.category);
-        if ((named || byEntity) && entry.status === 'open') entry.status = resolution.status;
+        if ((named || byEntity) && entry.status === 'open') {
+          entry.status = resolution.status;
+          entry.read = 'read';
+        }
       }
     }
     const inserted: string[] = [];

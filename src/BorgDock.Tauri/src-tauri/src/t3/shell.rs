@@ -12,7 +12,7 @@ use serde_json::Value;
 /// Settled threads older than this are left out.
 const RECENT_DAYS: i64 = 60;
 const AGENT_MESSAGE_LIMIT: usize = 1200;
-/// A workstream review ends its reply with a proposal block, so it is read whole.
+/// A note keeps the whole answer of the thread started from it.
 const FULL_MESSAGE_LIMIT: usize = 64_000;
 const FIRST_MESSAGE_LIMIT: usize = 4000;
 

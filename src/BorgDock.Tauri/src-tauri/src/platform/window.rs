@@ -584,6 +584,66 @@ pub async fn open_whats_new_window(
     main_thread_result(rx).await
 }
 
+pub const ACTIVITY_HISTORY_LABEL: &str = "activity-history";
+/// Sent to the history window when it is already open and an entry should be shown.
+pub const ACTIVITY_HISTORY_REVEAL_EVENT: &str = "activity-history:reveal";
+
+/// All history: the Activity list in a window of its own. Opens it, or
+/// focuses the one that is open, and shows `entry_id` there when given.
+#[tauri::command]
+#[cfg_attr(test, specta::specta)]
+pub async fn open_activity_history_window(
+    app: tauri::AppHandle,
+    entry_id: Option<String>,
+) -> Result<(), String> {
+    let entry_json = serde_json::to_string(&entry_id).map_err(|e| e.to_string())?;
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let app_for_run = app.clone();
+    app.run_on_main_thread(move || {
+        let app = app_for_run;
+        let result = (|| -> Result<(), String> {
+            if let Some(existing) = app.get_webview_window(ACTIVITY_HISTORY_LABEL) {
+                existing.unminimize().map_err(|e| e.to_string())?;
+                existing.show().map_err(|e| e.to_string())?;
+                existing.set_focus().map_err(|e| e.to_string())?;
+                if let Some(id) = entry_id {
+                    let _ = existing.emit(ACTIVITY_HISTORY_REVEAL_EVENT, id);
+                }
+                return Ok(());
+            }
+            let init_script =
+                format!("window.__BORGDOCK_ACTIVITY_HISTORY__ = {{ entryId: {entry_json} }};");
+            let win = WebviewWindowBuilder::new(
+                &app,
+                ACTIVITY_HISTORY_LABEL,
+                WebviewUrl::App("activity-history.html".into()),
+            )
+            .title("BorgDock — History")
+            .inner_size(980.0, 720.0)
+            .min_inner_size(640.0, 420.0)
+            .decorations(false)
+            .resizable(true)
+            .skip_taskbar(false)
+            .shadow(true)
+            .center()
+            // Built invisible: `window_ready` from React reveals it once painted.
+            .visible(false)
+            .initialization_script(&init_script)
+            .build()
+            .map_err(|e| e.to_string())?;
+            crate::platform::window_geometry::persist_window_geometry(
+                &app,
+                &win,
+                ACTIVITY_HISTORY_LABEL,
+            );
+            Ok(())
+        })();
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+    main_thread_result(rx).await
+}
+
 /// Show the main window if hidden, focus it if shown-but-unfocused, or hide it
 /// if it's the foreground window. Replaces the old `toggle_sidebar`.
 #[tauri::command]

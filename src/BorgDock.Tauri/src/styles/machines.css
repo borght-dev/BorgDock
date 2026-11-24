@@ -1,0 +1,124 @@
+/* Machines: what the rail's Machines block shows of each host, the card it
+   opens, and the disk card at the top of Focus. The block and the card frame
+   come from rail-blocks.css. Design: design/rail-five/mockups.html, A and B. */
+@layer components {
+  /* A host's row in the rail block; a long name ends in an ellipsis. */
+  .bd-machines__row {
+    min-width: 0;
+  }
+
+  /* Folded rail: one monitor in the worst host's colour. */
+  .bd-machines__glyph {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    color: var(--color-text-secondary);
+  }
+  .bd-machines__glyph[data-tone="low"] {
+    color: var(--color-status-yellow);
+  }
+  .bd-machines__glyph[data-tone="critical"] {
+    color: var(--color-status-red);
+  }
+
+  /* ── One host in the card ────────────────────────────── */
+  .bd-machines__name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    margin: 0;
+    font-size: inherit;
+    font-weight: 600;
+  }
+  .bd-machines__where {
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+  }
+  .bd-machines__disks {
+    display: grid;
+    grid-template-columns: minmax(2.2rem, max-content) minmax(0, 1fr) minmax(5.6rem, max-content);
+    align-items: center;
+    gap: 7px 8px;
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
+  }
+  .bd-machines__drive {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-machines__free {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .bd-machines__free[data-tone="low"] {
+    color: var(--color-status-yellow);
+  }
+  .bd-machines__free[data-tone="critical"] {
+    color: var(--color-status-red);
+  }
+  .bd-machines__unavailable {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .bd-machines__reason {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    color: var(--color-text-secondary);
+  }
+  .bd-machines__reason > span {
+    overflow: hidden;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-tertiary);
+  }
+  .bd-machines__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .bd-machines__error {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--color-status-red);
+  }
+  /* The card's footer is one button: its label left, its key right. */
+  .bd-machines__open {
+    flex: 1;
+    justify-content: space-between;
+  }
+
+  /* ── A host low on disk, at the top of Focus ─────────── */
+  .bd-machines-fcard {
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 16px 10px;
+    border-bottom: 1px solid var(--color-subtle-border);
+    font-size: 12px;
+  }
+  .bd-machines-fcard__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: inherit;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .bd-machines-fcard__detail {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+}

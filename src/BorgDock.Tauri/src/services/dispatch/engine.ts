@@ -26,12 +26,6 @@ export interface EngineInput {
   hiddenSuggestions: ReadonlySet<string>;
   /** Thread id to item id, for links made or removed by hand. */
   manualLinks: ReadonlyMap<string, number | null>;
-  /**
-   * Items only a workstream needs. They get an overview of their own in
-   * `overview.context`, linked in a pass of their own, so they never change
-   * what Dispatch shows for its items.
-   */
-  contextItems?: readonly DispatchItem[];
   now?: Date;
 }
 
@@ -204,11 +198,7 @@ export function buildOverview(input: EngineInput): { overview: Overview; dequeue
     .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))
     .map((thread) => ({ ...thread, guessItemId: guessItem(thread, input.items) }));
 
-  const overview: Overview = { generatedAt: now.toISOString(), items, unlinkedThreads };
-  const { context, combined } = contextOverviews(input, threads, pullRequestsOf, now);
-  if (context.length > 0) overview.context = context;
-  if (Object.keys(combined).length > 0) overview.combinedPullRequests = combined;
-  return { overview, dequeue };
+  return { overview: { generatedAt: now.toISOString(), items, unlinkedThreads }, dequeue };
 }
 
 function itemOverview(
@@ -239,45 +229,4 @@ function itemOverview(
     evidence: evidenceOf(facts),
     latest: latestMessage(item, itemThreads),
   };
-}
-
-/**
- * Overviews of the items only a workstream needs. A pull request counts as
- * shared when it is linked on several items across Dispatch's and these, so a
- * plan PR never proves a context item delivered either.
- */
-function contextOverviews(
-  input: EngineInput,
-  threads: readonly AgentThread[],
-  dispatchPullRequests: ReadonlyMap<DispatchItem, UnitPullRequest[]>,
-  now: Date,
-): { context: ItemOverview[]; combined: Record<number, UnitPullRequest[]> } {
-  const own = new Set(input.items.map((item) => item.id));
-  const contextItems = (input.contextItems ?? []).filter((item) => !own.has(item.id));
-  if (contextItems.length === 0) return { context: [], combined: {} };
-  const links = linkThreads(contextItems, threads, input.manualLinks);
-  const pullRequestsOf = new Map(
-    contextItems.map((item) => [
-      item,
-      itemPullRequests(item, links.threadsByItem.get(item.id) ?? [], input.pullRequests),
-    ]),
-  );
-  const together = new Map([...dispatchPullRequests, ...pullRequestsOf]);
-  markShared(together);
-  const combined: Record<number, UnitPullRequest[]> = {};
-  for (const [item, pullRequests] of dispatchPullRequests) {
-    const seen = together.get(item) ?? [];
-    if (seen.some((pr, i) => pr.shared !== pullRequests[i]?.shared)) combined[item.id] = seen;
-  }
-  const context = contextItems.map((item) =>
-    itemOverview(
-      item,
-      links.threadsByItem.get(item.id) ?? [],
-      together.get(item) ?? [],
-      false,
-      input,
-      now,
-    ),
-  );
-  return { context, combined };
 }

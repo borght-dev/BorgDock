@@ -10,8 +10,8 @@ vi.mock('@/services/activity/api', async (importOriginal) => {
     openSource: (request: Parameters<FakeJournal['openSource']>[0]) =>
       journal.current.openSource(request),
     commit: (request: Parameters<FakeJournal['commit']>[0]) => journal.current.commit(request),
-    listSources: () => Promise.resolve([]),
-    retireSource: () => Promise.resolve(true),
+    listSources: () => journal.current.listSources(),
+    retireSource: (sourceId: string) => journal.current.retireSource(sourceId),
   };
 });
 
@@ -59,6 +59,8 @@ function facts(ordinal: number, overrides: Partial<T3ThreadFacts> = {}): T3Threa
     ...overrides,
   };
 }
+
+const failed = (ordinal: number) => facts(ordinal, { runStatus: 'failed' });
 
 const observation = (threads: T3ThreadFacts[]): T3Observation => ({
   hostId: 'local',
@@ -127,10 +129,10 @@ describe('ingest', () => {
     );
     expect(journal.current.commits[0]?.seed).toBe(true);
     expect(journal.current.entries.size).toBe(0);
-    expect(await ingest(source(), { sequence: 11 }, deriveT3, observation([facts(4)]))).toBe(
+    expect(await ingest(source(), { sequence: 11 }, deriveT3, observation([failed(4)]))).toBe(
       'committed',
     );
-    expect(journal.current.categories()).toEqual(['agent.turn']);
+    expect(journal.current.categories()).toEqual(['agent.failed']);
     expect(journal.current.outbox).toEqual([
       { entryId: [...journal.current.entries.keys()][0], channel: 'popup' },
     ]);
@@ -155,9 +157,9 @@ describe('ingest', () => {
   it('catches up from the stored baseline after a restart', async () => {
     await ingest(source(), { sequence: 10 }, deriveT3, observation([facts(3)]));
     resetActivityIngest();
-    await ingest(source(), { sequence: 20 }, deriveT3, observation([facts(4)]));
+    await ingest(source(), { sequence: 20 }, deriveT3, observation([failed(4)]));
     const [entry] = journal.current.entries.values();
-    expect(entry?.category).toBe('agent.turn');
+    expect(entry?.category).toBe('agent.failed');
     expect(entry?.coverage).toBe('catch-up');
   });
 
@@ -173,8 +175,8 @@ describe('ingest', () => {
     await ingest(source(), { sequence: 7 }, deriveT3, observation([facts(9)]));
     expect(journal.current.entries.size).toBe(0);
     expect(journal.current.sources.get('t3:local')?.generation).toBe(2);
-    await ingest(source(), { sequence: 8 }, deriveT3, observation([facts(10)]));
-    expect(journal.current.categories()).toEqual(['agent.turn']);
+    await ingest(source(), { sequence: 8 }, deriveT3, observation([failed(10)]));
+    expect(journal.current.categories()).toEqual(['agent.failed']);
   });
 
   it('gives a detail read in the same sequence a revision of its own', async () => {
@@ -217,14 +219,14 @@ describe('ingest', () => {
   it('keeps the baseline after a failed commit, so nothing is lost or doubled', async () => {
     await ingest(source(), { sequence: 10 }, deriveT3, observation([facts(3)]));
     journal.current.failNext = true;
-    expect(await ingest(source(), { sequence: 11 }, deriveT3, observation([facts(4)]))).toBe(
+    expect(await ingest(source(), { sequence: 11 }, deriveT3, observation([failed(4)]))).toBe(
       'failed',
     );
     expect(useActivityStore.getState().commitErrors['t3:local']).toContain('disk full');
     await retryFailedCommits();
     expect(useActivityStore.getState().commitErrors['t3:local']).toBeUndefined();
-    await ingest(source(), { sequence: 12 }, deriveT3, observation([facts(4)]));
-    expect(journal.current.categories()).toEqual(['agent.turn']);
+    await ingest(source(), { sequence: 12 }, deriveT3, observation([failed(4)]));
+    expect(journal.current.categories()).toEqual(['agent.failed']);
   });
 });
 
@@ -241,10 +243,13 @@ describe('the T3 adapter', () => {
     await ingestIdle('t3:local');
     await ingestIdle('t3:mini');
     t3HostFailed(MINI);
-    ingestT3Host(LOCAL, 'env-local', 11, [agentThread(4)]);
+    const stopped = agentThread(4);
+    ingestT3Host(LOCAL, 'env-local', 11, [
+      { ...stopped, run: { ...stopped.run!, status: 'failed', lastError: 'Out of context' } },
+    ]);
     await ingestIdle('t3:local');
     const [entry] = journal.current.entries.values();
     expect(entry?.entityKey).toBe('t3:local:thread:a');
-    expect(entry?.detail).toBe('Done: login fixed');
+    expect(entry?.detail).toBe('Out of context');
   });
 });

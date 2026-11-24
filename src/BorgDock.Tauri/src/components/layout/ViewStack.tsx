@@ -6,11 +6,6 @@ const PrDetailView = lazy(() =>
     default: module.PrDetailView,
   })),
 );
-const WorkstreamDetailView = lazy(() =>
-  import('@/components/workstreams/WorkstreamDetailView').then((module) => ({
-    default: module.WorkstreamDetailView,
-  })),
-);
 const WorkItemDetailView = lazy(() =>
   import('@/components/work-items/WorkItemDetailView').then((module) => ({
     default: module.WorkItemDetailView,
@@ -29,7 +24,6 @@ const MOUSE_BACK_BUTTON = 3;
 
 function viewKey(view: DetailView): string {
   if (view.kind === 'pr-detail') return `pr:${view.owner}/${view.repo}#${view.number}`;
-  if (view.kind === 'workstream') return `ws:${view.id}`;
   return `wi:${view.id}`;
 }
 
@@ -44,7 +38,6 @@ function DetailBody({ view }: { view: DetailView }) {
       />
     );
   }
-  if (view.kind === 'workstream') return <WorkstreamDetailView id={view.id} tab={view.tab} />;
   return <WorkItemDetailView id={view.id} />;
 }
 

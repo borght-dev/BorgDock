@@ -12,22 +12,15 @@ export interface FieldEntry {
 export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
   {
     sectionId: 'notes',
+    anchorId: 'notes-folder',
+    label: 'Vault',
+    keywords: ['notes', 'folder', 'sync', 'onedrive', 'syncthing', 'share', 'machines', 'obsidian'],
+  },
+  {
+    sectionId: 'notes',
     anchorId: 'daily-note-folder',
     label: 'Daily note folder',
     keywords: ['today', 'obsidian', 'location'],
-  },
-  // Workstreams
-  {
-    sectionId: 'workstreams',
-    anchorId: 'workstreams-folder',
-    label: 'Workstreams folder',
-    keywords: ['sync', 'onedrive', 'syncthing', 'share', 'machines', 'goal'],
-  },
-  {
-    sectionId: 'workstreams',
-    anchorId: 'workstreams-device',
-    label: "This machine's name",
-    keywords: ['device', 'computer', 'workstream'],
   },
 
   // GitHub
@@ -194,6 +187,32 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
   { sectionId: 'notif', anchorId: 'nudge-pending', label: 'Nudge for pending reviews' },
   { sectionId: 'notif', anchorId: 'remind-every', label: 'Remind every' },
   { sectionId: 'notif', anchorId: 'escalate', label: 'Escalate urgency over time' },
+
+  // AI accounts
+  {
+    sectionId: 'accounts',
+    anchorId: 'ai-accounts',
+    label: 'AI account labels',
+    keywords: ['claude', 'codex', 'usage', 'limits', 'rail', 'label', 'colour', 'color'],
+  },
+  {
+    sectionId: 'accounts',
+    anchorId: 'ai-show-github',
+    label: 'Show GitHub API with the limits',
+    keywords: ['rate limit', 'requests', 'rail'],
+  },
+  {
+    sectionId: 'accounts',
+    anchorId: 'ai-keep-order',
+    label: 'Keep my order in the rail',
+    keywords: ['accounts', 'sort', 'least left'],
+  },
+  {
+    sectionId: 'accounts',
+    anchorId: 'ai-warn-under',
+    label: 'Warn under this percentage left',
+    keywords: ['usage', 'limit', 'red', 'threshold'],
+  },
 
   // Agents and headless summaries
   {

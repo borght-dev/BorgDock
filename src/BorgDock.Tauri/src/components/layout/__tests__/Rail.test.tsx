@@ -1,11 +1,17 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
+
+vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke }));
 vi.mock('@/utils/tauri-persist', () => ({
   persistToTauriStore: vi.fn(() => Promise.resolve()),
   readFromTauriStore: vi.fn(() => Promise.resolve(undefined)),
 }));
 
+import { useActivityStore } from '@/stores/activity-store';
+import { useAiUsageStore } from '@/stores/ai-usage-store';
+import { useDiskSpaceStore } from '@/stores/disk-space-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
@@ -54,11 +60,23 @@ function navButton(name: RegExp) {
   });
 }
 
+/** The buttons of the bar the rail ends in, by accessible name, in the order they are drawn. */
+function barButtons(): string[] {
+  return [...document.querySelectorAll('.bd-rail__tools button')].map(
+    (button) => button.getAttribute('aria-label') ?? '',
+  );
+}
+
 describe('Rail', () => {
   beforeEach(() => {
+    mocks.invoke.mockReset();
+    mocks.invoke.mockResolvedValue(null);
     usePrStore.setState({ username: '', rateLimit: null, lastPollTime: null, isPolling: false });
     usePrStore.getState().setPullRequests([pr(1), pr(2)]);
     useWorkItemsStore.setState({ workItems: [] });
+    useActivityStore.setState({ counts: null });
+    useAiUsageStore.setState({ accounts: [], looked: true, readings: {} });
+    useDiskSpaceStore.setState({ hosts: [], error: null, cleanup: {} });
     useUiStore.setState({
       activeSection: 'focus',
       viewStack: [{ kind: 'list' }],
@@ -70,23 +88,14 @@ describe('Rail', () => {
     vi.useRealTimers();
   });
 
-  it('renders the workspace name and the eight sections in order', () => {
+  it('renders the workspace name and the five sections in order', () => {
     render(<Rail />);
     expect(screen.getByText('BorgDock')).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Sections' });
     const labels = within(nav)
       .getAllByRole('button')
       .map((b) => b.querySelector('.bd-rail__label')?.textContent);
-    expect(labels).toEqual([
-      'Focus',
-      'Dispatch',
-      'Workstreams',
-      'Pull requests',
-      'Work items',
-      'Worktrees',
-      'Activity',
-      'Notes',
-    ]);
+    expect(labels).toEqual(['Focus', 'Dispatch', 'Pull requests', 'Work items', 'Notes']);
   });
 
   it('marks the active section and puts the sliding highlight behind it', () => {
@@ -136,7 +145,7 @@ describe('Rail', () => {
       const prs = navButton(/Pull requests/);
       expect(prs.querySelector('.bd-rail__icon')).toBeInTheDocument();
       expect(prs.querySelector('.bd-rail__label')).toHaveClass('sr-only');
-      expect(prs).toHaveAttribute('title', 'Pull requests · 2 (4)');
+      expect(prs).toHaveAttribute('title', 'Pull requests · 2 (3)');
       expect(prs.querySelector('.bd-rail__count')).toHaveClass('bd-rail__count--badge');
     });
 
@@ -165,26 +174,20 @@ describe('Rail', () => {
       expect(persistToTauriStore).toHaveBeenCalledWith('ui-state.json', 'railCollapsed', false);
     });
 
-    it('shows the sync state on hover of the meter', () => {
-      usePrStore.setState({
-        rateLimit: { remaining: 4357, limit: 5000, resetAt: new Date(), pool: 'rest' },
-        lastPollTime: null,
-      });
+    it('keeps the sync state for screen readers only', () => {
+      usePrStore.setState({ lastPollTime: new Date() });
       useUiStore.setState({ railCollapsed: true });
       render(<Rail />);
-      expect(document.querySelector('.bd-rail__sync--compact')).toHaveAttribute(
-        'title',
-        'Not synced yet · 4,357 of 5,000 requests left',
-      );
-      expect(screen.queryByText(/requests left/)).toBeNull();
+      expect(document.querySelector('.bd-rail__sync')).toHaveClass('sr-only');
+      expect(screen.queryByText(/^Synced .* ago|^Synced just now/)).toBeNull();
     });
   });
 
   it('switches the section on click', () => {
     render(<Rail />);
-    fireEvent.click(navButton(/Worktrees/));
-    expect(useUiStore.getState().activeSection).toBe('worktrees');
-    expect(navButton(/Worktrees/)).toHaveAttribute('aria-current', 'page');
+    fireEvent.click(navButton(/Notes/));
+    expect(useUiStore.getState().activeSection).toBe('notes');
+    expect(navButton(/Notes/)).toHaveAttribute('aria-current', 'page');
   });
 
   it('returns to the list when a section is picked from a detail view', () => {
@@ -197,12 +200,12 @@ describe('Rail', () => {
     expect(useUiStore.getState().viewStack).toEqual([{ kind: 'list' }]);
   });
 
-  it('advertises keys 1 to 6', () => {
+  it('advertises keys 1 to 5', () => {
     render(<Rail />);
     expect(navButton(/Focus/)).toHaveAttribute('aria-keyshortcuts', '1');
     expect(navButton(/Dispatch/)).toHaveAttribute('aria-keyshortcuts', '2');
-    expect(navButton(/Workstreams/)).toHaveAttribute('aria-keyshortcuts', '3');
-    expect(navButton(/Worktrees/)).toHaveAttribute('aria-keyshortcuts', '6');
+    expect(navButton(/Pull requests/)).toHaveAttribute('aria-keyshortcuts', '3');
+    expect(navButton(/Notes/)).toHaveAttribute('aria-keyshortcuts', '5');
   });
 
   it('shows the sync line and refreshes it every 10 seconds', () => {
@@ -221,26 +224,54 @@ describe('Rail', () => {
     expect(screen.getByText('Syncing…')).toBeInTheDocument();
   });
 
-  it('shows the rate meter with requests left', () => {
-    usePrStore.setState({
-      rateLimit: { remaining: 4837, limit: 5000, resetAt: new Date(), pool: 'graphql' },
+  describe('the foot', () => {
+    it("shows GitHub's requests as a row of the limits", () => {
+      usePrStore.setState({
+        rateLimit: { remaining: 4837, limit: 5000, resetAt: new Date(), pool: 'graphql' },
+      } as never);
+      render(<Rail />);
+      expect(screen.getByRole('button', { name: 'Limits left' })).toHaveTextContent('GitHub97%');
     });
-    render(<Rail />);
-    const meter = screen.getByRole('meter', { name: 'GitHub requests left' });
-    expect(meter).toHaveAttribute('aria-valuenow', '4837');
-    expect(meter.querySelector('.bd-rail__meter-fill')).toHaveStyle({ width: '96.74%' });
-    expect(screen.getByText('4,837 of 5,000 requests left (GraphQL)')).toBeInTheDocument();
-  });
 
-  it('marks the meter low under 10 percent', () => {
-    usePrStore.setState({ rateLimit: { remaining: 120, limit: 5000, resetAt: new Date() } });
-    render(<Rail />);
-    expect(screen.getByRole('meter')).toHaveClass('bd-rail__meter--low');
-  });
+    it('shows no limits block without accounts and without a rate limit', () => {
+      render(<Rail />);
+      expect(screen.queryByRole('button', { name: 'Limits left' })).toBeNull();
+    });
 
-  it('omits the meter when no rate limit is known', () => {
-    render(<Rail />);
-    expect(screen.queryByRole('meter')).not.toBeInTheDocument();
+    it('ends in a bar: Settings in the corner, Open window, Recent, and the fold toggle', () => {
+      render(<Rail />);
+      expect(barButtons()).toEqual(['Settings', 'Open window', 'Recent', 'Collapse navigation']);
+    });
+
+    it('opens Settings from the corner', () => {
+      render(<Rail />);
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+      expect(mocks.invoke).toHaveBeenCalledWith('open_settings_window', {});
+    });
+
+    it('opens the window menu, which leaves Settings to its own button', () => {
+      render(<Rail />);
+      fireEvent.click(screen.getByRole('button', { name: 'Open window' }));
+      const menu = screen.getByRole('menu', { name: 'Windows' });
+      const items = within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.querySelector('span')?.textContent);
+      expect(items).toEqual(['Worktrees', 'Quick note', 'Work items', 'SQL', "What's new"]);
+
+      fireEvent.click(within(menu).getByRole('menuitem', { name: /Worktrees/ }));
+      expect(mocks.invoke).toHaveBeenCalledWith('open_tool_window', { tool: 'worktrees' });
+    });
+
+    it('counts what needs you on the bell', () => {
+      useActivityStore.setState({
+        counts: { unread: 9, needsYou: 3, byCategory: {}, bySource: {}, revision: 1 },
+      });
+      render(<Rail />);
+      const bell = screen.getByRole('button', { name: 'Recent · 3 need you' });
+      const badge = bell.querySelector('.bd-rail__count--badge');
+      expect(badge).toHaveTextContent('3');
+      expect(badge).toHaveClass('bd-rail__count--hot');
+    });
   });
 });
 

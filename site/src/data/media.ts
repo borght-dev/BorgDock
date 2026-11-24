@@ -15,21 +15,19 @@ export type GalleryPage =
   | 'Pull requests'
   | 'Focus'
   | 'Dispatch'
-  | 'Workstreams'
   | 'Detail'
   | 'Quick review'
   | 'Notes'
-  | 'Activity'
+  | 'Rail'
   | 'Tools';
 export const GALLERY_PAGES: GalleryPage[] = [
   'Pull requests',
   'Focus',
   'Dispatch',
-  'Workstreams',
   'Detail',
   'Quick review',
   'Notes',
-  'Activity',
+  'Rail',
   'Tools',
 ];
 

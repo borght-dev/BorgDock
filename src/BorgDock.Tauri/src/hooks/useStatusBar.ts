@@ -1,4 +1,3 @@
-import { WORKTREES_STATUS_HINT } from '@/components/worktree/worktree-list-model';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { type ActiveSection, selectTopView, useUiStore } from '@/stores/ui-store';
@@ -44,9 +43,6 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
   if (top.kind === 'work-item-detail') {
     return { left: `work item AB#${top.id}`, right: BACK_KEYS };
   }
-  if (top.kind === 'workstream') {
-    return { left: 'workstream · evidence per record', right: BACK_KEYS };
-  }
 
   switch (section) {
     case 'focus':
@@ -76,21 +72,6 @@ export function useStatusBar(section: ActiveSection): StatusBarCopy {
         left: `ado: ${adoOrg || '—'}/${adoProject || '—'}`,
         // The rows move with J / K and open with Enter.
         right: keys('J K move · Enter open'),
-      };
-    case 'worktrees':
-      return {
-        left: 'worktrees from every watched repository',
-        right: keys(WORKTREES_STATUS_HINT),
-      };
-    case 'workstreams':
-      return {
-        left: 'goals across items, threads and pull requests',
-        right: keys('J K move · Enter open · N new · E next action'),
-      };
-    case 'activity':
-      return {
-        left: 'what changed since you last checked',
-        right: keys('J K move · Enter act · E read · U unread · # dismiss · Z undo'),
       };
     case 'notes':
       return {

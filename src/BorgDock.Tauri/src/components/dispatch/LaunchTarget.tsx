@@ -1,6 +1,15 @@
 import clsx from 'clsx';
 import { useEffect, useState } from 'react';
+import { CleanUpButton, DiskDot } from '@/components/machines/MachineParts';
 import { SearchSelect, type SearchSelectSection, Seg2 } from '@/components/shared/primitives';
+import { useDiskMeasurements } from '@/hooks/useDiskSpace';
+import {
+  diskSeverity,
+  freeSpaceLabel,
+  hostOfEnvironment,
+  hostSeverity,
+  tightestDisk,
+} from '@/services/disk-space';
 import { configuredHosts } from '@/services/dispatch/hosts';
 import { hostRefOf } from '@/services/dispatch/launch';
 import {
@@ -8,6 +17,7 @@ import {
   type LaunchEnvironment,
   type LaunchTarget,
   launchEnvironments,
+  lowDiskNotice,
   projectForRepository,
   repositoryName,
   repositoryProjects,
@@ -267,6 +277,9 @@ export function LaunchTargetFields({
 }: LaunchTargetFieldsProps) {
   const { environments, hostId, project, mode, thread, pullRequestBranch } = choice;
   const hostLabel = environments.find((env) => env.id === hostId)?.label ?? '';
+  const { hosts: measured, cleanup, now } = useDiskMeasurements();
+  const chosenHost = hostOfEnvironment(measured, hostId, now);
+  const chosenSeverity = chosenHost ? hostSeverity(chosenHost.disks) : 0;
   return (
     <>
       <section aria-label="Environment">
@@ -275,26 +288,57 @@ export function LaunchTargetFields({
           <span>T3 runs on</span>
         </h3>
         <div className="bd-lt__envs" role="radiogroup" aria-label="Environment">
-          {environments.map((env) => (
-            <button
-              key={env.id}
-              type="button"
-              role="radio"
-              aria-checked={env.id === hostId}
-              disabled={!env.available}
-              className={clsx('bd-lt__env', env.id === hostId && 'bd-lt__env--on')}
-              onClick={() => choice.setHostId(env.id)}
-            >
-              <span className="bd-lt__env-name">
-                {env.label}
-                <span className="bd-lt__env-dot" data-online={env.available ? 'true' : undefined} />
-              </span>
-              <small className="bd-lt__env-detail">
-                {env.available ? `${env.running} running` : 'offline'}
-              </small>
-            </button>
-          ))}
+          {environments.map((env) => {
+            const disk = tightestDisk(hostOfEnvironment(measured, env.id, now)?.disks ?? []);
+            return (
+              <button
+                key={env.id}
+                type="button"
+                role="radio"
+                aria-checked={env.id === hostId}
+                disabled={!env.available}
+                className={clsx('bd-lt__env', env.id === hostId && 'bd-lt__env--on')}
+                onClick={() => choice.setHostId(env.id)}
+              >
+                <span className="bd-lt__env-name">
+                  {env.label}
+                  <span
+                    className="bd-lt__env-dot"
+                    data-online={env.available ? 'true' : undefined}
+                  />
+                </span>
+                <small className="bd-lt__env-detail">
+                  <span>{env.available ? `${env.running} running` : 'offline'}</span>
+                  {disk && (
+                    <span className="bd-lt__env-free" data-severity={diskSeverity(disk)}>
+                      {freeSpaceLabel(disk)}
+                    </span>
+                  )}
+                </small>
+              </button>
+            );
+          })}
         </div>
+        {chosenHost && chosenSeverity > 0 && (
+          <div className="bd-lt__disk" data-severity={chosenSeverity}>
+            <DiskDot severity={chosenSeverity} />
+            <p role="status">
+              {lowDiskNotice(hostLabel, chosenSeverity === 2, mode === 'worktree')}
+            </p>
+            <CleanUpButton
+              hostId={chosenHost.id}
+              hostName={hostLabel}
+              cleanup={cleanup[chosenHost.id]}
+              variant="ghost"
+              label="Clean up first"
+            />
+          </div>
+        )}
+        {chosenHost && cleanup[chosenHost.id]?.error && (
+          <p className="bd-dp-sheet__hint bd-lt__note" role="alert">
+            {cleanup[chosenHost.id]?.error}
+          </p>
+        )}
         {environments.every((env) => !env.available) && (
           <p className="bd-dp-sheet__hint bd-lt__note">
             No T3 answers. Pair with T3 in Settings → Agents, or start T3.

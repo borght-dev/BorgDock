@@ -1,10 +1,10 @@
 import { listen } from '@tauri-apps/api/event';
 import { resetClient } from '@/services/github/singleton';
-import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import { useInitStore } from '@/stores/initStore';
 import { useSettingsStore } from '@/stores/settings-store';
 import { startActivitySync } from './activity-sync';
 import { startAdoSync } from './ado-sync';
+import { startAiUsageSync } from './ai-usage-sync';
 import { startCiFailuresSync } from './ci-failures-sync';
 import { startDispatchSync } from './dispatch-sync';
 import { createGitHubSync } from './github-sync';
@@ -16,7 +16,6 @@ import { startReviewGuideWriter } from './review-guide-writer';
 import { followT3Sessions } from './t3-sessions';
 import { followUpdateStatus } from './update-status';
 import { startVisibilityTracking } from './visibility';
-import { startWorkstreamsSync } from './workstreams-sync';
 
 let running = false;
 
@@ -36,11 +35,11 @@ export function startApplicationRuntime(): () => void {
   const stopVisibility = startVisibilityTracking();
   const stopSessions = followT3Sessions();
   const stopActivity = startActivitySync();
-  const stopWorkstreams = WORKSTREAMS_ENABLED ? startWorkstreamsSync() : undefined;
   const stopNotes = startNotesSync();
   const stopPhoneLink = startPhoneLinkSync();
   const stopPrViews = startPrViewsSync();
   const stopGuideWriter = startReviewGuideWriter();
+  const stopAiUsage = startAiUsageSync();
   const stopUpdateStatus = followUpdateStatus({ notify: true });
   const getSettings = () => useSettingsStore.getState().settings;
   const reconcile = (restart = false) => {
@@ -138,11 +137,11 @@ export function startApplicationRuntime(): () => void {
     stopVisibility();
     stopSessions();
     stopActivity();
-    stopWorkstreams?.();
     stopNotes();
     stopPhoneLink();
     stopPrViews();
     stopGuideWriter();
+    stopAiUsage();
     stopUpdateStatus();
     document.removeEventListener('borgdock-refresh', refresh);
   };

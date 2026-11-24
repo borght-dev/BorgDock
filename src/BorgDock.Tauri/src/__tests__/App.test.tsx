@@ -416,6 +416,5 @@ describe('App', () => {
 
 beforeAll(async () => {
   await import('@/components/work-items/WorkItemsSection');
-  await import('@/components/worktree/WorktreesSection');
   await import('@/components/dispatch/DispatchSection');
 }, 30_000);

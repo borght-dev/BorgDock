@@ -20,7 +20,6 @@ vi.mock('../dispatch-sync', () => ({ startDispatchSync: mocks.startDispatch }));
 vi.mock('../ci-failures-sync', () => ({ startCiFailuresSync: () => () => {} }));
 vi.mock('../visibility', () => ({ startVisibilityTracking: () => () => {} }));
 vi.mock('../t3-sessions', () => ({ followT3Sessions: () => () => {} }));
-vi.mock('../workstreams-sync', () => ({ startWorkstreamsSync: () => () => {} }));
 vi.mock('../notes-sync', () => ({ startNotesSync: () => () => {} }));
 vi.mock('../phone-link-sync', () => ({ startPhoneLinkSync: () => () => {} }));
 vi.mock('../pr-views-sync', () => ({ startPrViewsSync: () => () => {} }));

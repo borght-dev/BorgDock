@@ -2,11 +2,11 @@ import type { AppSettings } from '@/types/settings';
 import type { RefContext } from './vault-index';
 
 /**
- * The sync folder the vault sits in: the one Workstreams use, so both
- * machines see the same notes. `null`: this machine only.
+ * The folder a sync client shares between machines; the vault is `BorgDock
+ * Notes` inside it. `null`: this machine only.
  */
 export function notesFolderSetting(settings: AppSettings): string | null {
-  return settings.workstreams?.folder?.trim() || null;
+  return settings.notesSyncFolder?.trim() || null;
 }
 
 /** What turns `AB#123` and `repo#12` into identities. */

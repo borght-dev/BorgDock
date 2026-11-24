@@ -2,6 +2,7 @@ import { firstLine, sentence } from '../copy';
 import { entityKey, entryId, normalizeTime } from '../sources';
 import type {
   ActionTarget,
+  ActivityCategory,
   ActivityEnrichment,
   ActivityEntity,
   ActivityResolution,
@@ -108,7 +109,15 @@ export function ordinalOf(runId: string | null): number | null {
   return match ? Number(match[1]) : null;
 }
 
-const TERMINAL = new Set(['completed', 'failed', 'interrupted', 'cancelled']);
+/** What a thread can leave needing me; none of it does once the thread is gone. */
+const NEEDS_ME: ActivityCategory[] = [
+  'agent.question',
+  'agent.plan',
+  'agent.approval',
+  'agent.failed',
+  'agent.interrupted',
+  'agent.limited',
+];
 const WORKING = new Set(['preparing', 'queued', 'starting', 'running', 'waiting']);
 
 function limitKeyOf(limit: NonNullable<T3ThreadFacts['limitRecovery']>): string {
@@ -317,44 +326,26 @@ function deriveThread(
     });
   }
 
-  // Runs that finished while nobody looked: one entry for the gap.
-  if (base.ordinal !== null && ordinal !== null && ordinal > base.ordinal) {
-    const baseSettled = base.runStatus !== null && TERMINAL.has(base.runStatus);
-    const from = baseSettled || base.runId === null ? base.ordinal + 1 : base.ordinal;
-    const to = ordinal - 1;
-    if (to >= from) {
-      add({
-        nativeKey: `${threadKey}:runs:${from}-${to}`,
-        category: 'agent.turns-missed',
-        severity: 'info',
-        needsYou: false,
-        sourceAt: null,
-        summary: sentence.turnsMissed(thread.slot, to - from + 1, thread.title),
-        action: open,
-      });
-    }
-  }
-
+  // A turn that just finishes is no entry: T3 shows it. A run is one when it
+  // fails or stops without my asking.
   if (statusChanged && thread.runId) {
-    if (thread.runStatus === 'completed' && !planRunId) {
-      const nativeKey = `${threadKey}:run:${thread.runId}:completed`;
+    // A failure or an interruption lasts until the thread runs again.
+    if (thread.runStatus === 'completed' || working) {
       draft.resolutions.push(
-        resolveCategories(key, ['agent.turn'], entryId(ctx.sourceId, nativeKey), 'superseded'),
+        resolveCategories(
+          key,
+          ['agent.failed', 'agent.interrupted'],
+          working ? 'running again' : 'a later run completed',
+        ),
       );
-      add({
-        nativeKey,
-        category: 'agent.turn',
-        severity: 'success',
-        needsYou: false,
-        sourceAt: thread.runCompletedAt,
-        summary: sentence.turn(thread.slot, thread.title),
-        detail: messageOf(thread),
-        action: open,
-      });
-    }
-    if (thread.runStatus === 'completed') {
+    } else if (runChanged && base.runId) {
+      // A retry that failed between two reads: its own entry replaces the one before it.
       draft.resolutions.push(
-        resolveCategories(key, ['agent.failed', 'agent.interrupted'], 'a later run completed'),
+        resolveIds(
+          ctx,
+          [`${threadKey}:run:${base.runId}:failed`, `${threadKey}:run:${base.runId}:interrupted`],
+          'a later run',
+        ),
       );
     }
     const errorKey = `${thread.runId}:${thread.runStatus}`;
@@ -425,9 +416,6 @@ function deriveThread(
     }
     const message = messageOf(thread);
     if (message && planRunId) enrich(`${threadKey}:plan:${planRunId}`, { detail: message });
-    if (message && thread.runId && thread.runStatus === 'completed' && !planRunId) {
-      enrich(`${threadKey}:run:${thread.runId}:completed`, { detail: message });
-    }
   }
 
   // Seen in T3: a visit marks what happened up to it read, including
@@ -441,7 +429,8 @@ function deriveThread(
 
 /**
  * The transitions from the baseline to the shell a host just reported.
- * Subagents create nothing: their root thread is the one that waits.
+ * Subagents create nothing: their root thread is the one that waits. A
+ * thread that left the shell ends what it left needing me.
  */
 export function deriveT3(
   ctx: DeriveContext,
@@ -472,5 +461,17 @@ export function deriveT3(
     threads: { ...keepMissing(ctx, previous, present, observation.complete), ...threads },
   });
   if (ctx.seed) return result;
+  if (observation.complete) {
+    for (const [rawId, before] of Object.entries(previous)) {
+      if (present.has(rawId) || before.missingSince) continue;
+      draft.resolutions.push(
+        resolveCategories(
+          entityKey.thread(observation.hostId, rawId),
+          NEEDS_ME,
+          'the thread is gone',
+        ),
+      );
+    }
+  }
   return { ...result, ...draft };
 }

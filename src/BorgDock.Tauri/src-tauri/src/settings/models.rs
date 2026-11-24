@@ -34,30 +34,30 @@ pub struct AppSettings {
     pub azure_dev_ops: AzureDevOpsSettings,
     #[serde(default)]
     pub sql: SqlSettings,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_usage: Option<AiUsageSettings>,
     #[serde(default)]
     pub ci_failures: CiFailureSettings,
     #[serde(default)]
     pub repo_priority: std::collections::HashMap<String, String>,
+    /// A folder a sync client shares between machines; the notes vault is
+    /// `BorgDock Notes` inside it. Absent: this machine only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workstreams: Option<WorkstreamSettings>,
+    pub notes_sync_folder: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub daily_note_folder: Option<String>,
+    /// Read once by `settings::migrate` (v5), never written: the sync folder
+    /// was saved here until 4.17.0.
+    #[serde(default, skip_serializing)]
+    pub workstreams: Option<RetiredWorkstreamSettings>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct WorkstreamSettings {
-    /// A folder a sync client shares between machines. Absent: this machine only.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+pub struct RetiredWorkstreamSettings {
+    #[serde(default)]
     pub folder: Option<String>,
-    /// What this machine is called in a workstream's log. Absent: the computer's name.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub device_label: Option<String>,
-    /// Read once by `settings::migrate` (v3), never written: the
-    /// `workstream.*` activity categories replaced it.
-    #[serde(default, skip_serializing)]
-    pub notifications: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -353,7 +353,7 @@ pub struct ActivityNotificationSettings {
     /// A visit to a thread in T3 marks its entries read.
     #[serde(default = "default_true")]
     pub seen_in_t3: bool,
-    /// Opening a PR, item, workstream or CI group marks its entries read.
+    /// Opening a PR, item or CI group marks its entries read.
     #[serde(default = "default_true")]
     pub mark_read_on_open: bool,
     /// The needs-you count on the taskbar icon.
@@ -523,10 +523,6 @@ pub struct DispatchPrompts {
     pub sync: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub suggest: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workstream_review: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workstream_work: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -1003,4 +999,58 @@ mod redesign_field_tests {
         assert!(!s.summaries.background_review_guides);
         assert!(s.summaries.auto_risk_assessment);
     }
+}
+
+/// How the AI accounts found on this machine are shown in the rail.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct AiUsageSettings {
+    /// The first-start sheet that names the accounts was answered.
+    #[serde(default)]
+    pub introduced: bool,
+    /// By account id (`claude:~/.claude-ops`).
+    #[serde(default)]
+    pub accounts: std::collections::BTreeMap<String, AiAccountSettings>,
+    /// Account ids in the order they were dragged into.
+    #[serde(default)]
+    pub order: Vec<String>,
+    /// The rail keeps `order`; off, the account with the least left comes first.
+    #[serde(default)]
+    pub keep_order: bool,
+    /// GitHub's API requests are a row among the limits.
+    #[serde(default = "default_true")]
+    pub show_git_hub: bool,
+    /// Under this percentage left an account shows red.
+    #[serde(default = "default_ai_warn_under")]
+    pub warn_under: u8,
+}
+
+fn default_ai_warn_under() -> u8 {
+    10
+}
+
+impl Default for AiUsageSettings {
+    fn default() -> Self {
+        Self {
+            introduced: false,
+            accounts: Default::default(),
+            order: Vec::new(),
+            keep_order: false,
+            show_git_hub: true,
+            warn_under: default_ai_warn_under(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct AiAccountSettings {
+    /// Up to three characters shown next to the provider's icon.
+    pub label: String,
+    /// Which identity colour the label wears, 1 to 5.
+    pub color: u8,
+    #[serde(default)]
+    pub hidden: bool,
 }

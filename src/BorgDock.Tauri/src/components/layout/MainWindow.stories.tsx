@@ -10,6 +10,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { seedActivity } from '@/components/activity/__fixtures__/activity-data';
+import {
+  RECENT_EARLIER,
+  RECENT_LOOKED_AT,
+  RECENT_NEEDS_YOU,
+  RECENT_NOW,
+} from '@/components/activity/__fixtures__/recent-data';
 import {
   LAUNCH_BRANCHES,
   LAUNCH_CATALOGUE,
@@ -19,6 +26,7 @@ import {
   makeRunScene,
   WIDE_CATALOGUE,
 } from '@/components/dispatch/__fixtures__/dispatch-data';
+import { machineDisks, machineWorktrees } from '@/components/machines/__fixtures__/machines-data';
 import {
   bugWithReproSteps,
   epicWithCustomFields,
@@ -28,9 +36,13 @@ import {
   taskMinimalFields,
   userStoryWithRichBody,
 } from '@/components/work-items/__fixtures__/work-item-data';
+import { ACCOUNTS, INTRODUCED, readingsAt } from '@/services/ai-usage/__fixtures__/accounts';
 import type { BriefFilter } from '@/services/dispatch/walk';
 import { DEFAULT_DISPLAY } from '@/services/pr-list/display';
 import { reviewRequestKey } from '@/services/priority-scoring';
+import { useActivityStore } from '@/stores/activity-store';
+import { useAiUsageStore } from '@/stores/ai-usage-store';
+import { useDiskSpaceStore } from '@/stores/disk-space-store';
 import { type DispatchViewMode, type RunIntent, useDispatchStore } from '@/stores/dispatch-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePrStore } from '@/stores/pr-store';
@@ -368,6 +380,46 @@ function seedDispatch(
   } as never);
 }
 
+/**
+ * What the rail's foot shows: what is left of each AI account, each machine's
+ * disk, and how many things need you.
+ */
+function seedRailFoot() {
+  const now = Date.now();
+  const ctrl = getControl();
+  ctrl.invokeResponses.host_disk_space = () => machineDisks('low');
+  ctrl.invokeResponses.worktree_cache_get_all = machineWorktrees();
+  ctrl.invokeResponses.worktree_cache_refresh = machineWorktrees();
+  ctrl.invokeResponses.ai_usage_accounts = ACCOUNTS;
+  ctrl.invokeResponses.ai_usage_read = [];
+  useDiskSpaceStore.setState({ hosts: machineDisks('low', now), cleanup: {}, error: null });
+  useAiUsageStore.setState({
+    accounts: ACCOUNTS,
+    looked: true,
+    readings: readingsAt(now),
+    lastReadAt: now - 30_000,
+    isReading: false,
+  });
+  useSettingsStore.setState((s) => ({ settings: { ...s.settings, aiUsage: INTRODUCED } }));
+  useActivityStore.setState({
+    counts: { unread: 7, needsYou: 3, byCategory: {}, bySource: {}, revision: 1 },
+  });
+}
+
+/** The journal behind the bell, with its times moved so the card reads "14 min ago" today. */
+function seedRecent() {
+  const shift = Date.now() - RECENT_NOW.getTime();
+  const moved = (iso: string) => new Date(new Date(iso).getTime() + shift).toISOString();
+  seedActivity({
+    entries: [...RECENT_NEEDS_YOU, ...RECENT_EARLIER].map((entry) => ({
+      ...entry,
+      sourceAt: entry.sourceAt && moved(entry.sourceAt),
+      observedAt: moved(entry.observedAt),
+    })),
+  });
+  useUiStore.setState({ activityVisitedAt: moved(RECENT_LOOKED_AT) });
+}
+
 // ── harness ──────────────────────────────────────────────────────────────────
 
 const UP_TO_DATE: UpdateStatus = {
@@ -394,6 +446,7 @@ function Harness({
   dispatchFilter = null,
   agentsWaiting = false,
   railCollapsed = false,
+  recent = false,
   update,
   autoDownload = true,
 }: {
@@ -422,6 +475,8 @@ function Harness({
   agentsWaiting?: boolean;
   /** The rail folded to icons. */
   railCollapsed?: boolean;
+  /** Fill the journal behind the bell. */
+  recent?: boolean;
   /** What the updater reports; the title bar shows a chip when it asks for something. */
   update?: Partial<UpdateStatus>;
   /** Settings > Updates > Auto-download updates. */
@@ -431,6 +486,8 @@ function Harness({
   // Items selection restore) observe the data before they run.
   useState(() => {
     seedPrStore();
+    seedRailFoot();
+    if (recent) seedRecent();
     if (section === 'workitems') seedWorkItems();
     if (section === 'dispatch' || agentsWaiting) {
       seedDispatch(
@@ -495,6 +552,33 @@ export const RailCollapsedLight: Story = {
   globals: { theme: 'light' },
 };
 
+/** The AI usage card, opened from the rail's Limits block. */
+export const RailLimitsOpen: Story = {
+  args: { section: 'prs' },
+  play: async ({ canvasElement }) => {
+    const rail = within(canvasElement).getByRole('complementary', { name: 'Navigation' });
+    await userEvent.click(within(rail).getByRole('button', { name: 'Limits left' }));
+  },
+};
+
+/** The Machines card, opened from the rail. */
+export const RailMachinesOpen: Story = {
+  args: { section: 'prs' },
+  play: async ({ canvasElement }) => {
+    const rail = within(canvasElement).getByRole('complementary', { name: 'Navigation' });
+    await userEvent.click(within(rail).getByRole('button', { name: /^Machines/ }));
+  },
+};
+
+/** Recent, opened from the bell in the rail's bar. */
+export const RailRecentOpen: Story = {
+  args: { section: 'focus', recent: true },
+  play: async ({ canvasElement }) => {
+    const rail = within(canvasElement).getByRole('complementary', { name: 'Navigation' });
+    await userEvent.click(within(rail).getByRole('button', { name: /^Recent/ }));
+  },
+};
+
 /** An update is downloaded: the title bar offers the restart. */
 export const UpdateReady: Story = {
   args: { section: 'prs', update: { phase: 'ready', version: '4.17.0', progress: 100 } },
@@ -528,7 +612,6 @@ export const RailFocus: Story = { args: { section: 'focus' } };
 /** Focus as the board: four computed columns, no drag. */
 export const RailFocusBoard: Story = { args: { section: 'focus', focusLayout: 'board' } };
 
-/** The Worktrees section. */
 /** Dispatch: your work by what it needs, an agent's question open beside the list. */
 export const RailDispatch: Story = { args: { section: 'dispatch' } };
 
@@ -660,8 +743,6 @@ export const RailDispatchStatesDrawer: Story = {
 
 /** Focus with agents waiting: they show above the pull requests. */
 export const RailFocusAgents: Story = { args: { section: 'focus', agentsWaiting: true } };
-
-export const RailWorktrees: Story = { args: { section: 'worktrees' } };
 
 /** Work items: rows grouped by state, query picker in the head row. */
 export const RailWorkItems: Story = { args: { section: 'workitems' } };
