@@ -1,5 +1,28 @@
 # Changelog
 
+## 4.17.0 — 2026-11-24
+
+### New Features
+
+- **See what's left of every AI account** — The foot of the rail now shows each Claude and Codex account on this machine, with what is left of its week and its session. Click it for the details and when each limit resets. Each account gets a short label and a colour, taken from what T3 Code calls it, and you can change both in Settings → AI accounts. When an account runs out, Focus tells you when it is back, which threads stopped on it and which of your other accounts still has room. ![The rail's Limits card with three Claude accounts and two Codex accounts](whats-new/4.17.0/ai-limits.png)
+- **Free disk space for every machine** — The rail shows how much room is left on each machine your agents work on, and turns amber or red before a disk fills up. Its card lists the worktrees whose pull request already merged, so you can prune them or clear the build caches in a click. Starting an agent on a machine that is short on space warns you first, and Focus keeps a card up until the disk recovers. ![The Machines card with a laptop and a Mac mini that is low on space](whats-new/4.17.0/machines.png)
+
+### Improvements
+
+- **Catch up from the bell** — The bell at the bottom of the rail counts what needs you right now: a question from an agent, a plan to approve, a failed check on your pull request, a review request. Click it for Recent: what needs you first, then what happened since you last looked. Something stops counting the moment it's handled, wherever you handled it. All history opens the full list in its own window. ![The Recent card opened from the bell, with three things that need you](whats-new/4.17.0/recent.png)
+- **A rail of five sections** — Focus, Dispatch, Pull requests, Work items and Notes, on keys 1 to 5. Settings sits in the bottom left corner, next to Open window, the bell and the fold button, so the title bar keeps only what the window needs. Worktrees stays one Ctrl+F7 away. ![The main window with the five sections and the rail's new foot](whats-new/4.17.0/rail.png)
+- The pull request list's header fits in two rows: the view tabs, then one toolbar with search, filters, Group, Sort and Display. That leaves room for two more pull requests.
+- BorgDock checks for updates every hour, also after your laptop wakes up, and Settings → Updates says when it last looked. When an update is ready, a chip in the title bar offers the restart.
+- Settings opens at once.
+- When someone else's pull request merges, you get the same gold toast as for your own.
+- On iPhone, the pull request list has the desktop's tabs, filters, groupings and saved views, and your saved views sync between the two. Quick Review on the phone reviews one pull request or runs through one author's.
+- Workstreams is gone. A goal fits in a note now, and your existing workstream files stay where they are.
+
+### Bug Fixes
+
+- Review requests, failed checks and agent questions stop counting as "needs you" once they're over, so the count only shows what's actually waiting.
+- Fewer notifications: a CI failure that doesn't touch your pull requests no longer pops up.
+
 ## 4.16.0 — 2026-11-19
 
 ### Improvements

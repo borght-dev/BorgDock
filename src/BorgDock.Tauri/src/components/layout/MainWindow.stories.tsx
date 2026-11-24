@@ -40,7 +40,6 @@ import { ACCOUNTS, INTRODUCED, readingsAt } from '@/services/ai-usage/__fixtures
 import type { BriefFilter } from '@/services/dispatch/walk';
 import { DEFAULT_DISPLAY } from '@/services/pr-list/display';
 import { reviewRequestKey } from '@/services/priority-scoring';
-import { useActivityStore } from '@/stores/activity-store';
 import { useAiUsageStore } from '@/stores/ai-usage-store';
 import { useDiskSpaceStore } from '@/stores/disk-space-store';
 import { type DispatchViewMode, type RunIntent, useDispatchStore } from '@/stores/dispatch-store';
@@ -401,9 +400,7 @@ function seedRailFoot() {
     isReading: false,
   });
   useSettingsStore.setState((s) => ({ settings: { ...s.settings, aiUsage: INTRODUCED } }));
-  useActivityStore.setState({
-    counts: { unread: 7, needsYou: 3, byCategory: {}, bySource: {}, revision: 1 },
-  });
+  seedRecent();
 }
 
 /** The journal behind the bell, with its times moved so the card reads "14 min ago" today. */
@@ -446,7 +443,6 @@ function Harness({
   dispatchFilter = null,
   agentsWaiting = false,
   railCollapsed = false,
-  recent = false,
   update,
   autoDownload = true,
 }: {
@@ -475,8 +471,6 @@ function Harness({
   agentsWaiting?: boolean;
   /** The rail folded to icons. */
   railCollapsed?: boolean;
-  /** Fill the journal behind the bell. */
-  recent?: boolean;
   /** What the updater reports; the title bar shows a chip when it asks for something. */
   update?: Partial<UpdateStatus>;
   /** Settings > Updates > Auto-download updates. */
@@ -487,7 +481,6 @@ function Harness({
   useState(() => {
     seedPrStore();
     seedRailFoot();
-    if (recent) seedRecent();
     if (section === 'workitems') seedWorkItems();
     if (section === 'dispatch' || agentsWaiting) {
       seedDispatch(
@@ -572,7 +565,7 @@ export const RailMachinesOpen: Story = {
 
 /** Recent, opened from the bell in the rail's bar. */
 export const RailRecentOpen: Story = {
-  args: { section: 'focus', recent: true },
+  args: { section: 'focus' },
   play: async ({ canvasElement }) => {
     const rail = within(canvasElement).getByRole('complementary', { name: 'Navigation' });
     await userEvent.click(within(rail).getByRole('button', { name: /^Recent/ }));

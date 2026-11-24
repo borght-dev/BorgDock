@@ -4,6 +4,58 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.17.0",
+    "date": "2026-11-24",
+    "summary": "See what's left of every AI account, Free disk space for every machine, Catch up from the bell, and more.",
+    "highlights": [
+      {
+        "kind": "new",
+        "title": "See what's left of every AI account",
+        "description": "The foot of the rail now shows each Claude and Codex account on this machine, with what is left of its week and its session. Click it for the details and when each limit resets. Each account gets a short label and a colour, taken from what T3 Code calls it, and you can change both in Settings → AI accounts. When an account runs out, Focus tells you when it is back, which threads stopped on it and which of your other accounts still has room.",
+        "hero": {
+          "src": "/whats-new/4.17.0/ai-limits.png",
+          "alt": "The rail's Limits card with three Claude accounts and two Codex accounts"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "new",
+        "title": "Free disk space for every machine",
+        "description": "The rail shows how much room is left on each machine your agents work on, and turns amber or red before a disk fills up. Its card lists the worktrees whose pull request already merged, so you can prune them or clear the build caches in a click. Starting an agent on a machine that is short on space warns you first, and Focus keeps a card up until the disk recovers.",
+        "hero": {
+          "src": "/whats-new/4.17.0/machines.png",
+          "alt": "The Machines card with a laptop and a Mac mini that is low on space"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "Catch up from the bell",
+        "description": "The bell at the bottom of the rail counts what needs you right now: a question from an agent, a plan to approve, a failed check on your pull request, a review request. Click it for Recent: what needs you first, then what happened since you last looked. Something stops counting the moment it's handled, wherever you handled it. All history opens the full list in its own window.",
+        "hero": {
+          "src": "/whats-new/4.17.0/recent.png",
+          "alt": "The Recent card opened from the bell, with three things that need you"
+        },
+        "keyboard": null
+      },
+      {
+        "kind": "improved",
+        "title": "A rail of five sections",
+        "description": "Focus, Dispatch, Pull requests, Work items and Notes, on keys 1 to 5. Settings sits in the bottom left corner, next to Open window, the bell and the fold button, so the title bar keeps only what the window needs. Worktrees stays one Ctrl+F7 away.",
+        "hero": {
+          "src": "/whats-new/4.17.0/rail.png",
+          "alt": "The main window with the five sections and the rail's new foot"
+        },
+        "keyboard": null
+      }
+    ],
+    "alsoFixed": [
+      "Review requests, failed checks and agent questions stop counting as \"needs you\" once they're over, so the count only shows what's actually waiting.",
+      "Fewer notifications: a CI failure that doesn't touch your pull requests no longer pops up."
+    ],
+    "autoOpenEligible": true
+  },
+  {
     "version": "4.16.0",
     "date": "2026-11-19",
     "summary": "Approve and maximize from Quick Review.",

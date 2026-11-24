@@ -1,0 +1,6 @@
+[
+  { "slug": "ai-limits", "storyId": "main-window-mainwindow--rail-limits-open", "viewport": { "width": 1360, "height": 860 }, "delay": 2500 },
+  { "slug": "machines", "storyId": "main-window-mainwindow--rail-machines-open", "viewport": { "width": 1360, "height": 860 }, "delay": 2500 },
+  { "slug": "recent", "storyId": "main-window-mainwindow--rail-recent-open", "viewport": { "width": 1360, "height": 860 }, "delay": 2500 },
+  { "slug": "rail", "storyId": "main-window-mainwindow--rail-focus", "viewport": { "width": 1360, "height": 860 }, "delay": 2500 }
+]
