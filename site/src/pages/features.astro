@@ -17,7 +17,6 @@ const toc = [
   { id: 'dispatch', label: 'Dispatch' },
   { id: 'notes', label: 'Notes' },
   { id: 'fix', label: 'Fix with Claude' },
-  { id: 'work', label: 'Worktrees and Work items' },
   { id: 'tools', label: 'Tools' },
 ];
 
@@ -30,7 +29,7 @@ const tools = [
   {
     slug: 'worktrees-window',
     name: 'Worktrees window',
-    text: 'Press Ctrl+F7 from anywhere for every worktree in a small window. Enter opens a terminal in the one you picked.',
+    text: "Press Ctrl+F7 from anywhere for every worktree in a small window, grouped by the machine it lives on under that machine's free disk space. Enter opens a terminal in the one you picked.",
   },
   {
     slug: 'notes-quick',
@@ -219,22 +218,6 @@ const tools = [
           you pick.
         </p>
         <Capture slot="media" slug="pr-detail-failing" />
-      </Job>
-
-      <Job id="work" eyebrow="Worktrees and Work items" title="Keep the rest of your work close" reverse reading>
-        <p>
-          Worktrees groups your worktrees by the machine they live on, under that machine's free disk
-          space. A disk that runs low stands out, with Clean up in T3 right beside it.
-        </p>
-        <p>
-          Every row shows its branch, its changes and the pull request on it. Press O for a terminal,
-          T to open it in T3 or F to make it a favourite.
-        </p>
-        <p>
-          Work items brings your Azure DevOps queries into the same window, so you can open an item
-          and change it without a browser.
-        </p>
-        <Capture slot="media" slug="worktrees" />
       </Job>
     </div>
 

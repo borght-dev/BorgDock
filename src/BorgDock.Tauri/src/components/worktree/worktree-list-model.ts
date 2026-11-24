@@ -3,18 +3,11 @@ import type { WorktreeCacheRepo, WorktreeEntry, WorktreeSnapshot } from '@/types
 
 /**
  * Pure helpers behind `WorktreeList`: flattening the Rust cache snapshot into
- * rows, ordering, filtering and grouping. Shared by the worktrees tool window
- * and the main window's Worktrees section.
+ * rows, ordering, filtering and grouping. The rail's Machines block groups
+ * hosts with them too (`machines-model.ts`).
  */
 
 export type WorktreeRepoRef = WorktreeCacheRepo['repo'];
-
-/**
- * Key hints for the status bar while the Worktrees section is showing
- * (`useStatusBar` adds "/ search · R refresh" in front in the rail layout).
- */
-export const WORKTREES_STATUS_HINT =
-  'J K move · Enter changes · T T3 · O terminal · F favourite · Ctrl+F7 window';
 
 /** One row of the list: a worktree and the repository it belongs to. */
 export interface WorktreeListEntry {
@@ -199,7 +192,7 @@ export function groupByHost(
   );
 }
 
-/** The rows of `groupByHost` in the order they render: what J/K and ↑/↓ walk. */
+/** The rows of `groupByHost` in the order they render: what ↑/↓ walk. */
 export function rowsInOrder(hosts: readonly WorktreeHostGroup[]): WorktreeListEntry[] {
   return hosts.flatMap((host) => host.repos.flatMap((group) => group.entries));
 }

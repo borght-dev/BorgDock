@@ -141,6 +141,7 @@ test('number keys switch sections', async ({ page }) => {
 
   await page.keyboard.press('5');
   await expect(railButton(page, /^Notes/)).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { level: 1, name: 'Notes' })).toBeVisible();
 
   await page.keyboard.press('4');
   await expect(railButton(page, /^Work items/)).toHaveAttribute('aria-current', 'page');

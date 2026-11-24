@@ -536,7 +536,6 @@ export const RailFocus: Story = { args: { section: 'focus' } };
 /** Focus as the board: four computed columns, no drag. */
 export const RailFocusBoard: Story = { args: { section: 'focus', focusLayout: 'board' } };
 
-/** The Worktrees section. */
 /** Dispatch: your work by what it needs, an agent's question open beside the list. */
 export const RailDispatch: Story = { args: { section: 'dispatch' } };
 

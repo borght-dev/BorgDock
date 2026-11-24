@@ -2,7 +2,6 @@ import { LogicalSize } from '@tauri-apps/api/dpi';
 import { listen } from '@tauri-apps/api/event';
 import { currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef } from 'react';
-import { LaunchGuardDialog } from '@/components/ci-failures/LaunchGuardDialog';
 import { WindowStatusBar } from '@/components/shared/chrome';
 import { Kbd } from '@/components/shared/primitives';
 import { WindowTitleBar } from '@/components/shared/WindowTitleBar';
@@ -92,8 +91,8 @@ function PaletteStatus({ shown, total, favoritesOnly }: WorktreeListStatus) {
 
 /**
  * The worktrees tool window (Ctrl+F7, `open_tool_window("worktrees")`): window
- * chrome around the shared `WorktreeList`. The chrome is the title bar and
- * status bar, the one-time fit to the list's height and the reveal
+ * chrome around `WorktreeList`. The chrome is the title bar and status bar,
+ * the one-time fit to the list's height and the reveal
  * (`window_ready`), hiding on Esc, and the `palette-shown` reset when the
  * hidden window is shown again.
  */
@@ -123,17 +122,12 @@ export function WorktreePaletteApp() {
   }, []);
 
   return (
-    <>
-      <WorktreeList
-        ref={listRef}
-        host="window"
-        onClose={hide}
-        onReveal={reveal}
-        header={<WindowTitleBar title="Worktrees" meta={<Kbd>Ctrl+F7</Kbd>} />}
-        renderStatus={(status) => <PaletteStatus {...status} />}
-      />
-      {/* Open in T3 (T) asks it when someone already owns the PR's failure. */}
-      <LaunchGuardDialog />
-    </>
+    <WorktreeList
+      ref={listRef}
+      onClose={hide}
+      onReveal={reveal}
+      header={<WindowTitleBar title="Worktrees" meta={<Kbd>Ctrl+F7</Kbd>} />}
+      renderStatus={(status) => <PaletteStatus {...status} />}
+    />
   );
 }

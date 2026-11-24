@@ -167,9 +167,6 @@ export const commands = {
 	scanReposUnder: (path: string) => typedError<RepoCandidate_Serialize[], string>(__TAURI_INVOKE("scan_repos_under", { path })),
 	resolveRepoPath: (path: string) => typedError<DiscoveredRepo, string>(__TAURI_INVOKE("resolve_repo_path", { path })),
 	runGhCommand: (args: string[]) => typedError<string, string>(__TAURI_INVOKE("run_gh_command", { args })),
-	listWorktreeChanges: (worktreePath: string) => typedError<WorktreeChangeSet_Serialize, string>(__TAURI_INVOKE("list_worktree_changes", { worktreePath })),
-	diffWorktreeVsHead: (worktreePath: string, filePath: string) => typedError<UnifiedDiff_Serialize, string>(__TAURI_INVOKE("diff_worktree_vs_head", { worktreePath, filePath })),
-	diffWorktreeVsBase: (worktreePath: string, baseBranch: string, filePath: string) => typedError<UnifiedDiff_Serialize, string>(__TAURI_INVOKE("diff_worktree_vs_base", { worktreePath, baseBranch, filePath })),
 	/**
 	 *  Show + focus the main window so it can host the setup wizard. The wizard
 	 *  renders as a centered card inside the normal-sized main window.
@@ -1402,20 +1399,6 @@ export type AzureDevOpsSettings_Serialize = {
 	updatePrStatusWhenWiDone: boolean,
 };
 
-export type BaseBranchSource = "origin-head" | "init-default" | "fallback-main" | "fallback-master" | "unknown";
-
-export type BinaryMarker = BinaryMarker_Serialize | BinaryMarker_Deserialize;
-
-export type BinaryMarker_Deserialize = {
-	oldSize?: number | null,
-	newSize?: number | null,
-};
-
-export type BinaryMarker_Serialize = {
-	oldSize: number | null,
-	newSize: number | null,
-};
-
 export type BranchDto = {
 	name: string,
 	isDefault: boolean,
@@ -2089,44 +2072,6 @@ export type ConversationReferences = {
 	mentionedIds: number[],
 };
 
-export type DiffHunk = DiffHunk_Serialize | DiffHunk_Deserialize;
-
-export type DiffHunk_Deserialize = {
-	header: string,
-	oldStart: number,
-	oldCount: number,
-	newStart: number,
-	newCount: number,
-	lines: DiffLine_Deserialize[],
-};
-
-export type DiffHunk_Serialize = {
-	header: string,
-	oldStart: number,
-	oldCount: number,
-	newStart: number,
-	newCount: number,
-	lines: DiffLine_Serialize[],
-};
-
-export type DiffLine = DiffLine_Serialize | DiffLine_Deserialize;
-
-export type DiffLineKind = "add" | "delete" | "context";
-
-export type DiffLine_Deserialize = {
-	kind: DiffLineKind,
-	content: string,
-	oldLineNumber?: number | null,
-	newLineNumber?: number | null,
-};
-
-export type DiffLine_Serialize = {
-	kind: DiffLineKind,
-	content: string,
-	oldLineNumber: number | null,
-	newLineNumber: number | null,
-};
-
 export type DiscoveredRepo = {
 	owner: string,
 	name: string,
@@ -2180,30 +2125,6 @@ export type EvidenceState = "ready" |
 "unavailable" |
 /**  Retrying later may help; see `retry_after_secs`. */
 "failed";
-
-export type FileChange = FileChange_Serialize | FileChange_Deserialize;
-
-export type FileChangeStatus = "added" | "modified" | "deleted" | "renamed" | "untracked" | "submodule";
-
-export type FileChange_Deserialize = {
-	path: string,
-	previousPath?: string | null,
-	status: FileChangeStatus,
-	additions: number,
-	deletions: number,
-	isBinary: boolean,
-	isSubmodule: boolean,
-};
-
-export type FileChange_Serialize = {
-	path: string,
-	previousPath: string | null,
-	status: FileChangeStatus,
-	additions: number,
-	deletions: number,
-	isBinary: boolean,
-	isSubmodule: boolean,
-};
 
 export type GhAccount = {
 	login: string,
@@ -3568,24 +3489,6 @@ export type UiSettings_Serialize = {
 	staleAfterDays?: number,
 };
 
-export type UnifiedDiff = UnifiedDiff_Serialize | UnifiedDiff_Deserialize;
-
-export type UnifiedDiff_Deserialize = {
-	filePath: string,
-	previousPath?: string | null,
-	hunks: DiffHunk_Deserialize[],
-	binary?: BinaryMarker_Deserialize | null,
-	isSubmodule: boolean,
-};
-
-export type UnifiedDiff_Serialize = {
-	filePath: string,
-	previousPath: string | null,
-	hunks: DiffHunk_Serialize[],
-	binary: BinaryMarker_Serialize | null,
-	isSubmodule: boolean,
-};
-
 export type UpdateInfo = UpdateInfo_Serialize | UpdateInfo_Deserialize;
 
 export type UpdateInfo_Deserialize = {
@@ -3638,26 +3541,6 @@ export type Workspace_Serialize =
 { type: "worktree"; baseRef: string | null } |
 /**  A checkout that exists already, such as the one another thread works in. */
 { type: "existingWorktree"; worktreePath: string; branch: string | null };
-
-export type WorktreeChangeSet = WorktreeChangeSet_Serialize | WorktreeChangeSet_Deserialize;
-
-export type WorktreeChangeSet_Deserialize = {
-	vsHead: FileChange_Deserialize[],
-	vsBase: FileChange_Deserialize[],
-	baseBranch: string,
-	baseBranchSource: BaseBranchSource,
-	detachedHead: boolean,
-	mergeBaseUnavailable: boolean,
-};
-
-export type WorktreeChangeSet_Serialize = {
-	vsHead: FileChange_Serialize[],
-	vsBase: FileChange_Serialize[],
-	baseBranch: string,
-	baseBranchSource: BaseBranchSource,
-	detachedHead: boolean,
-	mergeBaseUnavailable: boolean,
-};
 
 export type WorktreeEntry = {
 	path: string,

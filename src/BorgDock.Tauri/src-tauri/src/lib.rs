@@ -141,9 +141,6 @@ macro_rules! app_commands {
             git::commands::scan_repos_under,
             git::commands::resolve_repo_path,
             git::commands::run_gh_command,
-            git::worktree_changes::list_worktree_changes,
-            git::worktree_changes::diff_worktree_vs_head,
-            git::worktree_changes::diff_worktree_vs_base,
             // Window
             platform::window::show_setup_wizard,
             platform::window::open_pr_detail_window,

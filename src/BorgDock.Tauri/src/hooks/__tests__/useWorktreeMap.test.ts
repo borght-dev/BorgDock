@@ -119,6 +119,28 @@ describe('useWorktreeMap', () => {
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
+  it('asks for a rescan when only remote repositories are configured', () => {
+    const settings: AppSettings = {
+      ...makeSettings(),
+      remoteWorktreeRepos: [
+        {
+          id: 'mini',
+          label: 'Mac mini',
+          owner: 'o',
+          name: 'r',
+          sshTarget: 'me@mini',
+          identityFile: '',
+          basePath: '/srv/r',
+          enabled: true,
+        },
+      ],
+    };
+    renderHook(() => useWorktreeMap(settings));
+    expect(useUiStore.getState().worktreeBranchMap.size).toBe(0);
+    expect(mockInvoke.mock.calls).toEqual([['worktree_cache_refresh']]);
+    expect(mockListen).not.toHaveBeenCalled();
+  });
+
   it('reads the cache snapshot on mount and builds the branch map', async () => {
     mockInvoke.mockImplementation((cmd: string) => {
       if (cmd === 'worktree_cache_get_all') {
