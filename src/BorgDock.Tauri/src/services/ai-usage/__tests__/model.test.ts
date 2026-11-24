@@ -289,6 +289,35 @@ describe('an account that ran out', () => {
     ]);
   });
 
+  it('is not out when only one model used up its own week', () => {
+    const now = Date.now();
+    const readings = readingsAt(now);
+    const ops = readings[CLAUDE_OPS.id]!;
+    const modelSpent = {
+      ...readings,
+      [CLAUDE_OPS.id]: {
+        ...ops,
+        limits: [
+          ...ops.limits,
+          {
+            kind: 'model',
+            label: 'Fable',
+            usedPercent: 100,
+            resetsAt: Math.floor(now / 1000) + 3600,
+            windowSeconds: 604_800,
+          },
+        ],
+      },
+    };
+    const all = accountViews({
+      accounts: ACCOUNTS,
+      readings: modelSpent,
+      settings: INTRODUCED,
+      nowMs: now,
+    });
+    expect(accountsRunOut(all)).toEqual([]);
+  });
+
   it('is not out while a little is left, even when it rounds to 0%', () => {
     const now = Date.now();
     const readings = readingsAt(now);

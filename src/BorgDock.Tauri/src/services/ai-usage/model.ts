@@ -51,7 +51,7 @@ export interface AccountView extends AccountPreference {
   /** Share of the headline limit left, 0 to 100. Null when nothing current is known. */
   left: number | null;
   tone: RailTone;
-  /** While a current limit is used up (a session or the week): when the last of those resets, in seconds. */
+  /** While an account-wide limit is used up (a session or the week): when the last of those resets, in seconds. */
   outUntil: number | null;
 }
 
@@ -242,7 +242,10 @@ export function accountViews({
     const limits = currentLimits(reading, nowMs);
     const headline = limits.find((limit) => limit.kind === 'weekly') ?? limits[0] ?? null;
     const left = headline ? percentLeft(headline) : null;
-    const spent = limits.filter((limit) => limit.usedPercent >= 100 && limit.resetsAt !== null);
+    // A model's own weekly cap leaves the account's other models usable.
+    const spent = limits.filter(
+      (limit) => limit.kind !== 'model' && limit.usedPercent >= 100 && limit.resetsAt !== null,
+    );
     return {
       account,
       ...preferences[account.id]!,
