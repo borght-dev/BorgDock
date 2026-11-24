@@ -184,6 +184,11 @@ export const commands = {
 	openPrDetailWindow: (owner: string, repo: string, number: number) => typedError<null, string>(__TAURI_INVOKE("open_pr_detail_window", { owner, repo, number })),
 	openWhatsNewWindow: (version: string | null) => typedError<null, string>(__TAURI_INVOKE("open_whats_new_window", { version })),
 	/**
+	 *  All history: the Activity list in a window of its own. Opens it, or
+	 *  focuses the one that is open, and shows `entry_id` there when given.
+	 */
+	openActivityHistoryWindow: (entryId: string | null) => typedError<null, string>(__TAURI_INVOKE("open_activity_history_window", { entryId })),
+	/**
 	 *  Resize the flyout and reposition so the correct corner stays anchored to
 	 *  the tray/indicator area. On Windows (BottomRight anchor) the flyout's
 	 *  bottom edge stays fixed relative to the taskbar; on macOS/Linux
@@ -348,7 +353,10 @@ export const commands = {
 	filePreviewRelease: (url: string) => typedError<null, string>(__TAURI_INVOKE("file_preview_release", { url })),
 	activityOpenSource: (source: ActivitySourceRequest) => typedError<ActivitySourceState_Serialize, string>(__TAURI_INVOKE("activity_open_source", { source })),
 	activitySources: () => typedError<ActivitySourceState_Serialize[], string>(__TAURI_INVOKE("activity_sources")),
-	/**  Settings dropped the source: its entries stay, with actions disabled. */
+	/**
+	 *  Settings dropped the source, or another account reads its repository now:
+	 *  its entries stay, with actions disabled, and none of them needs me.
+	 */
 	activityRetireSource: (sourceId: string) => typedError<boolean, string>(__TAURI_INVOKE("activity_retire_source", { sourceId })),
 	activityCommit: (commit: ActivityCommit_Deserialize) => typedError<ActivityCommitResult_Serialize, string>(__TAURI_INVOKE("activity_commit", { commit })),
 	activityList: (query: ActivityListQuery_Deserialize) => typedError<ActivityPage_Serialize, string>(__TAURI_INVOKE("activity_list", { query })),

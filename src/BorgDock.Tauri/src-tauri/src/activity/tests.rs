@@ -1,10 +1,19 @@
-use super::commands::{commit, mark, open_source, store_info};
+use super::commands::{commit, mark, store_info};
 use super::dto::*;
 use super::queries::{self, UNREAD_CAPACITY};
 use super::ActivityDb;
 use rusqlite::Connection;
 
 const SOURCE: &str = "t3:local";
+
+async fn open_source(
+    store: &ActivityDb,
+    request: ActivitySourceRequest,
+) -> Result<ActivitySourceState, String> {
+    super::commands::open_source(store, request)
+        .await
+        .map(|(state, _)| state)
+}
 
 fn store() -> (tempfile::TempDir, ActivityDb) {
     let dir = tempfile::tempdir().unwrap();
@@ -118,6 +127,25 @@ async fn read_of(store: &ActivityDb, id: &str) -> (String, Option<String>) {
         )
     })
     .await
+}
+
+fn resolved(ids: &[&str], by: &str) -> ActivityResolution {
+    ActivityResolution {
+        ids: ids.iter().map(|id| format!("{SOURCE}|{id}")).collect(),
+        entity_key: None,
+        categories: vec![],
+        status: "resolved".into(),
+        resolved_by: by.into(),
+    }
+}
+
+async fn needs_you(store: &ActivityDb) -> i64 {
+    store
+        .db
+        .with_store(|conn| queries::counts(conn))
+        .await
+        .unwrap()
+        .needs_you
 }
 
 fn all() -> ActivityListQuery {
@@ -939,7 +967,7 @@ async fn export_writes_sources_and_entries() {
 }
 
 #[tokio::test]
-async fn read_since_shares_my_reads_but_not_roll_ups_or_reads_from_the_phone() {
+async fn read_since_shares_my_reads_but_not_roll_ups_ended_facts_or_reads_from_the_phone() {
     let (_dir, store) = seeded().await;
     commit(
         &store,
@@ -955,6 +983,16 @@ async fn read_since_shares_my_reads_but_not_roll_ups_or_reads_from_the_phone() {
     )
     .await
     .unwrap();
+    commit(
+        &store,
+        ActivityCommit {
+            resolutions: vec![resolved(&["d"], "checks passed")],
+            ..empty_commit(1, 3)
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(read_of(&store, "d").await.0, "read");
     for (id, read, reason) in [
         ("a", "read", "user"),
         ("b", "dismissed", "user"),
@@ -1000,4 +1038,461 @@ async fn read_since_shares_my_reads_but_not_roll_ups_or_reads_from_the_phone() {
     })
     .await;
     assert!(read(read_at, b).await.is_empty());
+}
+
+#[tokio::test]
+async fn an_entry_whose_fact_ended_is_read_with_a_reason_of_its_own() {
+    let (_dir, store) = seeded().await;
+    commit(
+        &store,
+        with_entries(2, vec![entry("checks", true), entry("conflict", true)]),
+    )
+    .await
+    .unwrap();
+    mark(
+        &store,
+        ActivityMarkRequest {
+            ids: vec![format!("{SOURCE}|conflict")],
+            entity_keys: vec![],
+            before: None,
+            read: "read".into(),
+            reason: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(needs_you(&store).await, 1);
+
+    let (result, changed) = commit(
+        &store,
+        ActivityCommit {
+            resolutions: vec![resolved(&["checks", "conflict"], "merged")],
+            ..empty_commit(1, 3)
+        },
+    )
+    .await
+    .unwrap();
+    assert!(result.accepted);
+    assert_eq!(changed.expect("a window sees it").counts.needs_you, 0);
+    assert_eq!(
+        read_of(&store, "checks").await,
+        ("read".into(), Some("resolved".into()))
+    );
+    assert_eq!(
+        read_of(&store, "conflict").await,
+        ("read".into(), Some("user".into())),
+        "what I read myself keeps its reason"
+    );
+    assert_eq!(
+        count(&store, "SELECT COUNT(*) FROM entries WHERE read = 'unread'").await,
+        0
+    );
+    let needing = list(
+        &store,
+        ActivityListQuery {
+            filter: ActivityFilter::NeedsYou,
+            ..all()
+        },
+    )
+    .await;
+    assert!(needing.entries.is_empty());
+}
+
+#[tokio::test]
+async fn an_ended_fact_withdraws_its_push() {
+    let (_dir, store) = seeded().await;
+    let question = entry("q", true);
+    commit(
+        &store,
+        ActivityCommit {
+            outbox: vec![ActivityOutboxRequest {
+                entry_id: question.id.clone(),
+                channel: "push".into(),
+            }],
+            entries: vec![question.clone()],
+            ..empty_commit(1, 2)
+        },
+    )
+    .await
+    .unwrap();
+    store
+        .db
+        .with_writer(move |conn| {
+            queries::write(conn, |tx| {
+                let acks = [ActivityOutboxAck {
+                    entry_id: question.id.clone(),
+                    channel: "push".into(),
+                    outcome: ActivityOutboxOutcome::Sent,
+                }];
+                Ok((queries::outbox_ack(tx, &acks, &queries::now())?, false))
+            })
+        })
+        .await
+        .unwrap();
+    commit(
+        &store,
+        ActivityCommit {
+            resolutions: vec![resolved(&["q"], "answered")],
+            ..empty_commit(1, 3)
+        },
+    )
+    .await
+    .unwrap();
+    let clears = store
+        .db
+        .with_store(|conn| queries::outbox_take(conn, "push-clear", 10, &queries::now()))
+        .await
+        .unwrap();
+    assert_eq!(clears.len(), 1);
+}
+
+async fn retire(store: &ActivityDb) -> bool {
+    store
+        .db
+        .with_writer(|conn| {
+            queries::write(conn, |tx| {
+                let changed = queries::retire_source(tx, SOURCE, &queries::now())?;
+                Ok((changed, changed))
+            })
+        })
+        .await
+        .unwrap()
+        .0
+}
+
+#[tokio::test]
+async fn a_retired_source_needs_nothing_until_it_comes_back() {
+    let (_dir, store) = seeded().await;
+    commit(
+        &store,
+        with_entries(
+            2,
+            vec![entry("q", true), entry("seen", true), entry("turn", false)],
+        ),
+    )
+    .await
+    .unwrap();
+    mark(
+        &store,
+        ActivityMarkRequest {
+            ids: vec![format!("{SOURCE}|seen")],
+            entity_keys: vec![],
+            before: None,
+            read: "read".into(),
+            reason: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(retire(&store).await);
+    assert_eq!(needs_you(&store).await, 0);
+    assert_eq!(
+        read_of(&store, "q").await,
+        ("read".into(), Some("resolved".into()))
+    );
+    assert_eq!(
+        read_of(&store, "turn").await,
+        ("unread".into(), None),
+        "an entry that needs nothing stays as it was"
+    );
+    assert!(!retire(&store).await, "retiring twice changes nothing");
+
+    let (state, changed) = super::commands::open_source(&store, request("env-1"))
+        .await
+        .unwrap();
+    assert_eq!(state.retired_at, None);
+    assert_eq!(state.generation, 1, "the baseline still describes them");
+    assert_eq!(changed.expect("a window sees it").counts.needs_you, 1);
+    assert_eq!(read_of(&store, "q").await, ("unread".into(), None));
+    assert_eq!(
+        read_of(&store, "seen").await,
+        ("read".into(), Some("user".into()))
+    );
+    assert_eq!(
+        count(
+            &store,
+            "SELECT COUNT(*) FROM entries WHERE status <> 'open'"
+        )
+        .await,
+        0
+    );
+}
+
+#[tokio::test]
+async fn a_retired_source_that_seeds_again_leaves_its_entries_closed() {
+    let (_dir, store) = seeded().await;
+    commit(&store, with_entries(2, vec![entry("q", true)]))
+        .await
+        .unwrap();
+    retire(&store).await;
+    open_source(&store, request("env-2")).await.unwrap();
+    assert_eq!(needs_you(&store).await, 0);
+    assert_eq!(
+        read_of(&store, "q").await,
+        ("read".into(), Some("resolved".into()))
+    );
+}
+
+/// One row of a journal as 4.16 left it.
+struct OldRow {
+    id: &'static str,
+    source: &'static str,
+    entity: &'static str,
+    category: &'static str,
+    needs_you: bool,
+    status: &'static str,
+    observed: &'static str,
+    payload: &'static str,
+}
+
+fn old(
+    id: &'static str,
+    source: &'static str,
+    entity: &'static str,
+    category: &'static str,
+) -> OldRow {
+    OldRow {
+        id,
+        source,
+        entity,
+        category,
+        needs_you: true,
+        status: "open",
+        observed: "2026-11-10T10:00:00.000Z",
+        payload: r#"{"schema":1,"action":null,"links":{}}"#,
+    }
+}
+
+const GH: &str = "gh:github.com|koen|acme/shop";
+const GH_OTHER_ACCOUNT: &str = "gh:github.com|koen-work|acme/shop";
+const ADO: &str = "ado:acme/shop";
+const CI: &str = "ci:github.com|koen|acme/shop";
+const DEPLOY: &str = "deploy:github.com|koen|acme/shop";
+const RETIRED: &str = "gh:github.com|koen|acme/retired";
+
+/// (source id, kind, baseline, retired at)
+const OLD_SOURCES: &[(&str, &str, Option<&str>, Option<&str>)] = &[
+    (
+        GH,
+        "gh",
+        Some(
+            r#"{"prs":{"11":{"state":"merged","missingSince":"2026-11-12T08:00:00.000Z"},"12":{"state":"closed"},"13":{"state":"open","requestedMe":true}}}"#,
+        ),
+        None,
+    ),
+    (
+        GH_OTHER_ACCOUNT,
+        "gh",
+        Some(r#"{"prs":{"11":{"state":"open"}}}"#),
+        None,
+    ),
+    (
+        ADO,
+        "ado",
+        Some(
+            r#"{"items":{"501":{"rev":3,"missingSince":"2026-11-12T08:00:00.000Z"},"502":{"rev":7}}}"#,
+        ),
+        None,
+    ),
+    (
+        SOURCE,
+        "t3",
+        Some(
+            r#"{"threads":{"gone":{"runId":null,"missingSince":"2026-11-12T08:00:00.000Z"},"here":{"runId":null}}}"#,
+        ),
+        None,
+    ),
+    (CI, "ci", Some(r#"{"groups":"not a list"}"#), None),
+    (DEPLOY, "deploy", None, None),
+    // A baseline that is not JSON must not fail the upgrade.
+    (
+        RETIRED,
+        "gh",
+        Some("not json"),
+        Some("2026-11-01T00:00:00.000Z"),
+    ),
+];
+
+fn journal_from_4_16(path: &std::path::Path, rows: &[OldRow]) {
+    let conn = Connection::open(path).unwrap();
+    conn.execute_batch(super::schema::MIGRATIONS[0]).unwrap();
+    conn.pragma_update(None, "user_version", 1).unwrap();
+    for (source_id, kind, baseline, retired_at) in OLD_SOURCES {
+        conn.execute(
+            "INSERT INTO sources (source_id, kind, label, config_key, generation, revision, \
+             baseline, seeded_at, committed_at, retired_at) \
+             VALUES (?1, ?2, ?1, 'k', 1, 5, ?3, NULL, NULL, ?4)",
+            rusqlite::params![source_id, kind, baseline, retired_at],
+        )
+        .unwrap();
+    }
+    for row in rows {
+        conn.execute(
+            "INSERT INTO entries (id, source_id, entity_key, category, severity, needs_you, \
+             status, resolved_by, source_at, observed_at, coverage, summary, detail, payload, \
+             read, read_reason, read_at, version) VALUES (?1, ?2, ?3, ?4, 'info', ?5, ?6, NULL, \
+             NULL, ?7, 'live', ?1, NULL, ?8, 'unread', NULL, NULL, 1)",
+            rusqlite::params![
+                format!("{}|{}", row.source, row.id),
+                row.source,
+                row.entity,
+                row.category,
+                row.needs_you,
+                row.status,
+                row.observed,
+                row.payload,
+            ],
+        )
+        .unwrap();
+    }
+}
+
+#[tokio::test]
+async fn upgrading_ends_what_the_old_rules_left_needing_me() {
+    const MERGED_PR: &str = "gh:acme/shop#11";
+    const CLOSED_PR: &str = "gh:acme/shop#12";
+    const OPEN_PR: &str = "gh:acme/shop#13";
+    const ITEM_GONE: &str = "ado:acme/shop:501";
+    const ITEM: &str = "ado:acme/shop:502";
+    const EARLIER: &str = "2026-11-09T10:00:00.000Z";
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("activity.db");
+    journal_from_4_16(
+        &path,
+        &[
+            old("request-merged", GH, MERGED_PR, "pr.review-request"),
+            old(
+                "request-other-account",
+                GH_OTHER_ACCOUNT,
+                MERGED_PR,
+                "pr.review-request",
+            ),
+            old("findings-closed", GH, CLOSED_PR, "pr.findings"),
+            old("request-open", GH, OPEN_PR, "pr.review-request"),
+            OldRow {
+                observed: EARLIER,
+                ..old("findings-older", GH, OPEN_PR, "pr.findings")
+            },
+            old("findings-newer", GH, OPEN_PR, "pr.findings"),
+            OldRow {
+                needs_you: false,
+                ..old("merged", GH, MERGED_PR, "pr.merged")
+            },
+            OldRow {
+                status: "superseded",
+                ..old("checks-old-head", GH, OPEN_PR, "pr.checks-failed")
+            },
+            old("assigned-gone", ADO, ITEM_GONE, "ado.assigned"),
+            old("comment-gone", ADO, ITEM_GONE, "ado.comment"),
+            old("assigned", ADO, ITEM, "ado.assigned"),
+            OldRow {
+                observed: EARLIER,
+                ..old("comment-older", ADO, ITEM, "ado.comment")
+            },
+            old("comment-newer", ADO, ITEM, "ado.comment"),
+            old(
+                "failed-gone",
+                SOURCE,
+                "t3:local:thread:gone",
+                "agent.failed",
+            ),
+            old(
+                "failed-here",
+                SOURCE,
+                "t3:local:thread:here",
+                "agent.failed",
+            ),
+            old("grew", CI, "ci:group-1", "ci.group-grew"),
+            OldRow {
+                payload: r#"{"schema":1,"links":{"prUrls":["https://github.com/Acme/Shop/pull/11"]}}"#,
+                ..old("deploy-merged", DEPLOY, "deploy:acme/shop:71", "deploy.pr")
+            },
+            OldRow {
+                payload: "not json",
+                ..old("deploy-open", DEPLOY, "deploy:acme/shop:72", "deploy.pr")
+            },
+            old(
+                "request-retired",
+                RETIRED,
+                "gh:acme/retired#4",
+                "pr.review-request",
+            ),
+        ],
+    );
+
+    let store = ActivityDb::at(path);
+    let info = store_info(&store).await.unwrap();
+    assert_eq!(info.schema_version, 3);
+    assert_eq!(info.recovered_from, None, "the journal was kept");
+
+    let page = list(&store, all()).await;
+    let row = |id: &str| {
+        page.entries
+            .iter()
+            .find(|row| row.id.ends_with(&format!("|{id}")))
+            .unwrap_or_else(|| panic!("{id} is missing"))
+    };
+    for (id, status, by) in [
+        ("request-merged", "resolved", "merged"),
+        ("request-other-account", "resolved", "merged"),
+        ("findings-closed", "resolved", "closed"),
+        ("assigned-gone", "resolved", "no longer on your list"),
+        ("comment-gone", "resolved", "no longer on your list"),
+        ("failed-gone", "resolved", "the thread is gone"),
+        ("deploy-merged", "resolved", "no longer open"),
+        ("request-retired", "resolved", "source removed"),
+        ("comment-older", "superseded", "ado:acme/shop|comment-newer"),
+        (
+            "findings-older",
+            "superseded",
+            "gh:github.com|koen|acme/shop|findings-newer",
+        ),
+    ] {
+        let row = row(id);
+        assert_eq!(
+            (row.status.as_str(), row.resolved_by.as_deref()),
+            (status, Some(by)),
+            "{id}"
+        );
+        assert_eq!(
+            (row.read.as_str(), row.read_reason.as_deref()),
+            ("read", Some("resolved")),
+            "{id}"
+        );
+        assert!(row.read_at.is_some(), "{id}");
+    }
+    assert_eq!(
+        row("checks-old-head").read_reason.as_deref(),
+        Some("resolved"),
+        "what was closed before the upgrade is read too"
+    );
+
+    let mut needing: Vec<&str> = page
+        .entries
+        .iter()
+        .filter(|row| row.needs_you && row.status == "open" && row.read == "unread")
+        .map(|row| row.id.rsplit('|').next().unwrap())
+        .collect();
+    needing.sort_unstable();
+    assert_eq!(
+        needing,
+        vec![
+            "comment-newer",
+            "deploy-open",
+            "failed-here",
+            "findings-newer",
+            "request-open"
+        ]
+    );
+    for quiet in ["assigned", "grew", "merged"] {
+        let row = row(quiet);
+        assert!(!row.needs_you, "{quiet}");
+        assert_eq!(
+            (row.status.as_str(), row.read.as_str()),
+            ("open", "unread"),
+            "{quiet}"
+        );
+    }
+    assert_eq!(needs_you(&store).await, 5);
 }

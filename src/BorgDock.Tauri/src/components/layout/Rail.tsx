@@ -1,9 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import clsx from 'clsx';
 import {
-  Activity,
   Crosshair,
-  FolderGit2,
   GitPullRequest,
   ListChecks,
   type LucideIcon,
@@ -14,13 +12,12 @@ import {
   Settings,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { RailRecent } from '@/components/activity/RailRecent';
 import { RailLimits } from '@/components/ai-usage/RailLimits';
 import { BorgDockLogo } from '@/components/shared/icons';
 import { IconButton, SlidingHighlight } from '@/components/shared/primitives';
 import { WindowLauncher } from '@/components/shared/WindowLauncher';
-import { useWorktreeCount } from '@/hooks/useWorktreeMap';
 import { showSection } from '@/services/navigation';
-import { selectNeedsYou, useActivityStore } from '@/stores/activity-store';
 import { selectWaitingCount, useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, SECTION_ORDER, useUiStore } from '@/stores/ui-store';
@@ -32,8 +29,6 @@ export const SECTION_LABELS: Record<ActiveSection, string> = {
   dispatch: 'Dispatch',
   prs: 'Pull requests',
   workitems: 'Work items',
-  worktrees: 'Worktrees',
-  activity: 'Activity',
   notes: 'Notes',
 };
 
@@ -43,8 +38,6 @@ const SECTION_ICONS: Record<ActiveSection, LucideIcon> = {
   dispatch: Send,
   prs: GitPullRequest,
   workitems: ListChecks,
-  worktrees: FolderGit2,
-  activity: Activity,
   notes: NotebookPen,
 };
 
@@ -81,8 +74,6 @@ function useRailCounts(): Partial<Record<ActiveSection, RailCount>> {
   const focusCount = usePrStore((s) => s.focusCount());
   const waitingCount = useDispatchStore(selectWaitingCount);
   const workItemCount = useWorkItemsStore((s) => s.workItems.length);
-  const worktreeCount = useWorktreeCount();
-  const activityCount = useActivityStore(selectNeedsYou);
 
   const counts: Partial<Record<ActiveSection, RailCount>> = {
     prs: { value: openCount, hot: failing > 0 },
@@ -90,8 +81,6 @@ function useRailCounts(): Partial<Record<ActiveSection, RailCount>> {
   if (focusCount > 0) counts.focus = { value: focusCount };
   if (waitingCount > 0) counts.dispatch = { value: waitingCount };
   if (workItemCount > 0) counts.workitems = { value: workItemCount };
-  if (worktreeCount > 0) counts.worktrees = { value: worktreeCount };
-  if (activityCount > 0) counts.activity = { value: activityCount, hot: true };
   return counts;
 }
 
@@ -130,9 +119,9 @@ function openSettings() {
 }
 
 /**
- * The bar the rail ends in: Settings in the corner, Open window, and the
- * fold toggle at the far end. Folded, the same buttons stack with Settings
- * still at the bottom.
+ * The bar the rail ends in: Settings in the corner, Open window, Recent
+ * (the bell with what needs you), and the fold toggle at the far end.
+ * Folded, the same buttons stack with Settings still at the bottom.
  */
 function RailBar({ collapsed }: { collapsed: boolean }) {
   const toggleRail = useUiStore((s) => s.toggleRail);
@@ -145,6 +134,7 @@ function RailBar({ collapsed }: { collapsed: boolean }) {
         onClick={openSettings}
       />
       <WindowLauncher anchor="rail" settingsItem={false} />
+      <RailRecent collapsed={collapsed} />
       <button
         type="button"
         className="bd-rail__toggle"
@@ -166,16 +156,17 @@ function RailBar({ collapsed }: { collapsed: boolean }) {
 }
 
 /**
- * Rail — the main window's left navigation (plans/ui-overhaul-workbench.md,
- * phase 1): workspace name, the five sections with their counts and a
- * sliding highlight behind the active one, and the sync state with the
- * GitHub rate meter at the bottom. Keys `1`–`7` pick the same sections
- * (wired in useKeyboardNav). Dispatch counts the items waiting on you,
- * Activity the unread entries that need you.
+ * Rail — the main window's left navigation (design/rail-five/mockups.html):
+ * the workspace name, the five sections with their counts and a sliding
+ * highlight behind the active one, and a foot of status blocks (what is left
+ * of each AI account, each machine's disk, when the pull requests were last
+ * read) that ends in a bar with Settings in the corner. Keys `1`–`5` pick
+ * the sections (wired in useKeyboardNav). Dispatch counts the items waiting
+ * on you.
  *
- * Folded (the button at the bottom, or `[`): icons with their counts as
- * badges, the name on hover, and the rate meter alone. The choice is
- * remembered (`ui-store.railCollapsed`).
+ * Folded (the toggle in the bar, or `[`): icons with their counts as badges,
+ * the name on hover, a ring per AI account, and the bar stacked. The choice
+ * is remembered (`ui-store.railCollapsed`).
  */
 export function Rail() {
   const activeSection = useUiStore((s) => s.activeSection);

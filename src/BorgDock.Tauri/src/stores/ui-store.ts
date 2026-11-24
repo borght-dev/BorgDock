@@ -3,17 +3,10 @@ import type { WorktreeBranchMapping } from '@/hooks/useWorktreeMap';
 import type { FocusFilter } from '@/services/focus-bucket';
 import { persistToTauriStore, readFromTauriStore } from '@/utils/tauri-persist';
 
-export type ActiveSection =
-  | 'prs'
-  | 'focus'
-  | 'dispatch'
-  | 'workitems'
-  | 'worktrees'
-  | 'activity'
-  | 'notes';
+export type ActiveSection = 'prs' | 'focus' | 'dispatch' | 'workitems' | 'notes';
 
 /**
- * Sections in rail order; keys `1`–`7` pick them by position. New sections
+ * Sections in rail order; keys `1`–`5` pick them by position. New sections
  * go last, so the keys of the sections before them stay the same.
  */
 export const SECTION_ORDER: readonly ActiveSection[] = [
@@ -21,8 +14,6 @@ export const SECTION_ORDER: readonly ActiveSection[] = [
   'dispatch',
   'prs',
   'workitems',
-  'worktrees',
-  'activity',
   'notes',
 ];
 

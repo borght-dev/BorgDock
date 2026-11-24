@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { AgentSays } from '@/components/dispatch/AgentSays';
 import { Menu } from '@/components/shared/Menu';
 import { Button } from '@/components/shared/primitives';
-import { act, actionLabel, revalidate } from '@/services/activity/actions';
+import { actionLabel, revalidate } from '@/services/activity/actions';
+import { actInMainWindow } from '@/services/activity/history';
 import type { ActivityEntry } from '@/services/activity/types';
 import { dispatchActions } from '@/services/dispatch/actions';
 import { scopedId } from '@/services/dispatch/hosts';
@@ -13,9 +14,9 @@ import { useActivityViewStore } from '@/stores/activity-view-store';
 import { useCiFailuresStore } from '@/stores/ci-failures-store';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
-import { showToast } from '@/stores/toast-store';
 import { CATEGORY_ICON } from './icons';
 import { whenOf } from './rows';
+import { actHere } from './take-action';
 
 export interface ActivityRowProps {
   entry: ActivityEntry;
@@ -29,6 +30,8 @@ export interface ActivityRowProps {
   /** The source was removed from settings: actions are off. */
   retired: boolean;
   open: boolean;
+  /** In the history window: the main window has the live stores, so it checks and takes the action. */
+  remote?: boolean;
 }
 
 function timeLabel(entry: ActivityEntry): string {
@@ -90,6 +93,7 @@ export function ActivityRow({
   sourceLabel,
   retired,
   open,
+  remote = false,
 }: ActivityRowProps) {
   const view = useActivityViewStore.getState;
   const [busy, setBusy] = useState(false);
@@ -98,7 +102,11 @@ export function ActivityRow({
   const pullRequests = usePrStore((s) => s.pullRequests);
   const groups = useCiFailuresStore((s) => s.groups);
   const Icon = CATEGORY_ICON[entry.category];
-  const check = revalidate(entry, retired, { threads, hosts, pullRequests, groups });
+  const check = revalidate(
+    entry,
+    retired,
+    remote ? null : { threads, hosts, pullRequests, groups },
+  );
   const asking = expanded ? askingThread(entry, threads) : null;
   const primary = check.ok ? check.action : check.fallback;
   const status = statusLabel(entry);
@@ -109,9 +117,8 @@ export function ActivityRow({
     if (!primary) return;
     setBusy(true);
     try {
-      const { reason } = await act(entry, retired);
-      if (reason) showToast({ message: `${reason}. Opened it instead.` });
-      void view().refresh();
+      if (remote) await actInMainWindow(entry.id);
+      else await actHere(entry, retired);
     } finally {
       setBusy(false);
     }

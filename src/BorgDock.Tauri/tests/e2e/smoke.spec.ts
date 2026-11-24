@@ -24,6 +24,7 @@ const ENTRIES: { name: string; path: string }[] = [
   { name: 'note-capture', path: 'note-capture.html' },
   { name: 'agent-overview', path: 'agent-overview.html' },
   { name: 'settings', path: 'settings.html' },
+  { name: 'activity-history', path: 'activity-history.html' },
 ];
 
 for (const { name, path } of ENTRIES) {

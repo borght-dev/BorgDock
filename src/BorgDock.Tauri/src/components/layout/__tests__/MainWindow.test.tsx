@@ -74,15 +74,5 @@ describe('MainWindow', () => {
       );
       expect(container.querySelector('.bd-title-bar__title')).toHaveTextContent('Pull request');
     });
-
-    it('keeps the Worktrees section', () => {
-      useUiStore.setState({ activeSection: 'worktrees' });
-      render(
-        <MainWindow>
-          <div />
-        </MainWindow>,
-      );
-      expect(useUiStore.getState().activeSection).toBe('worktrees');
-    });
   });
 });

@@ -3,6 +3,7 @@ import { bringMainWindowForward } from '@/hooks/useFlyoutSync';
 import { act } from '@/services/activity/actions';
 import { DELIVERY_MS, pollDeliveries } from '@/services/activity/adapters/delivery';
 import * as api from '@/services/activity/api';
+import { openActivityHistory } from '@/services/activity/history';
 import { onActivityCommitted, retireSourcesExcept } from '@/services/activity/ingest';
 import { cancelDrain, drainPopups, scheduleDrain } from '@/services/activity/policy';
 import { sourceId } from '@/services/activity/sources';
@@ -10,10 +11,8 @@ import type { ActivityEntry } from '@/services/activity/types';
 import { parseScope } from '@/services/github/scope';
 import { getClientForRepo } from '@/services/github/singleton';
 import { createLogger } from '@/services/logger';
-import { showSection } from '@/services/navigation';
 import { PollingManager } from '@/services/polling';
 import { followActivityCounts, selectNeedsYou, useActivityStore } from '@/stores/activity-store';
-import { useActivityViewStore } from '@/stores/activity-view-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { showToast } from '@/stores/toast-store';
 import { trackPolling } from './visibility';
@@ -153,11 +152,9 @@ async function entryById(id: string): Promise<ActivityEntry | null> {
   return page.entries[0] ?? null;
 }
 
-/** Show an entry in Activity, selected and open. */
-export async function showActivityEntry(id: string): Promise<void> {
-  await bringMainWindowForward();
-  await showSection('activity');
-  if (id) await useActivityViewStore.getState().reveal(id);
+/** Show an entry in the history window, selected and open; without one, the list as it is. */
+export function showActivityEntry(id: string): Promise<void> {
+  return openActivityHistory(id || undefined);
 }
 
 /** A popup's or the tray's action: checked again here, where the stores are live. */

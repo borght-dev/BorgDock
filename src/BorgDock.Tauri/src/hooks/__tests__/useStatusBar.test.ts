@@ -23,10 +23,6 @@ describe('useStatusBar', () => {
     const { result } = renderHook(() => useStatusBar('workitems'));
     expect(result.current.left).toMatch(/ado:/i);
   });
-  it('returns Worktrees copy', () => {
-    const { result } = renderHook(() => useStatusBar('worktrees'));
-    expect(result.current.left).toBe('worktrees from every watched repository');
-  });
   it('shows the back keys and the PR on a pull request detail view', () => {
     useUiStore.setState({
       viewStack: [{ kind: 'list' }, { kind: 'pr-detail', owner: 'octo', repo: 'app', number: 42 }],
@@ -56,10 +52,6 @@ describe('useStatusBar', () => {
     it('names the row keys on Work items', () => {
       const { result } = renderHook(() => useStatusBar('workitems'));
       expect(result.current.right).toBe('/ search · R refresh · J K move · Enter open');
-    });
-    it('shows / search, R refresh and the row keys on Worktrees, which has a search box', () => {
-      const { result } = renderHook(() => useStatusBar('worktrees'));
-      expect(result.current.right).toMatch(/^\/ search · R refresh · J K move /);
     });
     it('keeps R for Quick Review in Focus and names Ctrl+R for refresh', () => {
       const { result } = renderHook(() => useStatusBar('focus'));

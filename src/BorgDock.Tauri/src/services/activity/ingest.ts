@@ -1,4 +1,5 @@
 import type { ActivityOutboxRequest } from '@/generated/commands';
+import { parseScope } from '@/services/github/scope';
 import { createLogger } from '@/services/logger';
 import { useActivityStore } from '@/stores/activity-store';
 import * as api from './api';
@@ -67,6 +68,8 @@ const DEFAULT_INTERVAL_MS = 60_000;
 const CLOCK_MOVED_MS = 30 * 60_000;
 
 const states = new Map<string, SourceState>();
+/** `<kind>:<owner>/<repo>` to the source that reads it now. */
+const readers = new Map<string, string>();
 const queue = new SourceQueue();
 const committedListeners = new Set<(sourceId: string, inserted: string[]) => void>();
 const retries = new Map<string, () => Promise<IngestOutcome>>();
@@ -75,6 +78,7 @@ let readOnly = false;
 /** Forget what was opened (tests, a reset). */
 export function resetActivityIngest(): void {
   states.clear();
+  readers.clear();
   retries.clear();
   readOnly = false;
 }
@@ -114,6 +118,40 @@ async function open(source: SourceDescriptor, reset = false): Promise<SourceStat
   };
   states.set(source.sourceId, state);
   return state;
+}
+
+/** A `gh`, `deploy` or `ci` source is one repository as one account reads it. */
+function repositoryOf(sourceId: string, kind: string): string | null {
+  if (kind !== 'gh' && kind !== 'deploy' && kind !== 'ci') return null;
+  const scope = parseScope(sourceId.slice(sourceId.indexOf(':') + 1));
+  return scope ? `${kind}:${scope.owner}/${scope.repo}` : null;
+}
+
+/**
+ * One account reads a repository at a time. When the account changes (the
+ * active `gh` account, a repository bound to another one), the source it was
+ * read under is retired, which ends what that source left needing me:
+ * nothing reads it any more, so nothing else ever would. Opening the new
+ * reader brings back what its own retirement closed.
+ */
+async function takeOver(source: SourceDescriptor): Promise<void> {
+  const repository = repositoryOf(source.sourceId, source.kind);
+  if (!repository || readers.get(repository) === source.sourceId) return;
+  readers.set(repository, source.sourceId);
+  states.delete(source.sourceId);
+  try {
+    for (const other of await api.listSources()) {
+      if (other.sourceId === source.sourceId || other.retiredAt) continue;
+      if (repositoryOf(other.sourceId, other.kind) !== repository) continue;
+      await api.retireSource(other.sourceId);
+      states.delete(other.sourceId);
+    }
+  } catch (error) {
+    log.warn('could not retire the replaced activity sources', {
+      source: source.sourceId,
+      error: String(error),
+    });
+  }
 }
 
 async function stateFor(source: SourceDescriptor): Promise<SourceState> {
@@ -168,6 +206,7 @@ async function run<B, O>(
   observation: O,
 ): Promise<IngestOutcome> {
   if (readOnly) return 'read-only';
+  await takeOver(source);
   let state = await stateFor(source);
   let next = nextRevision(state, revision);
   if (next === 'stale') return 'stale';

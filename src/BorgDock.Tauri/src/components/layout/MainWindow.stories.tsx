@@ -619,8 +619,6 @@ export const RailDispatchStatesDrawer: Story = {
 /** Focus with agents waiting: they show above the pull requests. */
 export const RailFocusAgents: Story = { args: { section: 'focus', agentsWaiting: true } };
 
-export const RailWorktrees: Story = { args: { section: 'worktrees' } };
-
 /** Work items: rows grouped by state, query picker in the head row. */
 export const RailWorkItems: Story = { args: { section: 'workitems' } };
 

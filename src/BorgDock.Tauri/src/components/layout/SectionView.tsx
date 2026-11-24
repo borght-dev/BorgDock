@@ -15,19 +15,9 @@ const WorkItemsSection = lazy(() =>
     default: module.WorkItemsSection,
   })),
 );
-const ActivitySection = lazy(() =>
-  import('@/components/activity/ActivitySection').then((module) => ({
-    default: module.ActivitySection,
-  })),
-);
 const NotesSection = lazy(() =>
   import('@/components/notes/NotesSection').then((module) => ({
     default: module.NotesSection,
-  })),
-);
-const WorktreesSection = lazy(() =>
-  import('@/components/worktree/WorktreesSection').then((module) => ({
-    default: module.WorktreesSection,
   })),
 );
 
@@ -44,10 +34,6 @@ function SectionBody({ section }: { section: ActiveSection }) {
       return <PrList />;
     case 'workitems':
       return <WorkItemsSection />;
-    case 'worktrees':
-      return <WorktreesSection />;
-    case 'activity':
-      return <ActivitySection />;
     case 'notes':
       return <NotesSection />;
   }

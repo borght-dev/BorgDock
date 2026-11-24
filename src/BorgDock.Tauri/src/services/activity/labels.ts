@@ -50,7 +50,7 @@ export const CATEGORY_LABEL: Record<ActivityCategory, string> = {
   'pr.conflict': 'Your PR has a merge conflict',
   'pr.merged': 'Your PR was merged',
   'pr.closed': 'Your PR was closed',
-  'ci.group-grew': 'A shared CI failure nobody owns',
+  'ci.group-grew': 'A shared CI failure with your PR in it',
   'ci.owner-stale': 'A CI investigation went quiet',
   'ci.fix-merged': 'A CI failure fix was merged',
   'ci.seen-after-fix': 'A fixed CI failure came back',

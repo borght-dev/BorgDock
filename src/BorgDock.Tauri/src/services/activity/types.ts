@@ -40,6 +40,12 @@ export const ACTIVITY_CATEGORIES = [
 
 export type ActivityCategory = (typeof ACTIVITY_CATEGORIES)[number];
 
+/**
+ * Categories nothing produces any more: a plain agent turn is no entry since
+ * 4.17.0. Their rows still render in history; Settings offers no switches.
+ */
+export const RETIRED_CATEGORIES: readonly ActivityCategory[] = ['agent.turn', 'agent.turns-missed'];
+
 /** The chips in the Activity header; `agent.report` sits under Agents. */
 export type ActivityCategoryGroup =
   | 'agents'
@@ -60,7 +66,9 @@ export type ActivityReadReason =
   | 'seen-in-t3'
   | 'bulk'
   | 'rolled-up'
-  | 'phone';
+  | 'phone'
+  /** The fact ended before I read it: Rust sets it when an entry is resolved or superseded. */
+  | 'resolved';
 export type ActivityCoverage = 'live' | 'catch-up';
 
 /** `source` is the roll-up the store writes when old updates fold. */
@@ -144,7 +152,8 @@ export interface ActivityEnrichment {
 }
 
 /**
- * Closes open entries. `ids` names them; `entityKey` with `categories`
+ * Closes open entries, which also reads the unread ones: "needs you" lasts
+ * until the fact ends. `ids` names them; `entityKey` with `categories`
  * closes every open entry of that entity in those categories. Applies to
  * entries that existed before the commit, never to ones it inserts.
  */

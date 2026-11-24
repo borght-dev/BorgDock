@@ -31,6 +31,11 @@ const ENTRY_POINTS = [
   { key: 'whats-new', html: 'whats-new.html', script: '/src/whats-new-main.tsx' },
   { key: 'note-capture', html: 'note-capture.html', script: '/src/note-capture-main.tsx' },
   { key: 'settings', html: 'settings.html', script: '/src/settings-main.tsx' },
+  {
+    key: 'activity-history',
+    html: 'activity-history.html',
+    script: '/src/activity-history-main.tsx',
+  },
 ];
 
 // Rust-side window URLs → expected HTML file (must be a valid entry point)
@@ -47,6 +52,7 @@ const RUST_WINDOW_URLS: Record<string, string> = {
   flyout: 'flyout.html',
   'workitem-detail': 'workitem-detail.html',
   'whats-new': 'whats-new.html',
+  'activity-history': 'activity-history.html',
   // settings/window.rs
   settings: 'settings.html',
 };

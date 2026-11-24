@@ -1,5 +1,4 @@
 import '@/components/work-items/WorkItemsSection';
-import '@/components/worktree/WorktreesSection';
 import '@/components/dispatch/DispatchSection';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -12,9 +11,6 @@ vi.mock('@/components/focus', () => ({ FocusList: () => <div>focus body</div> })
 vi.mock('@/components/pr/PrList', () => ({ PrList: () => <div>prs body</div> }));
 vi.mock('@/components/work-items/WorkItemsSection', () => ({
   WorkItemsSection: () => <div>workitems body</div>,
-}));
-vi.mock('@/components/worktree/WorktreesSection', () => ({
-  WorktreesSection: () => <div>worktrees body</div>,
 }));
 
 import { useUiStore } from '@/stores/ui-store';
@@ -47,7 +43,6 @@ describe('SectionView', () => {
     ['focus', 'focus body'],
     ['prs', 'prs body'],
     ['workitems', 'workitems body'],
-    ['worktrees', 'worktrees body'],
   ] as const)('renders the %s section', async (section, text) => {
     useUiStore.setState({ activeSection: section });
     render(<SectionView />);
