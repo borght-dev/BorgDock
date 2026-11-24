@@ -336,8 +336,10 @@ describe('pull request entries', () => {
         asked.baseline,
         ghObserve([], { verified: [verified(state, 'ann')] }),
       );
-      // Their merge is not my news, but the request is over.
-      expect(ended.entries).toEqual([]);
+      // Their merge is news that needs nothing from me, their close is none: the request is over either way.
+      expect(ended.entries.map((entry) => [entry.category, entry.needsYou])).toEqual(
+        state === 'merged' ? [['pr.merged-other', false]] : [],
+      );
       expect(ended.resolutions).toEqual([
         expect.objectContaining({
           entityKey: 'gh:acme/app#412',
