@@ -197,54 +197,6 @@
     "page": "Dispatch"
   },
   {
-    "slug": "workstreams",
-    "storyId": "workstreams-workstreams--overview",
-    "viewport": {
-      "width": 1360,
-      "height": 860
-    },
-    "theme": "both",
-    "delay": 2500,
-    "alt": "A workstream: its goal, the outcomes it needs with the evidence behind each, and the next action",
-    "page": "Workstreams"
-  },
-  {
-    "slug": "workstreams-map",
-    "storyId": "workstreams-workstreams--relation-map",
-    "viewport": {
-      "width": 1360,
-      "height": 860
-    },
-    "theme": "both",
-    "delay": 2500,
-    "alt": "The relation map: which pull request blocks which outcome, which one replaced an earlier attempt, and the decisions still open",
-    "page": "Workstreams"
-  },
-  {
-    "slug": "workstreams-review",
-    "storyId": "workstreams-workstreams--review-with-agent",
-    "viewport": {
-      "width": 1360,
-      "height": 860
-    },
-    "theme": "both",
-    "delay": 2500,
-    "alt": "An agent's proposals for a workstream, each to accept or reject",
-    "page": "Workstreams"
-  },
-  {
-    "slug": "workstreams-chips",
-    "storyId": "workstreams-workstreams--dispatch-chips",
-    "viewport": {
-      "width": 1360,
-      "height": 860
-    },
-    "theme": "both",
-    "delay": 2500,
-    "alt": "Dispatch rows with the workstream each item belongs to",
-    "page": "Workstreams"
-  },
-  {
     "slug": "activity",
     "storyId": "activity-activity--unread",
     "viewport": {

@@ -15,7 +15,6 @@ const toc = [
   { id: 'activity', label: 'Activity' },
   { id: 'review', label: 'Quick review' },
   { id: 'dispatch', label: 'Dispatch' },
-  { id: 'workstreams', label: 'Workstreams' },
   { id: 'notes', label: 'Notes' },
   { id: 'fix', label: 'Fix with Claude' },
   { id: 'work', label: 'Worktrees and Work items' },
@@ -188,41 +187,24 @@ const tools = [
         <Recording slot="media" slug="dispatch-start" />
       </Job>
 
-      <Job id="workstreams" eyebrow="Workstreams" title="Keep a goal together across items, threads and pull requests" reverse reading>
-        <p>
-          Some goals take several work items, a couple of agent threads and a handful of pull requests.
-          A workstream keeps them under one goal, with the outcomes it needs and a next action you set.
-        </p>
-        <p>
-          BorgDock checks each outcome against the real records. When the pull request merges or the
-          item reaches Done, the outcome turns green, and you hear about it if the item is reopened.
-        </p>
-        <p>
-          Review with agent sends everything to a T3 thread, which comes back with proposals you accept
-          or reject. Point Settings → Workstreams at a synced folder and your other machine sees the
-          same workstreams.
-        </p>
-        <Capture slot="media" slug="workstreams" />
-      </Job>
-
-      <Job id="notes" eyebrow="Notes" title="Write it down where your work is" reading>
+      <Job id="notes" eyebrow="Notes" title="Write it down where your work is" reverse reading>
         <p>
           Notes are Markdown files in a folder that Obsidian and VS Code open as they are. Link them
           with [[Title]] and see every note that links back.
         </p>
         <p>
           Type AB#60102 or shop#3712 and it becomes a chip with the item's state or the pull request's
-          checks. Pull requests, work items and workstreams get a Notes tab with every note that
-          mentions them.
+          checks. Pull requests and work items get a Notes tab with every note that mentions them.
         </p>
         <p>
           Today starts the day's note with what happened since yesterday. Start a T3 thread from a note
-          and the agent's answer lands in it when it stops.
+          and the agent's answer lands in it when it stops. Point Settings → Notes at a folder your sync
+          client shares and your other machine has the same notes.
         </p>
         <Capture slot="media" slug="notes" />
       </Job>
 
-      <Job id="fix" eyebrow="Fix with Claude" title="Hand a failure to an agent" reverse reading>
+      <Job id="fix" eyebrow="Fix with Claude" title="Hand a failure to an agent" reading>
         <p>
           When a check fails, the pull request shows the first error from its log, so you see what
           broke without scrolling.
@@ -239,7 +221,7 @@ const tools = [
         <Capture slot="media" slug="pr-detail-failing" />
       </Job>
 
-      <Job id="work" eyebrow="Worktrees and Work items" title="Keep the rest of your work close" reading>
+      <Job id="work" eyebrow="Worktrees and Work items" title="Keep the rest of your work close" reverse reading>
         <p>
           Worktrees groups your worktrees by the machine they live on, under that machine's free disk
           space. A disk that runs low stands out, with Clean up in T3 right beside it.

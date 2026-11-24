@@ -149,7 +149,7 @@ live in the app (`src/BorgDock.Tauri/scripts/`) because they use its Playwright 
 element (the Pull requests captures use `main.bd-mainwindow__body` to leave the rail out, so the
 text stays readable at the size the site shows it). `storyId` may be
 `{ "light": "…", "dark": "…" }` for stories that lock their theme. `args` passes string story args
-through the URL. `page` is the gallery filter (`Pull requests`, `Focus`, `Dispatch`, `Workstreams`,
+through the URL. `page` is the gallery filter (`Pull requests`, `Focus`, `Dispatch`,
 `Detail`, `Quick review`, `Notes`, `Activity`, `Tools`; anything else lands in `Tools`). `draft: true` keeps a capture out of the gallery, for a screen that is still being built.
 Output: `public/screens/<slug>-<theme>@2x.png`. Run it on its own with
 `node scripts/screenshot-manifest.mjs [manifest] [outDir] [--only slug,slug]` from
@@ -287,5 +287,5 @@ releases) link to the posts.
 
 Write like the changelog: benefit first, "you", plain verbs, sentence case. No exclamation marks,
 no "seamless", no engineering prose. Feature names match the labels in the app: Focus, Dispatch,
-Pull requests, Work items, Worktrees, Workstreams, Activity, Notes, Quick review, Fix with Claude,
+Pull requests, Work items, Worktrees, Activity, Notes, Quick review, Fix with Claude,
 Open in T3.
