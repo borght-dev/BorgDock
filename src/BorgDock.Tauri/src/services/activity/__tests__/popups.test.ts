@@ -142,7 +142,7 @@ describe('the popup paths', () => {
         const text = readFileSync(path, 'utf8');
         if (
           /sendOsNotification\(/.test(text) &&
-          /(notifyNew|notifyWorkstreams|followCiNotifications|detectStateTransitions)/.test(text)
+          /(notifyNew|followCiNotifications|detectStateTransitions)/.test(text)
         ) {
           offenders.push(path);
         }

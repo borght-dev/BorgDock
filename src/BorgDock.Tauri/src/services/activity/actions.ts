@@ -3,7 +3,7 @@ import type { CiGroupSummary } from '@/services/ci-failures/types';
 import { dispatchActions, showDispatchItem } from '@/services/dispatch/actions';
 import { scopedId } from '@/services/dispatch/hosts';
 import type { AgentThread } from '@/services/dispatch/types';
-import { showPr, showWorkstream } from '@/services/navigation';
+import { showPr } from '@/services/navigation';
 import { isReadyToMerge } from '@/services/notification';
 import { useCiFailuresStore } from '@/stores/ci-failures-store';
 import { useDispatchStore } from '@/stores/dispatch-store';
@@ -243,9 +243,6 @@ export async function run(action: ActionTarget): Promise<void> {
       }
       return;
     }
-    case 'open-workstream':
-      await showWorkstream(action.id);
-      return;
     case 'open-url':
       await openUrl(action.url);
       return;

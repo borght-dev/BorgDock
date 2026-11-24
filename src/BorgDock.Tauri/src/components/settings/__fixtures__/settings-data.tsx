@@ -162,7 +162,7 @@ export function SectionFrame({ children }: { children: ReactNode }) {
   return (
     <PulseProvider value={{ pulseAnchor: null, setPulseAnchor: () => {} }}>
       <div className="bg-[var(--color-background)] text-[var(--color-text-primary)]">
-        <div className="mx-auto max-w-[720px] px-9 pb-16 pt-7">{children}</div>
+        <div className="bd-settings-content mx-auto max-w-[720px] px-9 pb-16 pt-7">{children}</div>
       </div>
     </PulseProvider>
   );

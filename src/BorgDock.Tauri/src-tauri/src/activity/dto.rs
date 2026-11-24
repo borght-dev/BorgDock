@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 #[serde(rename_all = "camelCase")]
 pub struct ActivitySourceRequest {
     pub source_id: String,
-    /// `t3`, `gh`, `deploy`, `ci`, `ado` or `workstreams`.
+    /// `t3`, `gh`, `deploy`, `ci` or `ado`.
     pub kind: String,
     pub label: String,
     pub config_key: String,

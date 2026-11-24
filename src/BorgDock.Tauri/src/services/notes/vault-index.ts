@@ -1,12 +1,11 @@
 /**
  * The vault index: which note a `[[link]]` names, which notes link to a
- * note, which notes mention a pull request, work item, thread or workstream,
- * and every tag and task. Pure and derived: rebuilt from parsed notes, never
+ * note, which notes mention a pull request, work item or thread, and every
+ * tag and task. Pure and derived: rebuilt from parsed notes, never
  * stored in the vault.
  */
-import { refKey } from '@/services/workstreams/identity';
-import type { RefKey, SourceRef } from '@/services/workstreams/types';
 import type { InlineToken, ParsedNote, Task } from './parse';
+import { type RefKey, refKey, type SourceRef } from './refs';
 
 /** What the user configured, which turns short refs into identities. */
 export interface RefContext {
@@ -28,7 +27,7 @@ export interface VaultIndex {
   byTitle: ReadonlyMap<string, readonly string[]>;
   /** Note path → the notes that link to it. */
   backlinks: ReadonlyMap<string, readonly Mention[]>;
-  /** `RefKey` (or `ws:<id>` for a workstream) → the notes that mention it. */
+  /** `RefKey` → the notes that mention it. */
   mentions: ReadonlyMap<string, readonly Mention[]>;
   /** Tag → the notes that carry it. */
   tags: ReadonlyMap<string, readonly string[]>;
@@ -43,12 +42,6 @@ export const EMPTY_INDEX: VaultIndex = {
   tags: new Map(),
   tasks: [],
 };
-
-const WORKSTREAM_PREFIX = 'ws:';
-
-export function workstreamKey(id: string): string {
-  return `${WORKSTREAM_PREFIX}${id}`;
-}
 
 /** The reference a token stands for, or `null` when it names nothing known. */
 export function sourceOfToken(token: InlineToken, context: RefContext): SourceRef | null {
@@ -73,12 +66,7 @@ export function sourceOfToken(token: InlineToken, context: RefContext): SourceRe
       };
     }
     case 't3':
-      return {
-        kind: 't3-thread',
-        environmentId: token.environmentId,
-        threadId: token.threadId,
-        hostId: '',
-      };
+      return { kind: 't3-thread', environmentId: token.environmentId, threadId: token.threadId };
     default:
       return null;
   }
@@ -86,7 +74,6 @@ export function sourceOfToken(token: InlineToken, context: RefContext): SourceRe
 
 /** The key a token is indexed under in `mentions`. */
 export function keyOfToken(token: InlineToken, context: RefContext): string | null {
-  if (token.kind === 'workstream') return workstreamKey(token.id);
   const source = sourceOfToken(token, context);
   return source ? refKey(source) : null;
 }

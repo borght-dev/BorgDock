@@ -26,7 +26,6 @@ export const FIXTURE_SOURCES: ActivitySourceState_Serialize[] = [
   ['gh:github.com|koen|acme/app', 'gh', 'acme/app (koen)'],
   ['deploy:github.com|koen|acme/app', 'deploy', 'Deployments of acme/app (koen)'],
   ['ci:github.com|koen|acme/app', 'ci', 'CI failures in acme/app'],
-  ['workstreams:local', 'workstreams', 'Workstreams'],
   ['ado:org/proj', 'ado', 'org/proj'],
 ].map(([sourceId, kind, label]) => ({
   sourceId: sourceId!,

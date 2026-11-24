@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseNote } from '../parse';
-import { buildIndex, type RefContext, resolveLink, workstreamKey } from '../vault-index';
+import { buildIndex, type RefContext, resolveLink } from '../vault-index';
 
 const context: RefContext = {
   adoOrganization: 'acme',
@@ -41,7 +41,7 @@ describe('buildIndex', () => {
   const vault = index({
     'Daily/2026-10-28.md': 'Waiting on [[Plan]] and [[Plan|again]]; see planner#1412 and AB#48213',
     'Plan.md': [
-      '[Run](t3code://threads/env-1/t-1) for [Speed](borgdock://workstreams/ws-1)',
+      '[Run](t3code://threads/env-1/t-1) for speed',
       'api#3 is ambiguous; acme/api#3 is not. #perf',
       '- [ ] Ship it',
     ].join('\n'),
@@ -57,7 +57,6 @@ describe('buildIndex', () => {
     ]);
     expect(vault.mentions.get('ado:acme#48213')).toHaveLength(1);
     expect(vault.mentions.get('t3:env-1/t-1')).toEqual([{ path: 'Plan.md', line: 0 }]);
-    expect(vault.mentions.get(workstreamKey('ws-1'))).toHaveLength(1);
     expect(vault.mentions.get('gh:github.com/acme/api#3')).toEqual([{ path: 'Plan.md', line: 1 }]);
     expect(vault.mentions.has('gh:github.com/other/api#3')).toBe(false);
   });

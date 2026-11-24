@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ActivityEntity } from '@/services/activity/types';
 import { entityKeysOf, type LocalScope, targetOf, targetsOf } from '../targets';
 
-const NO_LINKS = { itemIds: [], prUrls: [], workstreamIds: [], ciGroupIds: [] };
+const NO_LINKS = { itemIds: [], prUrls: [], ciGroupIds: [] };
 
 const about = (
   entity: Partial<ActivityEntity> & Pick<ActivityEntity, 'kind' | 'key'>,
@@ -62,7 +62,6 @@ describe('targetOf', () => {
   });
 
   it('leaves out what the server has no counterpart for', () => {
-    expect(targetOf(about({ kind: 'workstream', key: 'workstream:w' }))).toBeNull();
     expect(targetOf(about({ kind: 'deployment', key: 'deploy:o/r:1' }))).toBeNull();
     expect(targetOf(about({ kind: 'source', key: 'ci:o/r' }))).toBeNull();
   });
@@ -74,7 +73,7 @@ describe('targetsOf', () => {
       targetsOf([
         about({ kind: 'pr', key: 'gh:o/r#1', url: 'https://github.com/O/R/pull/1' }),
         about({ kind: 'pr', key: 'gh:o/r#1' }),
-        about({ kind: 'workstream', key: 'workstream:w' }),
+        about({ kind: 'deployment', key: 'deploy:o/r:1' }),
         about({ kind: 'workitem', key: 'ado:gomocha/fsp:5' }),
       ]),
     ).toEqual([

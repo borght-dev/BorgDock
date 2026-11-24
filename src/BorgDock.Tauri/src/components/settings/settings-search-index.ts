@@ -12,22 +12,15 @@ export interface FieldEntry {
 export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
   {
     sectionId: 'notes',
+    anchorId: 'notes-folder',
+    label: 'Vault',
+    keywords: ['notes', 'folder', 'sync', 'onedrive', 'syncthing', 'share', 'machines', 'obsidian'],
+  },
+  {
+    sectionId: 'notes',
     anchorId: 'daily-note-folder',
     label: 'Daily note folder',
     keywords: ['today', 'obsidian', 'location'],
-  },
-  // Workstreams
-  {
-    sectionId: 'workstreams',
-    anchorId: 'workstreams-folder',
-    label: 'Workstreams folder',
-    keywords: ['sync', 'onedrive', 'syncthing', 'share', 'machines', 'goal'],
-  },
-  {
-    sectionId: 'workstreams',
-    anchorId: 'workstreams-device',
-    label: "This machine's name",
-    keywords: ['device', 'computer', 'workstream'],
   },
 
   // GitHub

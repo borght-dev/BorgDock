@@ -4,7 +4,6 @@ import { summaryLine } from '../copy';
 import { type AdoItemFacts, deriveAdo } from '../derive/ado';
 import { type CiObservation, deriveCi } from '../derive/ci';
 import { type DeliveryObservation, deriveDelivery } from '../derive/delivery';
-import { deriveWorkstreams, type WorkstreamFacts } from '../derive/workstreams';
 import { normalizeTime, SourceQueue } from '../sources';
 import { context, seedContext } from './context';
 
@@ -118,59 +117,6 @@ describe('deriveCi', () => {
       ciObserve([group({ fixMergedAt: '2026-10-26T20:00:00.000Z' })]),
     );
     expect(result.entries).toEqual([]);
-  });
-});
-
-// ── Workstreams ──────────────────────────────────────────────
-
-function document(attention: WorkstreamFacts['attention']): WorkstreamFacts {
-  return { id: 'ws1', title: 'Checkout rewrite', createdAt: '2026-10-01T00:00:00.000Z', attention };
-}
-const ready = { id: 'ready', tone: 'ok' as const, reason: 'Every outcome is verified' };
-const stalled = { id: 'stalled', tone: 'warn' as const, reason: 'Nothing moved for 3 days' };
-const wsCtx = (overrides = {}) => context({ sourceId: 'workstreams:local', ...overrides });
-
-describe('deriveWorkstreams', () => {
-  it('gives one entry per episode of an attention that flaps, not one per assessment', () => {
-    let baseline = deriveWorkstreams(seedContext(), null, { documents: [document([])] }).baseline;
-    const ids: string[] = [];
-    for (const attention of [[ready], [ready], [], [ready], [ready]]) {
-      const result = deriveWorkstreams(wsCtx(), baseline, { documents: [document(attention)] });
-      ids.push(...result.entries.map((e) => e.id));
-      baseline = result.baseline;
-    }
-    expect(ids).toEqual(['workstreams:local|ws1:ready#1', 'workstreams:local|ws1:ready#2']);
-  });
-
-  it('resolves an entry when its attention stops holding, and skips other attention', () => {
-    const base = deriveWorkstreams(seedContext(), null, { documents: [document([])] }).baseline;
-    const held = deriveWorkstreams(wsCtx(), base, { documents: [document([ready, stalled])] });
-    expect(held.entries.map((e) => e.category)).toEqual(['workstream.ready']);
-    expect(held.entries[0]?.needsYou).toBe(false);
-    const done = deriveWorkstreams(wsCtx(), held.baseline, { documents: [document([stalled])] });
-    expect(done.resolutions).toEqual([
-      expect.objectContaining({ ids: ['workstreams:local|ws1:ready#1'], resolvedBy: 'completed' }),
-    ]);
-  });
-
-  it('reports a document changed on another machine', () => {
-    const base = deriveWorkstreams(seedContext(), null, { documents: [document([])] }).baseline;
-    const conflict = { id: 'conflict', tone: 'bad' as const, reason: 'Both machines changed it' };
-    const result = deriveWorkstreams(wsCtx(), base, { documents: [document([conflict])] });
-    expect(result.entries[0]).toMatchObject({
-      category: 'workstream.conflict',
-      needsYou: true,
-      severity: 'warning',
-    });
-  });
-
-  it('keeps what held for a document that vanished', () => {
-    const base = deriveWorkstreams(seedContext(), null, {
-      documents: [document([ready])],
-    }).baseline;
-    const gone = deriveWorkstreams(wsCtx(), base, { documents: [] });
-    expect(gone.resolutions).toEqual([]);
-    expect(gone.baseline.holding.ws1).toEqual({ ready: 1 });
   });
 });
 

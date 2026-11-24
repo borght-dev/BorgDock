@@ -4,7 +4,6 @@ import { useDispatchStore } from '@/stores/dispatch-store';
 import { useNotesStore } from '@/stores/notes-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import { useWorkstreamsStore } from '@/stores/workstreams-store';
 
 /** The store slices a chip reads, subscribed so the chip follows each poll. */
 function useChipSources(): ChipSources {
@@ -12,17 +11,15 @@ function useChipSources(): ChipSources {
     pullRequests: usePrStore((s) => s.pullRequests),
     closedPullRequests: usePrStore((s) => s.closedPullRequests),
     items: useDispatchStore((s) => s.items),
-    contextItems: useDispatchStore((s) => s.contextItems),
     workItems: useWorkItemsStore((s) => s.workItems),
     threads: useDispatchStore((s) => s.threads),
     hosts: useDispatchStore((s) => s.hosts),
-    workstreams: useWorkstreamsStore((s) => s.entries),
   };
 }
 
 /**
- * RefChip — a pull request, work item, thread or workstream named in a note,
- * with what its source says now. Click opens it: the PR or item in BorgDock,
+ * RefChip — a pull request, work item or thread named in a note, with what
+ * its source says now. Click opens it: the PR or item in BorgDock,
  * the thread in T3.
  */
 export function RefChip({ token }: { token: RefToken }) {

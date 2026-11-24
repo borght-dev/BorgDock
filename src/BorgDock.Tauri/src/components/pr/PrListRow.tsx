@@ -2,7 +2,6 @@ import clsx from 'clsx';
 import { memo, type ReactNode } from 'react';
 import { Avatar, CheckBar, checkBarSummary, HoverPopover } from '@/components/shared/primitives';
 import { WorkItemRef } from '@/components/work-items/WorkItemRef';
-import { TitleWithChips } from '@/components/workstreams/Membership';
 import type { PrColumn, PrGroupBy } from '@/services/pr-list/display';
 import {
   type PrFacts,
@@ -11,7 +10,6 @@ import {
   STATUS_BUCKET_LABEL,
   splitTitle,
 } from '@/services/pr-list/facts';
-import { pullRequestRef } from '@/services/workstreams/membership';
 import type { PrDensity } from '@/types';
 import { formatAgo, formatAgoShort } from '@/utils/relative-time';
 import { ChecksHoverCard } from './ChecksHoverCard';
@@ -395,9 +393,7 @@ export const PrListRow = memo(function PrListRow({
         >
           <StatusMark facts={facts} />
           <span className="bd-prl-row__text">
-            <TitleWithChips refs={[pullRequestRef(p.repoOwner, p.repoName, p.number)]}>
-              <PrTitle facts={facts} />
-            </TitleWithChips>
+            <PrTitle facts={facts} />
             {density === 'comfortable' && (
               <span className="bd-wb-row__meta">
                 <span className="bd-wb-row__meta-text">

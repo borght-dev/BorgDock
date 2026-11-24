@@ -202,7 +202,7 @@ export async function lookUpPullRequests(
         const data = await client.graphql<{
           repository: ({ id: string; nameWithOwner: string } & Record<string, unknown>) | null;
         }>(
-          `query WorkstreamPullRequests($owner: String!, $name: String!) {
+          `query PullRequestsByNumber($owner: String!, $name: String!) {
             repository(owner: $owner, name: $name) { id nameWithOwner ${aliases} }
           }`,
           { owner, name: repo },

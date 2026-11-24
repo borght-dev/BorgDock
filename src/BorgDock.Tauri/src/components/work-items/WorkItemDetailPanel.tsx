@@ -8,7 +8,7 @@ import { itemLatest, notesFieldOf } from '@/services/ado/work-item-latest';
 import { getFieldAllowedValues } from '@/services/ado/work-item-types';
 import { isMainWindow, showWorkItem } from '@/services/navigation';
 import { rememberCaptureContext } from '@/services/notes/capture';
-import { refKey } from '@/services/workstreams/identity';
+import { refKey } from '@/services/notes/refs';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import type { WorkItemAttachment } from '@/types';

@@ -65,7 +65,6 @@ export type {
   ThemeMode,
   UiSettings,
   UpdateSettings,
-  WorkstreamSettings,
 } from './settings';
 export type { UpdateInfo } from './update';
 export type { Highlight, Kind, Release } from './whats-new';

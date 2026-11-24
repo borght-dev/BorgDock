@@ -841,6 +841,55 @@ async fn counts_split_by_category_and_source() {
 }
 
 #[tokio::test]
+async fn a_journal_from_before_workstreams_went_loses_their_entries_only() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("activity.db");
+    {
+        let conn = Connection::open(&path).unwrap();
+        conn.execute_batch(super::schema::MIGRATIONS[0]).unwrap();
+        conn.execute_batch(
+            "PRAGMA user_version = 1;
+             INSERT INTO sources (source_id, kind, label, config_key, generation) VALUES
+               ('workstreams:local', 'workstreams', 'Workstreams', 'folder', 1),
+               ('t3:local', 't3', 'This laptop', 'env-1', 1);
+             INSERT INTO entries (id, source_id, entity_key, category, severity, needs_you, status,
+               observed_at, coverage, summary, payload, read, version) VALUES
+               ('workstreams:local|ws1:ready#1', 'workstreams:local', 'workstream:ws1',
+                'workstream.ready', 'info', 1, 'open', '2026-10-27T10:00:00.000Z', 'live',
+                'Checkout is ready to complete', '{}', 'unread', 1),
+               ('workstreams:local|rollup', 'workstreams:local', 'source:workstreams:local',
+                'activity.rollup', 'info', 0, 'open', '2026-10-27T10:00:00.000Z', 'live',
+                '4 older updates from Workstreams', '{}', 'unread', 1),
+               ('t3:local|a', 't3:local', 't3:local:thread:a', 'agent.question', 'info', 1, 'open',
+                '2026-10-27T10:00:00.000Z', 'live', 'Which one?', '{}', 'unread', 1);
+             INSERT INTO outbox (entry_id, channel, state, attempts, next_at, created_at) VALUES
+               ('workstreams:local|ws1:ready#1', 'popup', 'pending', 0,
+                '2026-10-27T10:00:00.000Z', '2026-10-27T10:00:00.000Z'),
+               ('t3:local|a', 'popup', 'pending', 0,
+                '2026-10-27T10:00:00.000Z', '2026-10-27T10:00:00.000Z');",
+        )
+        .unwrap();
+    }
+    let store = ActivityDb::at(path);
+
+    let page = list(&store, all()).await;
+    let ids: Vec<&str> = page.entries.iter().map(|row| row.id.as_str()).collect();
+    assert_eq!(ids, vec!["t3:local|a"]);
+    let counts = store
+        .db
+        .with_store(|conn| queries::counts(conn))
+        .await
+        .unwrap();
+    assert_eq!((counts.unread, counts.needs_you), (1, 1));
+    assert_eq!(
+        counts.by_source.keys().collect::<Vec<_>>(),
+        vec!["t3:local"]
+    );
+    assert_eq!(count(&store, "SELECT COUNT(*) FROM sources").await, 1);
+    assert_eq!(count(&store, "SELECT COUNT(*) FROM outbox").await, 1);
+}
+
+#[tokio::test]
 async fn a_newer_journal_is_read_only_and_says_so() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("activity.db");

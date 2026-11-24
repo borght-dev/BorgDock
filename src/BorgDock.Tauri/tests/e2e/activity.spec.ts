@@ -50,7 +50,7 @@ function row(id: string, summary: string, overrides: Partial<Row> = {}): Row {
       schema: 1,
       entity: { kind: 'thread', key: `t3:local:thread:${id}`, title: summary, url: null },
       action: { kind: 'open-thread', hostId: 'local', threadId: id },
-      links: { itemIds: [], prUrls: [], workstreamIds: [], ciGroupIds: [] },
+      links: { itemIds: [], prUrls: [], ciGroupIds: [] },
     }),
     read: 'unread',
     readReason: null,
@@ -211,7 +211,7 @@ test('an answer the thread no longer asks falls back to Open', async ({ page }) 
       schema: 1,
       entity: { kind: 'thread', key: 't3:local:thread:q', title: 'Fix login', url: null },
       action: { kind: 'answer', hostId: 'local', threadId: 'q', requestId: 'req-1', option: 'Keep it' },
-      links: { itemIds: [], prUrls: [], workstreamIds: [], ciGroupIds: [] },
+      links: { itemIds: [], prUrls: [], ciGroupIds: [] },
     }),
   });
   await boot(page, [question]);

@@ -23,7 +23,6 @@ pub mod settings;
 pub mod sql;
 pub mod t3;
 pub mod updater;
-pub mod workstreams;
 
 use cache::PrCache;
 use git::process::ProcessState;
@@ -269,7 +268,6 @@ macro_rules! app_commands {
             phone_link::phone_link_pr_views_get,
             phone_link::phone_link_pr_views_put,
             platform::taskbar::set_taskbar_badge,
-            // Workstreams
             // Notes vault
             notes::commands::notes_folder_path,
             notes::commands::notes_list,
@@ -278,18 +276,6 @@ macro_rules! app_commands {
             notes::commands::notes_rename,
             notes::commands::notes_save_folder,
             notes::commands::notes_trash,
-            workstreams::commands::workstreams_folder_path,
-            workstreams::commands::workstreams_list,
-            workstreams::commands::workstreams_read,
-            workstreams::commands::workstreams_write,
-            workstreams::commands::workstreams_trash,
-            workstreams::commands::workstreams_trashed,
-            workstreams::commands::workstreams_restore,
-            workstreams::commands::workstreams_restore_backup,
-            workstreams::commands::workstreams_device_name,
-            workstreams::commands::workstreams_copy_into,
-            workstreams::commands::workstreams_export_file,
-            workstreams::commands::workstreams_import_file,
         ]
     };
 }

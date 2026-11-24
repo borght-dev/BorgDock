@@ -55,11 +55,7 @@ const STATE_RANK: Record<ItemPull['state'], number> = { open: 0, merged: 1, clos
 export function useItemContext(id: number | undefined): ItemContext {
   const overview = useDispatchStore((s) => {
     if (id === undefined || !s.overview) return null;
-    return (
-      s.overview.items.find((u) => u.item.id === id) ??
-      s.overview.context?.find((u) => u.item.id === id) ??
-      null
-    );
+    return s.overview.items.find((u) => u.item.id === id) ?? null;
   });
   const { open, closed } = usePrStore(
     useShallow((s) => ({ open: s.pullRequests, closed: s.closedPullRequests })),

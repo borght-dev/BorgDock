@@ -25,8 +25,6 @@ export interface NoteCompletionSources {
   workItems(): { id: number; title: string }[];
   /** `url` like `t3code://threads/<environmentId>/<threadId>`. */
   threads(): { label: string; url: string }[];
-  /** `url` like `borgdock://workstreams/<id>`. */
-  workstreams(): { label: string; url: string }[];
   /** `text` already filled in. */
   templates(): { name: string; text: string }[];
 }
@@ -40,7 +38,7 @@ export interface NoteEditorProps {
   renderChip: ChipRenderer;
   /** `[[target]]` clicked: a plain click on a preview line, Ctrl/Cmd-click on a line being edited. */
   onOpenLink(target: string): void;
-  /** A `t3code://`, `borgdock://` or `http(s)` link clicked. */
+  /** A `t3code://` or `http(s)` link clicked. */
   onOpenUrl?(url: string): void;
   completions: NoteCompletionSources;
   readOnly?: boolean;

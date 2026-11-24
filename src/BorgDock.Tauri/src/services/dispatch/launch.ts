@@ -351,7 +351,7 @@ function workspaceOf(target: Exclude<LaunchTarget, { kind: 'continue' }>): {
 /**
  * Start an agent where `target` says and resolve with its thread's scoped id.
  * Every T3 launch goes through here: Dispatch's item threads and runs,
- * workstream runs and related CI failure investigations.
+ * threads started from a note and related CI failure investigations.
  */
 export async function launchAt(request: TargetLaunch): Promise<string> {
   const { target, model } = request;

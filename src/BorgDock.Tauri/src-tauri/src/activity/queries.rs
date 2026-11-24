@@ -135,7 +135,7 @@ pub fn open_source(
 ) -> Result<ActivitySourceState, String> {
     check(
         &request.kind,
-        &["t3", "gh", "deploy", "ci", "ado", "workstreams"],
+        &["t3", "gh", "deploy", "ci", "ado"],
         "source kind",
     )?;
     match source(tx, &request.source_id)? {
@@ -576,7 +576,7 @@ fn roll_up(tx: &Transaction, source_id: &str, folded: i64, now: &str) -> Result<
         "schema": 1,
         "entity": { "kind": "source", "key": format!("source:{source_id}"), "title": label, "url": null },
         "action": null,
-        "links": { "itemIds": [], "prUrls": [], "workstreamIds": [], "ciGroupIds": [] },
+        "links": { "itemIds": [], "prUrls": [], "ciGroupIds": [] },
         "rolledUp": total,
     })
     .to_string();

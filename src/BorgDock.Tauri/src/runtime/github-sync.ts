@@ -58,9 +58,7 @@ export function createGitHubSync(getSettings: () => AppSettings) {
       };
       for (const repo of getSettings().repos) ensureRepoClient(repo);
 
-      /** The repositories the last poll read, as `owner/name` in lower case. */
-      let polledRepos: string[] = [];
-      /** The same, with how each was read, for the activity journal. */
+      /** The repositories the last poll read and how each was read, for the activity journal. */
       let freshRead: { repositories: FreshRepository[]; startedAt: number } = {
         repositories: [],
         startedAt: 0,
@@ -91,10 +89,8 @@ export function createGitHubSync(getSettings: () => AppSettings) {
         const pollStart = performance.now();
         const startedAt = Date.now();
         let successfulRepos = 0;
-        const freshRepos: string[] = [];
         const freshRepositories: FreshRepository[] = [];
         const fresh = (repo: (typeof enabledRepos)[number], path: FreshRepository['path']) => {
-          freshRepos.push(`${repo.owner}/${repo.name}`.toLowerCase());
           freshRepositories.push({
             owner: repo.owner,
             name: repo.name,
@@ -198,7 +194,6 @@ export function createGitHubSync(getSettings: () => AppSettings) {
           }),
         );
         if (successfulRepos === 0) throw new Error('Unable to refresh any GitHub repository');
-        polledRepos = freshRepos;
         freshRead = { repositories: freshRepositories, startedAt };
         const allPrs = perRepo.flat();
 
@@ -222,7 +217,6 @@ export function createGitHubSync(getSettings: () => AppSettings) {
       manager.onResult = (results) => {
         if (stopped) return;
         usePrStore.getState().setPullRequests(results);
-        usePrStore.getState().markReposPolled(polledRepos, Date.now());
         usePrStore.getState().setPollingState(false, new Date());
         void ingestGitHubPoll({
           ...freshRead,

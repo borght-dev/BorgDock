@@ -26,7 +26,6 @@ const GROUPS: readonly { value: ActivityCategoryGroup; label: string }[] = [
   { value: 'agents', label: 'Agents' },
   { value: 'pull-requests', label: 'Pull requests' },
   { value: 'ci', label: 'CI' },
-  { value: 'workstreams', label: 'Workstreams' },
   { value: 'deployments', label: 'Deployments' },
   { value: 'work-items', label: 'Work items' },
 ];
@@ -39,7 +38,7 @@ function emptyText(filter: ActivityFilter, visitedAt: string | null): string {
     const time = new Date(visitedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return `Nothing new since ${time}.`;
   }
-  return 'No activity yet. Entries appear as your agents, PRs, CI, workstreams and items change.';
+  return 'No activity yet. Entries appear as your agents, PRs, CI and items change.';
 }
 
 async function exportJournal(): Promise<void> {

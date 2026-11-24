@@ -64,9 +64,7 @@ function checksLink(
 function useCardLinks(id: number): WorkItemCardLink[] {
   const overview = useDispatchStore((s) => s.overview);
   const pullRequests = usePrStore((s) => s.pullRequests);
-  const unit = [...(overview?.items ?? []), ...(overview?.context ?? [])].find(
-    (entry) => entry.item.id === id,
-  );
+  const unit = overview?.items.find((entry) => entry.item.id === id);
   if (unit) {
     const prs = unit.pullRequests
       .filter((pr) => pr.state === 'open' && !pr.shared)
@@ -158,12 +156,7 @@ function Footer({ children, canOpenWeb }: { children?: ReactNode; canOpenWeb: bo
 
 /** The newest update about the item: Dispatch's latest message, else its newest Developer Notes entry. */
 function useLatest(id: number): LatestMessage | null {
-  return useDispatchStore((s) => {
-    const unit =
-      s.overview?.items.find((u) => u.item.id === id) ??
-      s.overview?.context?.find((u) => u.item.id === id);
-    return unit?.latest ?? null;
-  });
+  return useDispatchStore((s) => s.overview?.items.find((u) => u.item.id === id)?.latest ?? null);
 }
 
 function shortWhen(at: string | null, now?: number): string {

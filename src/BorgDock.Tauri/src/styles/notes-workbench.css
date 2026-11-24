@@ -340,8 +340,7 @@
     cursor: pointer;
     outline: none;
   }
-  .bd-notes-graph__node circle,
-  .bd-notes-graph__node rect {
+  .bd-notes-graph__node circle {
     fill: var(--color-purple);
   }
   .bd-notes-graph__node[data-kind='pr'] circle {
@@ -352,9 +351,6 @@
   }
   .bd-notes-graph__node[data-kind='t3'] circle {
     fill: var(--color-status-blue);
-  }
-  .bd-notes-graph__node[data-kind='workstream'] rect {
-    fill: var(--color-text-secondary);
   }
   .bd-notes-graph__node[data-center] circle {
     stroke: var(--color-purple-border);

@@ -28,13 +28,13 @@ describe('scanLine', () => {
     expect(kinds('AB#123')).toEqual(['ado']);
   });
 
-  it('reads T3 thread and workstream links', () => {
+  it('reads T3 thread links, and nothing in a link to a workstream', () => {
     const tokens = scanLine(
       '[Profile planner query](t3code://threads/env-1/8f2c) for [Planner speed](borgdock://workstreams/ws-1)',
     );
+    expect(tokens).toHaveLength(1);
     expect(tokens).toMatchObject([
       { kind: 't3', label: 'Profile planner query', environmentId: 'env-1', threadId: '8f2c' },
-      { kind: 'workstream', label: 'Planner speed', id: 'ws-1' },
     ]);
   });
 
@@ -86,7 +86,7 @@ describe('parseNote', () => {
   const text = [
     '---',
     'tags: [perf]',
-    'workstream: "[Planner speed](borgdock://workstreams/ws-1)"',
+    'thread: "[Planner speed](t3code://threads/env-1/8f2c)"',
     '---',
     '# Planner slow-load',
     'Tracked in AB#48213. #planner',
@@ -107,7 +107,7 @@ describe('parseNote', () => {
     ]);
     expect(note.tags).toEqual(['perf', 'planner']);
     expect(note.tokens.map((t) => [t.kind, t.line])).toEqual([
-      ['workstream', 2],
+      ['t3', 2],
       ['ado', 5],
       ['tag', 5],
     ]);

@@ -30,7 +30,6 @@ const GROUPS: readonly { group: ActivityCategoryGroup; label: string }[] = [
   { group: 'agents', label: 'Agents' },
   { group: 'pull-requests', label: 'Pull requests' },
   { group: 'ci', label: 'CI failures' },
-  { group: 'workstreams', label: 'Workstreams' },
   { group: 'deployments', label: 'Deployments' },
   { group: 'work-items', label: 'Work items' },
 ];
@@ -155,7 +154,7 @@ export function NotificationSection({ notifications, onChange }: Props) {
         <div id="field-read-on-open">
           <ToggleRow
             label="Opening something marks its updates read"
-            hint="A PR's detail, an item in Dispatch, a workstream, a CI failure group."
+            hint="A PR's detail, an item in Dispatch, a CI failure group."
             on={activity.markReadOnOpen}
             onChange={(markReadOnOpen) => updateActivity({ markReadOnOpen })}
           />

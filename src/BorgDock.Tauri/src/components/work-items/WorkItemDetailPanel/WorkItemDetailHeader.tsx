@@ -18,7 +18,6 @@ import {
   toggleTrackedWorkItem,
   toggleWorkingOnWorkItem,
 } from '@/components/work-items/work-item-toggles';
-import { ItemMembership } from '@/components/workstreams/Membership';
 import { startWorkItem } from '@/services/dispatch/actions';
 import { isMainWindow } from '@/services/navigation';
 import { useWorkItemsStore } from '@/stores/work-items-store';
@@ -201,7 +200,6 @@ export function WorkItemDetailHeader({
           )}
         </span>
         <span className="bd-wid-spacer" />
-        {id !== undefined && !readOnly && <ItemMembership id={id} title={title} />}
         {save && (
           <span className="bd-wid-saved" data-tone={save.tone === 'bad' ? 'bad' : undefined}>
             {save.tone === 'ok' && <Check size={12} strokeWidth={2.25} aria-hidden />}

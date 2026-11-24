@@ -15,7 +15,6 @@ import type {
 export const NO_LINKS: ActivityLinks = {
   itemIds: [],
   prUrls: [],
-  workstreamIds: [],
   ciGroupIds: [],
 };
 

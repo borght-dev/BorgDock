@@ -92,8 +92,6 @@ export const sentence = {
   ciFixMerged: (title: string) => summary(`A fix for ${title} was merged`),
   ciSeenAfterFix: (title: string) => summary(`${title} failed again after its fix`),
   ciResolved: (title: string) => summary(`${title} is resolved`),
-  workstream: (heading: string, title: string, reason: string) =>
-    summary(reason ? `${heading}: ${title}. ${reason}` : `${heading}: ${title}`),
   deployedHead: (number: number, environment: string, state: string) =>
     summary(
       state === 'success'
@@ -143,12 +141,6 @@ const NOUNS: Partial<Record<ActivityCategory, [string, string]>> = {
   'ci.fix-merged': ['CI fix merged', 'CI fixes merged'],
   'ci.seen-after-fix': ['CI failure back', 'CI failures back'],
   'ci.resolved': ['CI failure resolved', 'CI failures resolved'],
-  'workstream.unblocked': ['workstream unblocked', 'workstreams unblocked'],
-  'workstream.invalidated': ['outcome no longer holds', 'outcomes no longer hold'],
-  'workstream.reopened': ['workstream reopened', 'workstreams reopened'],
-  'workstream.conflict': ['workstream conflict', 'workstream conflicts'],
-  'workstream.proposal': ['agent proposal', 'agent proposals'],
-  'workstream.ready': ['workstream ready', 'workstreams ready'],
   'deploy.pr': ['deploy', 'deploys'],
   'deploy.reached': ['release step', 'release steps'],
   'deploy.failed': ['failed deploy', 'failed deploys'],

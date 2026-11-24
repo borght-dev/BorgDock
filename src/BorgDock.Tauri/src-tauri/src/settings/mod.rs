@@ -109,7 +109,7 @@ fn apply_dev_overlay(settings: AppSettings) -> Result<AppSettings, String> {
 /// Current settings schema version. Bump together with a new arm in
 /// [`migrate`]. Migrations are one-off, in-memory rewrites that run on load
 /// and are written straight back so they never run twice.
-pub const CURRENT_SCHEMA_VERSION: u32 = 4;
+pub const CURRENT_SCHEMA_VERSION: u32 = 5;
 
 const AGENT_CATEGORIES: &[&str] = &[
     "agent.question",
@@ -121,14 +121,6 @@ const AGENT_CATEGORIES: &[&str] = &[
     "agent.interrupted",
     "agent.limited",
     "agent.report",
-];
-const WORKSTREAM_CATEGORIES: &[&str] = &[
-    "workstream.unblocked",
-    "workstream.invalidated",
-    "workstream.reopened",
-    "workstream.conflict",
-    "workstream.proposal",
-    "workstream.ready",
 ];
 
 /// An old toggle that was off turns the popups of the categories that
@@ -183,10 +175,6 @@ pub fn migrate(settings: &mut AppSettings) -> bool {
         // v3 (activity journal, #88): every popup comes from an activity
         // entry. The old per-feature toggles seed the categories that replace
         // them, then go; `skip_serializing` drops them on the next save.
-        let workstreams = settings
-            .workstreams
-            .as_mut()
-            .and_then(|w| w.notifications.take());
         let dispatch = settings.agents.dispatch_notifications.take();
         let n = &mut settings.notifications;
         let categories = &mut n.activity.categories;
@@ -217,7 +205,6 @@ pub fn migrate(settings: &mut AppSettings) -> bool {
             &["ci.fix-merged", "ci.seen-after-fix"],
             n.ci_failure_fix_merged.take(),
         );
-        seed_popups(categories, WORKSTREAM_CATEGORIES, workstreams);
         n.channels.tray = None;
         n.channels.system = None;
         n.channels.email_digest = None;
@@ -232,6 +219,20 @@ pub fn migrate(settings: &mut AppSettings) -> bool {
         for repo in &mut settings.remote_worktree_repos {
             repo.owner = owner_without_ssh_host(&repo.owner).to_string();
         }
+    }
+    if from < 5 {
+        // v5 (4.17.0): Workstreams is gone. The notes vault sits in the sync
+        // folder it kept, so the folder becomes a Notes setting; the rest of
+        // the old object is dropped on the next save (`skip_serializing`).
+        let retired = settings.workstreams.take().and_then(|w| w.folder);
+        if settings.notes_sync_folder.is_none() {
+            settings.notes_sync_folder = retired.filter(|folder| !folder.trim().is_empty());
+        }
+        settings
+            .notifications
+            .activity
+            .categories
+            .retain(|category, _| !category.starts_with("workstream."));
     }
     settings.schema_version = CURRENT_SCHEMA_VERSION;
     log::info!("settings: migrated schema {from} -> {CURRENT_SCHEMA_VERSION}");
@@ -302,8 +303,7 @@ mod tests {
                 "ciFailureOwnerStale": false,
                 "channels": { "tray": true, "system": false, "sound": false, "emailDigest": true }
             },
-            "agents": { "dispatchNotifications": false },
-            "workstreams": { "notifications": false }
+            "agents": { "dispatchNotifications": false }
         }))
         .unwrap();
         assert!(super::migrate(&mut settings));
@@ -312,7 +312,6 @@ mod tests {
         assert_eq!(categories["pr.checks-passed"].popup, Some(false));
         assert_eq!(categories["ci.owner-stale"].popup, Some(false));
         assert_eq!(categories["agent.question"].popup, Some(false));
-        assert_eq!(categories["workstream.ready"].popup, Some(false));
         assert!(
             !categories.contains_key("pr.review"),
             "a toggle that was on keeps the default"
@@ -333,7 +332,6 @@ mod tests {
         }
         assert_eq!(notifications["channels"], json!({ "sound": false }));
         assert!(saved["agents"].get("dispatchNotifications").is_none());
-        assert!(saved["workstreams"].get("notifications").is_none());
         assert!(!super::migrate(&mut settings), "it runs once");
     }
 
@@ -354,6 +352,53 @@ mod tests {
         assert_eq!(settings.repos[0].owner, "borght-dev");
         assert_eq!(settings.repos[1].owner, "Gomocha-FSP");
         assert_eq!(settings.remote_worktree_repos[0].owner, "acme");
+    }
+
+    #[test]
+    fn v5_moves_the_sync_folder_to_notes_and_drops_what_workstreams_left() {
+        let mut settings: super::AppSettings = serde_json::from_value(json!({
+            "schemaVersion": 4,
+            "workstreams": { "folder": "C:/Sync", "deviceLabel": "Laptop" },
+            "notifications": { "activity": { "categories": {
+                "workstream.ready": { "popup": false },
+                "pr.review": { "popup": false }
+            } } },
+            "agents": { "dispatchPrompts": { "sync": "Sync them", "workstreamReview": "Review it" } }
+        }))
+        .unwrap();
+        assert!(super::migrate(&mut settings));
+        assert_eq!(settings.notes_sync_folder.as_deref(), Some("C:/Sync"));
+        let categories = &settings.notifications.activity.categories;
+        assert!(!categories.contains_key("workstream.ready"));
+        assert_eq!(categories["pr.review"].popup, Some(false));
+
+        let saved = serde_json::to_value(&settings).unwrap();
+        assert_eq!(saved["notesSyncFolder"], "C:/Sync");
+        assert!(saved.get("workstreams").is_none());
+        assert_eq!(
+            saved["agents"]["dispatchPrompts"],
+            json!({ "sync": "Sync them" })
+        );
+    }
+
+    #[test]
+    fn v5_keeps_a_notes_folder_that_is_already_set_and_ignores_a_blank_one() {
+        let mut chosen: super::AppSettings = serde_json::from_value(json!({
+            "schemaVersion": 4,
+            "notesSyncFolder": "D:/Notes",
+            "workstreams": { "folder": "C:/Sync" }
+        }))
+        .unwrap();
+        assert!(super::migrate(&mut chosen));
+        assert_eq!(chosen.notes_sync_folder.as_deref(), Some("D:/Notes"));
+
+        let mut blank: super::AppSettings = serde_json::from_value(json!({
+            "schemaVersion": 4,
+            "workstreams": { "folder": "  " }
+        }))
+        .unwrap();
+        assert!(super::migrate(&mut blank));
+        assert_eq!(blank.notes_sync_folder, None);
     }
 
     #[test]

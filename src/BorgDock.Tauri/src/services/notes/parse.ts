@@ -1,8 +1,8 @@
 /**
  * What a note says, read from its markdown: frontmatter, headings, `[[links]]`,
- * references to pull requests, work items, T3 threads and workstreams, tags
- * and tasks. Pure; the editor's decorations and the vault index both read
- * inline tokens through `scanLine`, so they never disagree.
+ * references to pull requests, work items and T3 threads, tags and tasks.
+ * Pure; the editor's decorations and the vault index both read inline tokens
+ * through `scanLine`, so they never disagree.
  */
 
 export type InlineToken =
@@ -34,19 +34,13 @@ export type InlineToken =
       url: boolean;
     }
   | { kind: 't3'; from: number; to: number; label: string; environmentId: string; threadId: string }
-  | { kind: 'workstream'; from: number; to: number; label: string; id: string }
   | { kind: 'tag'; from: number; to: number; tag: string };
 
-/** A reference to something BorgDock knows: a pull request, work item, thread or workstream. */
-export type RefToken = Extract<InlineToken, { kind: 'pr' | 'ado' | 't3' | 'workstream' }>;
+/** A reference to something BorgDock knows: a pull request, work item or thread. */
+export type RefToken = Extract<InlineToken, { kind: 'pr' | 'ado' | 't3' }>;
 
 export function isRefToken(token: InlineToken): token is RefToken {
-  return (
-    token.kind === 'pr' ||
-    token.kind === 'ado' ||
-    token.kind === 't3' ||
-    token.kind === 'workstream'
-  );
+  return token.kind === 'pr' || token.kind === 'ado' || token.kind === 't3';
 }
 
 export interface Heading {
@@ -75,15 +69,14 @@ export interface ParsedNote {
 }
 
 const WIKILINK = /\[\[([^\]\n|#]+)(?:#([^\]\n|]+))?(?:\|([^\]\n]+))?\]\]/g;
-const MARKDOWN_LINK =
-  /\[([^\]\n]*)\]\(((?:t3code:\/\/threads|borgdock:\/\/workstreams)\/[^)\s]+)\)/g;
+const THREAD_LINK = /\[([^\]\n]*)\]\((t3code:\/\/threads\/[^)\s]+)\)/g;
 const ADO = /(?<![\w#/])AB#(\d{1,9})\b/gi;
 const PR = /(?<![\w/#.-])(?:([\w.-]+)\/)?([\w.-]+)#(\d{1,7})\b/g;
 const TAG = /(?<![\w#/&])#([\w/-]*[A-Za-z_/-][\w/-]*)/g;
 const INLINE_CODE = /`[^`\n]*`/g;
 const PR_URL = /^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/i;
 const ADO_URL = /^https?:\/\/dev\.azure\.com\/([^/\s]+)\/([^/\s]+)\/_workitems\/edit\/(\d+)/i;
-const URL_RUN = /\b(?:https?|t3code|borgdock):\/\/\S+/g;
+const URL_RUN = /\b(?:https?|t3code):\/\/\S+/g;
 const TASK = /^\s*[-*+] \[([ xX])\] (.*)$/;
 const HEADING = /^(#{1,6}) +(.+?)\s*#*\s*$/;
 const FENCE = /^\s*(```|~~~)/;
@@ -125,25 +118,18 @@ export function scanLine(line: string): InlineToken[] {
       label: m[3]?.trim() ?? null,
     });
   }
-  for (const m of rest.matchAll(MARKDOWN_LINK)) {
+  for (const m of rest.matchAll(THREAD_LINK)) {
+    const thread = /^t3code:\/\/threads\/([^/\s]+)\/([^/\s?#)]+)/.exec(m[2]!);
+    if (!thread) continue;
     const from = m.index;
-    const to = from + m[0].length;
-    const url = m[2]!;
-    const label = m[1]!.trim();
-    const thread = /^t3code:\/\/threads\/([^/\s]+)\/([^/\s?#)]+)/.exec(url);
-    const workstream = /^borgdock:\/\/workstreams\/([^/\s?#)]+)/.exec(url);
-    if (thread) {
-      tokens.push({
-        kind: 't3',
-        from,
-        to,
-        label,
-        environmentId: decode(thread[1]!),
-        threadId: decode(thread[2]!),
-      });
-    } else if (workstream) {
-      tokens.push({ kind: 'workstream', from, to, label, id: decode(workstream[1]!) });
-    }
+    tokens.push({
+      kind: 't3',
+      from,
+      to: from + m[0].length,
+      label: m[1]!.trim(),
+      environmentId: decode(thread[1]!),
+      threadId: decode(thread[2]!),
+    });
   }
   for (const token of tokens) rest = blank(rest, token.from, token.to);
   for (const m of rest.matchAll(URL_RUN)) {
@@ -268,7 +254,7 @@ export function parseNote(path: string, text: string): ParsedNote {
   const tasks: Task[] = [];
   const tags = new Set(frontmatterTags(frontmatter));
 
-  // Frontmatter values can hold references too (`workstream: [label](borgdock://…)`).
+  // Frontmatter values can hold references too (`thread: [label](t3code://…)`).
   for (let line = 1; line < body - 1; line++) {
     for (const token of scanLine(lines[line]!)) {
       if (token.kind !== 'tag') tokens.push({ ...token, line });

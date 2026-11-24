@@ -4,7 +4,6 @@ export const DAILY_FOLDER = 'Daily';
 export const TEMPLATES_FOLDER = 'Templates';
 export const OBSIDIAN_DAILY_FOLDER = '02 - Daily';
 export const OBSIDIAN_TEMPLATES_FOLDER = '08 - Templates';
-export const DECISIONS_FOLDER = 'Decisions';
 export const INBOX_PATH = 'Inbox.md';
 
 /** `2026-10-28` in local time. */

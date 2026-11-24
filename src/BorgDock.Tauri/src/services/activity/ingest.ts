@@ -346,7 +346,7 @@ const lastTimes = new Map<string, number>();
 
 /**
  * A time revision for observations made in this window without a read to
- * wait for (workstream assessments): now, but always after the last one.
+ * wait for (deployments a GitHub poll already read): now, but always after the last one.
  */
 export function monotonicTime(sourceId: string): Revision {
   const time = Math.max(Date.now(), (lastTimes.get(sourceId) ?? 0) + 1);

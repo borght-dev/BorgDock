@@ -383,7 +383,7 @@ async fn environment_id(client: &Client) -> Result<String, String> {
         .ok_or_else(|| "T3 did not report its environment id".to_string())
 }
 
-/// The agent's last message in a thread, whole: a workstream review's proposal is at its end.
+/// The agent's last message in a thread, whole: a note keeps all of its thread's answer.
 #[tauri::command]
 #[cfg_attr(test, specta::specta)]
 pub async fn t3_thread_last_message(
