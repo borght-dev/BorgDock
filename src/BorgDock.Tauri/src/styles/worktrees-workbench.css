@@ -1,11 +1,8 @@
 /*
- * Worktrees section and tool window: head row, hosts with their disk space,
- * repo groups, worktree rows on the `PrRowCore` grammar (42 px, hover wash,
- * accent selection bar) and the changes pane beside the list
- * (plans/ui-overhaul-workbench.md, phases 5 and 6). Tokens only. The section's head row and its search box are
- * `.bd-wb-head*` from index.css; the tool window's toolbar and status bar
- * are its `.bd-wt-*` chrome there. Both hosts share the group headings and
- * the rows (`.bd-wtr`, `.bd-wtr--window` for the tool window's columns).
+ * The worktrees tool window's list: hosts with their disk space, repo groups
+ * and worktree rows on the `.bd-wb-row` grammar (42 px, hover wash, accent
+ * selection bar). Tokens only. The window's toolbar, search box and status
+ * bar are its `.bd-wt-*` chrome in index.css.
  */
 
 @layer components {
@@ -171,55 +168,6 @@
     }
   }
 
-  /* ── Section frame ─────────────────────────────────── */
-  .bd-wts-section {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-height: 0;
-    height: 100%;
-  }
-  .bd-wts {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-height: 0;
-    container: bd-wts / inline-size;
-    font-family: var(--font-ui);
-    font-size: 13px;
-    color: var(--color-text-primary);
-  }
-  .bd-wts__count {
-    margin-left: -6px;
-    font-size: 12px;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-text-tertiary);
-  }
-  .bd-wts__head-actions {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    gap: 4px;
-  }
-  .bd-wts__body {
-    position: relative;
-    display: flex;
-    flex: 1;
-    min-height: 0;
-  }
-  .bd-wts__list {
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-    padding: 2px 0 20px;
-    overflow-y: auto;
-    container: bd-wts-list / inline-size;
-  }
-  .bd-wts .bd-wt-empty-title {
-    font-weight: 500;
-  }
-
   /* ── Repo group heading: label, count, drive, hairline ── */
   .bd-wts__group-head {
     display: flex;
@@ -257,27 +205,18 @@
     height: 1px;
     background: var(--color-subtle-border);
   }
-  .bd-wts .bd-wts__error {
-    margin: 0 16px 6px;
-    font-family: var(--font-code);
-  }
 
-  /* ── The row: star; branch over folder; state over upstream; linked PR;
-     last used, which the open actions replace. Height, padding, hover wash
-     and the accent selection bar come from `.bd-wb-row` (index.css); only
-     the columns differ. Two classes so the list-width container queries of
-     `.bd-wb-row` never re-grid it. */
+  /* ── The row: star, the branch over its folder and path, the main chip,
+     the open actions. The whole row is the button (a click or Enter opens a
+     terminal). Height, padding, hover wash and the accent selection bar come
+     from `.bd-wb-row` (index.css); only the columns differ. Two classes so
+     the list-width container queries of `.bd-wb-row` never re-grid it. */
   .bd-wb-row.bd-wtr {
-    --bd-wtr-wash: transparent;
-    position: relative;
-    grid-template-columns: 22px minmax(0, 1fr) 112px minmax(0, 250px) 104px;
-    column-gap: 14px;
+    grid-template-columns: 22px minmax(0, 1fr) auto auto;
+    column-gap: 12px;
   }
-  .bd-wb-row.bd-wtr:hover {
-    --bd-wtr-wash: var(--color-surface-hover);
-  }
-  .bd-wb-row.bd-wtr[data-selected="true"] {
-    --bd-wtr-wash: var(--color-selected-row-bg);
+  .bd-wtr[role="button"] {
+    cursor: pointer;
   }
   .bd-wtr__lead {
     display: flex;
@@ -304,32 +243,10 @@
   .bd-wtr[data-favorite="true"] .bd-wtr__star {
     color: var(--color-status-yellow);
   }
-
-  /* The body spans the branch and state columns, so a click on either
-     opens the changes. */
-  .bd-wtr__body {
+  .bd-wtr__text {
     display: grid;
-    grid-column: 2 / 4;
-    grid-template-columns: subgrid;
-    grid-template-areas:
-      "title state"
-      "meta upstream";
-    align-content: center;
-    row-gap: 1px;
+    gap: 1px;
     min-width: 0;
-    height: 100%;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    font: inherit;
-    color: inherit;
-    text-align: left;
-    cursor: default;
-  }
-  .bd-wtr__body:focus-visible {
-    border-radius: 4px;
-    outline: 2px solid var(--color-accent);
-    outline-offset: -2px;
   }
   .bd-wtr__title {
     overflow: hidden;
@@ -337,54 +254,19 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .bd-wtr__body > .bd-wtr__title {
-    grid-area: title;
-  }
-  .bd-wtr__body > .bd-wtr__meta {
-    grid-area: meta;
-  }
   .bd-wtr__title--detached {
     color: var(--color-text-tertiary);
   }
-  .bd-wtr__folder {
+  .bd-wtr__path {
     font-family: var(--font-code);
     font-size: 11px;
   }
-  .bd-wtr__state {
-    display: inline-flex;
-    grid-area: state;
-    align-items: center;
-    gap: 6px;
+  .bd-wtr__chip-cell {
+    display: flex;
     min-width: 0;
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-    white-space: nowrap;
-  }
-  .bd-wtr__state[data-state="dirty"] {
-    color: var(--color-status-yellow);
-  }
-  .bd-wtr__state[data-state="conflict"] {
-    color: var(--color-status-red);
-  }
-  .bd-wtr__state[data-state="dirty"]::before,
-  .bd-wtr__state[data-state="conflict"]::before {
-    content: "";
-    flex-shrink: 0;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-  }
-  .bd-wtr__upstream {
-    grid-area: upstream;
-    font-family: var(--font-code);
-    font-size: 11px;
-    color: var(--color-text-tertiary);
-    white-space: nowrap;
   }
 
-  /* Open actions: hidden until hover, keyboard focus or selection. In the
-     section they share the last column with "used …" and replace it. */
+  /* Open actions: hidden until hover, keyboard focus or selection. */
   .bd-wtr__actions {
     display: flex;
     align-items: center;
@@ -398,257 +280,5 @@
   .bd-wtr[data-selected="true"] .bd-wtr__actions {
     opacity: 1;
     pointer-events: auto;
-  }
-  .bd-wtr__end {
-    display: grid;
-    align-items: center;
-    justify-items: end;
-    min-width: 0;
-  }
-  .bd-wtr__end > * {
-    grid-area: 1 / 1;
-  }
-  .bd-wtr__used {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-    white-space: nowrap;
-    transition: opacity var(--motion-fast) var(--ease-std);
-  }
-  .bd-wtr:hover .bd-wtr__end:has(.bd-wtr__actions) .bd-wtr__used,
-  .bd-wtr:focus-within .bd-wtr__end:has(.bd-wtr__actions) .bd-wtr__used,
-  .bd-wtr[data-selected="true"] .bd-wtr__end:has(.bd-wtr__actions) .bd-wtr__used {
-    opacity: 0;
-  }
-
-  /* The tool window's row: star, branch and meta, one chip, actions. The
-     whole row is the button (a click or Enter opens a terminal). */
-  .bd-wb-row.bd-wtr--window {
-    grid-template-columns: 22px minmax(0, 1fr) auto auto;
-    column-gap: 12px;
-  }
-  .bd-wtr--window[role="button"] {
-    cursor: pointer;
-  }
-  .bd-wtr__text {
-    display: grid;
-    gap: 1px;
-    min-width: 0;
-  }
-  .bd-wtr__path {
-    font-family: var(--font-code);
-    font-size: 11px;
-  }
-  .bd-wtr__chip-cell {
-    display: flex;
-    min-width: 0;
-  }
-
-  /* The linked pull request: number and title over its check bar; a click
-     opens it. */
-  .bd-wtr__pr-cell {
-    display: flex;
-    min-width: 0;
-  }
-  .bd-wtr__pr {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "num title"
-      "checks checks";
-    align-items: center;
-    gap: 3px 5px;
-    min-width: 0;
-    max-width: 100%;
-    margin-left: -7px;
-    padding: 3px 6px;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    background: transparent;
-    font: inherit;
-    font-size: 12px;
-    color: var(--color-text-secondary);
-    text-align: left;
-    cursor: pointer;
-    transition:
-      border-color var(--motion-fast) var(--ease-std),
-      color var(--motion-fast) var(--ease-std);
-  }
-  .bd-wtr__pr:hover {
-    border-color: var(--color-strong-border);
-    color: var(--color-text-primary);
-  }
-  .bd-wtr__pr:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-  }
-  .bd-wtr__pr-num {
-    grid-area: num;
-    font-family: var(--font-code);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-text-tertiary);
-  }
-  .bd-wtr__pr-title {
-    grid-area: title;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .bd-wtr__checks {
-    grid-area: checks;
-    min-width: 0;
-    overflow: hidden;
-    font-size: 11.5px;
-  }
-
-  /* Medium: the pull request shows as its check bar and number. Every row
-     is a grid of its own, so no column may size to its content. */
-  @container bd-wts-list (max-width: 760px) {
-    .bd-wb-row.bd-wtr {
-      grid-template-columns: 22px minmax(0, 1fr) 104px 200px 96px;
-      column-gap: 12px;
-    }
-    .bd-wtr__pr {
-      grid-template-columns: auto auto;
-      grid-template-areas: "checks num";
-      gap: 8px;
-    }
-    .bd-wtr__pr-title {
-      display: none;
-    }
-  }
-
-  /* Narrow: the state folds into the folder line, the pull request keeps
-     its bar and number, and the open actions lie over the row's end. */
-  @container bd-wts-list (max-width: 520px) {
-    .bd-wb-row.bd-wtr {
-      grid-template-columns: 22px minmax(0, 1fr) 96px;
-      column-gap: 8px;
-    }
-    .bd-wtr__pr-cell {
-      justify-content: flex-end;
-    }
-    .bd-wtr__pr {
-      margin-left: 0;
-    }
-    .bd-wtr__body {
-      grid-column: 2;
-      grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
-      grid-template-areas:
-        "title title"
-        "meta state";
-      column-gap: 8px;
-    }
-    .bd-wtr__state {
-      font-size: 11.5px;
-    }
-    .bd-wtr__state[data-state="clean"],
-    .bd-wtr__upstream,
-    .bd-wtr__used,
-    .bd-wtr .bd-checkbar__label {
-      display: none;
-    }
-    .bd-wtr__end {
-      position: absolute;
-      inset-block: 0;
-      right: 8px;
-      padding-left: 8px;
-      background:
-        linear-gradient(var(--bd-wtr-wash), var(--bd-wtr-wash)),
-        var(--color-background);
-      opacity: 0;
-      pointer-events: none;
-    }
-    .bd-wtr:hover .bd-wtr__end,
-    .bd-wtr:focus-within .bd-wtr__end,
-    .bd-wtr[data-selected="true"] .bd-wtr__end {
-      opacity: 1;
-      pointer-events: auto;
-    }
-  }
-
-  /* ── Changes beside the list ───────────────────────── */
-  .bd-wts__changes {
-    display: flex;
-    flex-direction: column;
-    width: min(46%, 560px);
-    min-width: 300px;
-    min-height: 0;
-    border-left: 1px solid var(--color-subtle-border);
-    background: var(--color-surface);
-    animation: bd-wts-changes-in var(--motion-expand) var(--ease-out) both;
-  }
-  .bd-wts__changes-head {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    gap: 8px;
-    height: 40px;
-    padding: 0 8px 0 14px;
-    border-bottom: 1px solid var(--color-subtle-border);
-  }
-  .bd-wts__changes-icon {
-    flex-shrink: 0;
-    color: var(--color-text-tertiary);
-  }
-  .bd-wts__changes-title {
-    min-width: 0;
-    overflow: hidden;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .bd-wts__changes-folder {
-    margin-right: auto;
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-    white-space: nowrap;
-  }
-  .bd-wts__changes-body {
-    position: relative;
-    flex: 1;
-    min-height: 0;
-  }
-  .bd-wts__changes-body > [data-worktree-changes-panel] {
-    position: absolute;
-    inset: 0;
-    overflow: auto;
-  }
-
-  /* Narrow window: the changes go below the list. */
-  @container bd-wts (max-width: 760px) {
-    .bd-wts__body[data-open="true"] {
-      flex-direction: column;
-    }
-    .bd-wts__changes {
-      width: auto;
-      min-width: 0;
-      height: 55%;
-      border-top: 1px solid var(--color-subtle-border);
-      border-left: 0;
-      animation-name: bd-wts-changes-rise;
-    }
-  }
-
-  @keyframes bd-wts-changes-in {
-    from {
-      opacity: 0;
-      transform: translateX(12px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  @keyframes bd-wts-changes-rise {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
   }
 }

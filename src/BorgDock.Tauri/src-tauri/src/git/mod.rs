@@ -4,7 +4,6 @@ pub mod process;
 pub mod remote_worktree;
 pub mod worktree;
 pub mod worktree_cache;
-pub mod worktree_changes;
 
 pub use commands::{git_checkout, git_current_branch, git_fetch};
 pub use process::{get_active_sessions, kill_session, launch_agent_session, ProcessState};

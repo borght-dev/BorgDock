@@ -53,7 +53,7 @@ test('the rail replaces the title-bar tabs', async ({ page }) => {
     /^Dispatch/,
     /^Pull requests/,
     /^Work items/,
-    /^Worktrees/,
+    /^Notes/,
   ]) {
     await expect(railButton(page, name)).toBeVisible();
   }
@@ -86,8 +86,8 @@ test('number keys switch sections', async ({ page }) => {
   await page.locator('body').click();
 
   await page.keyboard.press('5');
-  await expect(railButton(page, /^Worktrees/)).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByRole('button', { name: 'Open worktrees window' })).toBeVisible();
+  await expect(railButton(page, /^Notes/)).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { level: 1, name: 'Notes' })).toBeVisible();
 
   await page.keyboard.press('4');
   await expect(railButton(page, /^Work items/)).toHaveAttribute('aria-current', 'page');
