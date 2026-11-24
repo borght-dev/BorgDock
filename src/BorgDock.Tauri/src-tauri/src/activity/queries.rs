@@ -15,6 +15,14 @@ const RETENTION_DAYS: i64 = 90;
 const OUTBOX_RETENTION_HOURS: i64 = 12;
 const MAX_BACKOFF_SECONDS: i64 = 6 * 60 * 60;
 const ROLLUP_CATEGORY: &str = "activity.rollup";
+/// What closes the entries of a source nothing reads any more.
+const SOURCE_REMOVED: &str = "source removed";
+/// Closing an entry reads it, with the read reason `resolved`: the fact
+/// ended before I read it. `?1` status, `?2` what resolved it, `?3` now.
+const CLOSE: &str = "status = ?1, resolved_by = ?2, \
+     read_reason = CASE WHEN read = 'unread' THEN 'resolved' ELSE read_reason END, \
+     read_at = CASE WHEN read = 'unread' THEN ?3 ELSE read_at END, \
+     read = CASE WHEN read = 'unread' THEN 'read' ELSE read END, version = version + 1";
 /// SQLite's bound-parameter limit is far above this; it keeps statements small.
 const CHUNK: usize = 400;
 
@@ -30,6 +38,7 @@ const READ_REASONS: &[&str] = &[
     "bulk",
     "rolled-up",
     "phone",
+    "resolved",
 ];
 const CHANNELS: &[&str] = &["popup", "push", "push-clear"];
 
@@ -127,12 +136,17 @@ pub fn sources(conn: &Connection) -> Result<Vec<ActivitySourceState>, String> {
     rows.collect::<rusqlite::Result<_>>().map_err(db)
 }
 
-/// The source's generation. A changed config key, or `reset`, starts the
-/// next one with no baseline, so the source seeds again.
+/// The source's generation, and whether a window would see a difference. A
+/// changed config key, or `reset`, starts the next generation with no
+/// baseline, so the source seeds again. A retired source that comes back as
+/// it was gets the entries its retirement closed open again: its baseline
+/// still describes them, and its next observation ends the ones whose fact
+/// ended meanwhile.
 pub fn open_source(
     tx: &Transaction,
     request: &ActivitySourceRequest,
-) -> Result<ActivitySourceState, String> {
+) -> Result<(ActivitySourceState, bool), String> {
+    let mut reopened = false;
     check(
         &request.kind,
         &["t3", "gh", "deploy", "ci", "ado", "workstreams"],
@@ -158,6 +172,9 @@ pub fn open_source(
                 params![request.source_id, request.label],
             )
             .map_err(db)?;
+            if existing.retired_at.is_some() {
+                reopened = reopen(tx, &request.source_id)? > 0;
+            }
         }
         Some(_) => {
             tx.execute(
@@ -174,17 +191,49 @@ pub fn open_source(
             .map_err(db)?;
         }
     }
-    source(tx, &request.source_id)?.ok_or_else(|| "Activity store: source vanished".to_string())
+    let state = source(tx, &request.source_id)?
+        .ok_or_else(|| "Activity store: source vanished".to_string())?;
+    Ok((state, reopened))
 }
 
+/// Undo what `retire_source` closed; an entry it also read is unread again.
+fn reopen(tx: &Transaction, source_id: &str) -> Result<usize, String> {
+    tx.execute(
+        "UPDATE entries SET status = 'open', resolved_by = NULL, \
+         read = CASE WHEN read_reason = 'resolved' THEN 'unread' ELSE read END, \
+         read_at = CASE WHEN read_reason = 'resolved' THEN NULL ELSE read_at END, \
+         read_reason = CASE WHEN read_reason = 'resolved' THEN NULL ELSE read_reason END, \
+         version = version + 1 \
+         WHERE source_id = ?1 AND status = 'resolved' AND resolved_by = ?2",
+        params![source_id, SOURCE_REMOVED],
+    )
+    .map_err(db)
+}
+
+/// Nothing reads a retired source, so nothing would ever end what it left
+/// open: its entries that need me are closed with it.
 pub fn retire_source(tx: &Transaction, source_id: &str, now: &str) -> Result<bool, String> {
-    let changed = tx
+    let retired = tx
         .execute(
             "UPDATE sources SET retired_at = ?2 WHERE source_id = ?1 AND retired_at IS NULL",
             params![source_id, now],
         )
         .map_err(db)?;
-    Ok(changed > 0)
+    let closed = returning_ids(
+        tx,
+        &format!(
+            "UPDATE entries SET {CLOSE} WHERE source_id = ?4 AND status = 'open' \
+             AND needs_you = 1 RETURNING id"
+        ),
+        vec![
+            "resolved".to_string().into(),
+            SOURCE_REMOVED.to_string().into(),
+            now.to_string().into(),
+            source_id.to_string().into(),
+        ],
+    )?;
+    enqueue_push_clear(tx, &closed, now)?;
+    Ok(retired > 0 || !closed.is_empty())
 }
 
 // ---------------------------------------------------------------- commit
@@ -237,7 +286,7 @@ pub fn commit(
     let mut visible = false;
     let mut closed = Vec::new();
     for resolution in &commit.resolutions {
-        closed.extend(resolve(tx, &commit.source_id, resolution)?);
+        closed.extend(resolve(tx, &commit.source_id, resolution, now)?);
     }
     visible |= !closed.is_empty();
 
@@ -341,11 +390,13 @@ fn insert(tx: &Transaction, entry: &ActivityEntryInput) -> Result<bool, String> 
     Ok(added == 1)
 }
 
-/// Close open entries of this source; returns the ids that changed.
+/// Close open entries of this source and read the unread ones: the fact
+/// ended, so it no longer needs me. Returns the ids that changed.
 fn resolve(
     tx: &Transaction,
     source_id: &str,
     resolution: &ActivityResolution,
+    now: &str,
 ) -> Result<Vec<String>, String> {
     check(
         &resolution.status,
@@ -355,13 +406,14 @@ fn resolve(
     let mut changed = Vec::new();
     for ids in resolution.ids.chunks(CHUNK) {
         let sql = format!(
-            "UPDATE entries SET status = ?1, resolved_by = ?2, version = version + 1 \
-             WHERE source_id = ?3 AND status = 'open' AND id IN ({}) RETURNING id",
+            "UPDATE entries SET {CLOSE} \
+             WHERE source_id = ?4 AND status = 'open' AND id IN ({}) RETURNING id",
             placeholders(ids.len())
         );
         let mut values: Vec<Value> = vec![
             resolution.status.clone().into(),
             resolution.resolved_by.clone().into(),
+            now.to_string().into(),
             source_id.to_string().into(),
         ];
         values.extend(ids.iter().cloned().map(Value::from));
@@ -370,14 +422,15 @@ fn resolve(
     if let Some(entity_key) = &resolution.entity_key {
         for categories in resolution.categories.chunks(CHUNK) {
             let sql = format!(
-                "UPDATE entries SET status = ?1, resolved_by = ?2, version = version + 1 \
-                 WHERE source_id = ?3 AND status = 'open' AND entity_key = ?4 \
+                "UPDATE entries SET {CLOSE} \
+                 WHERE source_id = ?4 AND status = 'open' AND entity_key = ?5 \
                  AND category IN ({}) RETURNING id",
                 placeholders(categories.len())
             );
             let mut values: Vec<Value> = vec![
                 resolution.status.clone().into(),
                 resolution.resolved_by.clone().into(),
+                now.to_string().into(),
                 source_id.to_string().into(),
                 entity_key.clone().into(),
             ];
@@ -736,8 +789,8 @@ pub fn list(conn: &Connection, query: &ActivityListQuery) -> Result<ActivityPage
 }
 
 /// Entries I read or dismissed after `(read_at, id)`, oldest first: what the
-/// phone link shares. Roll-ups never were read, and reads that came from the
-/// phone go back to nobody.
+/// phone link shares. Roll-ups and entries whose fact ended were never read
+/// by me, and reads that came from the phone go back to nobody.
 pub fn read_since(
     conn: &Connection,
     since: &str,
@@ -747,7 +800,7 @@ pub fn read_since(
     let mut statement = conn
         .prepare(&format!(
             "SELECT {ENTRY_COLUMNS} FROM entries WHERE read <> 'unread' \
-             AND COALESCE(read_reason, '') NOT IN ('rolled-up', 'phone') \
+             AND COALESCE(read_reason, '') NOT IN ('rolled-up', 'phone', 'resolved') \
              AND (read_at > ?1 OR (read_at = ?1 AND id > ?2)) \
              ORDER BY read_at ASC, id ASC LIMIT ?3"
         ))

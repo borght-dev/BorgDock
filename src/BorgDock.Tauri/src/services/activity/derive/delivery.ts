@@ -1,5 +1,5 @@
 import { sentence } from '../copy';
-import { entityKey } from '../sources';
+import { entityKey, entryId } from '../sources';
 import type {
   ActionTarget,
   ActivityResolution,
@@ -47,6 +47,8 @@ export interface DeliveryObservation {
   repo: string;
   heads: HeadDeploymentFacts[];
   inclusions: InclusionFacts[];
+  /** My open PRs, when the read listed them: a failed head deploy needs me only while its PR is open. */
+  myOpenPrs?: readonly number[];
 }
 
 export interface DeliveryBaseline {
@@ -61,6 +63,9 @@ export interface DeliveryBaseline {
 /** Status ids pile up; the oldest are forgotten past this many. */
 const SEEN_LIMIT = 2000;
 const TERMINAL = new Set(['success', 'failure', 'error']);
+
+/** `head:<n>:<environment>`: a failed deploy of an open PR's head. */
+const HEAD_PAIR = /^head:(\d+):/;
 
 function pairOf(number: number, environment: string): string {
   return `${number}:${environment}`;
@@ -102,7 +107,15 @@ export function deriveDelivery(
     }
     if (!counts(head.createdAt)) continue;
     const nativeKey = `deployment-status:${status.id}`;
-    if (!success) failed[pair] = [...(failed[pair] ?? []), nativeKey];
+    if (!success) {
+      // Of several failed deploys of one PR to one environment, the newest is the open one.
+      if (failed[pair]) {
+        resolutions.push(
+          resolveIds(ctx, failed[pair], entryId(ctx.sourceId, nativeKey), 'superseded'),
+        );
+      }
+      failed[pair] = [nativeKey];
+    }
     entries.push(
       makeEntry(ctx, {
         nativeKey,
@@ -121,6 +134,16 @@ export function deriveDelivery(
         action: logAction(status, head.prUrl),
       }),
     );
+  }
+
+  if (observation.myOpenPrs) {
+    const open = new Set(observation.myOpenPrs);
+    for (const [pair, nativeKeys] of Object.entries(failed)) {
+      const head = HEAD_PAIR.exec(pair);
+      if (!head || open.has(Number(head[1]))) continue;
+      resolutions.push(resolveIds(ctx, nativeKeys, 'no longer open'));
+      delete failed[pair];
+    }
   }
 
   for (const inclusion of observation.inclusions) {
