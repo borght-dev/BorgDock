@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { LaunchChoiceFields, useLaunchChoice } from '@/components/dispatch/LaunchChoice';
 import { Button } from '@/components/shared/primitives';
-import { Sheet } from '@/components/workstreams/Sheet';
+import { Sheet } from '@/components/shared/Sheet';
 import { targetPlace } from '@/services/dispatch/launch-target';
 import { NOTE_PROMPT_LIMIT, notePrompt, startThreadFromNote } from '@/services/notes/agents';
 import { titleOf } from '@/services/notes/parse';

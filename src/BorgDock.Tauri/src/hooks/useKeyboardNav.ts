@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { handleActivityKey } from '@/components/activity/keyboard';
 import { unitActions } from '@/components/dispatch/unit-actions';
-import { handleWorkstreamsKey } from '@/components/workstreams/keyboard';
 import { readPrListModel } from '@/hooks/usePrListModel';
 import { dispatchActions } from '@/services/dispatch/actions';
 import { isOverlayOpen, showPr, showSection, showWorkItem } from '@/services/navigation';
@@ -101,7 +100,6 @@ export function useKeyboardNav(): void {
       if (useUiStore.getState().activeSection === 'dispatch' && handleDispatchActionKey(e)) {
         return;
       }
-      if (handleWorkstreamsKey(e)) return;
       if (handleActivityKey(e)) return;
       // R, M and O act on the selected row or card, found by its key: a
       // filtered list and the Board's columns have their own order.
@@ -518,7 +516,7 @@ function isPlainKey(e: KeyboardEvent): boolean {
   return !e.ctrlKey && !e.metaKey && !e.altKey;
 }
 
-/** `1`–`8` pick the rail's sections. */
+/** `1`–`7` pick the rail's sections. */
 function railSectionForKey(e: KeyboardEvent) {
   if (e.shiftKey || !/^[1-9]$/.test(e.key)) return null;
   return SECTION_ORDER[Number(e.key) - 1] ?? null;

@@ -24,7 +24,6 @@ import { SqlSection } from './SqlSection';
 import { SETTINGS_SECTIONS, type SettingsSectionId } from './sections-catalog';
 import { UpdateSection } from './UpdateSection';
 import { PulseProvider } from './useFieldPulse';
-import { WorkstreamsSection } from './WorkstreamsSection';
 
 const STORAGE_KEY = 'settings.lastSection';
 
@@ -180,20 +179,8 @@ export function SettingsApp() {
             onChange={(aiUsage) => update({ aiUsage })}
           />
         );
-      case 'workstreams':
-        return (
-          <WorkstreamsSection
-            workstreams={settings.workstreams ?? {}}
-            onChange={(workstreams) => update({ workstreams })}
-          />
-        );
       case 'notes':
-        return (
-          <NotesSettingsSection
-            settings={settings}
-            onChange={(dailyNoteFolder) => update({ dailyNoteFolder })}
-          />
-        );
+        return <NotesSettingsSection settings={settings} onChange={update} />;
       case 'updates':
         return (
           <UpdateSection updates={settings.updates} onChange={(updates) => update({ updates })} />

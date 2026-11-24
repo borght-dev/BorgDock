@@ -2,7 +2,6 @@ import clsx from 'clsx';
 import { memo, useState } from 'react';
 import { Button } from '@/components/shared/primitives';
 import { WorkItemTypePill } from '@/components/work-items/WorkItemTypePill';
-import { ItemChips } from '@/components/workstreams/Membership';
 import { type ItemOverview, type LatestMessage, NEEDS_YOU } from '@/services/dispatch/types';
 import { StateMenu } from './StateMenu';
 import { type DispatchActions, unitActions } from './unit-actions';
@@ -203,7 +202,6 @@ export const WalkRow = memo(function WalkRow({
               in the {inRun} sync
             </span>
           )}
-          <ItemChips id={item.id} />
         </span>
       )}
       {latest && (

@@ -195,8 +195,6 @@ export interface DispatchItem {
   linkedPullRequests: LinkedPullRequest[];
   /** The item's parent (a PBI for a task, an epic for a PBI). */
   parentId: number | null;
-  /** The item's children, as ADO's hierarchy links name them. */
-  childIds?: number[];
   changedAt: string;
   /** `System.Rev`: moves with every change, the activity journal keys state changes by it. */
   rev?: number;
@@ -302,17 +300,6 @@ export interface UnlinkedThread extends AgentThread {
 export interface Overview {
   generatedAt: string;
   items: ItemOverview[];
-  /**
-   * Items Dispatch doesn't list but a workstream links: done ones, epics,
-   * items of others. Built the same way, never shown in Dispatch.
-   */
-  context?: ItemOverview[];
-  /**
-   * A Dispatch item's pull requests when the context items count too: a
-   * plan PR linked on one Dispatch item and on context items is shared.
-   * Only for items where that differs; Dispatch itself shows `pullRequests`.
-   */
-  combinedPullRequests?: Record<number, UnitPullRequest[]>;
   unlinkedThreads: UnlinkedThread[];
 }
 

@@ -1,6 +1,5 @@
 import { listen } from '@tauri-apps/api/event';
 import { resetClient } from '@/services/github/singleton';
-import { WORKSTREAMS_ENABLED } from '@/services/workstreams/feature';
 import { useInitStore } from '@/stores/initStore';
 import { useSettingsStore } from '@/stores/settings-store';
 import { startActivitySync } from './activity-sync';
@@ -16,7 +15,6 @@ import { startPrViewsSync } from './pr-views-sync';
 import { startReviewGuideWriter } from './review-guide-writer';
 import { followT3Sessions } from './t3-sessions';
 import { startVisibilityTracking } from './visibility';
-import { startWorkstreamsSync } from './workstreams-sync';
 
 let running = false;
 
@@ -36,7 +34,6 @@ export function startApplicationRuntime(): () => void {
   const stopVisibility = startVisibilityTracking();
   const stopSessions = followT3Sessions();
   const stopActivity = startActivitySync();
-  const stopWorkstreams = WORKSTREAMS_ENABLED ? startWorkstreamsSync() : undefined;
   const stopNotes = startNotesSync();
   const stopPhoneLink = startPhoneLinkSync();
   const stopPrViews = startPrViewsSync();
@@ -138,7 +135,6 @@ export function startApplicationRuntime(): () => void {
     stopVisibility();
     stopSessions();
     stopActivity();
-    stopWorkstreams?.();
     stopNotes();
     stopPhoneLink();
     stopPrViews();

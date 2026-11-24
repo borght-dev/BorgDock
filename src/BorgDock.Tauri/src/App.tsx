@@ -10,7 +10,6 @@ import { T3PrThreadDialog } from '@/components/pr/T3PrThreadDialog';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ToastViewport } from '@/components/shared/Toast';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
-import { WorkstreamSheets } from '@/components/workstreams/WorkstreamSheets';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useDiskSpace } from '@/hooks/useDiskSpace';
 import { useFlyoutSync } from '@/hooks/useFlyoutSync';
@@ -312,7 +311,6 @@ export default function App() {
       )}
       <ToastViewport />
       <T3PrThreadDialog />
-      <WorkstreamSheets />
       <LaunchGuardDialog />
       <CiSheetHost />
       <DependencySheetHost />

@@ -826,7 +826,7 @@ mod tests {
     #[test]
     fn reads_since_skips_target_kinds_it_does_not_know() {
         let reads = parse_reads(
-            r#"{"until":"2026-10-31T10:00:00.000Z","targets":[{"kind":"pr","key":"o/r#1"},{"kind":"workstream","id":"w"},{"kind":"none"}]}"#,
+            r#"{"until":"2026-10-31T10:00:00.000Z","targets":[{"kind":"pr","key":"o/r#1"},{"kind":"board","id":"w"},{"kind":"none"}]}"#,
         )
         .unwrap();
         assert_eq!(reads.until, "2026-10-31T10:00:00.000Z");

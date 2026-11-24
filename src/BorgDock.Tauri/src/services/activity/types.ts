@@ -29,12 +29,6 @@ export const ACTIVITY_CATEGORIES = [
   'ci.fix-merged',
   'ci.seen-after-fix',
   'ci.resolved',
-  'workstream.unblocked',
-  'workstream.invalidated',
-  'workstream.reopened',
-  'workstream.conflict',
-  'workstream.proposal',
-  'workstream.ready',
   'deploy.pr',
   'deploy.reached',
   'deploy.failed',
@@ -51,11 +45,10 @@ export type ActivityCategoryGroup =
   | 'agents'
   | 'pull-requests'
   | 'ci'
-  | 'workstreams'
   | 'deployments'
   | 'work-items';
 
-export type ActivitySourceKind = 't3' | 'gh' | 'deploy' | 'ci' | 'ado' | 'workstreams';
+export type ActivitySourceKind = 't3' | 'gh' | 'deploy' | 'ci' | 'ado';
 
 export type ActivitySeverity = 'info' | 'success' | 'warning' | 'error';
 export type ActivityStatus = 'open' | 'resolved' | 'superseded';
@@ -77,7 +70,6 @@ export type ActivityEntityKind =
   | 'deployment'
   | 'workitem'
   | 'ci-group'
-  | 'workstream'
   | 'source';
 
 export interface ActivityEntity {
@@ -86,7 +78,7 @@ export interface ActivityEntity {
    * Scoped so two hosts or two repositories never meet:
    * `t3:<hostId>:thread:<rawId>`, `gh:<owner>/<repo>#<n>`,
    * `deploy:<owner>/<repo>:<deploymentId>`, `ado:<org>/<project>:<id>`,
-   * `ci:<groupId>`, `workstream:<documentId>`.
+   * `ci:<groupId>`.
    */
   key: string;
   title: string;
@@ -96,7 +88,6 @@ export interface ActivityEntity {
 export interface ActivityLinks {
   itemIds: number[];
   prUrls: string[];
-  workstreamIds: string[];
   ciGroupIds: string[];
 }
 
@@ -110,7 +101,6 @@ export type ActionTarget =
   | { kind: 'fix-checks'; owner: string; repo: string; number: number; headSha: string }
   | { kind: 'merge'; owner: string; repo: string; number: number; headSha: string }
   | { kind: 'open-ci-group'; scope: string; groupId: string }
-  | { kind: 'open-workstream'; id: string; tab?: string }
   | { kind: 'open-url'; url: string };
 
 export interface ActivityEntry {

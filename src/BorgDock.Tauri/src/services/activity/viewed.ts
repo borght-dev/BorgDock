@@ -4,7 +4,7 @@ import { entityKey } from './sources';
 
 /**
  * Opening something marks what happened to it up to now read: a PR's
- * detail, an item in Dispatch, a workstream, a CI failure group. Entries of
+ * detail, an item in Dispatch, a CI failure group. Entries of
  * other entities never change this way. Settings can turn it off.
  */
 function markViewed(key: string): void {
@@ -27,6 +27,5 @@ export const viewed = {
     const { organization, project } = useSettingsStore.getState().settings.azureDevOps;
     if (organization && project) markViewed(entityKey.workItem(organization, project, id));
   },
-  workstream: (id: string) => markViewed(entityKey.workstream(id)),
   ciGroup: (groupId: string) => markViewed(entityKey.ciGroup(groupId)),
 };

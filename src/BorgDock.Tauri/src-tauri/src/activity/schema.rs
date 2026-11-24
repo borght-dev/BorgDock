@@ -1,6 +1,6 @@
 /// Migrations by `PRAGMA user_version`: entry `n` takes a database from
 /// version `n` to `n + 1`. Append only; never edit a shipped entry.
-pub const MIGRATIONS: &[&str] = &[V1];
+pub const MIGRATIONS: &[&str] = &[V1, WITHOUT_WORKSTREAMS];
 
 /// `sources` holds one row per source: its generation, the revision and
 /// baseline of its last accepted commit (null until the first one), and
@@ -32,4 +32,17 @@ CREATE TABLE outbox (
   attempts INTEGER NOT NULL, next_at TEXT NOT NULL, created_at TEXT NOT NULL,
   PRIMARY KEY (entry_id, channel));
 CREATE INDEX outbox_due ON outbox (channel, state, next_at);
+";
+
+/// 4.17.0 removed Workstreams. Nothing resolves its entries any more, so an
+/// open one would count as needing you for good: they go, with their source.
+const WITHOUT_WORKSTREAMS: &str = "
+DELETE FROM outbox WHERE entry_id IN (
+  SELECT id FROM entries
+  WHERE category LIKE 'workstream.%'
+     OR source_id IN (SELECT source_id FROM sources WHERE kind = 'workstreams'));
+DELETE FROM entries
+  WHERE category LIKE 'workstream.%'
+     OR source_id IN (SELECT source_id FROM sources WHERE kind = 'workstreams');
+DELETE FROM sources WHERE kind = 'workstreams';
 ";

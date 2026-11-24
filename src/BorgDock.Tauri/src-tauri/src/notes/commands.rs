@@ -4,8 +4,7 @@
 use super::storage::{self, NoteContent, NoteListing, NoteWriteOutcome};
 use std::path::PathBuf;
 
-/// The sync folder keeps notes in a folder of their own, next to
-/// `BorgDock Workstreams`.
+/// The sync folder keeps notes in a folder of their own.
 const SYNC_SUBFOLDER: &str = "BorgDock Notes";
 
 /// The vault: a folder of its own inside the sync folder when one is set in

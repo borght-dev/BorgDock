@@ -1,19 +1,17 @@
 /**
  * What a reference in a note shows: the live state of the pull request, work
- * item, thread or workstream it names, read from the stores BorgDock already
- * polls. A note never stores a state; a reference nothing has read yet shows
+ * item or thread it names, read from the stores BorgDock already polls. A note never stores a state; a reference nothing has read yet shows
  * only its label.
  */
 import { configuredHosts, rawId } from '@/services/dispatch/hosts';
 import type { AgentThread, DispatchItem } from '@/services/dispatch/types';
 import { THREAD_STATUS_LABEL } from '@/services/dispatch/types';
-import { showPr, showWorkItem, showWorkstream } from '@/services/navigation';
+import { showPr, showWorkItem } from '@/services/navigation';
 import { t3ShowThread } from '@/services/t3/api';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import { useWorkstreamsStore } from '@/stores/workstreams-store';
 import type { WorkItem } from '@/types';
 import type { PullRequestWithChecks } from '@/types/pull-request';
 import { getField } from '@/utils/work-item-helpers';
@@ -27,11 +25,9 @@ export interface ChipSources {
   pullRequests: readonly PullRequestWithChecks[];
   closedPullRequests: readonly PullRequestWithChecks[];
   items: readonly DispatchItem[];
-  contextItems: readonly DispatchItem[];
   workItems: readonly WorkItem[];
   threads: readonly AgentThread[];
   hosts: readonly { id: string; environmentId?: string | null }[];
-  workstreams: Readonly<Record<string, { document: { title: string } }>>;
 }
 
 export function currentChipSources(): ChipSources {
@@ -41,11 +37,9 @@ export function currentChipSources(): ChipSources {
     pullRequests: pr.pullRequests,
     closedPullRequests: pr.closedPullRequests,
     items: dispatch.items,
-    contextItems: dispatch.contextItems,
     workItems: useWorkItemsStore.getState().workItems,
     threads: dispatch.threads,
     hosts: dispatch.hosts,
-    workstreams: useWorkstreamsStore.getState().entries,
   };
 }
 
@@ -99,8 +93,7 @@ function prView(
 
 function adoView(token: Extract<RefToken, { kind: 'ado' }>, sources: ChipSources): ChipView {
   const label = `AB#${token.id}`;
-  const { items, contextItems } = sources;
-  const item = items.find((i) => i.id === token.id) ?? contextItems.find((i) => i.id === token.id);
+  const item = sources.items.find((i) => i.id === token.id);
   if (item) {
     const done = item.stateCategory === 'Completed' || item.stateCategory === 'Resolved';
     return {
@@ -145,15 +138,6 @@ function threadView(token: Extract<RefToken, { kind: 't3' }>, sources: ChipSourc
   return { label, state: THREAD_STATUS_LABEL[thread.status], tone, title: null };
 }
 
-function workstreamView(
-  token: Extract<RefToken, { kind: 'workstream' }>,
-  sources: ChipSources,
-): ChipView {
-  const entry = sources.workstreams[token.id];
-  const title = entry?.document.title ?? null;
-  return { label: title ?? token.label ?? 'Workstream', state: null, tone: 'purple', title };
-}
-
 export function chipView(
   token: RefToken,
   context: RefContext,
@@ -166,8 +150,6 @@ export function chipView(
       return adoView(token, sources);
     case 't3':
       return threadView(token, sources);
-    case 'workstream':
-      return workstreamView(token, sources);
   }
 }
 
@@ -183,9 +165,6 @@ export async function openReference(token: RefToken, context: RefContext): Promi
     }
     case 'ado':
       await showWorkItem(token.id);
-      return;
-    case 'workstream':
-      await showWorkstream(token.id);
       return;
     case 't3': {
       const settings = useSettingsStore.getState().settings;
@@ -212,8 +191,8 @@ export function renderChipNode(token: RefToken, context: RefContext): HTMLElemen
   chip.className = 'bd-note-chip';
   chip.dataset.noteChip = JSON.stringify(token);
   paintChip(chip, chipView(token, context));
-  // The editor opens thread and workstream links itself; a pull request or
-  // work item opens in BorgDock from here.
+  // The editor opens thread links itself; a pull request or work item opens
+  // in BorgDock from here.
   if (token.kind === 'pr' || token.kind === 'ado') {
     chip.classList.add('bd-note-chip--button');
     chip.setAttribute('role', 'link');

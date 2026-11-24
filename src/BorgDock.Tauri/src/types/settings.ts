@@ -126,7 +126,7 @@ export interface ActivityNotificationSettings {
   categories: Partial<Record<string, ActivityCategoryChannels>>;
   /** A visit to a thread in T3 marks its entries read. */
   seenInT3: boolean;
-  /** Opening a PR, item, workstream or CI group marks its entries read. */
+  /** Opening a PR, item or CI group marks its entries read. */
   markReadOnOpen: boolean;
   /** The needs-you count on the taskbar icon. */
   taskbarBadge: boolean;
@@ -185,10 +185,6 @@ export interface AgentSettings {
     done?: string;
     sync?: string;
     suggest?: string;
-    /** `{brief}`, `{title}`. */
-    workstreamReview?: string;
-    /** `{brief}`, `{nextAction}`, `{title}`. */
-    workstreamWork?: string;
   };
   /** When "Sync all" runs by itself. Runs while BorgDock is open. */
   dispatchSyncSchedule?: DispatchSyncSchedule;
@@ -275,6 +271,8 @@ export interface PrDetailSettings {
 }
 
 export interface AppSettings {
+  /** A folder a sync client shares; the notes vault is `BorgDock Notes` inside it. Empty: this machine only. */
+  notesSyncFolder?: string;
   dailyNoteFolder?: string;
   /** Bumped by the Rust side after one-off migrations; see settings::migrate. */
   schemaVersion?: number;
@@ -294,14 +292,6 @@ export interface AppSettings {
   sql: SqlSettings;
   ciFailures?: CiFailureSettings;
   settingsWindow?: { x: number; y: number; width: number; height: number };
-  workstreams?: WorkstreamSettings;
-}
-
-export interface WorkstreamSettings {
-  /** A folder a sync client shares between machines. Empty: this machine only. */
-  folder?: string;
-  /** What this machine is called in a workstream's log. Empty: the computer's name. */
-  deviceLabel?: string;
 }
 
 /** How one AI account is shown: its label, the label's colour, and whether the rail shows it. */

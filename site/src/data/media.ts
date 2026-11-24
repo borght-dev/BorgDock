@@ -15,7 +15,6 @@ export type GalleryPage =
   | 'Pull requests'
   | 'Focus'
   | 'Dispatch'
-  | 'Workstreams'
   | 'Detail'
   | 'Quick review'
   | 'Notes'
@@ -25,7 +24,6 @@ export const GALLERY_PAGES: GalleryPage[] = [
   'Pull requests',
   'Focus',
   'Dispatch',
-  'Workstreams',
   'Detail',
   'Quick review',
   'Notes',

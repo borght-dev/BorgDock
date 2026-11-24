@@ -13,7 +13,6 @@ import { fillTemplate, withoutFrontmatter } from '@/services/notes/text-edits';
 import { useDispatchStore } from '@/stores/dispatch-store';
 import { useNotesStore } from '@/stores/notes-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
-import { useWorkstreamsStore } from '@/stores/workstreams-store';
 import { getField } from '@/utils/work-item-helpers';
 import type { NoteCompletionSources } from './editor/NoteEditor';
 
@@ -22,7 +21,7 @@ export function renderChip(token: InlineToken): HTMLElement | null {
   return renderChipNode(token, useNotesStore.getState().context);
 }
 
-/** A `t3code://` or `borgdock://` address opens in BorgDock or T3; anything else in the browser. */
+/** A `t3code://` address opens in T3; anything else in the browser. */
 export function openNoteUrl(url: string) {
   const [token] = scanLine(`[x](${url})`);
   if (token && isRefToken(token)) {
@@ -48,9 +47,8 @@ export function completionSources(currentTitle: () => string): NoteCompletionSou
         .map((path) => ({ title: titleOf(path), path })),
     tags: () => [...useNotesStore.getState().index.tags.keys()],
     workItems: () => {
-      const { items, contextItems } = useDispatchStore.getState();
       const seen = new Map<number, string>();
-      for (const item of [...items, ...contextItems]) seen.set(item.id, item.title);
+      for (const item of useDispatchStore.getState().items) seen.set(item.id, item.title);
       for (const item of useWorkItemsStore.getState().workItems) {
         if (!seen.has(item.id)) seen.set(item.id, getField(item, 'System.Title'));
       }
@@ -70,11 +68,6 @@ export function completionSources(currentTitle: () => string): NoteCompletionSou
         ];
       });
     },
-    workstreams: () =>
-      Object.entries(useWorkstreamsStore.getState().entries).map(([id, entry]) => ({
-        label: entry.document.title,
-        url: `borgdock://workstreams/${encodeURIComponent(id)}`,
-      })),
     templates: () => {
       const { texts } = useNotesStore.getState();
       const { date, time } = now();

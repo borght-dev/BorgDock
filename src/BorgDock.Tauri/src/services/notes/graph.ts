@@ -6,7 +6,7 @@
 import { isRefToken, type RefToken } from './parse';
 import { keyOfToken, type RefContext, resolveLink, type VaultIndex } from './vault-index';
 
-export type GraphNodeKind = 'note' | 'pr' | 'ado' | 't3' | 'workstream';
+export type GraphNodeKind = 'note' | 'pr' | 'ado' | 't3';
 
 export interface GraphNode {
   id: string;
@@ -40,7 +40,6 @@ function tokenLabel(token: RefToken) {
     case 'ado':
       return `AB#${token.id}`;
     case 't3':
-    case 'workstream':
       return token.label || token.kind;
   }
 }

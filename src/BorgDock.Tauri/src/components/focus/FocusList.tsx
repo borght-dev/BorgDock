@@ -18,7 +18,6 @@ import { NotesFocusCard } from '@/components/notes/NotesFocusCard';
 import { PrRow } from '@/components/pr/PrRow';
 import { prRowKey } from '@/components/pr/pr-card-data';
 import { Button, SlidingHighlight } from '@/components/shared/primitives';
-import { WorkstreamsFocusCard } from '@/components/workstreams/WorkstreamsFocusCard';
 import {
   bucketFor,
   countBuckets,
@@ -468,7 +467,6 @@ export function FocusList() {
       </div>
       <SinceLastCheckedCard />
       <DispatchFocusCard />
-      <WorkstreamsFocusCard />
       <CiFailuresFocusCard />
       <NotesFocusCard />
       <div className="bd-focus-body">

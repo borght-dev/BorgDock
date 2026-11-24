@@ -10,7 +10,6 @@ const completions: NoteCompletionSources = {
   tags: () => [],
   workItems: () => [],
   threads: () => [],
-  workstreams: () => [],
   templates: () => [],
 };
 

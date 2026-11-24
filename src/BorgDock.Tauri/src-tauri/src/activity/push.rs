@@ -85,7 +85,6 @@ fn generic(category: &str) -> &'static str {
         "ado.state" => "Someone moved your item",
         "ado.comment" => "A comment on your item",
         category if category.starts_with("ci.") => "A shared CI failure needs you",
-        category if category.starts_with("workstream.") => "A workstream needs you",
         _ => "An update needs you",
     }
 }

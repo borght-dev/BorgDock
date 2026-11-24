@@ -27,7 +27,6 @@ const sources: NoteCompletionSources = {
     { id: 1200, title: 'Export to CSV' },
   ],
   threads: () => [{ label: 'Fix [login]', url: 't3code://threads/env/th1' }],
-  workstreams: () => [{ label: 'Q4 plan', url: 'borgdock://workstreams/ws1' }],
   templates: () => [{ name: 'Meeting', text: '## Meeting\n- ' }],
 };
 
@@ -64,15 +63,14 @@ function labels(result: CompletionResult | null) {
 }
 
 describe('[[ completions', () => {
-  it('offers notes, then threads and workstreams, after [[', () => {
+  it('offers notes, then threads, after [[', () => {
     const result = wikilinkCompletions(contextAt('See [[Ro'), sources)!;
     expect(result.from).toBe(6);
-    expect(labels(result)).toEqual(['Roadmap', 'Inbox', 'Fix [login]', 'Q4 plan']);
+    expect(labels(result)).toEqual(['Roadmap', 'Inbox', 'Fix [login]']);
     expect(result.options.map((o) => o.section)).toEqual([
       expect.objectContaining({ name: 'Notes', rank: 0 }),
       expect.objectContaining({ name: 'Notes', rank: 0 }),
       expect.objectContaining({ name: 'T3 threads', rank: 1 }),
-      expect.objectContaining({ name: 'Workstreams', rank: 2 }),
     ]);
     expect(result.options[0]!.detail).toBe('Projects');
     expect(result.validFor).toBeInstanceOf(RegExp);
@@ -90,13 +88,13 @@ describe('[[ completions', () => {
     expect(pick('See [[Ro]] next', 8, result, result.options[0]!)).toBe('See [[Roadmap]] next');
   });
 
-  it('writes a markdown link for a thread or a workstream', () => {
+  it('writes a markdown link for a thread', () => {
     const result = wikilinkCompletions(contextAt('Ask [[fix'), sources)!;
     expect(pick('Ask [[fix', 9, result, result.options[2]!)).toBe(
       'Ask [Fix login](t3code://threads/env/th1)',
     );
-    expect(pick('Ask [[q4]]', 8, result, result.options[3]!)).toBe(
-      'Ask [Q4 plan](borgdock://workstreams/ws1)',
+    expect(pick('Ask [[fix]]', 9, result, result.options[2]!)).toBe(
+      'Ask [Fix login](t3code://threads/env/th1)',
     );
   });
 });

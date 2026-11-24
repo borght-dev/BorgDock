@@ -8,7 +8,7 @@
 @import "./work-items-workbench.css";
 @import "./work-item-detail.css";
 @import "./dispatch-workbench.css";
-@import "./workstreams-workbench.css";
+@import "./overlays.css";
 @import "./worktrees-workbench.css";
 @import "./tool-windows.css";
 @import "./ci-failures.css";

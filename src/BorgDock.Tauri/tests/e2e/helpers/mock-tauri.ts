@@ -245,53 +245,6 @@ export const DEFAULT_HANDLERS: MockHandlers = {
     return URL.createObjectURL(new Blob([bytes], { type: 'text/html' }));
   },
   file_preview_release: null,
-  // Workstreams: an in-page folder (window.__wsFiles) with the same revision
-  // rule as the Rust storage, so specs can create, edit and reload them.
-  workstreams_folder_path: 'memory',
-  workstreams_device_name: 'Test machine',
-  workstreams_trashed: [],
-  workstreams_restore: null,
-  workstreams_restore_backup: null,
-  workstreams_list: () => {
-    const files = (window as unknown as { __wsFiles?: Record<string, { contents: string; modifiedMs: number }> })
-      .__wsFiles ?? {};
-    return Object.entries(files).map(([fileName, file]) => ({
-      id: fileName.slice(0, 36),
-      fileName,
-      modifiedMs: file.modifiedMs,
-      size: file.contents.length,
-      conflictCopy: fileName !== `${fileName.slice(0, 36)}.json`,
-    }));
-  },
-  workstreams_read: (args: Record<string, unknown>) => {
-    const files = (window as unknown as { __wsFiles?: Record<string, { contents: string }> }).__wsFiles ?? {};
-    const file = files[args.fileName as string];
-    if (!file) throw 'missing';
-    return file.contents;
-  },
-  workstreams_write: (args: Record<string, unknown>) => {
-    const w = window as unknown as {
-      __wsFiles?: Record<string, { contents: string; modifiedMs: number }>;
-      __wsClock?: number;
-    };
-    w.__wsFiles = w.__wsFiles ?? {};
-    const name = `${args.id as string}.json`;
-    const disk = w.__wsFiles[name];
-    if (disk) {
-      const revision = (JSON.parse(disk.contents) as { revision?: number }).revision;
-      if (args.expectedRevision === null || revision !== args.expectedRevision) {
-        return { status: 'conflict', disk: disk.contents };
-      }
-    }
-    w.__wsClock = (w.__wsClock ?? 0) + 1;
-    w.__wsFiles[name] = { contents: args.contents as string, modifiedMs: w.__wsClock };
-    return { status: 'written' };
-  },
-  workstreams_trash: (args: Record<string, unknown>) => {
-    const w = window as unknown as { __wsFiles?: Record<string, unknown> };
-    if (w.__wsFiles) delete w.__wsFiles[args.fileName as string];
-    return null;
-  },
   // Notes: an in-page vault (window.__notes) with the same write rule as the
   // Rust storage: a write over text the writer didn't read is a conflict.
   notes_folder_path: 'C:/Vault/BorgDock Notes',

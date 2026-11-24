@@ -47,10 +47,7 @@ function factsOf(item: DispatchItem): AdoItemFacts | null {
   };
 }
 
-/**
- * The items Dispatch lists, as one read of the ADO project. The context
- * items workstreams ask for are not ingested: they belong to others or are done.
- */
+/** The items Dispatch lists, as one read of the ADO project. */
 export function ingestAdoItems(items: readonly DispatchItem[], startedAt: number): void {
   const source = adoSource();
   if (!source) return;

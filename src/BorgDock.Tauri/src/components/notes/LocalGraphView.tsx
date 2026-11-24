@@ -7,7 +7,6 @@ const RADIUS: Record<GraphNode['kind'], number> = {
   pr: 4.5,
   ado: 4.5,
   t3: 4.5,
-  workstream: 5,
 };
 
 function open(node: GraphNode) {
@@ -18,8 +17,7 @@ function open(node: GraphNode) {
 
 /**
  * LocalGraphView — the open note and what lies within two links of it:
- * notes, pull requests, work items, threads and workstreams. Click a node to
- * open it.
+ * notes, pull requests, work items and threads. Click a node to open it.
  */
 export function LocalGraphView({ path }: { path: string }) {
   const index = useNotesStore((s) => s.index);
@@ -75,11 +73,7 @@ export function LocalGraphView({ path }: { path: string }) {
             }
           }}
         >
-          {node.kind === 'workstream' ? (
-            <rect x={-4.5} y={-4.5} width={9} height={9} transform="rotate(45)" />
-          ) : (
-            <circle r={node.depth === 0 ? 7.5 : RADIUS[node.kind]} />
-          )}
+          <circle r={node.depth === 0 ? 7.5 : RADIUS[node.kind]} />
           <text y={node.depth === 0 ? 20 : 16} textAnchor="middle">
             {node.label.length > 26 ? `${node.label.slice(0, 25)}…` : node.label}
           </text>

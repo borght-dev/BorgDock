@@ -282,7 +282,7 @@ async function verify(
   return verified;
 }
 
-/** Verified merges and closes join the closed list now, so Dispatch and workstreams see them. */
+/** Verified merges and closes join the closed list now, so Dispatch sees them. */
 function addToClosed(owner: string, repo: string, verified: readonly VerifiedPr[]): void {
   const closed = verified.flatMap((pr) => {
     if (pr.state === 'open') return [];

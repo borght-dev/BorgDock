@@ -268,7 +268,7 @@ export const commands = {
 	t3ShowThread: (host: HostRef_Deserialize, threadId: string, executable: string | null) => typedError<null, string>(__TAURI_INVOKE("t3_show_thread", { host, threadId, executable })),
 	/**  The id of the T3 install behind `host`: what names a thread across hosts. */
 	t3Environment: (host: HostRef_Deserialize) => typedError<string, string>(__TAURI_INVOKE("t3_environment", { host })),
-	/**  The agent's last message in a thread, whole: a workstream review's proposal is at its end. */
+	/**  The agent's last message in a thread, whole: a note keeps all of its thread's answer. */
 	t3ThreadLastMessage: (host: HostRef_Deserialize, threadId: string) => typedError<string | null, string>(__TAURI_INVOKE("t3_thread_last_message", { host, threadId })),
 	/**  The providers and models the host can start a thread on. */
 	t3Catalogue: (host: HostRef_Deserialize) => typedError<Catalogue, string>(__TAURI_INVOKE("t3_catalogue", { host })),
@@ -394,6 +394,13 @@ export const commands = {
 	 *  GUI thread with the shared timeout, like every window command.
 	 */
 	setTaskbarBadge: (count: number) => typedError<null, string>(__TAURI_INVOKE("set_taskbar_badge", { count })),
+	/**  The AI accounts found on this machine. No network, no token leaves Rust. */
+	aiUsageAccounts: () => typedError<AiAccount_Serialize[], string>(__TAURI_INVOKE("ai_usage_accounts")),
+	/**
+	 *  Reads what is left of the accounts in `ids`, or of every account when
+	 *  `ids` is empty. An account that cannot be read comes back with a problem.
+	 */
+	aiUsageRead: (ids: string[]) => typedError<AiUsage_Serialize[], string>(__TAURI_INVOKE("ai_usage_read", { ids })),
 	/**  The vault folder for `folder` (the sync folder, or none). */
 	notesFolderPath: (folder: string | null) => typedError<string, string>(__TAURI_INVOKE("notes_folder_path", { folder })),
 	notesList: (folder: string | null) => typedError<NoteListing, string>(__TAURI_INVOKE("notes_list", { folder })),
@@ -403,28 +410,6 @@ export const commands = {
 	notesRename: (folder: string | null, from: string, to: string) => typedError<null, string>(__TAURI_INVOKE("notes_rename", { folder, from, to })),
 	notesSaveFolder: (folder: string | null, path: string, from: string | null) => typedError<null, string>(__TAURI_INVOKE("notes_save_folder", { folder, path, from })),
 	notesTrash: (folder: string | null, path: string, isFolder: boolean | null) => typedError<null, string>(__TAURI_INVOKE("notes_trash", { folder, path, isFolder })),
-	/**  The folder workstreams are kept in for `folder` (the sync folder, or none). */
-	workstreamsFolderPath: (folder: string | null) => typedError<string, string>(__TAURI_INVOKE("workstreams_folder_path", { folder })),
-	workstreamsList: (folder: string | null) => typedError<WorkstreamFile[], string>(__TAURI_INVOKE("workstreams_list", { folder })),
-	workstreamsRead: (folder: string | null, fileName: string) => typedError<string, string>(__TAURI_INVOKE("workstreams_read", { folder, fileName })),
-	/**  Write a workstream over `expected_revision`; `None` creates it. */
-	workstreamsWrite: (folder: string | null, id: string, contents: string, expectedRevision: number | null) => typedError<WriteOutcome, string>(__TAURI_INVOKE("workstreams_write", { folder, id, contents, expectedRevision })),
-	workstreamsTrash: (folder: string | null, fileName: string) => typedError<null, string>(__TAURI_INVOKE("workstreams_trash", { folder, fileName })),
-	workstreamsTrashed: (folder: string | null) => typedError<TrashedWorkstream[], string>(__TAURI_INVOKE("workstreams_trashed", { folder })),
-	workstreamsRestore: (folder: string | null, id: string) => typedError<null, string>(__TAURI_INVOKE("workstreams_restore", { folder, id })),
-	workstreamsRestoreBackup: (folder: string | null, id: string) => typedError<null, string>(__TAURI_INVOKE("workstreams_restore_backup", { folder, id })),
-	/**  The computer's name: what a new device is called until it is renamed. */
-	workstreamsDeviceName: () => typedError<string, string>(__TAURI_INVOKE("workstreams_device_name")),
-	/**
-	 *  Copy every workstream of `from` into `to` (each a sync folder or none,
-	 *  for this machine's own folder). A workstream both hold in different
-	 *  versions lands as a copy named after `device`, offered for merging.
-	 */
-	workstreamsCopyInto: (from: string | null, to: string | null, device: string) => typedError<CopyReport, string>(__TAURI_INVOKE("workstreams_copy_into", { from, to, device })),
-	/**  Write an exported workstream to the file the user picked. */
-	workstreamsExportFile: (path: string, contents: string) => typedError<null, string>(__TAURI_INVOKE("workstreams_export_file", { path, contents })),
-	/**  Read a workstream file the user picked to import. */
-	workstreamsImportFile: (path: string) => typedError<string, string>(__TAURI_INVOKE("workstreams_import_file", { path })),
 };
 
 /** Events */
@@ -766,7 +751,7 @@ export type ActivityNotificationSettings_Deserialize = {
 	categories?: { [key in string]: ActivityCategoryChannels_Deserialize },
 	/**  A visit to a thread in T3 marks its entries read. */
 	seenInT3?: boolean,
-	/**  Opening a PR, item, workstream or CI group marks its entries read. */
+	/**  Opening a PR, item or CI group marks its entries read. */
 	markReadOnOpen?: boolean,
 	/**  The needs-you count on the taskbar icon. */
 	taskbarBadge?: boolean,
@@ -783,7 +768,7 @@ export type ActivityNotificationSettings_Serialize = {
 	categories: { [key in string]: ActivityCategoryChannels_Serialize },
 	/**  A visit to a thread in T3 marks its entries read. */
 	seenInT3: boolean,
-	/**  Opening a PR, item, workstream or CI group marks its entries read. */
+	/**  Opening a PR, item or CI group marks its entries read. */
 	markReadOnOpen: boolean,
 	/**  The needs-you count on the taskbar icon. */
 	taskbarBadge: boolean,
@@ -978,7 +963,7 @@ export type ActivitySeenMark = {
  */
 export type ActivitySourceRequest = {
 	sourceId: string,
-	/**  `t3`, `gh`, `deploy`, `ci`, `ado` or `workstreams`. */
+	/**  `t3`, `gh`, `deploy`, `ci` or `ado`. */
 	kind: string,
 	label: string,
 	configKey: string,
@@ -1163,6 +1148,148 @@ export type AgentSettings_Serialize = {
 	t3Hosts?: T3HostSettings[],
 };
 
+export type AiAccount = AiAccount_Serialize | AiAccount_Deserialize;
+
+export type AiAccountSettings = AiAccountSettings_Serialize | AiAccountSettings_Deserialize;
+
+export type AiAccountSettings_Deserialize = {
+	/**  Up to three characters shown next to the provider's icon. */
+	label: string,
+	/**  Which identity colour the label wears, 1 to 5. */
+	color: number,
+	hidden?: boolean,
+};
+
+export type AiAccountSettings_Serialize = {
+	/**  Up to three characters shown next to the provider's icon. */
+	label: string,
+	/**  Which identity colour the label wears, 1 to 5. */
+	color: number,
+	hidden: boolean,
+};
+
+export type AiAccount_Deserialize = {
+	/**  The provider and the folder: `claude:~/.claude-ops`. */
+	id: string,
+	/**  `claude` or `codex`. */
+	provider: string,
+	/**  The folder as its owner writes it: `~/.claude-ops`. */
+	folder: string,
+	email?: string | null,
+	/**  "Max 20x", "Pro", "Team". */
+	plan?: string | null,
+	/**  What T3 Code calls the provider instance that runs on this account. */
+	t3Name?: string | null,
+	/**
+	 *  The T3 Code provider instances that run on this account: a thread's
+	 *  `modelInstance` is one of them when it spends this account's limits.
+	 */
+	t3Instances: string[],
+};
+
+export type AiAccount_Serialize = {
+	/**  The provider and the folder: `claude:~/.claude-ops`. */
+	id: string,
+	/**  `claude` or `codex`. */
+	provider: string,
+	/**  The folder as its owner writes it: `~/.claude-ops`. */
+	folder: string,
+	email: string | null,
+	/**  "Max 20x", "Pro", "Team". */
+	plan: string | null,
+	/**  What T3 Code calls the provider instance that runs on this account. */
+	t3Name: string | null,
+	/**
+	 *  The T3 Code provider instances that run on this account: a thread's
+	 *  `modelInstance` is one of them when it spends this account's limits.
+	 */
+	t3Instances: string[],
+};
+
+export type AiLimit = AiLimit_Serialize | AiLimit_Deserialize;
+
+export type AiLimit_Deserialize = {
+	/**  `weekly`, `model` (a weekly limit for one model) or `session`. */
+	kind: string,
+	/**  "Weekly", "Fable", "5 hours". */
+	label: string,
+	usedPercent: number | null,
+	/**  Epoch seconds. */
+	resetsAt?: number | null,
+	windowSeconds?: number | null,
+};
+
+export type AiLimit_Serialize = {
+	/**  `weekly`, `model` (a weekly limit for one model) or `session`. */
+	kind: string,
+	/**  "Weekly", "Fable", "5 hours". */
+	label: string,
+	usedPercent: number | null,
+	/**  Epoch seconds. */
+	resetsAt: number | null,
+	windowSeconds: number | null,
+};
+
+export type AiUsage = AiUsage_Serialize | AiUsage_Deserialize;
+
+/**  Why an account has no reading. */
+export type AiUsageProblem = {
+	/**  `expired`, `signed-out`, `missing-cli` or `unavailable`. */
+	kind: string,
+	message: string,
+};
+
+/**  How the AI accounts found on this machine are shown in the rail. */
+export type AiUsageSettings = AiUsageSettings_Serialize | AiUsageSettings_Deserialize;
+
+/**  How the AI accounts found on this machine are shown in the rail. */
+export type AiUsageSettings_Deserialize = {
+	/**  The first-start sheet that names the accounts was answered. */
+	introduced?: boolean,
+	/**  By account id (`claude:~/.claude-ops`). */
+	accounts?: { [key in string]: AiAccountSettings_Deserialize },
+	/**  Account ids in the order they were dragged into. */
+	order?: string[],
+	/**  The rail keeps `order`; off, the account with the least left comes first. */
+	keepOrder?: boolean,
+	/**  GitHub's API requests are a row among the limits. */
+	showGitHub?: boolean,
+	/**  Under this percentage left an account shows red. */
+	warnUnder?: number,
+};
+
+/**  How the AI accounts found on this machine are shown in the rail. */
+export type AiUsageSettings_Serialize = {
+	/**  The first-start sheet that names the accounts was answered. */
+	introduced: boolean,
+	/**  By account id (`claude:~/.claude-ops`). */
+	accounts: { [key in string]: AiAccountSettings_Serialize },
+	/**  Account ids in the order they were dragged into. */
+	order: string[],
+	/**  The rail keeps `order`; off, the account with the least left comes first. */
+	keepOrder: boolean,
+	/**  GitHub's API requests are a row among the limits. */
+	showGitHub: boolean,
+	/**  Under this percentage left an account shows red. */
+	warnUnder: number,
+};
+
+export type AiUsage_Deserialize = {
+	account: AiAccount_Deserialize,
+	limits: AiLimit_Deserialize[],
+	/**  A credit balance, where the provider reports one. */
+	credits?: string | null,
+	problem?: AiUsageProblem | null,
+};
+
+export type AiUsage_Serialize = {
+	account: AiAccount_Serialize,
+	limits: AiLimit_Serialize[],
+	/**  A credit balance, where the provider reports one. */
+	credits: string | null,
+	problem: AiUsageProblem | null,
+};
+
 export type AppSettings = AppSettings_Serialize | AppSettings_Deserialize;
 
 export type AppSettings_Deserialize = {
@@ -1184,10 +1311,20 @@ export type AppSettings_Deserialize = {
 	prDetail?: PrDetailSettings,
 	azureDevOps?: AzureDevOpsSettings_Deserialize,
 	sql?: SqlSettings_Deserialize,
+	aiUsage?: AiUsageSettings_Deserialize | null,
 	ciFailures?: CiFailureSettings_Deserialize,
 	repoPriority?: { [key in string]: string },
-	workstreams?: WorkstreamSettings_Deserialize | null,
+	/**
+	 *  A folder a sync client shares between machines; the notes vault is
+	 *  `BorgDock Notes` inside it. Absent: this machine only.
+	 */
+	notesSyncFolder?: string | null,
 	dailyNoteFolder?: string | null,
+	/**
+	 *  Read once by `settings::migrate` (v5), never written: the sync folder
+	 *  was saved here until 4.17.0.
+	 */
+	workstreams?: RetiredWorkstreamSettings_Deserialize | null,
 };
 
 export type AppSettings_Serialize = {
@@ -1209,9 +1346,14 @@ export type AppSettings_Serialize = {
 	prDetail: PrDetailSettings,
 	azureDevOps: AzureDevOpsSettings_Serialize,
 	sql: SqlSettings_Serialize,
+	aiUsage?: AiUsageSettings_Serialize,
 	ciFailures: CiFailureSettings_Serialize,
 	repoPriority: { [key in string]: string },
-	workstreams?: WorkstreamSettings_Serialize,
+	/**
+	 *  A folder a sync client shares between machines; the notes vault is
+	 *  `BorgDock Notes` inside it. Absent: this machine only.
+	 */
+	notesSyncFolder?: string,
 	dailyNoteFolder?: string,
 };
 
@@ -1939,18 +2081,6 @@ export type ConversationReferences = {
 	mentionedIds: number[],
 };
 
-export type CopyReport = {
-	/**  Workstreams the target did not have yet. */
-	copied: number,
-	/**
-	 *  Workstreams both had, in another version: left next to the target's
-	 *  as a copy (`<id>-<suffix>.json`), which BorgDock offers to merge.
-	 */
-	copies: number,
-	/**  Workstreams both had, the same. */
-	same: number,
-};
-
 export type DiffHunk = DiffHunk_Serialize | DiffHunk_Deserialize;
 
 export type DiffHunk_Deserialize = {
@@ -2009,8 +2139,6 @@ export type DispatchPrompts_Deserialize = {
 	done?: string | null,
 	sync?: string | null,
 	suggest?: string | null,
-	workstreamReview?: string | null,
-	workstreamWork?: string | null,
 };
 
 export type DispatchPrompts_Serialize = {
@@ -2019,8 +2147,6 @@ export type DispatchPrompts_Serialize = {
 	done?: string,
 	sync?: string,
 	suggest?: string,
-	workstreamReview?: string,
-	workstreamWork?: string,
 };
 
 export type DispatchSyncSchedule = DispatchSyncSchedule_Serialize | DispatchSyncSchedule_Deserialize;
@@ -2908,6 +3034,16 @@ export type ResultSet = {
 	truncated: boolean,
 };
 
+export type RetiredWorkstreamSettings = RetiredWorkstreamSettings_Serialize | RetiredWorkstreamSettings_Deserialize;
+
+export type RetiredWorkstreamSettings_Deserialize = {
+	folder?: string | null,
+};
+
+export type RetiredWorkstreamSettings_Serialize = {
+	folder: string | null,
+};
+
 /**  The thread's latest run as T3 reports it, before `status` folds it. */
 export type RunDto = RunDto_Serialize | RunDto_Deserialize;
 
@@ -3368,12 +3504,6 @@ export type ToastPayload_Serialize = {
 	actions: ToastAction_Serialize[],
 };
 
-export type TrashedWorkstream = {
-	id: string,
-	deletedMs: number | null,
-	contents: string,
-};
-
 export type TrayWorstState = "failing" | "pending" | "passing" | "idle" | "initializing";
 
 export type UiSettings = UiSettings_Serialize | UiSettings_Deserialize;
@@ -3501,40 +3631,6 @@ export type Workspace_Serialize =
 /**  A checkout that exists already, such as the one another thread works in. */
 { type: "existingWorktree"; worktreePath: string; branch: string | null };
 
-export type WorkstreamFile = {
-	/**  The workstream id this file belongs to. */
-	id: string,
-	fileName: string,
-	modifiedMs: number | null,
-	size: number | null,
-	/**
-	 *  A copy a sync client made next to the real file (`<id>-PC.json`,
-	 *  `<id> (1).json`): it names the workstream it is a copy of.
-	 */
-	conflictCopy: boolean,
-};
-
-export type WorkstreamSettings = WorkstreamSettings_Serialize | WorkstreamSettings_Deserialize;
-
-export type WorkstreamSettings_Deserialize = {
-	/**  A folder a sync client shares between machines. Absent: this machine only. */
-	folder?: string | null,
-	/**  What this machine is called in a workstream's log. Absent: the computer's name. */
-	deviceLabel?: string | null,
-	/**
-	 *  Read once by `settings::migrate` (v3), never written: the
-	 *  `workstream.*` activity categories replaced it.
-	 */
-	notifications?: boolean | null,
-};
-
-export type WorkstreamSettings_Serialize = {
-	/**  A folder a sync client shares between machines. Absent: this machine only. */
-	folder?: string,
-	/**  What this machine is called in a workstream's log. Absent: the computer's name. */
-	deviceLabel?: string,
-};
-
 export type WorktreeChangeSet = WorktreeChangeSet_Serialize | WorktreeChangeSet_Deserialize;
 
 export type WorktreeChangeSet_Deserialize = {
@@ -3573,10 +3669,6 @@ export type WorktreeInfo = {
 };
 
 export type WorktreeStatus = "clean" | "dirty" | "conflict";
-
-export type WriteOutcome = { status: "written" } |
-/**  The file holds another revision than the writer expected; `disk` is what it holds. */
-{ status: "conflict"; disk: string };
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

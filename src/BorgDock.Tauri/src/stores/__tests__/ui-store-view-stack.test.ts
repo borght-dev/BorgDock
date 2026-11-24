@@ -90,7 +90,6 @@ describe('ui-store view stack', () => {
     expect(SECTION_ORDER).toEqual([
       'focus',
       'dispatch',
-      'workstreams',
       'prs',
       'workitems',
       'worktrees',

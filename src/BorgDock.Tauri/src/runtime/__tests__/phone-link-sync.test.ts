@@ -110,7 +110,7 @@ describe('startPhoneLinkSync', () => {
         {
           id: 'e1',
           entity: { kind: 'workitem', key: 'ado:gomocha/fsp:9', title: 't', url: null },
-          links: { itemIds: [], prUrls: [], workstreamIds: [], ciGroupIds: [] },
+          links: { itemIds: [], prUrls: [], ciGroupIds: [] },
           readAt: '2099-01-01T00:00:00.000Z',
         },
       ]),

@@ -40,26 +40,24 @@ pub struct AppSettings {
     pub ci_failures: CiFailureSettings,
     #[serde(default)]
     pub repo_priority: std::collections::HashMap<String, String>,
+    /// A folder a sync client shares between machines; the notes vault is
+    /// `BorgDock Notes` inside it. Absent: this machine only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workstreams: Option<WorkstreamSettings>,
+    pub notes_sync_folder: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub daily_note_folder: Option<String>,
+    /// Read once by `settings::migrate` (v5), never written: the sync folder
+    /// was saved here until 4.17.0.
+    #[serde(default, skip_serializing)]
+    pub workstreams: Option<RetiredWorkstreamSettings>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[cfg_attr(test, derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct WorkstreamSettings {
-    /// A folder a sync client shares between machines. Absent: this machine only.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+pub struct RetiredWorkstreamSettings {
+    #[serde(default)]
     pub folder: Option<String>,
-    /// What this machine is called in a workstream's log. Absent: the computer's name.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub device_label: Option<String>,
-    /// Read once by `settings::migrate` (v3), never written: the
-    /// `workstream.*` activity categories replaced it.
-    #[serde(default, skip_serializing)]
-    pub notifications: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -355,7 +353,7 @@ pub struct ActivityNotificationSettings {
     /// A visit to a thread in T3 marks its entries read.
     #[serde(default = "default_true")]
     pub seen_in_t3: bool,
-    /// Opening a PR, item, workstream or CI group marks its entries read.
+    /// Opening a PR, item or CI group marks its entries read.
     #[serde(default = "default_true")]
     pub mark_read_on_open: bool,
     /// The needs-you count on the taskbar icon.
@@ -525,10 +523,6 @@ pub struct DispatchPrompts {
     pub sync: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub suggest: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workstream_review: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workstream_work: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

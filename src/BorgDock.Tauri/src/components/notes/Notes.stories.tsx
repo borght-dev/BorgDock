@@ -86,7 +86,7 @@ export const DailyNote: Story = { args: { open: 'today' } };
 /** Every open task across the vault, ticked from one list. */
 export const Tasks: Story = { args: { view: 'tasks' } };
 
-/** A decision recorded from a workstream. */
+/** A decision written down as a note. */
 export const DecisionNote: Story = { args: { open: 'decision' } };
 
 /** The file changed in Obsidian while this note held an unsaved edit: nothing was overwritten. */

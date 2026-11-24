@@ -1,6 +1,6 @@
 /**
- * Autocomplete in the notes editor: `[[` (notes, then T3 threads and
- * workstreams), `AB#` (work items), `#` (tags) and `/` (templates). Each
+ * Autocomplete in the notes editor: `[[` (notes, then T3 threads), `AB#`
+ * (work items), `#` (tags) and `/` (templates). Each
  * source is a function of the completion context and the caller's lists, so
  * a test drives it with a plain `CompletionContext`.
  */
@@ -22,7 +22,6 @@ const CODE = new Set(['FencedCode', 'CodeBlock', 'InlineCode', 'CodeText']);
 
 const NOTES: CompletionSection = { name: 'Notes', rank: 0 };
 const THREADS: CompletionSection = { name: 'T3 threads', rank: 1 };
-const WORKSTREAMS: CompletionSection = { name: 'Workstreams', rank: 2 };
 
 type Apply = (view: EditorView, completion: Completion, from: number, to: number) => void;
 
@@ -61,7 +60,7 @@ function inCode(context: CompletionContext): boolean {
   return false;
 }
 
-/** `[[query`: note titles insert `Title]]`; threads and workstreams become `[label](address)`. */
+/** `[[query`: note titles insert `Title]]`; threads become `[label](address)`. */
 export function wikilinkCompletions(
   context: CompletionContext,
   sources: NoteCompletionSources,
@@ -82,13 +81,6 @@ export function wikilinkCompletions(
       type: 'thread',
       section: THREADS,
       apply: replaceWith(`[${linkLabel(thread.label)}](${thread.url})`, 2, ']]'),
-    })),
-    ...sources.workstreams().map((workstream) => ({
-      label: workstream.label,
-      detail: 'Workstream',
-      type: 'workstream',
-      section: WORKSTREAMS,
-      apply: replaceWith(`[${linkLabel(workstream.label)}](${workstream.url})`, 2, ']]'),
     })),
   ];
   if (!options.length) return null;

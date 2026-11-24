@@ -1,7 +1,6 @@
 import clsx from 'clsx';
 import { memo } from 'react';
 import { WorkItemTypePill } from '@/components/work-items/WorkItemTypePill';
-import { ItemTitleWithChips } from '@/components/workstreams/Membership';
 import { type ItemOverview, NEEDS_YOU } from '@/services/dispatch/types';
 import type { PrDensity } from '@/types';
 import { whyLine } from './unit-copy';
@@ -92,11 +91,9 @@ export const DispatchRow = memo(function DispatchRow({
       >
         <WorkItemTypePill type={item.typeName} />
         <span className="bd-wb-row__text">
-          <ItemTitleWithChips id={item.id}>
-            <span className="bd-wb-row__title" title={item.title}>
-              {item.title}
-            </span>
-          </ItemTitleWithChips>
+          <span className="bd-wb-row__title" title={item.title}>
+            {item.title}
+          </span>
           <span className="bd-wb-row__meta">
             <em>{item.id}</em> · {whyLine(overview, now)}
           </span>
