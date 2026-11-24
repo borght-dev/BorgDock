@@ -1,17 +1,25 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { useEffect, useState } from 'react';
 import {
   Button,
   Card,
   LinearProgress,
   Pill,
+  type PillTone,
   SectionHeader,
   ToggleRow,
 } from '@/components/shared/primitives';
 import { RELEASES } from '@/generated/changelog';
-import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { openWhatsNew } from '@/hooks/useWhatsNew';
-import { useSettingsStore } from '@/stores/settings-store';
-import { useUpdateStore } from '@/stores/update-store';
+import {
+  checkForUpdate,
+  downloadUpdate,
+  lastCheckedLabel,
+  RELEASES_URL,
+  restartToApplyUpdate,
+  updateStatusLine,
+} from '@/services/updates';
+import { type UpdatePhase, type UpdateStatus, useUpdateStore } from '@/stores/update-store';
 import type { UpdateSettings } from '@/types/settings';
 
 interface Props {
@@ -19,27 +27,62 @@ interface Props {
   onChange: (u: UpdateSettings) => void;
 }
 
+const AGE_REFRESH_MS = 30_000;
+
+/** Now, refreshed often enough for "Last checked … ago" to stay true. */
+function useNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), AGE_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
+const STATUS_TONE: Record<UpdatePhase, PillTone> = {
+  idle: 'success',
+  checking: 'neutral',
+  available: 'warning',
+  downloading: 'neutral',
+  ready: 'warning',
+  installing: 'warning',
+};
+
+/** The header's verdict: "current" only when a check said so. */
+function versionPill(status: UpdateStatus): { tone: PillTone; text: string } {
+  const installed = `v${status.currentVersion || '0.1.0'}`;
+  if (status.phase === 'ready' || status.phase === 'installing')
+    return { tone: 'warning', text: `v${status.version} ready` };
+  if (status.version) return { tone: 'warning', text: `v${status.version} available` };
+  if (status.lastCheckedAt && !status.lastError)
+    return { tone: 'success', text: `${installed} — current` };
+  return { tone: 'neutral', text: installed };
+}
+
 export function UpdateSection({ updates, onChange }: Props) {
-  const settings = useSettingsStore((s) => s.settings);
-  const { checkForUpdate, downloadUpdate, restartToApply } = useAutoUpdate(settings);
-  const {
-    checking,
-    downloading,
-    restarting,
-    progress,
-    available,
-    version,
-    statusText,
-    currentVersion,
-  } = useUpdateStore();
+  const phase = useUpdateStore((s) => s.phase);
+  const currentVersion = useUpdateStore((s) => s.currentVersion);
+  const version = useUpdateStore((s) => s.version);
+  const progress = useUpdateStore((s) => s.progress);
+  const lastCheckedAt = useUpdateStore((s) => s.lastCheckedAt);
+  const lastError = useUpdateStore((s) => s.lastError);
+  const restarting = useUpdateStore((s) => s.restarting);
+  const now = useNow();
 
   const update = (partial: Partial<UpdateSettings>) => onChange({ ...updates, ...partial });
 
-  const statusTone: 'success' | 'warning' | 'neutral' = available
-    ? 'warning'
-    : downloading
-      ? 'neutral'
-      : 'success';
+  const status: UpdateStatus = {
+    phase,
+    currentVersion,
+    version,
+    progress,
+    lastCheckedAt,
+    lastError,
+  };
+  const pill = versionPill(status);
+  const statusLine = updateStatusLine(status);
+  const downloading = phase === 'downloading';
+  const ready = phase === 'ready' || phase === 'installing';
 
   const recent = RELEASES.slice(0, 3);
 
@@ -47,8 +90,8 @@ export function UpdateSection({ updates, onChange }: Props) {
     <>
       <SectionHeader
         title="Updates"
-        subtitle="BorgDock auto-updates from the Gomocha-FSP/borgdock GitHub releases feed."
-        badge={<Pill tone="success">v{currentVersion || '0.1.0'} — current</Pill>}
+        subtitle="BorgDock updates itself from the borght-dev/BorgDock releases on GitHub."
+        badge={<Pill tone={pill.tone}>{pill.text}</Pill>}
       />
 
       <Card variant="default" padding="md">
@@ -58,6 +101,7 @@ export function UpdateSection({ updates, onChange }: Props) {
         <div id="field-auto-check">
           <ToggleRow
             label="Auto-check for updates"
+            hint="Checks every hour, and when the computer wakes."
             on={updates.autoCheckEnabled}
             onChange={(autoCheckEnabled) => update({ autoCheckEnabled })}
           />
@@ -78,12 +122,17 @@ export function UpdateSection({ updates, onChange }: Props) {
           Check now
         </h3>
         <div id="field-check-now" className="flex items-center gap-2 flex-wrap">
-          {progress === 100 ? (
-            <Button variant="primary" size="sm" onClick={restartToApply} disabled={restarting}>
-              {restarting ? 'Restarting…' : 'Restart to apply'}
+          {ready ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={restartToApplyUpdate}
+              disabled={restarting || phase === 'installing'}
+            >
+              {restarting || phase === 'installing' ? 'Restarting…' : 'Restart to apply'}
             </Button>
-          ) : available && !downloading ? (
-            <Button variant="primary" size="sm" onClick={downloadUpdate} disabled={downloading}>
+          ) : phase === 'available' ? (
+            <Button variant="primary" size="sm" onClick={downloadUpdate}>
               Download v{version}
             </Button>
           ) : (
@@ -91,12 +140,12 @@ export function UpdateSection({ updates, onChange }: Props) {
               variant="secondary"
               size="sm"
               onClick={checkForUpdate}
-              disabled={checking || downloading}
+              disabled={phase === 'checking' || downloading}
             >
-              {checking ? 'Checking…' : 'Check for updates'}
+              {phase === 'checking' ? 'Checking…' : 'Check for updates'}
             </Button>
           )}
-          {statusText && <Pill tone={statusTone}>{statusText}</Pill>}
+          {statusLine && <Pill tone={STATUS_TONE[phase]}>{statusLine}</Pill>}
           <span className="flex-1" />
           <Button variant="ghost" size="sm" onClick={() => openWhatsNew(null)}>
             View release notes
@@ -104,9 +153,7 @@ export function UpdateSection({ updates, onChange }: Props) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() =>
-              openUrl('https://github.com/Gomocha-FSP/borgdock/releases').catch(console.error)
-            }
+            onClick={() => openUrl(RELEASES_URL).catch(console.error)}
           >
             Open releases
           </Button>
@@ -115,6 +162,21 @@ export function UpdateSection({ updates, onChange }: Props) {
           <div className="mt-3">
             <LinearProgress value={progress} tone="accent" />
           </div>
+        )}
+        <p
+          className="mt-3 text-[11px] text-[var(--color-text-muted)]"
+          data-testid="update-last-checked"
+        >
+          {lastCheckedLabel(lastCheckedAt, now)}
+        </p>
+        {lastError && (
+          <p
+            className="mt-1 text-[11px] text-[var(--color-status-red)]"
+            role="alert"
+            data-testid="update-error"
+          >
+            {lastError}
+          </p>
         )}
       </Card>
 
