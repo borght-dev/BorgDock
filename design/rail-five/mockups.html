@@ -467,6 +467,11 @@ pre .c { color: var(--ink-3); }
 .steps li::before { content: counter(step); font-family: var(--font-code); color: var(--ink-3); }
 .steps b { font-weight: 650; }
 .steps p { color: var(--ink-2); font-size: 0.95rem; }
+.decided { margin-top: 2.75rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.dbox { padding: 1.1rem 1.25rem; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-2, transparent); }
+.dbox h2 { margin: 0 0 0.6rem; font-size: 1rem; }
+.dbox ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.92rem; }
+@media (max-width: 1100px) { .decided { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -475,7 +480,7 @@ pre .c { color: var(--ink-3); }
   <p class="eyebrow">BorgDock · design reference · 4.17.0</p>
   <h1>Five sections, and what the rail's foot shows</h1>
   <p class="lede">The rail went from eight sections to five. Workstreams is gone. Activity and Worktrees left the rail: Activity became Recent behind a bell and a history window, Worktrees stays as the Ctrl+F7 palette. The foot of the rail shows what is left of each AI account, each machine's disk, and what needs you.</p>
-  <p class="muted">Six artboards, lettered. Every name and number is made up.</p>
+  <p class="muted">Seven artboards, lettered; Decided and Built at the end. Every name and number is made up.</p>
 </header>
 <section>
   <figure class="art">
@@ -882,6 +887,33 @@ pre .c { color: var(--ink-3); }
     <figcaption>The title bar loses two buttons and the rail's foot becomes the one place for what the app itself offers: its status on top, its tools in the bar below.</figcaption>
   </figure>
 </section>
+<div class="decided" id="decided">
+  <div class="dbox">
+    <h2>Decided</h2>
+    <ul>
+      <li>Workstreams is deleted, not migrated. Its files stay on disk untouched; a goal is a note (D), and nothing new was built for that.</li>
+      <li>No telemetry. It was in the first draft and dropped before the build.</li>
+      <li>Activity is not a section. The bell counts what needs you now, Recent is its card, All history is a window of its own.</li>
+      <li>Worktrees is not a section. It stays as the Ctrl+F7 window; disk health moved to the rail, the launch sheet and Focus.</li>
+      <li>An account's label follows T3 Code's name for it, so the same two letters mean the same account in both apps.</li>
+      <li>Settings is the rail's bottom left corner. Refresh stays in the title bar.</li>
+      <li>Nothing is read from an AI account before the first-start sheet is answered, and never from an account the rail hides.</li>
+    </ul>
+  </div>
+  <div class="dbox">
+    <h2>Built, and where the app differs</h2>
+    <ul>
+      <li>A to C and E to G are built as drawn. Stories: <code>Main Window/MainWindow</code> (<code>RailLimitsOpen</code>, <code>RailMachinesOpen</code>, <code>RailRecentOpen</code>), <code>AI usage/Limits</code>, <code>Layout/Rail/Machines</code>, <code>Activity/Recent</code>.</li>
+      <li>B2 shows no number of GiB a worktree would take. Where T3 puts a worktree is T3's setting, so the sheet warns on the host's tightest disk.</li>
+      <li>B1 offers Prune on this machine only. Another host shows how many worktrees have a merged or closed pull request.</li>
+      <li>A low disk notifies once, and again when it gets worse. The six-hourly reminder is gone.</li>
+      <li>The AI usage card's footer has Manage usage and a usage page link per provider.</li>
+      <li>Not drawn: under a launch sheet's model picker, a line names the account that model spends and what is left of it. This machine's T3 only.</li>
+      <li>The worktree changes pane went with the section. Nothing in the app shows a worktree's diff any more.</li>
+      <li>The iPhone app's Workstreams screens are unchanged.</li>
+    </ul>
+  </div>
+</div>
 </div>
 </body>
 </html>
