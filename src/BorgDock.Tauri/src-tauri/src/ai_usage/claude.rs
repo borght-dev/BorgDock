@@ -407,7 +407,13 @@ mod tests {
         let limits = limits_in(&usage);
         let read: Vec<(&str, &str, f64)> = limits
             .iter()
-            .map(|limit| (limit.kind.as_str(), limit.label.as_str(), limit.used_percent))
+            .map(|limit| {
+                (
+                    limit.kind.as_str(),
+                    limit.label.as_str(),
+                    limit.used_percent,
+                )
+            })
             .collect();
         assert_eq!(
             read,
@@ -445,7 +451,10 @@ mod tests {
             })
         };
         assert_eq!(usable_token(oauth(2_000), 1_000).unwrap(), "token");
-        assert_eq!(usable_token(oauth(1_000), 1_000).unwrap_err().kind, "expired");
+        assert_eq!(
+            usable_token(oauth(1_000), 1_000).unwrap_err().kind,
+            "expired"
+        );
         assert_eq!(usable_token(None, 1_000).unwrap_err().kind, "signed-out");
     }
 }

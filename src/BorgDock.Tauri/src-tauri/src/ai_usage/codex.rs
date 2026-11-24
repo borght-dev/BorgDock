@@ -240,11 +240,7 @@ pub async fn read(home: PathBuf) -> Result<Reading, AiUsageProblem> {
     })?;
     let answer = tokio::time::timeout(READ_TIMEOUT, exchange(&mut child))
         .await
-        .unwrap_or_else(|_| {
-            Err(AiUsageProblem::unavailable(
-                "Codex did not answer in time.",
-            ))
-        });
+        .unwrap_or_else(|_| Err(AiUsageProblem::unavailable("Codex did not answer in time.")));
     let _ = child.kill().await;
     answer
 }
@@ -299,7 +295,10 @@ mod tests {
     fn windows_are_named_by_their_length() {
         assert_eq!(window_name(Some(WEEK_MINUTES)).1, "Weekly");
         assert_eq!(window_name(None).0, "weekly");
-        assert_eq!(window_name(Some(SESSION_MINUTES)), ("session", "5 hours".to_string()));
+        assert_eq!(
+            window_name(Some(SESSION_MINUTES)),
+            ("session", "5 hours".to_string())
+        );
         assert_eq!(window_name(Some(3 * DAY_MINUTES)).1, "3 days");
         assert_eq!(window_name(Some(90)).1, "2 hours");
     }

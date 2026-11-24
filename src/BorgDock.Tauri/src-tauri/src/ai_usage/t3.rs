@@ -47,6 +47,14 @@ fn provider_of(driver: &str) -> Option<(&'static str, &'static str)> {
     }
 }
 
+/// T3 writes a folder in full or from the home directory (`~/.claude-ops`).
+fn folder_in(path: &str, home: &Path) -> PathBuf {
+    match path.strip_prefix("~/").or_else(|| path.strip_prefix("~\\")) {
+        Some(rest) => home.join(rest),
+        None => PathBuf::from(path),
+    }
+}
+
 /// The instances in T3 Code's settings, or none when T3 is not installed.
 pub fn instances(home: &Path) -> Vec<T3Instance> {
     let settings = std::fs::read_to_string(home.join(".t3/userdata/settings.json"))
@@ -65,7 +73,7 @@ pub fn instances(home: &Path) -> Vec<T3Instance> {
                 .config
                 .and_then(|config| config.home_path)
                 .filter(|path| !path.trim().is_empty())
-                .map(PathBuf::from);
+                .map(|path| folder_in(path.trim(), home));
             Some(T3Instance {
                 id,
                 provider,
@@ -118,15 +126,17 @@ mod tests {
                     "config": { "homePath": "" } },
                 "claudeAgent_ops": { "driver": "claudeAgent", "displayName": "Ops",
                     "config": { "homePath": ops.to_string_lossy() } },
+                "claudeAgent_tilde": { "driver": "claudeAgent", "displayName": "Tilde",
+                    "config": { "homePath": "~/.claude-ops" } },
                 "codex": { "driver": "codex", "displayName": "Example", "enabled": false },
                 "grok": { "driver": "grok", "enabled": true },
             }}),
         );
         let all = instances(home.path());
-        assert_eq!(all.len(), 2);
+        assert_eq!(all.len(), 3);
         let on_ops = instances_of(&all, "claude", &ops);
-        assert_eq!(on_ops.len(), 1);
-        assert_eq!(on_ops[0].id, "claudeAgent_ops");
+        let ids: Vec<&str> = on_ops.iter().map(|instance| instance.id.as_str()).collect();
+        assert_eq!(ids, vec!["claudeAgent_ops", "claudeAgent_tilde"]);
         assert_eq!(on_ops[0].name.as_deref(), Some("Ops"));
         let on_default = instances_of(&all, "claude", &home.path().join(".claude"));
         assert_eq!(on_default[0].id, "claudeAgent");
