@@ -264,7 +264,7 @@ pub async fn window_ready(app: tauri::AppHandle, window: tauri::Window) -> Resul
                     win.set_focus().map_err(|e| e.to_string())?;
                     log::info!("window_ready[{label_for_log}]: set_focus ok");
                 } else {
-                    log::info!("window_ready[{label_for_log}]: already revealed (HMR reload?) — leaving visibility as-is");
+                    log::info!("window_ready[{label_for_log}]: not its first reveal (built ahead of use, or an HMR reload) — leaving visibility as-is");
                 }
             } else {
                 log::warn!("window_ready[{label_for_log}]: window not found");

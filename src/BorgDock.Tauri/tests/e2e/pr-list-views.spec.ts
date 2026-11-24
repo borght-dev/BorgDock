@@ -264,7 +264,7 @@ test('J walks the board column by column', async ({ page }) => {
   await page.locator('[data-display-button]').click();
   await page.locator('[data-layout-option="board"]').click();
   await page.keyboard.press('Escape');
-  await page.getByRole('heading', { name: 'Pull requests' }).click();
+  await page.locator('.bd-title-bar__title').click();
 
   const firstColumn = page.locator('.bd-prl-col').first().locator('.bd-prl-card');
   const count = await firstColumn.count();
