@@ -11,13 +11,28 @@ vi.mock('@/services/dispatch/launch', async (importOriginal) => ({
 vi.mock('@/services/t3/api', () => ({ LOCAL_T3_HOST_ID: 'local', ...t3 }));
 vi.mock('@/services/dispatch/sync', () => ({ syncAll: vi.fn(), dispatchAdoClient: vi.fn() }));
 
+import type { HostDisks } from '@/services/disk-space';
 import { PLAN_FIRST } from '@/services/dispatch/launch';
+import { useDiskSpaceStore } from '@/stores/disk-space-store';
 import { type RememberedTarget, useDispatchStore } from '@/stores/dispatch-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { LAUNCH_CATALOGUE, makeDispatchScene } from '../__fixtures__/dispatch-data';
 import { clearCatalogueCache, LaunchSheet } from '../LaunchSheet';
 
 const NOW = Date.parse('2026-10-12T12:00:00Z');
+const GIB = 1024 ** 3;
+
+/** A measured host: `environment` is the T3 host it runs, `freeGib` what its one disk has left. */
+function measured(id: string, environment: string, freeGib: number): HostDisks {
+  return {
+    id,
+    label: id,
+    checkedAt: Date.now(),
+    error: null,
+    t3Host: { id: environment },
+    disks: [{ drive: '/', totalBytes: 256 * GIB, freeBytes: freeGib * GIB }],
+  };
+}
 
 function renderSheet(itemId = 60201, target: RememberedTarget | null = null) {
   const scene = makeDispatchScene(NOW);
@@ -59,6 +74,7 @@ describe('LaunchSheet', () => {
       { name: 'main', isDefault: true, isRemote: false },
       { name: 'release/4.7', isDefault: false, isRemote: false },
     ]);
+    useDiskSpaceStore.setState({ hosts: [], cleanup: {}, error: null });
   });
 
   it('opens on a new worktree here, from the default branch, with a plan-first pickup prompt', async () => {
@@ -192,6 +208,49 @@ describe('LaunchSheet', () => {
     await waitFor(() => expect(launch.startThread).toHaveBeenCalled());
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(useDispatchStore.getState().launch).not.toBeNull();
+  });
+
+  it('shows each environment’s free disk space and warns once the chosen one is low', async () => {
+    useDiskSpaceStore.setState({
+      hosts: [measured('local', 'local', 212), measured('dev@mac', 'mac', 18)],
+    });
+    const clean = vi.spyOn(useDiskSpaceStore.getState(), 'clean').mockResolvedValue(undefined);
+    renderSheet();
+    await modelsLoaded();
+
+    expect(screen.getByRole('radio', { name: /^This machine/ })).toHaveTextContent('212 GiB free');
+    const mac = screen.getByRole('radio', { name: /^Mac/ });
+    expect(within(mac).getByText('18 GiB free')).toHaveAttribute('data-severity', '1');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    fireEvent.click(mac);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Mac is low on disk. A new worktree may fail here.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Clean up first on Mac' }));
+    expect(clean).toHaveBeenCalledWith('dev@mac');
+    clean.mockRestore();
+  });
+
+  it('says a build may fail when the work stays in an existing checkout on a full disk', async () => {
+    useDiskSpaceStore.setState({ hosts: [measured('local', 'local', 3)] });
+    renderSheet(60102);
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'This machine is almost full. A new worktree will probably fail here.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Existing thread' }));
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'This machine is almost full. A build in this checkout will probably fail here.',
+    );
+  });
+
+  it('shows no disk space for an environment nobody measured', async () => {
+    useDiskSpaceStore.setState({ hosts: [measured('dev@mac', 'mac', 18)] });
+    renderSheet();
+    await modelsLoaded();
+    expect(screen.getByRole('radio', { name: /^This machine/ })).not.toHaveTextContent('GiB');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('cannot start while T3 has not listed its models', () => {

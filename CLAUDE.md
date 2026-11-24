@@ -27,7 +27,7 @@ bun run site:build              # Astro marketing site build
 
 ## Fresh worktrees: CRLF checkout vs biome's LF requirement
 
-The repo has `core.autocrlf=true` set locally, so a **fresh `git worktree add` checks every file out with CRLF line endings** — while biome (which the lefthook pre-commit runs on staged files) requires LF. The main checkout's files are LF on disk only because they predate the autocrlf setting; a new worktree is CRLF everywhere, so the very first commit touching any file fails the format check with whole-file `␍`-removal diffs. Fix: after editing in a fresh worktree, run `bunx biome check --write <files you touched>` before committing (committed blobs are LF either way — only the working-tree bytes are wrong). Don't mass-format untouched files: that surfaces unrelated pre-existing lint fixes as spurious diffs, and some files on main are not biome-clean, so restoring them afterwards fails the hook. Pass `biome check --write` the files you changed, never a directory. Scripted edits hit the same wall: Python's text mode on Windows writes CRLF, so open files with `newline=''` (biome won't fix CSS, and a CRLF CSS file diffs as a whole-file rewrite).
+The repo has `core.autocrlf=true` set locally, so a **fresh `git worktree add` checks every file out with CRLF line endings** — while biome (which the lefthook pre-commit runs on staged files) requires LF. The main checkout's files are LF on disk only because they predate the autocrlf setting; a new worktree is CRLF everywhere, so the very first commit touching any file fails the format check with whole-file `␍`-removal diffs. Fix: after editing in a fresh worktree, run `bunx biome check --write <files you touched>` before committing (committed blobs are LF either way — only the working-tree bytes are wrong). Don't mass-format untouched files: that surfaces unrelated pre-existing lint fixes as spurious diffs, and some files on main are not biome-clean, so restoring them afterwards fails the hook. Pass `biome check --write` the files you changed, never a directory. Scripted edits hit the same wall: Python's text mode on Windows writes CRLF, so open files with `newline=''` (biome won't fix CSS, and a CRLF CSS file diffs as a whole-file rewrite). Pass `encoding='utf-8'` too: the default there is cp1252, which reads every em dash and arrow in a comment as mojibake, so a replacement that quotes one never matches.
 
 **Duplicate React:** if a root-hoisted dep (e.g. `lucide-react`) crashes with `Cannot read properties of null (reading 'useContext')`, check `src/BorgDock.Tauri/node_modules/react` — stale pre-workspace copies there make the app and the dep load two Reacts. `bun.lock` has only the root copy; delete the member's `react`, `react-dom`, `scheduler`. Don't paper over it with Vite `dedupe` (vitest externalizes deps, so it doesn't help).
 
@@ -332,6 +332,17 @@ In the light theme `--color-surface-raised` is a 3% ink tint (`rgba(23,24,28,0.0
 The marketing site keeps a copy of the app's tokens. After adding or changing one in `src/styles/index.css`, run `bun scripts/site-tokens-check.ts --write` from the repo root, or CI's site build fails with "tokens.css has drifted".
 
 Storybook ignores `src-tauri/**` in its watcher (`.storybook/main.ts`). Without that, a `cargo build` running at the same time crashes it with `EBUSY` on a locked file in `target/`.
+
+## Machines: disk health in the rail, the launch sheet and Focus
+
+Disk health has three places (design: `design/rail-five/mockups.html`, artboard B): the rail's Machines block and its card (`components/machines/RailMachines`, `MachinesCard`), the environment picker of `LaunchTarget`, and `DiskFocusCard` at the top of Focus while a disk is low. The Ctrl+F7 palette keeps its own host headers.
+
+- **One model.** `machines-model.ts` `buildMachines` (pure) joins the disk probe with the worktree cache through `groupByHost`, so a host has the same id (`local` or the SSH target) everywhere. `useMachines` feeds it.
+- **The probe runs once per window**, from `useDiskSpace` in `App`. Everything else reads `useDiskMeasurements` (the store and a staleness clock, no polling); `useHostDisks` polls as well because the palette window has no `App`. Don't call `useDiskSpace` from a component the main window mounts.
+- **The worktree list outside the palette is `useWorktreeSnapshot`**: one `worktree_cache_get_all` and one `worktrees-updated` listener per window, shared by every reader. It never asks for a rescan.
+- **What counts as prunable is `worktree-prune-model.ts`** (`pruneStatus`, by `owner/name#branch`), shared by the prune dialog and the "M with a merged or closed PR" counts. A remote host gets the count and no Prune: `remove_worktree` is local. Outside the list, `useWorktreePrune` portals the dialog to `document.body` with those worktrees ticked (`preselect="closed"`).
+- **A T3 environment's disks are `hostOfEnvironment(hosts, environmentId)`**: `HostDisks.t3Host.id` is the environment id, `HostDisks.id` is what `clean()` takes. Where T3 puts a new worktree is T3's setting, so the launch sheet warns on the host's worst disk and promises no number.
+- **A low disk notifies once**, and again when it gets worse (`DiskAlertGate`). The six-hourly reminder is gone: the Focus card stays until the disk recovers.
 
 ## Diagnosing a hung / frozen BorgDock (AppHang)
 

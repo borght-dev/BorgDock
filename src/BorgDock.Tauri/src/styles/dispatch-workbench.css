@@ -702,8 +702,44 @@
     background: var(--color-status-green);
   }
   .bd-lt__env-detail {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0 8px;
     font-size: 11px;
     color: var(--color-text-muted);
+  }
+  /* Free space on the environment's tightest disk, and the notice once it runs low. */
+  .bd-lt__env-free {
+    font-family: var(--font-code);
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+  .bd-lt__env-free[data-severity="1"] {
+    color: var(--color-status-yellow);
+  }
+  .bd-lt__env-free[data-severity="2"] {
+    color: var(--color-status-red);
+  }
+  .bd-lt__disk {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding: 4px 4px 4px 10px;
+    border-radius: var(--radius-md);
+    background: var(--color-warning-badge-bg);
+    font-size: 11.5px;
+    color: var(--color-text-primary);
+  }
+  .bd-lt__disk[data-severity="2"] {
+    background: var(--color-error-badge-bg);
+  }
+  .bd-lt__disk p {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
   }
   .bd-lt__note {
     margin-top: 6px;

@@ -53,6 +53,8 @@ test('Open in T3 asks where the thread runs and lets T3 check the branch out', a
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('radio', { name: /^This machine/ })).toBeChecked();
+  // The environment shows what the disk probe measured on it.
+  await expect(dialog.getByRole('radio', { name: /^This machine/ })).toContainText('256 GiB free');
   await expect(dialog.getByRole('button', { name: 'Project' })).toHaveText(/borgdock/);
   await expect(dialog.getByText(/checks out fix\/58080-status-change-nameless-validation/)).toBeVisible();
   const fits = () =>

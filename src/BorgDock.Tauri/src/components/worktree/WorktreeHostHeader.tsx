@@ -1,37 +1,29 @@
 import { AlertTriangle, Monitor, Server } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { Button } from '@/components/shared/primitives';
-import { useDiskSpace } from '@/hooks/useDiskSpace';
+import { useDiskMeasurements, useDiskSpace } from '@/hooks/useDiskSpace';
 import {
-  DISK_POLL_MS,
   type DiskSpace,
   diskSeverity,
+  freeSpaceByDrive,
   freeSpaceLabel,
   freshDisks,
   type HostDisks,
   hostSeverity,
+  usedPercent,
 } from '@/services/disk-space';
 import { type CleanupState, useDiskSpaceStore } from '@/stores/disk-space-store';
-import type { WorktreeHostGroup } from './worktree-list-model';
+import { hostDisplayName, type WorktreeHostGroup } from './worktree-list-model';
 
 const GIB = 1024 ** 3;
 
 /** Disk space per host while the list is mounted, re-checked for staleness every poll. */
 export function useHostDisks() {
   useDiskSpace();
-  const hosts = useDiskSpaceStore((s) => s.hosts);
-  const error = useDiskSpaceStore((s) => s.error);
-  const cleanup = useDiskSpaceStore((s) => s.cleanup);
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), DISK_POLL_MS);
-    return () => clearInterval(timer);
-  }, []);
-  return { hosts, error, cleanup, now };
+  return useDiskMeasurements();
 }
 
 function DiskMeter({ disk }: { disk: DiskSpace }) {
-  const used = disk.totalBytes > 0 ? (1 - disk.freeBytes / disk.totalBytes) * 100 : 0;
+  const used = usedPercent(disk);
   return (
     <span
       className="bd-wth__disk"
@@ -45,11 +37,6 @@ function DiskMeter({ disk }: { disk: DiskSpace }) {
       <span className="bd-wth__free">{freeSpaceLabel(disk)}</span>
     </span>
   );
-}
-
-/** The name a host goes by: what the disk probe calls it, its remote label, or this machine. */
-export function hostDisplayName(host: WorktreeHostGroup, disks?: HostDisks): string {
-  return disks?.label || host.label || 'This machine';
 }
 
 export interface WorktreeHostHeaderProps {
@@ -142,8 +129,7 @@ export function WorktreeHostHeader({
       {critical.length > 0 && (
         <p className="bd-wth__alert">
           <AlertTriangle size={12} strokeWidth={2.25} aria-hidden="true" />
-          Only {critical.map((disk) => `${freeSpaceLabel(disk)} on ${disk.drive}`).join(', ')}.
-          Builds and checkouts on this host may start failing.
+          Only {freeSpaceByDrive(critical)}. Builds and checkouts on this host may start failing.
         </p>
       )}
       {cleanup?.error && (

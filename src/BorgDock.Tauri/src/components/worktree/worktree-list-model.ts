@@ -1,3 +1,4 @@
+import type { HostDisks } from '@/services/disk-space';
 import type { WorktreeCacheRepo, WorktreeEntry, WorktreeSnapshot } from '@/types/worktree';
 
 /**
@@ -54,6 +55,11 @@ export function repoDisplayName(repo: WorktreeRepoRef): string {
 /** Branch name without a `refs/heads/` prefix. */
 export function shortBranch(branchName: string): string {
   return branchName.replace(/^refs\/heads\//, '');
+}
+
+/** `owner/name#branch`, lowercase: how a worktree's branch and a pull request's head find each other. */
+export function branchKey(owner: string, name: string, branchName: string): string {
+  return `${owner}/${name}#${shortBranch(branchName)}`.toLowerCase();
 }
 
 /**
@@ -138,6 +144,11 @@ export interface WorktreeHostGroup {
   label: string;
   remote: boolean;
   repos: WorktreeRepoGroup[];
+}
+
+/** The name a host goes by: what the disk probe calls it, its remote label, or this machine. */
+export function hostDisplayName(host: WorktreeHostGroup, disks?: HostDisks): string {
+  return disks?.label || host.label || 'This machine';
 }
 
 /** A measured host the list shows even when none of its worktrees are listed. */

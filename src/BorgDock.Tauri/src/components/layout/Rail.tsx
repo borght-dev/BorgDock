@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from 'react';
 import { RailRecent } from '@/components/activity/RailRecent';
 import { RailLimits } from '@/components/ai-usage/RailLimits';
+import { RailMachines } from '@/components/machines';
 import { BorgDockLogo } from '@/components/shared/icons';
 import { IconButton, SlidingHighlight } from '@/components/shared/primitives';
 import { WindowLauncher } from '@/components/shared/WindowLauncher';
@@ -240,6 +241,7 @@ export function Rail() {
       </nav>
       <div className="bd-rail__foot">
         <RailLimits collapsed={collapsed} />
+        <RailMachines collapsed={collapsed} />
         <SyncLine collapsed={collapsed} />
         <RailBar collapsed={collapsed} />
       </div>

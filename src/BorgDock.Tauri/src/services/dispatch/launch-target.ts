@@ -38,6 +38,17 @@ export function launchEnvironments(
   }));
 }
 
+/**
+ * What a low disk on the chosen environment means for the launch. Nobody
+ * measures how much a worktree and its build take, so no number is promised.
+ */
+export function lowDiskNotice(hostLabel: string, critical: boolean, newWorktree: boolean): string {
+  const what = newWorktree ? 'A new worktree' : 'A build in this checkout';
+  return critical
+    ? `${hostLabel} is almost full. ${what} will probably fail here.`
+    : `${hostLabel} is low on disk. ${what} may fail here.`;
+}
+
 function comparablePath(path: string | null): string {
   return (path ?? '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
 }

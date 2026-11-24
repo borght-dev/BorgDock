@@ -6,6 +6,7 @@ import { Button, Card, IconButton, LinearProgress, Pill } from '@/components/sha
 import { usePrStore } from '@/stores/pr-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { RepoSettings, WorktreeInfo } from '@/types';
+import { type PruneStatus, prBranches, pruneStatus } from './worktree-prune-model';
 
 interface WorktreePruneDialogProps {
   isOpen: boolean;
@@ -21,19 +22,22 @@ interface WorktreePruneDialogProps {
    * "PR unknown" and "Select all orphaned" selects nothing. Default true.
    */
   prStatusKnown?: boolean;
+  /**
+   * Ticked when the list first loads: the worktrees whose pull request was
+   * merged or closed, for a caller that counted them ("Prune 12").
+   */
+  preselect?: 'closed';
 }
-
-type WorktreeStatus = 'open' | 'closed' | 'orphaned' | 'unknown';
 
 interface WorktreeRow {
   worktree: WorktreeInfo;
   repoKey: string;
   basePath: string;
-  status: WorktreeStatus;
+  status: PruneStatus;
   isSelected: boolean;
 }
 
-function statusLabel(status: WorktreeStatus): string {
+function statusLabel(status: PruneStatus): string {
   switch (status) {
     case 'open':
       return 'Open PR';
@@ -46,7 +50,7 @@ function statusLabel(status: WorktreeStatus): string {
   }
 }
 
-function pillTone(status: WorktreeStatus): 'success' | 'draft' | 'error' | 'neutral' {
+function pillTone(status: PruneStatus): 'success' | 'draft' | 'error' | 'neutral' {
   switch (status) {
     case 'open':
       return 'success';
@@ -69,6 +73,7 @@ export function WorktreePruneDialog({
   onClose,
   repos,
   prStatusKnown = true,
+  preselect,
 }: WorktreePruneDialogProps) {
   const settings = useSettingsStore((s) => s.settings);
   const pullRequests = usePrStore((s) => s.pullRequests);
@@ -83,9 +88,9 @@ export function WorktreePruneDialog({
 
   // Refs carry the latest PR + repo data into loadWorktrees without
   // causing it to recompute on every render — the previous version built
-  // fresh `Set`s at the top of the component, those fed `classifyWorktree`'s
-  // deps, which fed `loadWorktrees`' deps, which fed the effect's deps, and
-  // the effect called setState → re-render → new Sets → infinite loop.
+  // fresh `Set`s at the top of the component, those fed `loadWorktrees`'
+  // deps, which fed the effect's deps, and the effect called setState →
+  // re-render → new Sets → infinite loop.
   // (The dialog is rendered unconditionally inside the Settings window, so this
   // loop fired for every settings keystroke, preventing password persistence
   // by continuously resetting the store's debounce timer.)
@@ -97,28 +102,15 @@ export function WorktreePruneDialog({
   reposRef.current = repos ?? settings.repos;
   const knownRef = useRef(prStatusKnown);
   knownRef.current = prStatusKnown;
+  const preselectRef = useRef(preselect);
+  preselectRef.current = preselect;
 
-  const classifyWorktree = useCallback(
-    (
-      branchName: string,
-      openBranches: Set<string>,
-      closedBranches: Set<string>,
-    ): WorktreeStatus => {
-      if (!knownRef.current) return 'unknown';
-      const shortName = branchName.replace(/^refs\/heads\//, '');
-      if (openBranches.has(shortName) || openBranches.has(branchName)) return 'open';
-      if (closedBranches.has(shortName) || closedBranches.has(branchName)) return 'closed';
-      return 'orphaned';
-    },
-    [],
-  );
-
-  const loadWorktrees = useCallback(async () => {
+  const loadWorktrees = useCallback(async (firstLoad = false) => {
     setIsLoading(true);
     setError('');
     const allRows: WorktreeRow[] = [];
-    const openBranches = new Set(prsRef.current.map((pr) => pr.pullRequest.headRef));
-    const closedBranches = new Set(closedRef.current.map((pr) => pr.pullRequest.headRef));
+    const branches = knownRef.current ? prBranches(prsRef.current, closedRef.current) : null;
+    const ticked = firstLoad ? preselectRef.current : undefined;
 
     for (const repo of reposRef.current) {
       if (!repo.worktreeBasePath) continue;
@@ -130,13 +122,13 @@ export function WorktreePruneDialog({
 
         for (const wt of worktrees) {
           if (wt.isMainWorktree) continue;
-          const status = classifyWorktree(wt.branchName, openBranches, closedBranches);
+          const status = pruneStatus(repo, wt.branchName, branches);
           allRows.push({
             worktree: wt,
             repoKey: `${repo.owner}/${repo.name}`,
             basePath: repo.worktreeBasePath,
             status,
-            isSelected: false,
+            isSelected: ticked !== undefined && status === ticked,
           });
         }
       } catch (err) {
@@ -146,11 +138,11 @@ export function WorktreePruneDialog({
 
     setRows(allRows);
     setIsLoading(false);
-  }, [classifyWorktree]);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      void loadWorktrees();
+      void loadWorktrees(true);
     } else {
       // Only clear state if there's something to clear — setRows([]) with a
       // fresh array reference would otherwise trigger a re-render even when

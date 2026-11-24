@@ -3,11 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePrStore } from '@/stores/pr-store';
 import type { PullRequestWithChecks } from '@/types';
 import type { WorktreeInfo } from '@/types/worktree';
-import { shortBranch, type WorktreeListEntry, type WorktreeRepoRef } from './worktree-list-model';
-
-function linkKey(owner: string, name: string, branch: string): string {
-  return `${owner}/${name}#${shortBranch(branch)}`.toLowerCase();
-}
+import { branchKey, type WorktreeListEntry, type WorktreeRepoRef } from './worktree-list-model';
 
 /**
  * Open pull requests by `owner/name#branch` (lowercase), so a worktree row can
@@ -28,12 +24,12 @@ export function useLinkedPrs(): (
     for (const pr of pullRequests ?? []) {
       const p = pr.pullRequest;
       if (p.state !== 'open') continue;
-      map.set(linkKey(p.repoOwner, p.repoName, p.headRef), pr);
+      map.set(branchKey(p.repoOwner, p.repoName, p.headRef), pr);
     }
     return map;
   }, [pullRequests]);
   return (repo, branchName) =>
-    branchName ? byBranch.get(linkKey(repo.owner, repo.name, branchName)) : undefined;
+    branchName ? byBranch.get(branchKey(repo.owner, repo.name, branchName)) : undefined;
 }
 
 /**

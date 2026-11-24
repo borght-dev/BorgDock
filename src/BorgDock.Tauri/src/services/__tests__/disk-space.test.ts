@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
   cleanupPrompt,
-  DISK_REMINDER_MS,
   DISK_TTL_MS,
   DiskAlertGate,
   diskForPath,
   diskSeverity,
+  freeSpace,
+  freeSpaceByDrive,
   freeSpaceLabel,
   freshDisks,
   type HostDisks,
+  hostOfEnvironment,
   hostSeverity,
+  tightestDisk,
+  usedPercent,
 } from '../disk-space';
 
 const GIB = 1024 ** 3;
@@ -56,14 +60,13 @@ describe('disk alerts', () => {
     expect(gate.notices([host(30)], NOW + 60_000)).toHaveLength(0);
     expect(gate.notices([host(19)], NOW + 60_000)).toHaveLength(1);
   });
-  it('reminds after six hours and groups low drives into one host notification', () => {
+  it('groups low drives into one host notification and never repeats it while they stay low', () => {
     const gate = new DiskAlertGate();
     const low = host(4);
     low.disks.push({ ...low.disks[0]!, drive: 'D:' });
     expect(gate.notices([low], NOW)).toHaveLength(1);
-    expect(
-      gate.notices([{ ...low, checkedAt: NOW + DISK_REMINDER_MS }], NOW + DISK_REMINDER_MS),
-    ).toHaveLength(1);
+    const DAY = 24 * 60 * 60 * 1000;
+    expect(gate.notices([{ ...low, checkedAt: NOW + DAY }], NOW + DAY)).toHaveLength(0);
   });
   it('never alerts from failed or stale probes, and keeps alert suppression through an outage', () => {
     const gate = new DiskAlertGate();
@@ -112,4 +115,41 @@ it('hostSeverity is the worst disk of the host', () => {
   expect(hostSeverity([])).toBe(0);
   expect(hostSeverity([...host(30).disks, ...host(4).disks])).toBe(2);
   expect(hostSeverity([...host(30).disks, ...host(19).disks])).toBe(1);
+});
+
+describe('what the rail and the launch sheet read', () => {
+  const disk = (drive: string, free: number, total = 500) => ({
+    drive,
+    totalBytes: total * GIB,
+    freeBytes: free * GIB,
+  });
+
+  it('picks the disk closest to running out: the worst severity, then the least free space', () => {
+    expect(tightestDisk([])).toBeUndefined();
+    expect(tightestDisk([disk('C:', 96), disk('D:', 212)])?.drive).toBe('C:');
+    // 30 GiB of 2000 is under 5%: critical beats a smaller disk that is only low.
+    expect(tightestDisk([disk('C:', 18, 100), disk('E:', 30, 2000)])?.drive).toBe('E:');
+  });
+
+  it('words free space with and without its drive', () => {
+    expect(freeSpace(disk('C:', 212))).toBe('212 GiB');
+    expect(freeSpace(disk('C:', 0.4))).toBe('0.4 GiB');
+    expect(freeSpaceByDrive([disk('/', 18), disk('D:', 14)])).toBe(
+      '18 GiB free on /, 14 GiB free on D:',
+    );
+  });
+
+  it('fills a meter with the used share', () => {
+    expect(usedPercent(disk('/', 125))).toBe(75);
+    expect(usedPercent({ drive: '/', totalBytes: 0, freeBytes: 0 })).toBe(0);
+  });
+
+  it('finds the measured host a T3 environment runs on, while its measurement is fresh', () => {
+    const mini = { ...host(18), id: 'dev@mini', t3Host: { id: 'mini' } };
+    const unpaired = { ...host(18), id: 'vera', t3Host: null };
+    expect(hostOfEnvironment([unpaired, mini], 'mini', NOW)?.id).toBe('dev@mini');
+    expect(hostOfEnvironment([unpaired, mini], 'local', NOW)).toBeUndefined();
+    expect(hostOfEnvironment([unpaired, mini], null, NOW)).toBeUndefined();
+    expect(hostOfEnvironment([mini], 'mini', NOW + DISK_TTL_MS + 1)).toBeUndefined();
+  });
 });
