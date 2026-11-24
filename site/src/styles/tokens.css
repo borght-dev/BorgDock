@@ -321,6 +321,13 @@
   /* ── Additional status / accent tokens ── */
   --color-status-amber: #d97706;
   --color-status-blue: #2d6be4;
+  /* Account labels: who an AI account belongs to. No red or amber, which say how much is left. */
+  --color-identity-1: #6d4fe0;
+  --color-identity-2: #0b7f95;
+  --color-identity-3: #b8357f;
+  --color-identity-4: #2f7d4f;
+  --color-identity-5: #5b6472;
+  --color-identity-ink: #ffffff;
   --color-accent-soft: rgba(79, 70, 229, 0.06);
   --color-bg-primary: #f5f5f7;
 
@@ -570,6 +577,12 @@
   /* ── Additional status / accent tokens — dark ── */
   --color-status-amber: #f0a04b;
   --color-status-blue: #6fa8ff;
+  --color-identity-1: #a394ff;
+  --color-identity-2: #4cc0d3;
+  --color-identity-3: #e582bd;
+  --color-identity-4: #6fcf97;
+  --color-identity-5: #a5adba;
+  --color-identity-ink: #101114;
   --color-accent-soft: rgba(127, 126, 255, 0.08);
   --color-bg-primary: #151618;
 

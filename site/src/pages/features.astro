@@ -12,7 +12,7 @@ const toc = [
   { id: 'watch', label: 'Pull requests' },
   { id: 'failures', label: 'Shared failures' },
   { id: 'decide', label: 'Focus' },
-  { id: 'activity', label: 'Activity' },
+  { id: 'recent', label: 'Recent' },
   { id: 'review', label: 'Quick review' },
   { id: 'dispatch', label: 'Dispatch' },
   { id: 'notes', label: 'Notes' },
@@ -30,6 +30,16 @@ const tools = [
     slug: 'worktrees-window',
     name: 'Worktrees window',
     text: "Press Ctrl+F7 from anywhere for every worktree in a small window, grouped by the machine it lives on under that machine's free disk space. Enter opens a terminal in the one you picked.",
+  },
+  {
+    slug: 'ai-limits',
+    name: 'Limits left',
+    text: 'What is left of every Claude and Codex account on this machine, in the rail: this week, this session and when each resets. When an account runs out, Focus says so and names the threads that spend it.',
+  },
+  {
+    slug: 'machines',
+    name: 'Machines',
+    text: 'Free disk space for every machine your agents work on, with the worktrees whose pull request already merged. Prune them or clear the build caches before a disk fills up.',
   },
   {
     slug: 'notes-quick',
@@ -123,16 +133,18 @@ const tools = [
         <Recording slot="media" slug="focus-merge" />
       </Job>
 
-      <Job id="activity" eyebrow="Activity" title="Catch up on what changed while you were away" reverse reading>
+      <Job id="recent" eyebrow="Recent" title="Catch up on what changed while you were away" reverse reading>
         <p>
-          Activity lists what happened since you last looked: questions from your agents, plans waiting
-          for your approval, failed checks, new reviews and your merged work reaching an environment.
+          The bell in the corner of the rail counts what still needs you: a question from an agent, a
+          plan waiting for your approval, a failed check on your pull request, a review request.
         </p>
         <p>
-          What needs you comes first, and every row has the action that fits. Focus opens with a Since
-          you last checked card, and the tray icon shows how much is waiting.
+          Click it for Recent. What needs you comes first, each with the action that fits, followed by
+          what happened since you last looked: merges, deployments, new reviews. Something stops
+          counting the moment it is handled, wherever you handled it.
         </p>
-        <Capture slot="media" slug="activity" />
+        <p>All history opens the full list in a window of its own.</p>
+        <Capture slot="media" slug="recent" />
       </Job>
 
       <Job id="review" eyebrow="Quick review" title="Review file by file, decide on the last one" reading>

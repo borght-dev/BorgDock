@@ -10,6 +10,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { seedActivity } from '@/components/activity/__fixtures__/activity-data';
+import {
+  RECENT_EARLIER,
+  RECENT_LOOKED_AT,
+  RECENT_NEEDS_YOU,
+  RECENT_NOW,
+} from '@/components/activity/__fixtures__/recent-data';
 import {
   LAUNCH_BRANCHES,
   LAUNCH_CATALOGUE,
@@ -398,6 +405,20 @@ function seedRailFoot() {
   });
 }
 
+/** The journal behind the bell, with its times moved so the card reads "14 min ago" today. */
+function seedRecent() {
+  const shift = Date.now() - RECENT_NOW.getTime();
+  const moved = (iso: string) => new Date(new Date(iso).getTime() + shift).toISOString();
+  seedActivity({
+    entries: [...RECENT_NEEDS_YOU, ...RECENT_EARLIER].map((entry) => ({
+      ...entry,
+      sourceAt: entry.sourceAt && moved(entry.sourceAt),
+      observedAt: moved(entry.observedAt),
+    })),
+  });
+  useUiStore.setState({ activityVisitedAt: moved(RECENT_LOOKED_AT) });
+}
+
 // ── harness ──────────────────────────────────────────────────────────────────
 
 function Harness({
@@ -415,6 +436,7 @@ function Harness({
   dispatchFilter = null,
   agentsWaiting = false,
   railCollapsed = false,
+  recent = false,
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
@@ -441,12 +463,15 @@ function Harness({
   agentsWaiting?: boolean;
   /** The rail folded to icons. */
   railCollapsed?: boolean;
+  /** Fill the journal behind the bell. */
+  recent?: boolean;
 }) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
   useState(() => {
     seedPrStore();
     seedRailFoot();
+    if (recent) seedRecent();
     if (section === 'workitems') seedWorkItems();
     if (section === 'dispatch' || agentsWaiting) {
       seedDispatch(
@@ -524,6 +549,15 @@ export const RailMachinesOpen: Story = {
   play: async ({ canvasElement }) => {
     const rail = within(canvasElement).getByRole('complementary', { name: 'Navigation' });
     await userEvent.click(within(rail).getByRole('button', { name: /^Machines/ }));
+  },
+};
+
+/** Recent, opened from the bell in the rail's bar. */
+export const RailRecentOpen: Story = {
+  args: { section: 'focus', recent: true },
+  play: async ({ canvasElement }) => {
+    const rail = within(canvasElement).getByRole('complementary', { name: 'Navigation' });
+    await userEvent.click(within(rail).getByRole('button', { name: /^Recent/ }));
   },
 };
 

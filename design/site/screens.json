@@ -197,16 +197,40 @@
     "page": "Dispatch"
   },
   {
-    "slug": "activity",
-    "storyId": "activity-activity--unread",
+    "slug": "recent",
+    "storyId": "main-window-mainwindow--rail-recent-open",
     "viewport": {
       "width": 1360,
       "height": 860
     },
     "theme": "both",
     "delay": 2500,
-    "alt": "Activity: what changed since you last checked, one row per change with the action that fits, grouped by day",
-    "page": "Activity"
+    "alt": "Recent, opened from the bell in the rail's corner: three things that need you with the action for each, then the morning's merge, deployment and review",
+    "page": "Rail"
+  },
+  {
+    "slug": "ai-limits",
+    "storyId": "main-window-mainwindow--rail-limits-open",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Limits left: what remains of each Claude and Codex account this week and this session, with when it resets, opened from the rail",
+    "page": "Rail"
+  },
+  {
+    "slug": "machines",
+    "storyId": "main-window-mainwindow--rail-machines-open",
+    "viewport": {
+      "width": 1360,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Machines: free disk space per machine and the worktrees whose pull request already merged, opened from the rail",
+    "page": "Rail"
   },
   {
     "slug": "notes",

@@ -18,7 +18,7 @@ export type GalleryPage =
   | 'Detail'
   | 'Quick review'
   | 'Notes'
-  | 'Activity'
+  | 'Rail'
   | 'Tools';
 export const GALLERY_PAGES: GalleryPage[] = [
   'Pull requests',
@@ -27,7 +27,7 @@ export const GALLERY_PAGES: GalleryPage[] = [
   'Detail',
   'Quick review',
   'Notes',
-  'Activity',
+  'Rail',
   'Tools',
 ];
 
