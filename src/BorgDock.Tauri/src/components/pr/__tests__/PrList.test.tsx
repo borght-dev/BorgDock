@@ -164,10 +164,13 @@ describe('PrList', () => {
     seed();
   });
 
-  it('renders the head, the view tabs, the view bar and one row per PR', () => {
+  it('renders the view tabs, the view bar with the search and one row per PR', () => {
     render(<PrList />);
-    expect(screen.getByRole('heading', { name: 'Pull requests' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Filter pull requests' })).toBeInTheDocument();
+    // The title bar names the section; the list's own heading is for screen readers.
+    expect(screen.getByRole('heading', { name: 'Pull requests' })).toHaveClass('sr-only');
+    expect(document.querySelector('[data-view-bar]')).toContainElement(
+      screen.getByRole('textbox', { name: 'Filter pull requests' }),
+    );
     expect(
       within(tabs())
         .getAllByRole('tab')

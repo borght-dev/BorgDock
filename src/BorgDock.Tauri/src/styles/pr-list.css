@@ -102,18 +102,43 @@
     color: var(--color-text-tertiary);
   }
 
-  /* ── View bar: chips, Filter, Group, Sort, Display ─────── */
+  /* ── View bar: search, chips, Filter | Group, Sort, Display ──
+     design/pr-head/mockups.html. One row: the query (the search box and the
+     chips it holds) wraps under itself on the left, while Group, Sort and
+     Display stay on the first line on the right. */
   .bd-prl-bar {
     display: flex;
     flex-shrink: 0;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+    padding: 8px 16px;
+  }
+  .bd-prl-bar__query {
+    display: flex;
+    flex: 1;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
     min-width: 0;
-    padding: 8px 16px;
   }
-  .bd-prl-bar__spacer {
-    flex: 1;
+  .bd-prl-bar__view {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+  }
+  /* The search box sits among the chips: their border, their height. */
+  .bd-prl-bar .bd-prl-search {
+    flex: 1 1 240px;
+    max-width: 380px;
+    margin-left: 0;
+    border-color: var(--color-strong-border);
+  }
+  .bd-prl-bar .bd-prl-chipbtn,
+  .bd-prl-bar .bd-prl-fchip,
+  .bd-prl-bar .bd-prl-btn {
+    height: 28px;
   }
   .bd-prl-bar__hint {
     font-size: 11.5px;
@@ -1239,11 +1264,47 @@
     .bd-prl-chipbtn__label {
       display: none;
     }
+    /* One line of search, Filter and the view buttons; the chips get the
+       lines under it at full width instead of wrapping beside the search. */
     .bd-prl-bar {
+      flex-wrap: wrap;
       gap: 4px;
       padding: 6px 12px;
     }
+    .bd-prl-bar__query {
+      display: contents;
+    }
+    .bd-prl-bar__view {
+      gap: 4px;
+    }
+    .bd-prl-bar .bd-prl-search {
+      flex: 1 1 120px;
+      max-width: none;
+    }
+    .bd-prl-bar .bd-prl-search,
+    .bd-prl-bar [data-add-filter],
+    .bd-prl-bar__view {
+      order: 1;
+    }
+    .bd-prl-bar__query:has(.bd-prl-fchip)::after {
+      order: 2;
+      flex-basis: 100%;
+      content: "";
+    }
+    .bd-prl-bar .bd-prl-fchip,
+    .bd-prl-bar__query > .bd-prl-btn {
+      order: 3;
+    }
+    .bd-prl-search .bd-kbd {
+      display: none;
+    }
     .bd-prl-fchip__op {
+      display: none;
+    }
+  }
+  /* The tabs need the room before the session's review progress does. */
+  @container (max-width: 900px) {
+    .bd-prl-views .bd-review-progress {
       display: none;
     }
   }
