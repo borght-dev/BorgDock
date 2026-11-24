@@ -8,6 +8,7 @@ import { applyTheme } from '@/utils/theme';
 import { revealWindow } from '@/utils/window-reveal';
 import { AdoSection } from './AdoSection';
 import { AgentSection } from './AgentSection';
+import { AiAccountsSection } from './AiAccountsSection';
 import { AppearanceSection } from './AppearanceSection';
 // Existing section components — bodies are rewritten in later tasks.
 import { CiFailuresCard } from './CiFailuresCard';
@@ -170,6 +171,13 @@ export function SettingsApp() {
             summaries={settings.summaries ?? { enabled: true, provider: 'claude', model: 'sonnet' }}
             onAgentsChange={(agents) => update({ agents })}
             onSummariesChange={(summaries) => update({ summaries })}
+          />
+        );
+      case 'accounts':
+        return (
+          <AiAccountsSection
+            aiUsage={settings.aiUsage}
+            onChange={(aiUsage) => update({ aiUsage })}
           />
         );
       case 'workstreams':

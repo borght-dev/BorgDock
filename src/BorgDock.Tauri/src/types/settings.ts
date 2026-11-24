@@ -286,6 +286,7 @@ export interface AppSettings {
   notifications: NotificationSettings;
   agents?: AgentSettings;
   summaries?: SummarySettings;
+  aiUsage?: AiUsageSettings;
   claudeReview: ClaudeReviewSettings;
   updates: UpdateSettings;
   prDetail?: PrDetailSettings;
@@ -301,4 +302,29 @@ export interface WorkstreamSettings {
   folder?: string;
   /** What this machine is called in a workstream's log. Empty: the computer's name. */
   deviceLabel?: string;
+}
+
+/** How one AI account is shown: its label, the label's colour, and whether the rail shows it. */
+export interface AiAccountSettings {
+  /** Up to three characters next to the provider's icon. */
+  label: string;
+  /** Which identity colour the label wears, 1 to 5. */
+  color: number;
+  hidden?: boolean;
+}
+
+/** How the AI accounts found on this machine are shown in the rail. */
+export interface AiUsageSettings {
+  /** The first-start sheet that names the accounts was answered. */
+  introduced?: boolean;
+  /** By account id (`claude:~/.claude-ops`). */
+  accounts?: Record<string, AiAccountSettings>;
+  /** Account ids in the order they were dragged into. */
+  order?: string[];
+  /** The rail keeps `order`; off, the account with the least left comes first. */
+  keepOrder?: boolean;
+  /** GitHub's API requests are a row among the limits. Default on. */
+  showGitHub?: boolean;
+  /** Under this percentage left an account shows red. Default 10. */
+  warnUnder?: number;
 }

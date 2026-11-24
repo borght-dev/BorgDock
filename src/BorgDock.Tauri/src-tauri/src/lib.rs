@@ -2,6 +2,7 @@ pub mod activity;
 pub mod ado;
 pub mod agents;
 mod agent_program;
+pub mod ai_usage;
 mod app_data;
 pub mod auth;
 pub mod cache;
@@ -269,6 +270,9 @@ macro_rules! app_commands {
             phone_link::phone_link_pr_views_get,
             phone_link::phone_link_pr_views_put,
             platform::taskbar::set_taskbar_badge,
+            // AI account usage
+            ai_usage::ai_usage_accounts,
+            ai_usage::ai_usage_read,
             // Workstreams
             // Notes vault
             notes::commands::notes_folder_path,

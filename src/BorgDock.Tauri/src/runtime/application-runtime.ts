@@ -5,6 +5,7 @@ import { useInitStore } from '@/stores/initStore';
 import { useSettingsStore } from '@/stores/settings-store';
 import { startActivitySync } from './activity-sync';
 import { startAdoSync } from './ado-sync';
+import { startAiUsageSync } from './ai-usage-sync';
 import { startCiFailuresSync } from './ci-failures-sync';
 import { startDispatchSync } from './dispatch-sync';
 import { createGitHubSync } from './github-sync';
@@ -40,6 +41,7 @@ export function startApplicationRuntime(): () => void {
   const stopPhoneLink = startPhoneLinkSync();
   const stopPrViews = startPrViewsSync();
   const stopGuideWriter = startReviewGuideWriter();
+  const stopAiUsage = startAiUsageSync();
   const getSettings = () => useSettingsStore.getState().settings;
   const reconcile = (restart = false) => {
     if (stopped || !useSettingsStore.getState().hasLoaded) return;
@@ -141,6 +143,7 @@ export function startApplicationRuntime(): () => void {
     stopPhoneLink();
     stopPrViews();
     stopGuideWriter();
+    stopAiUsage();
     document.removeEventListener('borgdock-refresh', refresh);
   };
 }

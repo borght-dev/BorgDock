@@ -195,6 +195,32 @@ export const SETTINGS_FIELDS: ReadonlyArray<FieldEntry> = [
   { sectionId: 'notif', anchorId: 'remind-every', label: 'Remind every' },
   { sectionId: 'notif', anchorId: 'escalate', label: 'Escalate urgency over time' },
 
+  // AI accounts
+  {
+    sectionId: 'accounts',
+    anchorId: 'ai-accounts',
+    label: 'AI account labels',
+    keywords: ['claude', 'codex', 'usage', 'limits', 'rail', 'label', 'colour', 'color'],
+  },
+  {
+    sectionId: 'accounts',
+    anchorId: 'ai-show-github',
+    label: 'Show GitHub API with the limits',
+    keywords: ['rate limit', 'requests', 'rail'],
+  },
+  {
+    sectionId: 'accounts',
+    anchorId: 'ai-keep-order',
+    label: 'Keep my order in the rail',
+    keywords: ['accounts', 'sort', 'least left'],
+  },
+  {
+    sectionId: 'accounts',
+    anchorId: 'ai-warn-under',
+    label: 'Warn under this percentage left',
+    keywords: ['usage', 'limit', 'red', 'threshold'],
+  },
+
   // Agents and headless summaries
   {
     sectionId: 'agents',

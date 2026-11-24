@@ -42,7 +42,7 @@ pub struct HeadlessPromptResult {
     pub reads: Option<Vec<SourceRead>>,
 }
 
-fn hidden_tokio_command(program: &str) -> tokio::process::Command {
+pub(crate) fn hidden_tokio_command(program: &str) -> tokio::process::Command {
     let mut command = tokio::process::Command::new(crate::agent_program::resolve(program));
     #[cfg(target_os = "windows")]
     {

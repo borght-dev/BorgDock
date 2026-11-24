@@ -1,0 +1,321 @@
+/* AI account usage: the provider mark and account label, the Limits block's
+   rows and rings, the card, the Focus card, and the rows that name accounts.
+   Design: design/rail-five/mockups.html, artboards E and F. */
+@layer components {
+  /* ── Provider icon and account label ─────────────────── */
+  .bd-ai-mark {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 3px;
+    min-width: 2.75rem;
+    color: var(--color-text-secondary);
+  }
+  .bd-ai-mark--text {
+    font-size: 11px;
+  }
+  .bd-ai-icon {
+    flex-shrink: 0;
+  }
+  .bd-ai-badge {
+    padding: 2px 3px;
+    border-radius: 4px;
+    background: var(--color-identity-1);
+    font-family: var(--font-ui);
+    font-size: 8.5px;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    color: var(--color-identity-ink);
+  }
+  .bd-ai-badge[data-color='2'],
+  .bd-ai-swatch[data-color='2'] {
+    background: var(--color-identity-2);
+  }
+  .bd-ai-badge[data-color='3'],
+  .bd-ai-swatch[data-color='3'] {
+    background: var(--color-identity-3);
+  }
+  .bd-ai-badge[data-color='4'],
+  .bd-ai-swatch[data-color='4'] {
+    background: var(--color-identity-4);
+  }
+  .bd-ai-badge[data-color='5'],
+  .bd-ai-swatch[data-color='5'] {
+    background: var(--color-identity-5);
+  }
+
+  /* ── Folded rail: a ring of what is left around the icon ─ */
+  .bd-ai-ring {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+  }
+  .bd-ai-ring > * {
+    grid-area: 1 / 1;
+  }
+  .bd-ai-ring__arc {
+    color: var(--color-status-gray);
+  }
+  .bd-ai-ring__arc[data-tone='low'] {
+    color: var(--color-status-yellow);
+  }
+  .bd-ai-ring__arc[data-tone='critical'] {
+    color: var(--color-status-red);
+  }
+  .bd-ai-ring__track {
+    fill: none;
+    stroke: var(--color-subtle-border);
+  }
+  .bd-ai-ring__value {
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+  }
+  .bd-ai-ring__icon {
+    margin-bottom: 3px;
+    color: var(--color-text-secondary);
+  }
+  .bd-ai-ring__badge {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 0 0 1.5px var(--color-background);
+  }
+  .bd-ai-limits--folded .bd-rail__block {
+    gap: 4px;
+  }
+
+  /* ── The card ────────────────────────────────────────── */
+  .bd-ai-acct__head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    font-weight: 600;
+  }
+  .bd-ai-acct__head .bd-ai-mark {
+    min-width: 0;
+  }
+  .bd-ai-acct__folder {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+  }
+  .bd-ai-acct__plan {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0 5px;
+    border: 1px solid var(--color-strong-border);
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+  }
+  .bd-ai-limit {
+    display: grid;
+    grid-template-columns: 3.6rem minmax(0, 1fr) 4.4rem 2.8rem;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+  }
+  .bd-ai-limit b {
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-weight: 500;
+    text-align: right;
+    white-space: nowrap;
+    color: var(--color-text-primary);
+  }
+  .bd-ai-limit__when {
+    font-family: var(--font-code);
+    font-size: 10.5px;
+    text-align: right;
+    white-space: nowrap;
+    color: var(--color-text-tertiary);
+  }
+  .bd-ai-acct[data-stale] .bd-ai-limit {
+    opacity: 0.55;
+  }
+  .bd-ai-acct__problem {
+    margin: 0;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-ai-manage {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bd-ai-manage__provider {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .bd-ai-inline-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-accent);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  /* ── On Focus, while an account has nothing left ─────── */
+  .bd-ai-fcard__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-primary);
+  }
+  .bd-ai-fcard__head .bd-ai-mark {
+    min-width: 0;
+  }
+  .bd-ai-fcard__text {
+    color: var(--color-text-secondary);
+  }
+  .bd-ai-fcard__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* ── Naming the accounts: the first-start sheet and Settings ─ */
+  .bd-ai-lblrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 12.5px;
+    color: var(--color-text-secondary);
+  }
+  .bd-ai-lblrow__label {
+    flex-shrink: 0;
+    width: 2.6rem;
+    padding: 2px 4px;
+    border: 1px solid var(--color-input-border);
+    border-radius: 5px;
+    background: var(--color-input-bg);
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--color-text-primary);
+  }
+  .bd-ai-lblrow__label:focus-visible {
+    border-color: var(--color-accent);
+    outline: 2px solid var(--color-accent-subtle);
+  }
+  .bd-ai-lblrow__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    color: var(--color-text-primary);
+  }
+  .bd-ai-lblrow__text--off {
+    color: var(--color-text-tertiary);
+  }
+  .bd-ai-lblrow__sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+  .bd-ai-swatches {
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 4px;
+  }
+  .bd-ai-swatch {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--color-identity-1);
+    cursor: pointer;
+  }
+  .bd-ai-swatch[aria-checked='true'] {
+    box-shadow:
+      0 0 0 2px var(--color-card-background),
+      0 0 0 3.5px var(--color-text-secondary);
+  }
+  .bd-ai-swatch:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+  .bd-ai-lblrows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .bd-ai-lblrows__row[data-dragging] {
+    opacity: 0.6;
+  }
+  .bd-ai-grip {
+    flex-shrink: 0;
+    width: 10px;
+    height: 16px;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background-color: transparent;
+    background-image: radial-gradient(var(--color-status-gray) 1px, transparent 1.2px);
+    background-position: center;
+    background-size: 4px 4px;
+    cursor: grab;
+    touch-action: none;
+  }
+  .bd-ai-grip:active {
+    cursor: grabbing;
+  }
+  .bd-ai-grip:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .bd-ai-warn {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0 0;
+  }
+  .bd-ai-warn__text {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+
+  .bd-ai-intro__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    background: var(--color-overlay-bg);
+  }
+  .bd-ai-intro__card {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 71;
+    width: min(380px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    transform: translate(-50%, -50%);
+  }
+  .bd-ai-intro__actions {
+    display: inline-flex;
+    gap: 6px;
+    margin-left: auto;
+  }
+}

@@ -20,13 +20,30 @@ const TOOL_WINDOWS = [
   { id: 'sql', label: 'SQL', shortcut: 'Ctrl+F10', icon: Braces },
 ] as const;
 
-interface WindowLauncherProps {
-  onWindowOpened?: () => void;
+/** Space between the trigger (or the rail) and the menu. */
+const GAP = 6;
+
+interface MenuPosition {
+  left: number;
+  top?: number;
+  bottom?: number;
 }
 
-export function WindowLauncher({ onWindowOpened }: WindowLauncherProps) {
+interface WindowLauncherProps {
+  onWindowOpened?: () => void;
+  /** Where the menu opens: under the trigger, or beside the rail, growing upward from the trigger. */
+  anchor?: 'below' | 'rail';
+  /** The menu offers Settings. Off where Settings has a button of its own next to the trigger. */
+  settingsItem?: boolean;
+}
+
+export function WindowLauncher({
+  onWindowOpened,
+  anchor = 'below',
+  settingsItem = true,
+}: WindowLauncherProps) {
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [position, setPosition] = useState<MenuPosition>({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLSpanElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -35,10 +52,18 @@ export function WindowLauncher({ onWindowOpened }: WindowLauncherProps) {
   const toggle = useCallback(() => {
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      setPosition({ top: rect.bottom + 6, left: Math.max(8, rect.right - 224) });
+      const rail = anchor === 'rail' ? triggerRef.current.closest('.bd-rail') : null;
+      setPosition(
+        rail
+          ? {
+              left: rail.getBoundingClientRect().right + GAP,
+              bottom: Math.max(8, window.innerHeight - rect.bottom),
+            }
+          : { top: rect.bottom + GAP, left: Math.max(8, rect.right - 224) },
+      );
     }
     setOpen(!open);
-  }, [open]);
+  }, [open, anchor]);
 
   useEffect(() => {
     if (!open) return;
@@ -111,15 +136,17 @@ export function WindowLauncher({ onWindowOpened }: WindowLauncherProps) {
               </button>
             ))}
             <div className="bd-window-launcher-menu__separator" />
-            <button
-              type="button"
-              role="menuitem"
-              className="bd-window-launcher-menu__item"
-              onClick={() => void launch(() => invoke('open_settings_window', { section: null }))}
-            >
-              <Settings size={14} aria-hidden="true" />
-              <span>Settings</span>
-            </button>
+            {settingsItem && (
+              <button
+                type="button"
+                role="menuitem"
+                className="bd-window-launcher-menu__item"
+                onClick={() => void launch(() => invoke('open_settings_window', { section: null }))}
+              >
+                <Settings size={14} aria-hidden="true" />
+                <span>Settings</span>
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"

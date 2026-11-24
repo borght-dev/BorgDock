@@ -217,6 +217,9 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   activity_read_since: [],
   phone_link_state: { linked: false, server: null, serverName: null },
   phone_link_pr_views_get: null,
+  // No AI account on the test machine: the rail shows GitHub's row alone and no sheet opens.
+  ai_usage_accounts: [],
+  ai_usage_read: [],
   activity_outbox_take: [],
   activity_outbox_ack: 0,
   activity_prune: 0,

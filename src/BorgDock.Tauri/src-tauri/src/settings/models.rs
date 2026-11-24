@@ -34,6 +34,8 @@ pub struct AppSettings {
     pub azure_dev_ops: AzureDevOpsSettings,
     #[serde(default)]
     pub sql: SqlSettings,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_usage: Option<AiUsageSettings>,
     #[serde(default)]
     pub ci_failures: CiFailureSettings,
     #[serde(default)]
@@ -1003,4 +1005,58 @@ mod redesign_field_tests {
         assert!(!s.summaries.background_review_guides);
         assert!(s.summaries.auto_risk_assessment);
     }
+}
+
+/// How the AI accounts found on this machine are shown in the rail.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct AiUsageSettings {
+    /// The first-start sheet that names the accounts was answered.
+    #[serde(default)]
+    pub introduced: bool,
+    /// By account id (`claude:~/.claude-ops`).
+    #[serde(default)]
+    pub accounts: std::collections::BTreeMap<String, AiAccountSettings>,
+    /// Account ids in the order they were dragged into.
+    #[serde(default)]
+    pub order: Vec<String>,
+    /// The rail keeps `order`; off, the account with the least left comes first.
+    #[serde(default)]
+    pub keep_order: bool,
+    /// GitHub's API requests are a row among the limits.
+    #[serde(default = "default_true")]
+    pub show_git_hub: bool,
+    /// Under this percentage left an account shows red.
+    #[serde(default = "default_ai_warn_under")]
+    pub warn_under: u8,
+}
+
+fn default_ai_warn_under() -> u8 {
+    10
+}
+
+impl Default for AiUsageSettings {
+    fn default() -> Self {
+        Self {
+            introduced: false,
+            accounts: Default::default(),
+            order: Vec::new(),
+            keep_order: false,
+            show_git_hub: true,
+            warn_under: default_ai_warn_under(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct AiAccountSettings {
+    /// Up to three characters shown next to the provider's icon.
+    pub label: String,
+    /// Which identity colour the label wears, 1 to 5.
+    pub color: u8,
+    #[serde(default)]
+    pub hidden: bool,
 }
