@@ -51,6 +51,8 @@ export interface AccountView extends AccountPreference {
   /** Share of the headline limit left, 0 to 100. Null when nothing current is known. */
   left: number | null;
   tone: RailTone;
+  /** While a current limit is used up (a session or the week): when the last of those resets, in seconds. */
+  outUntil: number | null;
 }
 
 export function providerName(provider: string): string {
@@ -240,6 +242,7 @@ export function accountViews({
     const limits = currentLimits(reading, nowMs);
     const headline = limits.find((limit) => limit.kind === 'weekly') ?? limits[0] ?? null;
     const left = headline ? percentLeft(headline) : null;
+    const spent = limits.filter((limit) => limit.usedPercent >= 100 && limit.resetsAt !== null);
     return {
       account,
       ...preferences[account.id]!,
@@ -247,6 +250,7 @@ export function accountViews({
       headline,
       left,
       tone: toneOf(left, warnUnder),
+      outUntil: spent.length > 0 ? Math.max(...spent.map((limit) => limit.resetsAt!)) : null,
     };
   });
 }
@@ -261,11 +265,11 @@ export function railAccounts(
   return [...shown].sort((a, b) => (a.left ?? 101) - (b.left ?? 101));
 }
 
-/** Shown accounts with nothing left of their headline limit, soonest reset first. */
+/** Shown accounts that used up a session or their week, soonest back first. */
 export function accountsRunOut(views: readonly AccountView[]): AccountView[] {
   return views
-    .filter((view) => !view.hidden && view.left === 0 && view.headline?.resetsAt != null)
-    .sort((a, b) => (a.headline?.resetsAt ?? 0) - (b.headline?.resetsAt ?? 0));
+    .filter((view) => !view.hidden && view.outUntil !== null)
+    .sort((a, b) => (a.outUntil ?? 0) - (b.outUntil ?? 0));
 }
 
 /** The shown account of the same provider with the most left, when it has any. */
@@ -278,6 +282,7 @@ export function bestAlternative(
       other.account.id !== view.account.id &&
       other.account.provider === view.account.provider &&
       !other.hidden &&
+      other.outUntil === null &&
       (other.left ?? 0) > 0,
   );
   return others.sort((a, b) => (b.left ?? 0) - (a.left ?? 0))[0] ?? null;
@@ -316,7 +321,8 @@ export function withEveryAccount(
 ): AiUsageSettings {
   return {
     ...settings,
-    introduced: true,
+    // Settings edited before any account was found has shown none of them.
+    introduced: settings?.introduced || accounts.length > 0,
     accounts: { ...settings?.accounts, ...preferences },
     order: settings?.order?.length ? settings.order : accounts.map((account) => account.id),
   };

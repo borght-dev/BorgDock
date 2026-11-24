@@ -12,6 +12,7 @@ import {
   NOW,
   OPS_RUN_OUT,
   READINGS,
+  readingsAt,
 } from '../__fixtures__/accounts';
 import {
   accountPreferences,
@@ -100,6 +101,11 @@ describe('preferences', () => {
     expect(saved.introduced).toBe(true);
     expect(Object.keys(saved.accounts ?? {})).toHaveLength(ACCOUNTS.length);
     expect(saved.order).toEqual(ACCOUNTS.map((account) => account.id));
+  });
+
+  it('leaves the sheet unanswered when Settings was edited before any account was found', () => {
+    expect(withEveryAccount(undefined, [], {}).introduced).toBe(false);
+    expect(withEveryAccount({ introduced: true }, [], {}).introduced).toBe(true);
   });
 
   it('knows an account found after the sheet was answered', () => {
@@ -248,6 +254,60 @@ describe('an account that ran out', () => {
   it('has no alternative when it is the only account of its provider', () => {
     const all = views(OPS_RUN_OUT, INTRODUCED, [CLAUDE_OPS, CODEX_HOME]);
     expect(bestAlternative(accountsRunOut(all)[0]!, all)).toBeNull();
+  });
+
+  it('is out while its session is used up, though its week is not', () => {
+    const now = Date.now();
+    const readings = readingsAt(now);
+    const ops = readings[CLAUDE_OPS.id]!;
+    const sessionEnds = Math.floor(now / 1000) + 3600;
+    const spentSession = {
+      ...readings,
+      [CLAUDE_OPS.id]: {
+        ...ops,
+        limits: [
+          ...ops.limits,
+          {
+            kind: 'session',
+            label: 'Session',
+            usedPercent: 100,
+            resetsAt: sessionEnds,
+            windowSeconds: 18_000,
+          },
+        ],
+      },
+    };
+    const all = accountViews({
+      accounts: ACCOUNTS,
+      readings: spentSession,
+      settings: INTRODUCED,
+      nowMs: now,
+    });
+    const out = accountsRunOut(all);
+    expect(out.map((view) => [view.account.id, view.outUntil])).toEqual([
+      [CLAUDE_OPS.id, sessionEnds],
+    ]);
+  });
+
+  it('is not out while a little is left, even when it rounds to 0%', () => {
+    const now = Date.now();
+    const readings = readingsAt(now);
+    const ops = readings[CLAUDE_OPS.id]!;
+    const almost = {
+      ...readings,
+      [CLAUDE_OPS.id]: {
+        ...ops,
+        limits: ops.limits.map((limit) => ({ ...limit, usedPercent: 99.6 })),
+      },
+    };
+    const all = accountViews({
+      accounts: ACCOUNTS,
+      readings: almost,
+      settings: INTRODUCED,
+      nowMs: now,
+    });
+    expect(all.find((view) => view.account.id === CLAUDE_OPS.id)?.left).toBe(0);
+    expect(accountsRunOut(all)).toEqual([]);
   });
 
   it('is not reported while it is hidden', () => {

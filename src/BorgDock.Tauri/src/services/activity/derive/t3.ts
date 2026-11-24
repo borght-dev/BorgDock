@@ -338,6 +338,15 @@ function deriveThread(
           working ? 'running again' : 'a later run completed',
         ),
       );
+    } else if (runChanged && base.runId) {
+      // A retry that failed between two reads: its own entry replaces the one before it.
+      draft.resolutions.push(
+        resolveIds(
+          ctx,
+          [`${threadKey}:run:${base.runId}:failed`, `${threadKey}:run:${base.runId}:interrupted`],
+          'a later run',
+        ),
+      );
     }
     const errorKey = `${thread.runId}:${thread.runStatus}`;
     if (thread.runStatus === 'failed' && errorKey !== base.errorKey) {

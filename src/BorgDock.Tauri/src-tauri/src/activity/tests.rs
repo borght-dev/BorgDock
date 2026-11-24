@@ -321,6 +321,23 @@ async fn an_invalid_entry_fails_the_whole_commit() {
 }
 
 #[tokio::test]
+async fn a_resolution_by_id_closes_an_entry_of_the_same_commit_without_a_popup() {
+    let (_dir, store) = seeded().await;
+    // A failed deploy and its successful retry, read together.
+    commit(
+        &store,
+        ActivityCommit {
+            resolutions: vec![resolved(&["deploy-failed"], "deployed")],
+            ..with_entries(2, vec![entry("deploy-failed", true)])
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(needs_you(&store).await, 0);
+    assert_eq!(count(&store, "SELECT COUNT(*) FROM outbox").await, 0);
+}
+
+#[tokio::test]
 async fn resolutions_close_only_entries_that_existed_before_the_commit() {
     let (_dir, store) = seeded().await;
     commit(&store, with_entries(2, vec![entry("turn-1", false)]))

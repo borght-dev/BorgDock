@@ -54,7 +54,7 @@ export function AiUsageFocusCard() {
           >
             <div className="bd-ai-fcard__head">
               <AccountMark provider={view.account.provider} label={view.label} color={view.color} />
-              <b>Out until {resetMoment(view.headline!.resetsAt!, now)}</b>
+              <b>Out until {resetMoment(view.outUntil!, now)}</b>
             </div>
             {text && <span className="bd-ai-fcard__text">{text}</span>}
             <div className="bd-ai-fcard__actions">

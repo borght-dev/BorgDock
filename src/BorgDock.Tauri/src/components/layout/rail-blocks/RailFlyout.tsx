@@ -65,13 +65,18 @@ export function RailFlyout({
       setPosition({ left: railEdge(trigger), top: Math.max(GAP, Math.min(rect.top, lowest)) });
     };
     place();
-    element.focus({ preventScroll: true });
     // A card that fills in after it opened (a journal read, a disk check)
     // grows: place it again, or it runs past the bottom of the window.
     const resized = new ResizeObserver(place);
     resized.observe(element);
     return () => resized.disconnect();
   }, [open]);
+
+  // A hidden element takes no focus: move it once the card is placed and shown.
+  const placed = position !== null;
+  useEffect(() => {
+    if (placed) cardRef.current?.focus({ preventScroll: true });
+  }, [placed]);
 
   useEffect(() => {
     if (!open) return;

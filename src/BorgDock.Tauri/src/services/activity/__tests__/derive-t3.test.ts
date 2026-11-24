@@ -204,6 +204,18 @@ describe('deriveT3', () => {
     );
   });
 
+  it('ends a failure when a retry failed too between two reads', () => {
+    const stopped = deriveT3(context(), seeded(), observe([failed(4)]));
+    const again = deriveT3(context(), stopped.baseline, observe([failed(5)]));
+    expect(again.entries.map((e) => e.category)).toEqual(['agent.failed']);
+    expect(again.resolutions).toContainEqual(
+      expect.objectContaining({
+        ids: [stopped.entries[0]!.id, expect.stringContaining(':interrupted')],
+        resolvedBy: 'a later run',
+      }),
+    );
+  });
+
   it('lets a failure need me only until the thread runs again', () => {
     const stopped = deriveT3(context(), seeded(), observe([failed(4)]));
     const retried = deriveT3(context(), stopped.baseline, observe([running(5)]));

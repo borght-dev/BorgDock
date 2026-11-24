@@ -306,6 +306,18 @@ pub fn commit(
     }
     visible |= !inserted.is_empty();
 
+    // A resolution can name an entry this same read added: a failed deploy
+    // and its successful retry seen together. Categories stay before the
+    // inserts, where a superseding entry is not yet there to close.
+    for resolution in commit.resolutions.iter().filter(|r| !r.ids.is_empty()) {
+        let by_id = ActivityResolution {
+            entity_key: None,
+            categories: Vec::new(),
+            ..resolution.clone()
+        };
+        closed.extend(resolve(tx, &commit.source_id, &by_id, now)?);
+    }
+
     for enrichment in &commit.enrichments {
         visible |= enrich(tx, &commit.source_id, enrichment)?;
     }

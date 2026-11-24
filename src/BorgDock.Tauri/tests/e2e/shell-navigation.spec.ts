@@ -110,6 +110,8 @@ test("the rail's foot shows this machine and opens its card", async ({ page }) =
   await machines.click();
   const card = page.getByRole('dialog', { name: /^Machines/ });
   await expect(card).toBeVisible();
+  // Keyboard users land in the card, not on the trigger.
+  await expect(card).toBeFocused();
   await expect(card.getByText('Open worktrees')).toBeVisible();
 });
 
