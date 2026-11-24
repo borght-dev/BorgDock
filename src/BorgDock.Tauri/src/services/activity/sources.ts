@@ -68,6 +68,7 @@ export const CATEGORY_GROUP: Record<ActivityCategory, ActivityCategoryGroup | nu
   'pr.ready': 'pull-requests',
   'pr.conflict': 'pull-requests',
   'pr.merged': 'pull-requests',
+  'pr.merged-other': 'pull-requests',
   'pr.closed': 'pull-requests',
   'ci.group-grew': 'ci',
   'ci.owner-stale': 'ci',

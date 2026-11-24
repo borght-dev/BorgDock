@@ -51,6 +51,7 @@ export const CATEGORY_LABEL: Record<ActivityCategory, string> = {
   'pr.ready': 'Your PR is ready to merge',
   'pr.conflict': 'Your PR has a merge conflict',
   'pr.merged': 'Your PR was merged',
+  'pr.merged-other': "Someone else's PR was merged",
   'pr.closed': 'Your PR was closed',
   'ci.group-grew': 'A shared CI failure nobody owns',
   'ci.owner-stale': 'A CI investigation went quiet',

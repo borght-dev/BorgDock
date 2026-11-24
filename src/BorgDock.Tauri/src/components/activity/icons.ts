@@ -42,6 +42,7 @@ export const CATEGORY_ICON: Record<ActivityCategory, LucideIcon> = {
   'pr.ready': GitMerge,
   'pr.conflict': TriangleAlert,
   'pr.merged': GitMerge,
+  'pr.merged-other': GitMerge,
   'pr.closed': Archive,
   'ci.group-grew': Layers,
   'ci.owner-stale': History,
