@@ -185,6 +185,7 @@ macro_rules! app_commands {
             keychain::set_credential,
             keychain::delete_credential,
             // Updater
+            updater::update_status,
             updater::check_for_update,
             updater::download_update,
             updater::restart_to_apply_update,
@@ -393,7 +394,7 @@ pub fn run() {
         .manage(ProcessState::default())
         .manage(flyout::readiness::FlyoutReadiness::default())
         .manage(platform::responsiveness::Responsiveness::default())
-        .manage(updater::PendingUpdate::<updater::DownloadedUpdate>::default())
+        .manage(updater::Updates::default())
         .manage(PrCache::default())
         .manage(ci_failures::store::CiStore::default())
         .manage(activity::ActivityDb::default())
@@ -428,6 +429,7 @@ pub fn run() {
             activity::push::start(app.handle().clone());
             phone_link::start(app.handle().clone());
             settings::window::prewarm(app.handle().clone());
+            updater::start(app.handle().clone());
             platform::tray::start_initializing_animation(app.handle().clone());
 
             // Window geometry store: load once, register, spawn flusher,
@@ -529,7 +531,8 @@ fn command_bindings() -> tauri_specta::Builder<tauri::Wry> {
             t3::commands::T3SessionsUpdated,
             ci_failures::store::commands::CiFailuresChanged,
             activity::commands::ActivityChanged,
-            phone_link::PhoneLinkChanged
+            phone_link::PhoneLinkChanged,
+            updater::UpdateStatusChanged
         ])
         .commands(app_commands!(collect_commands))
 }

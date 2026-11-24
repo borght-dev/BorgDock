@@ -100,10 +100,6 @@ vi.mock('@/hooks/useWorktreeMap', () => ({
   useWorktreeMap: vi.fn(),
 }));
 
-vi.mock('@/hooks/useAutoUpdate', () => ({
-  useAutoUpdate: vi.fn(),
-}));
-
 vi.mock('@/components/SplashScreen', () => ({
   SplashScreen: () => <div data-testid="splash-screen" />,
 }));
