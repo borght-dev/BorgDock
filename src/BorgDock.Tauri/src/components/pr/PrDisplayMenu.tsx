@@ -250,6 +250,7 @@ export function DisplayButton({
         ref={pop.anchor}
         type="button"
         className={clsx('bd-prl-chipbtn', pop.open && 'bd-prl-chipbtn--on')}
+        aria-label="Display"
         aria-haspopup="dialog"
         aria-expanded={pop.open}
         onClick={pop.toggle}

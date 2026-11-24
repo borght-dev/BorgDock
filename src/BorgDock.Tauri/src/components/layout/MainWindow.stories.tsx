@@ -49,6 +49,7 @@ import { usePrStore } from '@/stores/pr-store';
 import { usePrViewStore } from '@/stores/pr-view-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { type ActiveSection, type MainView, useUiStore } from '@/stores/ui-store';
+import { type UpdateStatus, useUpdateStore } from '@/stores/update-store';
 import { useWorkItemsStore } from '@/stores/work-items-store';
 import type {
   AdoQuery,
@@ -421,6 +422,15 @@ function seedRecent() {
 
 // ── harness ──────────────────────────────────────────────────────────────────
 
+const UP_TO_DATE: UpdateStatus = {
+  phase: 'idle',
+  currentVersion: '4.16.0',
+  version: null,
+  progress: 0,
+  lastCheckedAt: ago(0.2),
+  lastError: null,
+};
+
 function Harness({
   section,
   groupBy = 'repo',
@@ -437,6 +447,8 @@ function Harness({
   agentsWaiting = false,
   railCollapsed = false,
   recent = false,
+  update,
+  autoDownload = true,
 }: {
   section: ActiveSection;
   groupBy?: 'repo' | 'author' | 'status';
@@ -465,6 +477,10 @@ function Harness({
   railCollapsed?: boolean;
   /** Fill the journal behind the bell. */
   recent?: boolean;
+  /** What the updater reports; the title bar shows a chip when it asks for something. */
+  update?: Partial<UpdateStatus>;
+  /** Settings > Updates > Auto-download updates. */
+  autoDownload?: boolean;
 }) {
   // Seed synchronously on first render so child mount effects (e.g. the Work
   // Items selection restore) observe the data before they run.
@@ -500,8 +516,10 @@ function Harness({
       settings: {
         ...s.settings,
         ui: { ...s.settings.ui, prDensity: density, focusLayout },
+        updates: { ...s.settings.updates, autoDownload },
       },
     }));
+    useUpdateStore.setState({ ...UP_TO_DATE, ...update, restarting: false });
     return null;
   });
   return (
@@ -559,6 +577,30 @@ export const RailRecentOpen: Story = {
     const rail = within(canvasElement).getByRole('complementary', { name: 'Navigation' });
     await userEvent.click(within(rail).getByRole('button', { name: /^Recent/ }));
   },
+};
+
+/** An update is downloaded: the title bar offers the restart. */
+export const UpdateReady: Story = {
+  args: { section: 'prs', update: { phase: 'ready', version: '4.17.0', progress: 100 } },
+};
+
+/** An update is downloading: the title bar shows how far it is. */
+export const UpdateDownloading: Story = {
+  args: { section: 'prs', update: { phase: 'downloading', version: '4.17.0', progress: 42 } },
+};
+
+/** Auto-download is off: the title bar names the version, and a click downloads it. */
+export const UpdateAvailable: Story = {
+  args: {
+    section: 'prs',
+    autoDownload: false,
+    update: { phase: 'available', version: '4.17.0' },
+  },
+};
+
+export const UpdateReadyLight: Story = {
+  args: { section: 'prs', update: { phase: 'ready', version: '4.17.0', progress: 100 } },
+  globals: { theme: 'light' },
 };
 
 /** Compact density: one 32 px line per pull request. */

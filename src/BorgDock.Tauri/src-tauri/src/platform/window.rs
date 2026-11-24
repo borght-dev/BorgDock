@@ -192,6 +192,22 @@ pub(crate) fn mark_window_destroyed(label: &str) {
     }
 }
 
+/// A window built ahead of its first use (Settings) must not show itself when
+/// its app reports ready: whoever built it shows it on demand.
+pub(crate) fn keep_hidden_when_ready(label: &str) {
+    let _ = claim_first_reveal(label);
+}
+
+/// Windows that hide when closed and are shown again on their next use,
+/// instead of being built again: the main window, the palettes and the SQL
+/// workbench, and Settings. Building a WebView2 window blocks the GUI thread
+/// for seconds on a busy machine; showing a hidden one does not.
+pub(crate) fn hides_when_closed(label: &str) -> bool {
+    label == "main"
+        || label == crate::settings::window::LABEL
+        || super::hotkey::is_reusable_tool_window(label)
+}
+
 /// Upper bound on how long a command waits for its `run_on_main_thread`
 /// closure to report back. Every such wait used to be unbounded, so a single
 /// stalled main thread turned into "every invoke() hangs forever". With a
@@ -248,7 +264,7 @@ pub async fn window_ready(app: tauri::AppHandle, window: tauri::Window) -> Resul
                     win.set_focus().map_err(|e| e.to_string())?;
                     log::info!("window_ready[{label_for_log}]: set_focus ok");
                 } else {
-                    log::info!("window_ready[{label_for_log}]: already revealed (HMR reload?) — leaving visibility as-is");
+                    log::info!("window_ready[{label_for_log}]: not its first reveal (built ahead of use, or an HMR reload) — leaving visibility as-is");
                 }
             } else {
                 log::warn!("window_ready[{label_for_log}]: window not found");
@@ -679,4 +695,39 @@ pub(crate) fn show_or_focus_main_sync(app: &tauri::AppHandle) {
 fn get_main_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
     app.get_webview_window("main")
         .ok_or_else(|| "Main window not found".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        claim_first_reveal, hides_when_closed, keep_hidden_when_ready, mark_window_destroyed,
+    };
+
+    #[test]
+    fn kept_windows_hide_when_closed_and_one_off_windows_close() {
+        for label in ["main", "settings", "sql", "worktree-palette", "note-capture"] {
+            assert!(hides_when_closed(label), "{label}");
+        }
+        for label in ["pr-detail-acme-shop-1", "workitem-detail-7", "whats-new", "flyout"] {
+            assert!(!hides_when_closed(label), "{label}");
+        }
+    }
+
+    #[test]
+    fn a_window_reveals_itself_once_per_build() {
+        let label = "test-reveal-once";
+        assert!(claim_first_reveal(label));
+        assert!(!claim_first_reveal(label));
+        mark_window_destroyed(label);
+        assert!(claim_first_reveal(label));
+        mark_window_destroyed(label);
+    }
+
+    #[test]
+    fn a_window_built_ahead_of_its_first_use_stays_hidden_when_ready() {
+        let label = "test-built-ahead";
+        keep_hidden_when_ready(label);
+        assert!(!claim_first_reveal(label));
+        mark_window_destroyed(label);
+    }
 }

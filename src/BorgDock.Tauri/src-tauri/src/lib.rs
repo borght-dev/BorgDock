@@ -183,6 +183,7 @@ macro_rules! app_commands {
             keychain::set_credential,
             keychain::delete_credential,
             // Updater
+            updater::update_status,
             updater::check_for_update,
             updater::download_update,
             updater::restart_to_apply_update,
@@ -321,16 +322,15 @@ pub fn run() {
         .on_window_event(|window, event| {
             match event {
                 tauri::WindowEvent::CloseRequested { api, .. }
-                    if window.label() == "main"
-                        || platform::hotkey::is_reusable_tool_window(window.label()) =>
+                    if platform::window::hides_when_closed(window.label()) =>
                 {
                     api.prevent_close();
                     let _ = window.hide();
                 }
                 // Once a window is truly gone, forget its first-reveal flag so
                 // a future window reusing the same label (e.g. a reopened
-                // pr-detail / settings) reveals again instead of staying
-                // hidden. See platform::window::revealed().
+                // pr-detail) reveals again instead of staying hidden. See
+                // platform::window::revealed().
                 tauri::WindowEvent::Destroyed => {
                     crate::platform::window::mark_window_destroyed(window.label());
                     window
@@ -382,7 +382,7 @@ pub fn run() {
         .manage(ProcessState::default())
         .manage(flyout::readiness::FlyoutReadiness::default())
         .manage(platform::responsiveness::Responsiveness::default())
-        .manage(updater::PendingUpdate::<updater::DownloadedUpdate>::default())
+        .manage(updater::Updates::default())
         .manage(PrCache::default())
         .manage(ci_failures::store::CiStore::default())
         .manage(activity::ActivityDb::default())
@@ -416,6 +416,8 @@ pub fn run() {
             platform::tray::setup_tray(app)?;
             activity::push::start(app.handle().clone());
             phone_link::start(app.handle().clone());
+            settings::window::prewarm(app.handle().clone());
+            updater::start(app.handle().clone());
             platform::tray::start_initializing_animation(app.handle().clone());
 
             // Window geometry store: load once, register, spawn flusher,
@@ -517,7 +519,8 @@ fn command_bindings() -> tauri_specta::Builder<tauri::Wry> {
             t3::commands::T3SessionsUpdated,
             ci_failures::store::commands::CiFailuresChanged,
             activity::commands::ActivityChanged,
-            phone_link::PhoneLinkChanged
+            phone_link::PhoneLinkChanged,
+            updater::UpdateStatusChanged
         ])
         .commands(app_commands!(collect_commands))
 }

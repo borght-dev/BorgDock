@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { MoreHorizontal, Plus } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, type ReactNode, useState } from 'react';
 import { BUILT_IN_VIEWS, type PrViewKey } from '@/services/pr-list/model';
 import { usePrStore } from '@/stores/pr-store';
 import { useActiveSavedView, usePrViewStore } from '@/stores/pr-view-store';
@@ -190,6 +190,8 @@ interface PrViewTabsProps {
   counts: Record<PrViewKey, number>;
   savedCounts: Record<string, number>;
   onPick: (choice: PrViewChoice) => void;
+  /** Shown between the tabs and "+ View" (this session's review progress). */
+  aside?: ReactNode;
 }
 
 /**
@@ -198,7 +200,7 @@ interface PrViewTabsProps {
  * then "+ View". The active saved view shows a dot while the list differs
  * from what it saved, and a menu to save, discard, rename or delete.
  */
-export function PrViewTabs({ pending, counts, savedCounts, onPick }: PrViewTabsProps) {
+export function PrViewTabs({ pending, counts, savedCounts, onPick, aside }: PrViewTabsProps) {
   const filter = usePrStore((s) => s.filter);
   const savedViews = usePrViewStore((s) => s.savedViews);
   const activeId = usePrViewStore((s) => s.activeViewId);
@@ -254,6 +256,7 @@ export function PrViewTabs({ pending, counts, savedCounts, onPick }: PrViewTabsP
           );
         })}
       </div>
+      {aside}
       <SaveViewButton />
     </div>
   );

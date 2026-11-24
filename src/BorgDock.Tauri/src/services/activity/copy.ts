@@ -135,6 +135,7 @@ const NOUNS: Partial<Record<ActivityCategory, [string, string]>> = {
   'pr.ready': ['PR ready to merge', 'PRs ready to merge'],
   'pr.conflict': ['merge conflict', 'merge conflicts'],
   'pr.merged': ['merge', 'merges'],
+  'pr.merged-other': ["teammate's merge", "teammates' merges"],
   'pr.closed': ['closed PR', 'closed PRs'],
   'ci.group-grew': ['shared CI failure', 'shared CI failures'],
   'ci.owner-stale': ['quiet investigation', 'quiet investigations'],

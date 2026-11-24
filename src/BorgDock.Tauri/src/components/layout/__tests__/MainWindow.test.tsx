@@ -16,11 +16,13 @@ vi.mock('@/utils/tauri-persist', () => ({
 }));
 
 import { useUiStore } from '@/stores/ui-store';
+import { useUpdateStore } from '@/stores/update-store';
 import { MainWindow } from '../MainWindow';
 
 describe('MainWindow', () => {
   beforeEach(() => {
     useUiStore.setState({ activeSection: 'focus', viewStack: [{ kind: 'list' }] });
+    useUpdateStore.getState().reset();
   });
 
   it('renders titlebar, section content, and statusbar', () => {
@@ -35,6 +37,34 @@ describe('MainWindow', () => {
     expect(screen.getByLabelText('Close')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open window' })).toBeInTheDocument();
     expect(screen.getByTestId('content')).toBeInTheDocument();
+  });
+
+  it('keeps the title bar free of update chrome while there is nothing to do', () => {
+    render(
+      <MainWindow>
+        <div />
+      </MainWindow>,
+    );
+    expect(screen.queryByRole('button', { name: /update|available/i })).not.toBeInTheDocument();
+  });
+
+  it('offers the restart in the title bar once an update is downloaded', () => {
+    useUpdateStore.getState().setStatus({
+      phase: 'ready',
+      currentVersion: '4.16.0',
+      version: '4.17.0',
+      progress: 100,
+      lastCheckedAt: '2026-11-24T09:00:10Z',
+      lastError: null,
+    });
+    const { container } = render(
+      <MainWindow>
+        <div />
+      </MainWindow>,
+    );
+    const chip = screen.getByRole('button', { name: 'Restart to update' });
+    const right = container.querySelector('.bd-mainwindow__right');
+    expect(right?.firstElementChild).toBe(chip);
   });
 
   describe('rail layout', () => {

@@ -14,6 +14,7 @@ import { startPhoneLinkSync } from './phone-link-sync';
 import { startPrViewsSync } from './pr-views-sync';
 import { startReviewGuideWriter } from './review-guide-writer';
 import { followT3Sessions } from './t3-sessions';
+import { followUpdateStatus } from './update-status';
 import { startVisibilityTracking } from './visibility';
 
 let running = false;
@@ -39,6 +40,7 @@ export function startApplicationRuntime(): () => void {
   const stopPrViews = startPrViewsSync();
   const stopGuideWriter = startReviewGuideWriter();
   const stopAiUsage = startAiUsageSync();
+  const stopUpdateStatus = followUpdateStatus({ notify: true });
   const getSettings = () => useSettingsStore.getState().settings;
   const reconcile = (restart = false) => {
     if (stopped || !useSettingsStore.getState().hasLoaded) return;
@@ -140,6 +142,7 @@ export function startApplicationRuntime(): () => void {
     stopPrViews();
     stopGuideWriter();
     stopAiUsage();
+    stopUpdateStatus();
     document.removeEventListener('borgdock-refresh', refresh);
   };
 }

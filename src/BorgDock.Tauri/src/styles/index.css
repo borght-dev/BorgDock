@@ -4696,21 +4696,28 @@ body.sql-resizing-v .sql-resize-handle {
     padding: 10px 16px;
     border-bottom: 1px solid var(--color-subtle-border);
   }
+  /* This session's review progress, at the end of the PR view tabs; its
+     right border separates it from "+ View". */
   .bd-review-progress {
-    display: flex;
+    display: inline-flex;
     flex-shrink: 0;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 6px 16px;
-    padding: 6px 16px;
-    border-bottom: 1px solid var(--color-subtle-border);
+    align-self: center;
+    gap: 10px;
+    margin-left: 12px;
+    padding-right: 10px;
+    border-right: 1px solid var(--color-subtle-border);
     color: var(--color-text-tertiary);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
   .bd-review-progress__approved {
-    color: var(--color-status-green);
+    color: var(--color-success-badge-fg);
     font-weight: 600;
+  }
+  .bd-review-progress__scope {
+    margin-left: -6px;
   }
   .bd-wb-head__title {
     margin: 0 6px 0 0;

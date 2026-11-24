@@ -23,6 +23,7 @@ export const ACTIVITY_CATEGORIES = [
   'pr.ready',
   'pr.conflict',
   'pr.merged',
+  'pr.merged-other',
   'pr.closed',
   'ci.group-grew',
   'ci.owner-stale',

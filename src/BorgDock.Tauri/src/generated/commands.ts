@@ -236,8 +236,10 @@ export const commands = {
 	getCredential: (service: string) => typedError<string | null, string>(__TAURI_INVOKE("get_credential", { service })),
 	setCredential: (service: string, secret: string) => typedError<null, string>(__TAURI_INVOKE("set_credential", { service, secret })),
 	deleteCredential: (service: string) => typedError<null, string>(__TAURI_INVOKE("delete_credential", { service })),
-	checkForUpdate: () => typedError<UpdateInfo_Serialize | null, string>(__TAURI_INVOKE("check_for_update")),
-	downloadUpdate: () => typedError<null, string>(__TAURI_INVOKE("download_update")),
+	updateStatus: () => __TAURI_INVOKE<UpdateStatus_Serialize>("update_status"),
+	/**  Check now. A failed check is in the status (`lastError`), not an error. */
+	checkForUpdate: () => __TAURI_INVOKE<UpdateStatus_Serialize>("check_for_update"),
+	downloadUpdate: () => __TAURI_INVOKE<UpdateStatus_Serialize>("download_update"),
 	restartToApplyUpdate: () => typedError<null, string>(__TAURI_INVOKE("restart_to_apply_update")),
 	/**
 	 *  Run a short, non-interactive agent task. Prompts are sent over stdin so
@@ -424,6 +426,7 @@ export const events = {
 	phoneLinkChanged: makeEvent<PhoneLinkChanged, PhoneLinkChanged>("phone-link-changed"),
 	runtimeVisibility: makeEvent<RuntimeVisibility, RuntimeVisibility>("runtime-visibility"),
 	t3SessionsUpdated: makeEvent<T3SessionsUpdated_Serialize, T3SessionsUpdated_Deserialize>("t3-sessions-updated"),
+	updateStatusChanged: makeEvent<UpdateStatusChanged_Serialize, UpdateStatusChanged_Deserialize>("update-status-changed"),
 };
 
 /* Types */
@@ -3489,17 +3492,11 @@ export type UiSettings_Serialize = {
 	staleAfterDays?: number,
 };
 
-export type UpdateInfo = UpdateInfo_Serialize | UpdateInfo_Deserialize;
-
-export type UpdateInfo_Deserialize = {
-	version: string,
-	body?: string | null,
-};
-
-export type UpdateInfo_Serialize = {
-	version: string,
-	body: string | null,
-};
+export type UpdatePhase = "idle" | "checking" |
+/**  A newer version is known and waits for its download. */
+"available" | "downloading" |
+/**  Downloaded and verified: installed on restart, or when the app exits. */
+"ready" | "installing";
 
 export type UpdateSettings = UpdateSettings_Serialize | UpdateSettings_Deserialize;
 
@@ -3511,6 +3508,46 @@ export type UpdateSettings_Deserialize = {
 export type UpdateSettings_Serialize = {
 	autoCheckEnabled: boolean,
 	autoDownload: boolean,
+};
+
+/**  What every window shows about updates. */
+export type UpdateStatus = UpdateStatus_Serialize | UpdateStatus_Deserialize;
+
+/**  The whole status, after every change to it. */
+export type UpdateStatusChanged = UpdateStatusChanged_Serialize | UpdateStatusChanged_Deserialize;
+
+/**  The whole status, after every change to it. */
+export type UpdateStatusChanged_Deserialize = UpdateStatus_Deserialize;
+
+/**  The whole status, after every change to it. */
+export type UpdateStatusChanged_Serialize = UpdateStatus_Serialize;
+
+/**  What every window shows about updates. */
+export type UpdateStatus_Deserialize = {
+	phase: UpdatePhase,
+	currentVersion: string,
+	/**  The newer version, once a check found one. */
+	version?: string | null,
+	/**  0..100 while downloading. */
+	progress: number,
+	/**  When the last check finished, successful or not (RFC 3339). */
+	lastCheckedAt?: string | null,
+	/**  Why the last check, download or install failed; the next success clears it. */
+	lastError?: string | null,
+};
+
+/**  What every window shows about updates. */
+export type UpdateStatus_Serialize = {
+	phase: UpdatePhase,
+	currentVersion: string,
+	/**  The newer version, once a check found one. */
+	version: string | null,
+	/**  0..100 while downloading. */
+	progress: number,
+	/**  When the last check finished, successful or not (RFC 3339). */
+	lastCheckedAt: string | null,
+	/**  Why the last check, download or install failed; the next success clears it. */
+	lastError: string | null,
 };
 
 export type Value = null | boolean | number | string | Value[] | { [key in string]: Value };

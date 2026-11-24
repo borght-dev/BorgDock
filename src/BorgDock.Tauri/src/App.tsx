@@ -10,7 +10,6 @@ import { T3PrThreadDialog } from '@/components/pr/T3PrThreadDialog';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ToastViewport } from '@/components/shared/Toast';
 import { SetupWizard } from '@/components/wizard/SetupWizard';
-import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useDiskSpace } from '@/hooks/useDiskSpace';
 import { useFlyoutSync } from '@/hooks/useFlyoutSync';
 import { useKeyboardNav } from '@/hooks/useKeyboardNav';
@@ -144,9 +143,6 @@ export default function App() {
   // Worktree branch mapping (for PR card badges)
   useWorktreeMap(settings);
   useDiskSpace(hasLoaded, true);
-
-  // Auto-update
-  useAutoUpdate(settings);
 
   // What's new auto-open
   useWhatsNew();

@@ -125,6 +125,28 @@ describe('drainPopups', () => {
     await drainPopups(NOW, NOW - 60_000);
     expect(mocks.sent).toEqual([]);
   });
+
+  it("shows someone else's merge as a merge, unless it was merged from BorgDock", async () => {
+    const theirs = (number: number) =>
+      unread(turnEntry, {
+        id: `merged-${number}`,
+        category: 'pr.merged-other',
+        summary: `ann merged #${number} Cheaper shipping`,
+        entity: { kind: 'pr', key: `gh:acme/app#${number}`, title: 'Cheaper shipping', url: 'u' },
+        action: { kind: 'open-url', url: `https://github.com/acme/app/pull/${number}` },
+      });
+    mocks.outbox = [item(theirs(91))];
+    await drainPopups(NOW, NOW - 60_000);
+    expect(mocks.sent).toEqual([
+      expect.objectContaining({ title: 'ann merged #91 Cheaper shipping', severity: 'merged' }),
+    ]);
+
+    celebrateMerge({ number: 92, title: 'x', repoOwner: 'acme', repoName: 'app', htmlUrl: 'u' });
+    mocks.sent = [];
+    mocks.outbox = [item(theirs(92))];
+    await drainPopups(NOW, NOW - 60_000);
+    expect(mocks.sent).toEqual([]);
+  });
 });
 
 describe('the popup paths', () => {

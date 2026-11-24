@@ -8,6 +8,7 @@ import { usePrStore } from '@/stores/pr-store';
 import { type ActiveSection, type MainView, selectTopView, useUiStore } from '@/stores/ui-store';
 import { Rail, SECTION_LABELS } from './Rail';
 import { StatusBar } from './StatusBar';
+import { UpdateChip } from './UpdateChip';
 
 function dispatchRefresh() {
   document.dispatchEvent(new CustomEvent('borgdock-refresh'));
@@ -16,6 +17,7 @@ function dispatchRefresh() {
 function TitleBarActions({ hasFailing }: { hasFailing: boolean }) {
   return (
     <span className="bd-mainwindow__right" data-tauri-drag-region="false">
+      <UpdateChip />
       <span className={clsx('bd-status-dot', hasFailing && 'bd-status-dot--red')} aria-hidden />
       <button
         type="button"
@@ -46,7 +48,8 @@ interface MainWindowProps {
  * MainWindow — top-level shell for the main BorgDock window: a grid of
  * `rail | main`. The Rail carries the logo, the sections and the sync state;
  * the main column has a title bar (the section or the kind of detail view on
- * top, then status dot, launcher, Refresh, Settings and the window controls),
+ * top, then the update chip when an update asks for something, status dot,
+ * launcher, Refresh, Settings and the window controls),
  * the body and the status bar.
  *
  * The body slot renders the ViewStack; StatusBar pulls per-view copy from

@@ -42,6 +42,16 @@ export function serializeHandlers(
   return out;
 }
 
+/** `UpdateStatus` (Rust `updater/`) before any check: nothing to show. */
+const IDLE_UPDATE_STATUS = {
+  phase: 'idle',
+  currentVersion: '1.0.0',
+  version: null,
+  progress: 0,
+  lastCheckedAt: null,
+  lastError: null,
+};
+
 /**
  * Default handlers for every command listed in MOCK_SURFACE.md. Boot
  * succeeds without any per-test setup; specs override what they need.
@@ -142,7 +152,8 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   get_credential: null,
   register_user_hotkeys: null,
   unregister_hotkey: null,
-  check_for_update: { available: false },
+  update_status: IDLE_UPDATE_STATUS,
+  check_for_update: IDLE_UPDATE_STATUS,
   run_self_test: { ok: true },
   get_cache_size: 0,
   generate_pr_summary: '',
@@ -165,7 +176,7 @@ export const DEFAULT_HANDLERS: MockHandlers = {
   clear_cache: { bytesFreed: 0 },
   set_credential: null,
   reset_all_settings: null,
-  download_update: null,
+  download_update: IDLE_UPDATE_STATUS,
   restart_to_apply_update: null,
   open_log_folder: null,
   open_pr_detail_window: null,

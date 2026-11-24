@@ -505,10 +505,12 @@ export function deriveGitHub(
       (verified.state === 'closed' && normalizeTime(verified.closedAt) !== before.closedAt);
     if (ctx.seed || !changed) continue;
     const key = entityKey.pr(observation.owner, observation.repo, verified.number);
+    const mine = same(verified.author, observation.login);
     const merged = verified.state === 'merged';
     // Whoever wrote it: a review request ends with the pull request too.
     out.resolutions.push(resolveCategories(key, ENDS_WITH_THE_PR, merged ? 'merged' : 'closed'));
-    if (!same(verified.author, observation.login)) continue;
+    // Someone else's PR: its merge is news, its close is not.
+    if (!mine && !merged) continue;
     out.entries.push(
       makeEntry(ctx, {
         nativeKey: merged
@@ -516,7 +518,7 @@ export function deriveGitHub(
           : `#${verified.number}:closed:${normalizeTime(verified.closedAt) ?? ctx.now}`,
         entity: { kind: 'pr', key, title: verified.title, url: verified.url },
         links: { prUrls: [verified.url] },
-        category: merged ? 'pr.merged' : 'pr.closed',
+        category: !merged ? 'pr.closed' : mine ? 'pr.merged' : 'pr.merged-other',
         severity: merged ? 'success' : 'info',
         needsYou: false,
         sourceAt: merged ? verified.mergedAt : verified.closedAt,

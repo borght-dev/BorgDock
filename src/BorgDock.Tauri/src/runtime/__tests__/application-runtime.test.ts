@@ -24,6 +24,7 @@ vi.mock('../notes-sync', () => ({ startNotesSync: () => () => {} }));
 vi.mock('../phone-link-sync', () => ({ startPhoneLinkSync: () => () => {} }));
 vi.mock('../pr-views-sync', () => ({ startPrViewsSync: () => () => {} }));
 vi.mock('../activity-sync', () => ({ startActivitySync: () => () => {} }));
+vi.mock('../update-status', () => ({ followUpdateStatus: () => () => {} }));
 
 const original = useSettingsStore.getState().settings;
 let stop: (() => void) | undefined;

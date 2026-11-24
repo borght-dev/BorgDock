@@ -109,12 +109,40 @@ export function SettingsApp() {
     };
   }, []);
 
+  // The window is kept and shown again instead of built on every click
+  // (src-tauri/src/settings/window.rs). A visit starts clean: no leftover
+  // search, and the section mounts again, so what it read when it mounted
+  // (credentials, cache sizes) is read again.
+  const [visit, setVisit] = useState(0);
+  const contentRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const unlistenP = listen('settings:shown', () => {
+      setSearch('');
+      setVisit((count) => count + 1);
+      if (contentRef.current) contentRef.current.scrollTop = 0;
+    });
+    return () => {
+      unlistenP.then((un) => un());
+    };
+  }, []);
+
+  // Closing hides the window, so no unload follows: save what is pending as
+  // soon as the window loses focus or goes out of view.
   useEffect(() => {
     function flush() {
       void flushSettings();
     }
+    function flushWhenHidden() {
+      if (document.visibilityState === 'hidden') flush();
+    }
     window.addEventListener('beforeunload', flush);
-    return () => window.removeEventListener('beforeunload', flush);
+    window.addEventListener('blur', flush);
+    document.addEventListener('visibilitychange', flushWhenHidden);
+    return () => {
+      window.removeEventListener('beforeunload', flush);
+      window.removeEventListener('blur', flush);
+      document.removeEventListener('visibilitychange', flushWhenHidden);
+    };
   }, []);
   const sectionContent = useMemo(() => {
     switch (active) {
@@ -241,10 +269,11 @@ export function SettingsApp() {
               <span className="ml-auto font-mono">v{__BORGDOCK_VERSION__}</span>
             </div>
           </aside>
-          <main className="overflow-auto bg-[var(--color-background)]">
-            {/* Keyed by section so a switch fades the new section in (--motion-base). */}
+          <main ref={contentRef} className="overflow-auto bg-[var(--color-background)]">
+            {/* Keyed by section so a switch fades the new section in
+              (--motion-base), and by visit so a reopened window reads again. */}
             <div
-              key={active}
+              key={`${active}:${visit}`}
               className="bd-settings-content bd-fade-in mx-auto max-w-[720px] px-9 pb-16 pt-7"
             >
               {sectionContent}

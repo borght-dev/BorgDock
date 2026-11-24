@@ -46,6 +46,7 @@ export const CATEGORY_DEFAULTS: Record<ActivityCategory, CategoryChannels> = {
   'pr.ready': POPUP,
   'pr.conflict': BOTH,
   'pr.merged': POPUP,
+  'pr.merged-other': POPUP,
   'pr.closed': QUIET,
   'ci.group-grew': BOTH,
   'ci.owner-stale': BOTH,
@@ -109,8 +110,13 @@ const STARTUP_QUIET_MS = 10_000;
 const LIVE_QUIET_MS = 1_500;
 const startedAt = Date.now();
 
+/** A merge, of my PR or someone else's: the gold toast, and the sound when it is on. */
+function isMerge(entry: ActivityEntry): boolean {
+  return entry.category === 'pr.merged' || entry.category === 'pr.merged-other';
+}
+
 function popupSeverity(entry: ActivityEntry): OsNotificationOptions['severity'] {
-  return entry.category === 'pr.merged' ? 'merged' : entry.severity;
+  return isMerge(entry) ? 'merged' : entry.severity;
 }
 
 function popupOf(entry: ActivityEntry): OsNotificationOptions {
@@ -173,7 +179,7 @@ export async function drainPopups(
         acks.push({ entryId: entry.id, channel: 'popup', outcome });
       const pr = PR_KEY.exec(entry.entity.key);
       const mergedHere =
-        entry.category === 'pr.merged' &&
+        isMerge(entry) &&
         !!pr &&
         wasMergedHere({ repoOwner: pr[1]!, repoName: pr[2]!, number: Number(pr[3]) });
       if (entry.read !== 'unread' || entry.status !== 'open' || mergedHere) {
