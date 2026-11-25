@@ -4,6 +4,17 @@ import type { Release } from '@/types/whats-new';
 
 export const RELEASES: Release[] = [
   {
+    "version": "4.17.1",
+    "date": "2026-11-25",
+    "summary": "",
+    "highlights": [],
+    "alsoFixed": [
+      "GitHub only appears in Limits left when its API quota runs low. It appears last so your Claude and Codex accounts stay in place.",
+      "Tooltips open to the right of the folded rail, so you can hover down the list without moving the pointer away between accounts."
+    ],
+    "autoOpenEligible": false
+  },
+  {
     "version": "4.17.0",
     "date": "2026-11-24",
     "summary": "See what's left of every AI account, Free disk space for every machine, Catch up from the bell, and more.",
