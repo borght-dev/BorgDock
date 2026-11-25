@@ -24,14 +24,14 @@ interface SceneProps {
   readings?: (nowMs: number) => Record<string, AiReading>;
   settings?: AiUsageSettings;
   accounts?: typeof ACCOUNTS;
-  gitHub?: boolean;
+  gitHubRemaining?: number;
 }
 
 function seed({
   readings = readingsAt,
   settings = INTRODUCED,
   accounts = ACCOUNTS,
-  gitHub = true,
+  gitHubRemaining = 4412,
 }: SceneProps) {
   const now = Date.now();
   useAiUsageStore.setState({
@@ -45,10 +45,13 @@ function seed({
   const current = useSettingsStore.getState().settings;
   useSettingsStore.setState({ hasLoaded: true, settings: { ...current, aiUsage: settings } });
   usePrStore.setState({
-    rateLimit: gitHub
-      ? { remaining: 4412, limit: 5000, resetAt: now / 1000 + 1800, pool: 'rest' }
-      : null,
-  } as Partial<ReturnType<typeof usePrStore.getState>>);
+    rateLimit: {
+      remaining: gitHubRemaining,
+      limit: 5000,
+      resetAt: new Date(now + 1_800_000),
+      pool: 'rest',
+    },
+  });
 }
 
 /** The foot of the rail, as wide as the rail is. */
@@ -75,11 +78,17 @@ export default meta;
 
 type Story = StoryObj<typeof RailScene>;
 
-/** One row per account, least left first, with GitHub's requests among them. */
+/** One row per account, least left first. */
 export const Rail: Story = { args: {} };
+
+export const RailWithLowGitHubQuota: Story = { args: { gitHubRemaining: 250 } };
 
 /** Folded: a ring per account around the provider's icon. */
 export const RailFolded: Story = { args: { collapsed: true } };
+
+export const RailFoldedWithLowGitHubQuota: Story = {
+  args: { collapsed: true, gitHubRemaining: 250 },
+};
 
 /** The card the block opens: plan, limits, the pace tick and the time to each reset. */
 export const Card: Story = { args: { open: true } };
@@ -92,11 +101,11 @@ export const CardWithExpiredSignIn: Story = { args: { open: true, readings: home
 
 /** One provider: Manage usage is a single link. */
 export const CardOneAccount: Story = {
-  args: { open: true, accounts: [CLAUDE_ACME], gitHub: false },
+  args: { open: true, accounts: [CLAUDE_ACME] },
 };
 
 /** Before the first-start sheet is answered only GitHub's row shows. */
-export const RailBeforeTheSheet: Story = { args: { settings: {} } };
+export const RailBeforeTheSheet: Story = { args: { settings: {}, gitHubRemaining: 250 } };
 
 /** The saved order kept, an account hidden, and a stricter warning. */
 export const RailKeptOrder: Story = {

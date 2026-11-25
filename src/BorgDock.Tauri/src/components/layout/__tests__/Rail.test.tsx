@@ -225,12 +225,20 @@ describe('Rail', () => {
   });
 
   describe('the foot', () => {
-    it("shows GitHub's requests as a row of the limits", () => {
+    it("shows GitHub's requests when quota is low", () => {
+      usePrStore.setState({
+        rateLimit: { remaining: 250, limit: 5000, resetAt: new Date(), pool: 'graphql' },
+      });
+      render(<Rail />);
+      expect(screen.getByRole('button', { name: 'Limits left' })).toHaveTextContent('GitHub5%');
+    });
+
+    it('hides the limits block when GitHub quota is healthy and there are no accounts', () => {
       usePrStore.setState({
         rateLimit: { remaining: 4837, limit: 5000, resetAt: new Date(), pool: 'graphql' },
-      } as never);
+      });
       render(<Rail />);
-      expect(screen.getByRole('button', { name: 'Limits left' })).toHaveTextContent('GitHub97%');
+      expect(screen.queryByRole('button', { name: 'Limits left' })).toBeNull();
     });
 
     it('shows no limits block without accounts and without a rate limit', () => {
