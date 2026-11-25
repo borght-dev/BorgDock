@@ -42,20 +42,34 @@ function rows(): string[] {
   );
 }
 
+function setGitHubRemaining(remaining: number) {
+  usePrStore.setState({ rateLimit: { remaining, limit: 5000, resetAt: new Date(), pool: 'rest' } });
+}
+
 describe('RailLimits', () => {
   beforeEach(() => {
     mocks.invoke.mockClear();
     mocks.openUrl.mockClear();
-    usePrStore.setState({
-      rateLimit: { remaining: 4412, limit: 5000, resetAt: new Date(), pool: 'rest' },
-    } as never);
+    setGitHubRemaining(4412);
     seed();
   });
 
-  it('lists the accounts least left first, with GitHub where its share puts it', () => {
+  it('lists the accounts least left first and hides GitHub above the warning threshold', () => {
     render(<RailLimits collapsed={false} />);
     expect(screen.getByText('Limits left')).toBeInTheDocument();
-    expect(rows()).toEqual(['OP8%', 'EX22%', 'AC62%', 'GitHub88%', 'EX89%', 'AC100%']);
+    expect(rows()).toEqual(['OP8%', 'EX22%', 'AC62%', 'EX89%', 'AC100%']);
+  });
+
+  it('shows GitHub last only below the configured warning threshold', () => {
+    seed({ ...INTRODUCED, warnUnder: 20 });
+    setGitHubRemaining(1000);
+    const { unmount } = render(<RailLimits collapsed={false} />);
+    expect(screen.queryByText('GitHub')).not.toBeInTheDocument();
+    unmount();
+
+    setGitHubRemaining(950);
+    render(<RailLimits collapsed={false} />);
+    expect(rows().at(-1)).toBe('GitHub19%');
   });
 
   it('colours a row by how little is left', () => {
@@ -63,20 +77,22 @@ describe('RailLimits', () => {
     const tones = [...document.querySelectorAll('.bd-rail__stat')].map((row) =>
       row.getAttribute('data-tone'),
     );
-    expect(tones).toEqual(['critical', 'low', 'normal', 'normal', 'normal', 'normal']);
+    expect(tones).toEqual(['critical', 'low', 'normal', 'normal', 'normal']);
     expect(document.querySelector('.bd-rail__bar i')).toHaveStyle({ width: '8.00%' });
   });
 
   it('shows only GitHub before the first-start sheet is answered', () => {
     seed({});
+    setGitHubRemaining(0);
     render(<RailLimits collapsed={false} />);
-    expect(rows()).toEqual(['GitHub88%']);
+    expect(rows()).toEqual(['GitHub0%']);
   });
 
   it('leaves GitHub out when Settings says so, and renders nothing without rows', () => {
     seed({ ...INTRODUCED, showGitHub: false });
+    setGitHubRemaining(250);
     const { unmount } = render(<RailLimits collapsed={false} />);
-    expect(rows()).not.toContain('GitHub88%');
+    expect(screen.queryByText('GitHub')).not.toBeInTheDocument();
     unmount();
 
     seed({ showGitHub: false });
@@ -107,6 +123,7 @@ describe('RailLimits', () => {
   });
 
   it('opens the card with each account, its limits and the time to each reset', () => {
+    setGitHubRemaining(250);
     render(<RailLimits collapsed={false} />);
     fireEvent.click(screen.getByRole('button', { name: 'Limits left' }));
 
@@ -119,9 +136,15 @@ describe('RailLimits', () => {
     expect(ops).toHaveTextContent(/Weekly8% left1d [56]h/);
     expect(ops).toHaveTextContent('Fable3% left');
     expect(within(card).getByText('45,138')).toBeInTheDocument();
-    expect(within(card).getByText('4,412 of 5,000 requests left (REST)')).toBeInTheDocument();
+    expect(within(card).getByText('250 of 5,000 requests left (REST)')).toBeInTheDocument();
     // The tick marks the share of the week still to come.
     expect(ops.querySelector('.bd-rail__bar u')).toBeInTheDocument();
+  });
+
+  it('puts a low GitHub quota after the account rings in the folded rail', () => {
+    setGitHubRemaining(250);
+    render(<RailLimits collapsed />);
+    expect([...document.querySelectorAll('.bd-ai-ring')].at(-1)).toHaveTextContent('GH');
   });
 
   it('keeps the last numbers of an account whose sign-in expired and says what to do', () => {

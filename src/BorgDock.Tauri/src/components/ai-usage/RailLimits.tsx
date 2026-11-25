@@ -28,14 +28,16 @@ export interface GitHubLimit {
 
 const numberFormat = new Intl.NumberFormat('en-US');
 
-export function useGitHubLimit(): GitHubLimit | null {
+function useGitHubLimit(warnUnder: number | undefined): GitHubLimit | null {
   const rate = usePrStore((s) => s.rateLimit);
   if (!rate || rate.limit <= 0) return null;
-  const left = Math.round(Math.min(1, Math.max(0, rate.remaining / rate.limit)) * 100);
+  const percentLeft = Math.min(1, Math.max(0, rate.remaining / rate.limit)) * 100;
+  const tone = toneOf(percentLeft, warnUnder);
+  if (tone !== 'critical') return null;
   const pool = rate.pool ? ` (${rate.pool === 'graphql' ? 'GraphQL' : 'REST'})` : '';
   return {
-    left,
-    tone: toneOf(left),
+    left: Math.round(percentLeft),
+    tone,
     detail: `${numberFormat.format(rate.remaining)} of ${numberFormat.format(rate.limit)} requests left${pool}`,
   };
 }
@@ -75,7 +77,12 @@ function LimitRing({ left, tone }: { left: number | null; tone: RailTone }) {
 /** The folded rail's account: a ring of what is left around the provider's icon, the label under it. */
 function AccountRing({ view }: { view: AccountView }) {
   return (
-    <HoverPopover variant="tooltip" content={accountSummary(view)} triggerClassName="bd-ai-ring">
+    <HoverPopover
+      variant="tooltip"
+      tooltipSide="right"
+      content={accountSummary(view)}
+      triggerClassName="bd-ai-ring"
+    >
       <LimitRing left={view.left} tone={view.tone} />
       <ProviderIcon provider={view.account.provider} size={12} className="bd-ai-ring__icon" />
       <AccountBadge label={view.label} color={view.color} className="bd-ai-ring__badge" />
@@ -107,22 +114,15 @@ export interface RailLimitsProps {
 /**
  * RailLimits — "Limits left" at the foot of the rail: one row per AI account
  * on this machine (provider icon, account label, a bar and the share left),
- * least left first, and GitHub's API requests as a row of the same kind.
+ * least left first, with a low GitHub API quota shown last.
  * Folded, each account is a ring. Either opens the AI usage card.
  */
 export function RailLimits({ collapsed, defaultOpen }: RailLimitsProps) {
   const { views, settings } = useAccountViews();
-  const gitHub = useGitHubLimit();
+  const gitHub = useGitHubLimit(settings?.warnUnder);
   const accounts = settings?.introduced ? railAccounts(views, settings) : [];
   const gitHubRow = settings?.showGitHub === false ? null : gitHub;
   if (accounts.length === 0 && !gitHubRow) return null;
-
-  // The GitHub row sits where its share puts it, like any other limit.
-  const gitHubAt = gitHubRow
-    ? accounts.findIndex((view) => (view.left ?? 101) > gitHubRow.left)
-    : -1;
-  const before = gitHubRow && gitHubAt >= 0 ? accounts.slice(0, gitHubAt) : accounts;
-  const after = gitHubRow && gitHubAt >= 0 ? accounts.slice(gitHubAt) : [];
 
   return (
     <RailFlyout
@@ -137,19 +137,23 @@ export function RailLimits({ collapsed, defaultOpen }: RailLimitsProps) {
           {accounts.map((view) => (
             <AccountRing key={view.account.id} view={view} />
           ))}
-          {accounts.length === 0 && gitHubRow && (
+          {gitHubRow && (
             <HoverPopover
               variant="tooltip"
+              tooltipSide="right"
               content={`GitHub API · ${gitHubRow.detail}`}
               triggerClassName="bd-ai-ring"
             >
               <LimitRing left={gitHubRow.left} tone={gitHubRow.tone} />
+              <span className="text-[9px] font-semibold" aria-hidden="true">
+                GH
+              </span>
             </HoverPopover>
           )}
         </span>
       ) : (
         <RailBlock title="Limits left">
-          {before.map((view) => (
+          {accounts.map((view) => (
             <AccountRow key={view.account.id} view={view} />
           ))}
           {gitHubRow && (
@@ -160,9 +164,6 @@ export function RailLimits({ collapsed, defaultOpen }: RailLimitsProps) {
               tone={gitHubRow.tone}
             />
           )}
-          {after.map((view) => (
-            <AccountRow key={view.account.id} view={view} />
-          ))}
         </RailBlock>
       )}
     </RailFlyout>

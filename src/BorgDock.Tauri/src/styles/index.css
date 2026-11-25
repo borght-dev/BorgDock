@@ -3076,7 +3076,6 @@ body.sql-resizing-v .sql-resize-handle {
   }
   .bd-tooltip::before {
     position: absolute;
-    left: calc(var(--bd-tooltip-arrow-x) - 5px);
     width: 10px;
     height: 10px;
     border: 1px solid var(--color-strong-border);
@@ -3085,14 +3084,25 @@ body.sql-resizing-v .sql-resize-handle {
     transform: rotate(45deg);
   }
   .bd-tooltip[data-side="below"]::before {
+    left: calc(var(--bd-tooltip-arrow-offset) - 5px);
     top: -6px;
     border-right: 0;
     border-bottom: 0;
   }
   .bd-tooltip[data-side="above"]::before {
+    left: calc(var(--bd-tooltip-arrow-offset) - 5px);
     bottom: -6px;
     border-top: 0;
     border-left: 0;
+  }
+  .bd-tooltip[data-side="right"]::before {
+    top: calc(var(--bd-tooltip-arrow-offset) - 5px);
+    left: -6px;
+    border-top: 0;
+    border-right: 0;
+  }
+  .bd-tooltip[data-side="right"] {
+    overflow-wrap: anywhere;
   }
   @keyframes bd-tooltip-in {
     from {

@@ -17,6 +17,7 @@ const ARROW_INSET = 16;
 /** The arrow never sits closer than this to the tooltip's corner. */
 const ARROW_EDGE = 12;
 const TOOLTIP_DELAY_MS = 300;
+const MIN_SIDE_WIDTH = 160;
 
 export interface HoverPopoverProps {
   /** Trigger element. Hovering it (or the popover) keeps the popover open. */
@@ -45,6 +46,8 @@ export interface HoverPopoverProps {
    * of its own, for content that draws its own card (`.bd-hover-card`).
    */
   variant?: 'panel' | 'tooltip' | 'card';
+  /** Prefer showing beside the trigger instead of below it. */
+  tooltipSide?: 'right';
   /** Class on the trigger wrapper. With one, the class sets its display instead of `inline-block`. */
   triggerClassName?: string;
   /** Optional extra style on the trigger wrapper. */
@@ -61,8 +64,8 @@ export function isTextClipped(trigger: HTMLElement): boolean {
 interface Placement {
   left: number;
   top: number;
-  above: boolean;
-  arrowX: number;
+  side: 'above' | 'below' | 'right';
+  arrowOffset: number;
 }
 
 const PANEL_STYLE: CSSProperties = {
@@ -91,6 +94,7 @@ export function HoverPopover({
   maxHeight = 360,
   hideDelayMs = 120,
   variant = 'panel',
+  tooltipSide,
   showDelayMs = variant === 'panel' ? 0 : TOOLTIP_DELAY_MS,
   when,
   triggerClassName,
@@ -110,14 +114,33 @@ export function HoverPopover({
     const popover = popoverRef.current;
     if (!trigger || !popover) return;
     const r = trigger.getBoundingClientRect();
+    const right = r.right + GAP;
+    const availableRight = window.innerWidth - right - GAP;
+    const openRight =
+      variant === 'tooltip' && tooltipSide === 'right' && availableRight >= MIN_SIDE_WIDTH;
+    if (variant === 'tooltip') {
+      const availableWidth = openRight ? availableRight : window.innerWidth - GAP * 2;
+      popover.style.maxWidth = `${Math.min(maxWidth, availableWidth)}px`;
+    }
     const { offsetWidth: width, offsetHeight: height } = popover;
+    if (openRight) {
+      const centerY = r.top + r.height / 2;
+      const top = Math.max(GAP, Math.min(centerY - height / 2, window.innerHeight - height - GAP));
+      setPlacement({
+        left: right,
+        top,
+        side: 'right',
+        arrowOffset: Math.max(ARROW_EDGE, Math.min(centerY - top, height - ARROW_EDGE)),
+      });
+      return;
+    }
     const left = Math.max(GAP, Math.min(r.left, window.innerWidth - width - GAP));
     const above = r.bottom + GAP + height > window.innerHeight - GAP;
     const top = above ? Math.max(GAP, r.top - GAP - height) : r.bottom + GAP;
     const pointAt = r.left + Math.min(ARROW_INSET, r.width / 2) - left;
-    const arrowX = Math.max(ARROW_EDGE, Math.min(pointAt, width - ARROW_EDGE));
-    setPlacement({ left, top, above, arrowX });
-  }, []);
+    const arrowOffset = Math.max(ARROW_EDGE, Math.min(pointAt, width - ARROW_EDGE));
+    setPlacement({ left, top, side: above ? 'above' : 'below', arrowOffset });
+  }, [maxWidth, tooltipSide, variant]);
 
   const clearTimer = (timer: { current: number | null }) => {
     if (timer.current != null) {
@@ -218,7 +241,7 @@ export function HoverPopover({
             ref={popoverRef}
             role="tooltip"
             className={tooltip ? 'bd-tooltip' : variant === 'card' ? 'bd-hover-card' : undefined}
-            data-side={tooltip ? (placement?.above ? 'above' : 'below') : undefined}
+            data-side={tooltip ? placement?.side : undefined}
             onClick={(event) => event.stopPropagation()}
             onMouseEnter={() => clearTimer(hideTimer)}
             onMouseLeave={scheduleHide}
@@ -226,8 +249,7 @@ export function HoverPopover({
               tooltip
                 ? ({
                     ...position,
-                    maxWidth: Math.min(maxWidth, window.innerWidth - GAP * 2),
-                    '--bd-tooltip-arrow-x': `${placement?.arrowX ?? ARROW_INSET}px`,
+                    '--bd-tooltip-arrow-offset': `${placement?.arrowOffset ?? ARROW_INSET}px`,
                   } as CSSProperties)
                 : variant === 'card'
                   ? { ...position, ...size }
