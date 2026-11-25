@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.17.1 — 2026-11-25
+
+### Bug Fixes
+
+- GitHub only appears in Limits left when its API quota runs low. It appears last so your Claude and Codex accounts stay in place.
+- Tooltips open to the right of the folded rail, so you can hover down the list without moving the pointer away between accounts.
+
 ## 4.17.0 — 2026-11-24
 
 ### New Features
