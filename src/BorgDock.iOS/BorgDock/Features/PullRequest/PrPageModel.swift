@@ -1,5 +1,16 @@
 import Foundation
 
+/// "2 images", "1 recording", "2 images · 1 recording": what the Proof label says it holds.
+enum PrProofCount {
+    static func text(images: Int, recordings: Int) -> String {
+        let parts = [
+            images > 0 ? (images == 1 ? "1 image" : "\(images) images") : nil,
+            recordings > 0 ? (recordings == 1 ? "1 recording" : "\(recordings) recordings") : nil,
+        ]
+        return parts.compactMap { $0 }.joined(separator: " · ")
+    }
+}
+
 /// The pull request page's sections, in the order they show and with the jump chips over them.
 enum PrPageSection: String, CaseIterable, Hashable {
     case checks, proof, description, reviewers, comments, files
@@ -15,8 +26,8 @@ enum PrPageSection: String, CaseIterable, Hashable {
         }
     }
 
-    /// Checks lead while one fails; otherwise the description does and checks follow it. Proof shows only with images,
-    /// Reviewers only when someone was asked or answered.
+    /// Checks lead while one fails; otherwise the description does and checks follow it. Proof shows only with images
+    /// or recordings, Reviewers only when someone was asked or answered.
     static func order(failing: Bool, hasProof: Bool, hasReviewers: Bool = false) -> [PrPageSection] {
         let sections: [PrPageSection] = failing
             ? [.checks, .proof, .description, .reviewers, .comments, .files]

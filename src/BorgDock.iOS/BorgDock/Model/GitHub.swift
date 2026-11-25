@@ -245,6 +245,8 @@ struct PrDetail: Codable, Hashable, Sendable {
     let requestedFromYou: Bool
     let checkRuns: [CheckRun]
     let proofImages: [ProofImage]
+    /// Found in `body` here, on the phone: the server sends none.
+    let proofRecordings: [ProofRecording]
     let allowedMergeMethods: [MergeMethod]
     let defaultMergeMethod: MergeMethod
     let deleteBranchOnMerge: Bool
@@ -273,6 +275,7 @@ struct PrDetail: Codable, Hashable, Sendable {
         self.requestedFromYou = requestedFromYou
         self.checkRuns = checkRuns
         self.proofImages = proofImages
+        proofRecordings = ProofRecordings.find(in: body)
         self.allowedMergeMethods = allowedMergeMethods
         self.defaultMergeMethod = defaultMergeMethod
         self.deleteBranchOnMerge = deleteBranchOnMerge
@@ -291,6 +294,7 @@ struct PrDetail: Codable, Hashable, Sendable {
         requestedFromYou = try container.decode(Bool.self, forKey: .requestedFromYou)
         checkRuns = try container.decode([CheckRun].self, forKey: .checkRuns)
         proofImages = try container.decode([ProofImage].self, forKey: .proofImages)
+        proofRecordings = ProofRecordings.find(in: body)
         allowedMergeMethods = try container.decode([MergeMethod].self, forKey: .allowedMergeMethods)
         defaultMergeMethod = try container.decode(MergeMethod.self, forKey: .defaultMergeMethod)
         deleteBranchOnMerge = try container.decode(Bool.self, forKey: .deleteBranchOnMerge)

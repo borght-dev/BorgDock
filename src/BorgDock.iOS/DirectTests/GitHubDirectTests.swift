@@ -185,6 +185,7 @@ final class GitHubDirectTests: XCTestCase {
         XCTAssertTrue(detail.viewerCanMerge)
         XCTAssertTrue(detail.requestedFromYou)
         XCTAssertEqual(detail.proofImages.map(\.alt), ["basket kept", "after"])
+        XCTAssertEqual(detail.proofRecordings, [ProofRecording(url: "https://github.com/user-attachments/assets/0f1e2d3c-aaaa", label: "Recording")])
         XCTAssertEqual(detail.reviews.map { "\($0.author.login) \($0.state.rawValue)" }, ["mira commented"])
         XCTAssertEqual(detail.workItems.map(\.id), [60379])
         XCTAssertEqual(detail.commits, 3)

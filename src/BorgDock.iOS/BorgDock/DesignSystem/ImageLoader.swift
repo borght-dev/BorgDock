@@ -40,6 +40,50 @@ struct ImageLoader: Sendable {
         throw failure
     }
 
+    /// A recording whose address a rule names (an upload to a private repository): the player's web view can't ask
+    /// for it, so it is fetched here into `folder`. Nil when no rule names the address: the player streams it itself.
+    func recording(from url: URL, into folder: URL) async throws -> URL? {
+        let candidates = rules.flatMap { $0.authorizations(url) }
+        guard !candidates.isEmpty else { return nil }
+        var failure: Error = URLError(.userAuthenticationRequired)
+        for authorization in candidates {
+            var request = URLRequest(url: url)
+            request.setValue(authorization, forHTTPHeaderField: "Authorization")
+            do {
+                let (file, response) = try await session.download(for: request, delegate: SameHostAuthorization.shared)
+                // A sign-in page instead of the file is no recording.
+                guard let answer = response as? HTTPURLResponse, (200..<300).contains(answer.statusCode),
+                      let kind = Self.videoExtension(type: answer.mimeType, address: url) else {
+                    try? FileManager.default.removeItem(at: file)
+                    throw URLError(.cannotDecodeContentData)
+                }
+                let kept = folder.appending(path: "recording.\(kind)")
+                try? FileManager.default.removeItem(at: kept)
+                try FileManager.default.moveItem(at: file, to: kept)
+                return kept
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                failure = error
+            }
+        }
+        throw failure
+    }
+
+    /// The file extension WebKit knows a video by, from what the server calls it, else from its address.
+    static func videoExtension(type: String?, address: URL) -> String? {
+        switch type?.lowercased() {
+        case "video/webm": return "webm"
+        case "video/mp4": return "mp4"
+        case "video/quicktime": return "mov"
+        case "video/x-m4v": return "m4v"
+        case nil, "application/octet-stream", "binary/octet-stream":
+            let named = address.pathExtension.lowercased()
+            return ["webm", "mp4", "mov", "m4v"].contains(named) ? named : nil
+        default: return nil
+        }
+    }
+
     private func answered(_ request: URLRequest) async throws -> Data {
         let (data, response) = try await session.data(for: request, delegate: SameHostAuthorization.shared)
         guard let status = (response as? HTTPURLResponse)?.statusCode, (200..<300).contains(status) else { throw URLError(.badServerResponse) }

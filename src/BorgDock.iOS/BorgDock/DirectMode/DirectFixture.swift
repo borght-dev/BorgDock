@@ -94,13 +94,13 @@ enum DirectDebugAccounts {
     }
 }
 
-/// Answers api.github.com, dev.azure.com/acme and the fixture's own image host.
+/// Answers api.github.com, dev.azure.com/acme, the fixture's own image host and its one uploaded recording.
 final class DirectFixtureProtocol: URLProtocol {
     private static let imageHost = "fixture.acme.example"
 
     override class func canInit(with request: URLRequest) -> Bool {
-        guard let host = request.url?.host() else { return false }
-        return host == "api.github.com" || host == "dev.azure.com" || host == imageHost
+        guard let url = request.url, let host = url.host() else { return false }
+        return host == "api.github.com" || host == "dev.azure.com" || host == imageHost || FixtureRecording.isRecording(url)
     }
 
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -121,6 +121,9 @@ final class DirectFixtureProtocol: URLProtocol {
         }
         if url.host() == "api.github.com", url.path().hasSuffix("/logs") {
             return answer(200, Data(GitHubFixture.failedJobLog.utf8), type: "text/plain")
+        }
+        if FixtureRecording.isRecording(url) {
+            return answer(200, FixtureRecording.webm, type: "video/webm")
         }
         if url.host() == Self.imageHost || AdoFixture.isAttachment(url) {
             return answer(200, FixtureImage.png(named: url.query() ?? url.lastPathComponent), type: "image/png")
@@ -219,6 +222,8 @@ private enum GitHubFixture {
     | Before | After |
     |---|---|
     | ![The basket is empty after a timeout](https://fixture.acme.example/basket-before.png) | ![The basket is kept, with Try again](https://fixture.acme.example/basket-after.png) |
+
+    \(FixtureRecording.address)
     """
 
     static let pullRequests: [PullRequest] = [

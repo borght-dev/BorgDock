@@ -268,7 +268,7 @@ struct GitHubWorld {
     private let made = Services()
     var review = Fake.pullRequest(
         number: 1, title: "Keep the basket on timeout AB#60379",
-        body: "Before/after:\n![basket kept](https://github.com/user-attachments/assets/basket.png)\n<img src=\"https://github.com/user-attachments/assets/after.png\" alt=\"after\">",
+        body: "Before/after:\n![basket kept](https://github.com/user-attachments/assets/basket.png)\n<img src=\"https://github.com/user-attachments/assets/after.png\" alt=\"after\">\n\nhttps://github.com/user-attachments/assets/0f1e2d3c-aaaa",
         head: "feat/1-basket", headSha: "h1", requested: ["koen"],
         checks: [Fake.checkRun(.init(name: "e2e", conclusion: "FAILURE", id: 501, runId: 50)), Fake.checkRun(.init(name: "lint", id: 502, runId: 50))]
     )

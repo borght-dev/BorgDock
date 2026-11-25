@@ -69,7 +69,7 @@ enum MarkdownCleanup {
 
     static func clean(_ markdown: String) -> Result {
         let text = markdown.replacingOccurrences(of: "\r\n", with: "\n")
-        let withoutFooters = text.replacing(footer, with: "")
+        let withoutFooters = BotFooters.removed(from: text)
         var badges = 0
         let cleaned = withoutFooters.replacing(comment, with: "").replacing(anchor) { match in
             let whole = String(match.output.0)
@@ -87,7 +87,6 @@ enum MarkdownCleanup {
         return height > 0 && height <= badgeHeight
     }
 
-    private nonisolated(unsafe) static let footer = #/(?i)<!--\s*([\w.-]+):footer\s*-->[\s\S]*?<!--\s*\/\1:footer\s*-->/#
     private nonisolated(unsafe) static let comment = #/<!--[\s\S]*?-->/#
     private nonisolated(unsafe) static let anchor = #/(?i)<a\b[^>]*>(?<inner>[\s\S]*?)<\/a>/#
     private nonisolated(unsafe) static let image = #/(?i)<img\b[^>]*>/#

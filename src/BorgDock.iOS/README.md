@@ -85,6 +85,13 @@ and where the app differs from the drawing.
   attachments and uploads in private GitHub repositories need a token, and `AsyncImage` can't send one (it ignores
   registered `URLProtocol`s too). A token goes only to the address a rule names, never along with a redirect to
   another host.
+- **Screenshots and recordings** open in `MediaGallery` (`Features/Markdown/`), in both apps. Each page is a
+  `ZoomView` (`DesignSystem/ZoomView.swift`, a `UIScrollView`): pinch, drag to move around, double tap to zoom in on
+  that spot. A recording is found in the description on the phone (`Direct/GitHub/ProofRecordings.swift`, the
+  desktop's `proofRecordings`) and played by a `WKWebView` (`RecordingPlayer`), because proof recordings are WebM and
+  AVPlayer plays none; the app draws the controls, so they stay put while the picture is zoomed. A link to a video
+  file in a comment opens the same player. The web view streams the address itself; an upload that needs a token is
+  fetched by `ImageLoader.recording` first.
 - **Made-up data** (Debug): `-BorgDockFixture` answers GitHub and Azure DevOps from `DirectMode/DirectFixture.swift`
   (the `acme` shop) and touches no network. `-BorgDockFixtureMode <quiet|clear|offline|slow|fresh|expired>` gives the
   states the full sample never shows (`fresh`: no account yet; `expired`: a second account GitHub refuses).

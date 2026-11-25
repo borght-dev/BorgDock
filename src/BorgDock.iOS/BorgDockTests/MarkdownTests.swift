@@ -188,4 +188,11 @@ final class MarkdownInlineTests: XCTestCase {
         XCTAssertEqual(MarkdownLinks.destination(URL(string: "https://github.com/acme/shop/issues/9")!), .external(URL(string: "https://github.com/acme/shop/issues/9")!))
         XCTAssertEqual(MarkdownLinks.destination(URL(string: "borgdock://tab/prs")!), .app(URL(string: "borgdock://tab/prs")!))
     }
+
+    func testALinkToAVideoFilePlaysInTheApp() {
+        XCTAssertTrue(MarkdownLinks.isRecording(URL(string: "https://example.com/proofs/main.webm?sv=1&sig=abc")!))
+        XCTAssertTrue(MarkdownLinks.isRecording(URL(string: "https://example.com/flow.MP4")!))
+        XCTAssertFalse(MarkdownLinks.isRecording(URL(string: "https://example.com/proofs/main.png")!))
+        XCTAssertFalse(MarkdownLinks.isRecording(URL(string: "borgdock://item/flow.mp4")!), "only what the web serves")
+    }
 }
