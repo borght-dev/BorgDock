@@ -684,7 +684,6 @@
       <li><b>The reason leads a row's second line.</b> <span class="why">Changed after the pick. In the direction mockup it came last and was the part that got cut off.</span></li>
       <li><b>The check bar has one part per state.</b> <span class="why">Today's <code>CheckBar</code> draws a segment per check, which turns to dots at 40 points.</span></li>
       <li><b>Swipe left only snoozes.</b> <span class="why">Merge is a button on the rows that can merge.</span></li>
-      <li><b>Tabs, Group, Sort, Display and saved views go.</b> <span class="why">The Ledger has one grouping and one order, and saved views synced through the server. Search with filter chips covers the rest.</span></li>
       <li><b>The pull request page, Quick Review, the work item and setup</b> <span class="why">as drawn below.</span></li>
     </ul>
     <p style="margin:10px 0 0;color:#8e8f96;font-size:13px">My calls, made while working C out. Build them as drawn unless Koen says otherwise.</p>
@@ -693,6 +692,7 @@
     <h2>Built, and where the app differs</h2>
     <ul>
       <li><b>Everything on this page is in the app.</b> <span class="why">Branch <code>feat/ios-review-ui</code>, 23 November 2026. Each screen is behind <code>app.isReview</code>: BorgDock keeps its own.</span></li>
+      <li><b>The app now opens to BorgDock's Pull requests list.</b> <span class="why">It replaces the Ledger shown below and has BorgDock's tabs, filters, grouping and sorting. Saved views are stored on the device.</span></li>
       <li><b>A comment takes several lines with two taps, not a drag.</b> <span class="why">Tap the first line, then the last. The diff scrolls and pages under the same finger, so a drag from the line number fought both. The keyboard waits for a tap in the box, or the sheet would cover the lines you are picking.</span></li>
       <li><b>Long lines wrap, as today.</b> <span class="why">A sideways scroll would fight the swipe between files. The pinch for the type size is in.</span></li>
       <li><b>The token screen shows what GitHub tells.</b> <span class="why">A classic token's scopes come with every answer. A fine-grained token's permissions never do, so the app tries one read of pull requests and one of Actions. Writing can't be tried: Rerun shows until GitHub refuses one for that account.</span></li>
@@ -1541,7 +1541,7 @@
     <tr><td>Overview<br><span style="font-weight:400;color:#8e8f96">Focus, PullRequests</span></td>
       <td>Start review walks the reviews asked of you, longest wait first. Swipe right to review one. The long press with the author run. Snooze, kept on the phone since no server remembers it. The list's filters, as chips in search.</td>
       <td>Focus and the Pull requests list become one screen, the Ledger. Focus's queue card is the To review section with Start review in its header, and the list's tabs are the sections. The checks, review, merge track moves to the pull request page. A row shows a check bar and a reason in its place. Merge is a button on the row and no longer a swipe.</td>
-      <td>The tab bar, Agents, the Work and Sprint tiles, the bell and Notes: the app has one stack. Long-press items Fix with Claude and Open in T3. Group, Sort and Display, since the Ledger has one grouping and one order. Saved views, which synced through the server.</td></tr>
+      <td>The tab bar, Agents, the Work and Sprint tiles, the bell and Notes: the app has one stack. Long-press items Fix with Claude and Open in T3. Server sync for saved views.</td></tr>
     <tr><td>Pull request<br><span style="font-weight:400;color:#8e8f96">PullRequest</span></td>
       <td>One page with jump chips. Checks first when they fail, with the error from the log. Proof row, rendered markdown, threads on their lines, the reply box, the merge sheet with Face ID.</td>
       <td>The work item moves from a chip to a card under the title. Reviewers get a section. Review and Merge are both in the bar on every pull request.</td>

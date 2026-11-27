@@ -48,10 +48,9 @@ xcrun devicectl device install app --device <device> build/Build/Products/Debug-
 ## BorgDock Review: pull request review without the server
 
 A second app in the same project (target and scheme `BorgDockReview`, bundle `dev.borght.borgdock.review`): the
-overview, the pull request page, Quick Review and the work items a pull request names. It reads GitHub and Azure
-DevOps straight from the phone, so it needs no BorgDock server, and has no agents, notes, sprint or pushes. Its screens
-follow `design/review-app/mockups.html` at the repository root, whose "Decided" and "Built" boxes say what was chosen
-and where the app differs from the drawing.
+pull request list, the pull request page, Quick Review and the work items a pull request names. It reads GitHub and Azure
+DevOps straight from the phone, so it needs no BorgDock server, and has no agents, notes, sprint or pushes. The review
+screens follow `design/review-app/mockups.html` at the repository root.
 
 - **How it is built.** It compiles BorgDock's sources with its own entry point (`BorgDockReview/`) and without Clerk
   or the extensions. The screens ask a `PullRequestBackend` and a `WorkItemBackend` (`BorgDock/Model/Backends.swift`):
@@ -62,9 +61,8 @@ and where the app differs from the drawing.
   Reviewers section and Merge next to Start review, the work item as a sheet, threads and comments on several lines in
   the walk, the diff since your review, the auto-merge switch, the end card's "Next, your own". BorgDock's own screens
   follow `design/ios-flow/mockups.html` and stay as they are.
-- **The overview is the Ledger** (`Features/Ledger/`): `Ledger.swift` is pure and puts every pull request in one of
-  five sections with one reason (`swift test` covers it); the views draw 50 point rows. There are no tabs, groupings or
-  saved views: search with its chips filters.
+- **The home screen is the shared Pull requests list** (`Features/PullRequests/`), with BorgDock's tabs, filters,
+  grouping and sorting. Saved views are stored on the device. The account icon opens Settings.
 - **A work item opens as a sheet** (`WorkItemSheet`, `ItemReading`), with its own stack for a parent item or another
   linked pull request. The router's sheets are under Quick Review's cover, so Quick Review presents its own
   (`QuickReviewView.Over`), and `LinkNavigator` in the environment says where a link goes from each screen.
@@ -88,7 +86,7 @@ and where the app differs from the drawing.
 - **Made-up data** (Debug): `-BorgDockFixture` answers GitHub and Azure DevOps from `DirectMode/DirectFixture.swift`
   (the `acme` shop) and touches no network. `-BorgDockFixtureMode <quiet|clear|offline|slow|fresh|expired>` gives the
   states the full sample never shows (`fresh`: no account yet; `expired`: a second account GitHub refuses).
-  `-BorgDockRoute` opens a screen: `ledger/<open|fold>[/end]`, `ledger/search/<words>`, `setup/<github|ado|repositories>`,
+  `-BorgDockRoute` opens a screen: `prs/query/<query>`, `setup/<github|ado|repositories>`,
   `i1/pr/<section>/acme/shop/412`, `item/60379[/<section>]`, `sheet/settings`, `review/…` and `i1/walk/…` as in BorgDock.
   Use it for screenshots.
 - **UI tests** (`BorgDockReviewUITests`, the `BorgDockReview` scheme's test action) run on that made-up data. Run

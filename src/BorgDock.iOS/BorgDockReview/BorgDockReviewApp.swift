@@ -47,14 +47,14 @@ struct ReviewRootView: View {
     }
 }
 
-/// One stack: the overview, and everything opened from it. Settings sit behind the avatar of its title bar.
+/// One stack: the pull request list and everything opened from it.
 struct ReviewHome: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
         @Bindable var router = app.router
         NavigationStack(path: $router.pullRequestsPath) {
-            LedgerView()
+            PullRequestsView()
                 .routeDestinations()
         }
         .sheet(item: $router.sheet) { SheetHost(sheet: $0) }

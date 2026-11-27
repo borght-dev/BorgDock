@@ -171,7 +171,7 @@ struct PrSaveViewSheet: View {
                             ? display.groupBy.label : "\(display.groupBy.label), then \(display.subGroupBy.label.lowercased())")
                         keeps("Order", "\(display.sortBy.label), \(display.sortBy.directionLabel(display.sortDir).lowercased())")
                     }
-                    Text("Views sync with BorgDock on your desktop.")
+                    Text(app.isReview ? "Views are saved on this iPhone." : "Views sync with BorgDock on your desktop.")
                         .font(.system(size: 13))
                         .foregroundStyle(BD.text2)
                         .padding(.horizontal, 32)
