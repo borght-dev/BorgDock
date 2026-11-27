@@ -426,6 +426,8 @@ private enum GitHubFixture {
             return data(["repository": ["pullRequest": pr?.number == 412 ? conversation : pr?.number == 409 ? reReviewConversation : none]])
         case "Reply", "Resolve", "AutoMerge":
             return data(["ok": true])
+        case "BypassMerge":
+            return data(["mergePullRequest": ["pullRequest": ["merged": true]]])
         default:
             return nil
         }

@@ -76,7 +76,66 @@ final class ReviewScreensUITests: XCTestCase {
         XCTAssertTrue(app.buttons["pr-review"].isHittable, "back where you were reading")
     }
 
+    @MainActor
+    func testBypassMergeRequiresConfirmationWhenChecksFail() {
+        let app = launch(route: "i1/pr/checks/acme/shop/412")
+        let merge = app.buttons["pr-merge"]
+        XCTAssertTrue(merge.waitForExistence(timeout: 30))
+        merge.tap()
+
+        let bypass = app.buttons["merge-bypass"]
+        XCTAssertTrue(bypass.waitForExistence(timeout: 10))
+        XCTAssertTrue(bypass.isEnabled)
+        let standardMerge = app.buttons["merge-submit"]
+        XCTAssertTrue(standardMerge.exists)
+        XCTAssertFalse(standardMerge.isEnabled)
+        capture("merge-bypass")
+
+        bypass.tap()
+        let confirm = app.alerts["Bypass merge protections?"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        capture("merge-bypass-confirm")
+        confirm.buttons["Cancel"].tap()
+        XCTAssertTrue(confirm.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(bypass.isHittable)
+
+        bypass.tap()
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.buttons["Bypass merge"].tap()
+        XCTAssertTrue(bypass.waitForNonExistence(timeout: 10))
+        XCTAssertTrue(merge.isHittable)
+    }
+
     // MARK: - Quick Review
+
+    @MainActor
+    func testProofClosesOnSwipeDownAndStillPagesHorizontally() {
+        let app = launch()
+        let start = app.buttons["ledger-start-review"]
+        XCTAssertTrue(start.waitForExistence(timeout: 20))
+        start.tap()
+        XCTAssertTrue(app.buttons["brief-start"].waitForExistence(timeout: 15))
+
+        let thumbnail = app.buttons["The basket is empty after a timeout"]
+        for _ in 0..<3 where !thumbnail.isHittable { app.swipeUp() }
+        XCTAssertTrue(thumbnail.isHittable)
+        thumbnail.tap()
+
+        let position = app.staticTexts["proof-gallery-position"]
+        XCTAssertTrue(position.waitForExistence(timeout: 10))
+        XCTAssertEqual(position.label, "1 of 2")
+        capture("review-proof-open")
+        app.swipeLeft()
+        let second = NSPredicate(format: "label == %@", "2 of 2")
+        expectation(for: second, evaluatedWith: position)
+        waitForExpectations(timeout: 5)
+
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7)))
+        XCTAssertTrue(position.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(thumbnail.isHittable)
+        capture("review-proof-closed")
+    }
 
     @MainActor
     func testAThreadSitsUnderItsLineAndACommentTakesSeveralLines() {

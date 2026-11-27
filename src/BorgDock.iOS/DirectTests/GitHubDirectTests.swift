@@ -288,10 +288,15 @@ final class GitHubDirectTests: XCTestCase {
 
     func testMergeAMovedHeadIsAConflictAndNothingMerges() async throws {
         let service = world.service()
+        let request = MergeRequest(method: .squash, commitTitle: "Round totals", commitMessage: "", deleteBranch: true, headSha: "old")
         await assertFails(409) {
-            try await service.merge(GitHubWorld.two, MergeRequest(method: .squash, commitTitle: "Round totals", commitMessage: "", deleteBranch: true, headSha: "old"))
+            try await service.merge(GitHubWorld.two, request)
+        }
+        await assertFails(409) {
+            try await service.merge(GitHubWorld.two, request, bypass: true)
         }
         XCTAssertTrue(GitHubFake.requests("PUT", "merge").isEmpty)
+        XCTAssertTrue(GitHubFake.operations("BypassMerge").isEmpty)
     }
 
     func testMergeGreenChecksMergeAtTheHeadAndDeleteTheBranch() async throws {
@@ -315,6 +320,35 @@ final class GitHubDirectTests: XCTestCase {
         XCTAssertEqual(mutation.variables["method"] as? String, "SQUASH")
         XCTAssertEqual(mutation.variables["head"] as? String, "h2")
         XCTAssertTrue(GitHubFake.requests("PUT", "merge").isEmpty)
+    }
+
+    func testBypassMergeTargetsTheReviewedHeadWithoutWaitingForChecks() async throws {
+        world.mine["head"] = ["nodes": [["commit": ["statusCheckRollup": ["contexts": ["nodes": [
+            Fake.checkRun(.init(name: "build", conclusion: nil, status: "IN_PROGRESS")),
+            Fake.checkRun(.init(name: "unit", conclusion: "FAILURE")),
+        ]]]]]]]
+        world.install()
+        GitHubFake.onGraphql("BypassMerge", data: ["mergePullRequest": ["pullRequest": ["merged": true]]])
+        GitHubFake.onRest("DELETE", "/git/refs/heads/feat/2-thing$") { _ in GitHubFake.Answer(status: 204) }
+
+        let request = MergeRequest(method: .squash, commitTitle: "Round totals", commitMessage: "Body", deleteBranch: true, headSha: "h2")
+        let result = try await world.service().merge(GitHubWorld.two, request, bypass: true)
+        XCTAssertEqual(result, MergeResponse(merged: true, autoMerge: false, message: "Merged #2"))
+        let mutation = try XCTUnwrap(GitHubFake.operations("BypassMerge").first)
+        XCTAssertTrue((mutation.json["query"] as? String)?.contains("expectedHeadOid: $head") == true)
+        XCTAssertEqual(mutation.variables as NSDictionary, [
+            "id": "PR_acme_shop_2", "method": "SQUASH", "headline": "Round totals", "body": "Body", "head": "h2",
+        ] as NSDictionary)
+        XCTAssertTrue(GitHubFake.operations("AutoMerge").isEmpty)
+        XCTAssertTrue(GitHubFake.requests("PUT", "merge$").isEmpty)
+        XCTAssertEqual(GitHubFake.requests("DELETE", "refs/heads/feat/2-thing$").count, 1)
+    }
+
+    func testUnconfirmedBypassDoesNotDeleteTheBranch() async throws {
+        GitHubFake.onGraphql("BypassMerge", data: ["mergePullRequest": ["pullRequest": ["merged": false]]])
+        let request = MergeRequest(method: .squash, commitTitle: "", commitMessage: "", deleteBranch: true, headSha: "h2")
+        await assertFails(409) { try await world.service().merge(GitHubWorld.two, request, bypass: true) }
+        XCTAssertTrue(GitHubFake.requests("DELETE", "refs/heads/").isEmpty)
     }
 
     func testReviewPostedAtTheHeadTheReviewerSawAMovedHeadIsAConflict() async throws {

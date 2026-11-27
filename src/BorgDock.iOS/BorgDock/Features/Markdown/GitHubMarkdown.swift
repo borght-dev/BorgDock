@@ -441,7 +441,7 @@ struct ImageZoomView: View {
             Color.black.ignoresSafeArea()
             TabView(selection: $index) {
                 ForEach(images.indices, id: \.self) { page in
-                    ZoomableImagePage(image: images[page])
+                    ZoomableImagePage(image: images[page], onSwipeDown: { dismiss() })
                         .tag(page)
                 }
             }
@@ -479,6 +479,7 @@ struct ImageZoomView: View {
 
 private struct ZoomableImagePage: View {
     let image: ZoomedImage
+    let onSwipeDown: () -> Void
     @State private var scale: CGFloat = 1
     @GestureState private var pinch: CGFloat = 1
 
@@ -487,9 +488,14 @@ private struct ZoomableImagePage: View {
             .scaleEffect(scale * pinch)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
+            .contentShape(Rectangle())
             .gesture(MagnifyGesture().updating($pinch) { value, state, _ in state = value.magnification }
                 .onEnded { scale = min(max(scale * $0.magnification, 1), 5) })
             .onTapGesture(count: 2) { withAnimation(.snappy) { scale = scale > 1 ? 1 : 2.5 } }
+            .simultaneousGesture(DragGesture(minimumDistance: 20).onEnded { value in
+                let drag = value.translation
+                if drag.height >= 80, drag.height > abs(drag.width) * 1.25 { onSwipeDown() }
+            })
     }
 }
 

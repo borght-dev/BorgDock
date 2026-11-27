@@ -46,6 +46,12 @@ extension GitHubDirect {
         let message: String
     }
 
+    private struct BypassMergeAnswer: Decodable, Sendable {
+        struct PullRequest: Decodable, Sendable { let merged: Bool }
+        struct Mutation: Decodable, Sendable { let pullRequest: PullRequest? }
+        let mergePullRequest: Mutation?
+    }
+
     private struct NoBody: Encodable, Sendable {}
 
     private static let commentLimit = 65_000
@@ -126,27 +132,37 @@ extension GitHubDirect {
         }
     }
 
-    func merge(_ key: PrKey, _ request: MergeRequest) async throws -> MergeResponse {
+    func merge(_ key: PrKey, _ request: MergeRequest, bypass: Bool) async throws -> MergeResponse {
         try await writing(key) { account in
             let client = try client(account)
             let head = try await head(key, account: account)
             try guardHead(head, expected: request.headSha)
             let title = request.commitTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-            if head.checks.contains(where: { $0.state == .pending }) {
-                let _: IgnoredAnswer = try await client.graphql(GitHubQueries.autoMerge, [
-                    "id": .string(head.id), "method": .string(request.method.rawValue.uppercased()),
-                    "headline": title.isEmpty ? .null : .string(title), "body": .string(request.commitMessage), "head": .string(request.headSha),
-                ])
+            let variables: [String: GraphQLValue] = [
+                "id": .string(head.id), "method": .string(request.method.rawValue.uppercased()),
+                "headline": title.isEmpty ? .null : .string(title), "body": .string(request.commitMessage), "head": .string(request.headSha),
+            ]
+            if !bypass, head.checks.contains(where: { $0.state == .pending }) {
+                let _: IgnoredAnswer = try await client.graphql(GitHubQueries.autoMerge, variables)
                 return MergeResponse(merged: false, autoMerge: true, message: "Checks are still running. GitHub merges it when they pass.")
             }
             let result: MergeAnswer
-            do {
-                result = try await client.rest(
-                    "PUT", "/repos/\(key.owner)/\(key.repo)/pulls/\(key.number)/merge",
-                    body: MergeBody(sha: request.headSha, merge_method: request.method.rawValue, commit_title: title.isEmpty ? nil : title, commit_message: request.commitMessage)
-                )
-            } catch let error as GitHubError where error.status == 405 {
-                throw directError(400, error.message.replacingOccurrences(of: "GitHub: ", with: "GitHub won't merge it: "))
+            if bypass {
+                // Like gh pr merge --admin, ask GitHub to merge immediately with the current account's permissions.
+                let answer = try await client.graphql(GitHubQueries.bypassMerge, variables, as: BypassMergeAnswer.self)
+                guard answer.mergePullRequest?.pullRequest?.merged == true else {
+                    throw directError(409, "GitHub did not confirm the bypass merge.")
+                }
+                result = MergeAnswer(merged: true, message: "Merged #\(key.number)")
+            } else {
+                do {
+                    result = try await client.rest(
+                        "PUT", "/repos/\(key.owner)/\(key.repo)/pulls/\(key.number)/merge",
+                        body: MergeBody(sha: request.headSha, merge_method: request.method.rawValue, commit_title: title.isEmpty ? nil : title, commit_message: request.commitMessage)
+                    )
+                } catch let error as GitHubError where error.status == 405 {
+                    throw directError(400, error.message.replacingOccurrences(of: "GitHub: ", with: "GitHub won't merge it: "))
+                }
             }
             if result.merged, request.deleteBranch, !head.isCrossRepository {
                 let branch = head.branch.split(separator: "/").map { $0.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? String($0) }

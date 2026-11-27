@@ -29,8 +29,9 @@ extension APIClient {
         try await post(key.apiPath + "/reviews", body: request, signed: true)
     }
 
-    func merge(_ key: PrKey, _ request: MergeRequest) async throws -> MergeResponse {
-        try await post(key.apiPath + "/merge", body: request, signed: true)
+    func merge(_ key: PrKey, _ request: MergeRequest, bypass: Bool) async throws -> MergeResponse {
+        guard !bypass else { throw APIError.server(status: 400, message: "Bypass merge is available in BorgDock Review.") }
+        return try await post(key.apiPath + "/merge", body: request, signed: true)
     }
 
     func rerunFailed(_ key: PrKey) async throws -> RerunResponse { try await post(key.apiPath + "/rerun-failed") }
