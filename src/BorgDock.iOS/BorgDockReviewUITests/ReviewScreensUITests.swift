@@ -149,7 +149,7 @@ final class ReviewScreensUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Merge #398'")).firstMatch.waitForExistence(timeout: 10), "the merge sheet comes up over the review")
         app.buttons["Close"].firstMatch.tap()
         app.buttons["review-end-overview"].tap()
-        XCTAssertTrue(app.staticTexts["ledger-subtitle"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["prs-filter-sheet"].waitForExistence(timeout: 10))
     }
 
     // MARK: - Settings and the first run
@@ -203,19 +203,19 @@ final class ReviewScreensUITests: XCTestCase {
         XCTAssertEqual(app.switches["repository-acme/shop"].value as? String, "1", "the repositories you work in start switched on")
         capture("repositories-setup")
         app.buttons["repositories-finish"].tap()
-        XCTAssertTrue(app.staticTexts["ledger-subtitle"].waitForExistence(timeout: 30), "and then the overview")
+        XCTAssertTrue(app.buttons["prs-filter-sheet"].waitForExistence(timeout: 30), "and then the overview")
     }
 
     @MainActor
     func testAnAccountThatCannotBeReadIsNamedOverTheList() {
         let app = launch(mode: "expired")
-        let banner = any(app, "ledger-banner")
+        let banner = any(app, "prs-read-banner")
         XCTAssertTrue(banner.waitForExistence(timeout: 40))
         XCTAssertTrue(text(app, containing: "koen-labs isn't being read.").exists)
         XCTAssertTrue(text(app, containing: "your personal account").exists)
-        XCTAssertTrue(app.buttons["ledger-row-acme/shop#412"].exists, "the rest keeps showing")
-        capture("ledger-expired-token")
-        app.buttons["ledger-banner-action"].tap()
+        XCTAssertTrue(app.buttons["pr-row-acme/shop#412"].exists, "the rest keeps showing")
+        capture("review-list-expired-token")
+        app.buttons["prs-read-banner-action"].tap()
         XCTAssertTrue(any(app, "account-koen-labs").waitForExistence(timeout: 10), "Replace the token leads to the accounts")
     }
 }

@@ -13,7 +13,9 @@ struct PrFilterSheet: View {
     var body: some View {
         NavigationStack(path: $path) {
             fields
-                .navigationDestination(for: QueryField.self) { PrFilterValuesView(field: $0) }
+                .navigationDestination(for: QueryField.self) { field in
+                    PrFilterValuesView(field: field, showResults: { dismiss() })
+                }
         }
         .tint(BD.text)
         .presentationDetents([.large])
@@ -53,7 +55,7 @@ struct PrFilterSheet: View {
                 Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Close")
             }
         }
-        .safeAreaInset(edge: .bottom) { PrFilterShowButton() }
+        .safeAreaInset(edge: .bottom) { PrFilterShowButton(showResults: { dismiss() }) }
     }
 
     /// What a field holds, or Any.
@@ -76,11 +78,11 @@ struct PrFilterSheet: View {
 /// "Show 37 pull requests": how many the filters leave, before you close the sheet.
 private struct PrFilterShowButton: View {
     @Environment(AppModel.self) private var app
-    @Environment(\.dismiss) private var dismiss
+    let showResults: () -> Void
 
     var body: some View {
         let count = app.focus.focus.map { PrListContext(focus: $0, list: app.prList, logins: app.focus.myLogins, ciGroups: app.focus.ciGroups).count(app.prList.query) } ?? 0
-        Button { dismiss() } label: {
+        Button(action: showResults) {
             Text(count == 1 ? "Show 1 pull request" : "Show \(count) pull requests")
                 .font(.system(size: 16.5, weight: .semibold))
                 .frame(maxWidth: .infinity)
@@ -103,6 +105,7 @@ private struct PrFilterShowButton: View {
 struct PrFilterValuesView: View {
     @Environment(AppModel.self) private var app
     let field: QueryField
+    let showResults: () -> Void
     @State private var negateChoice: Bool?
     @State private var find = ""
 
@@ -153,7 +156,7 @@ struct PrFilterValuesView: View {
         .navigationTitle(PrFacets.label(field))
         .navigationBarTitleDisplayMode(.inline)
         .modifier(FindField(text: $find, prompt: "Find \(PrFacets.label(field).lowercased())", shown: PrFacets.fixedValues(field) == nil))
-        .safeAreaInset(edge: .bottom) { PrFilterShowButton() }
+        .safeAreaInset(edge: .bottom) { PrFilterShowButton(showResults: showResults) }
     }
 
     private func row(_ value: PrFacets.Value, on: Bool) -> some View {

@@ -13,6 +13,7 @@ struct PullRequestsView: View {
     @State private var sheet: Sheet?
     @State private var renaming: SavedPrView?
     @State private var newName = ""
+    @State private var accountTroubles: [AccountTrouble] = []
 
     enum Sheet: Identifiable {
         case display
@@ -35,6 +36,7 @@ struct PullRequestsView: View {
             if let focus = store.focus {
                 let context = PrListContext(focus: focus, list: list, logins: store.myLogins, ciGroups: store.ciGroups)
                 let model = context.model
+                if app.isReview { reviewReadNotices(focus, trouble: store.trouble) }
                 Section {
                     if model.rows.isEmpty { empty(model).listRowBackground(Color.clear).listRowSeparator(.hidden) }
                 } header: {
@@ -55,7 +57,7 @@ struct PullRequestsView: View {
                     case .open(let group): section(group, all: focus.pullRequests)
                     }
                 }
-                if !model.rows.isEmpty, !swipeHintSeen {
+                if !model.rows.isEmpty, !swipeHintSeen, canActOnRows {
                     Text(PrSwipeHint.text)
                         .font(.system(size: 14))
                         .foregroundStyle(BD.text3)
@@ -111,6 +113,9 @@ struct PullRequestsView: View {
         .tint(BD.text)
         .task { await store.poll() }
         .task { await list.sync() }
+        .task(id: store.focus?.generatedAt) {
+            if let direct = app.direct { accountTroubles = await direct.gitHub.accountTroubles() }
+        }
         #if DEBUG
         .task {
             guard let sheet = PrListDebugRoute.opens else { return }
@@ -205,6 +210,7 @@ struct PullRequestsView: View {
 
     private func rows(_ facts: [PrFacts], namesAuthor: Bool) -> some View {
         let sortBy = app.prList.display.sortBy
+        let canAct = canActOnRows
         return ForEach(facts) { f in
             let pr = f.pr
             Button { app.router.push(.pullRequest(pr.prKey)) } label: {
@@ -214,8 +220,8 @@ struct PullRequestsView: View {
             .listRowInsets(EdgeInsets())
             .listRowBackground(BD.card)
             .alignmentGuide(.listRowSeparatorLeading) { _ in namesAuthor ? 14 : 58 }
-            .contextMenu { PrContextMenu(pr: pr) } preview: { PrCard(pr: pr).frame(width: 370).environment(app) }
-            .prSwipeActions(pr, app: app)
+            .contextMenu { PrContextMenu(pr: pr, canAct: canAct) } preview: { PrCard(pr: pr).frame(width: 370).environment(app) }
+            .prSwipeActions(pr, app: app, enabled: canAct)
             .accessibilityIdentifier("pr-row-\(pr.key)")
         }
     }
@@ -223,13 +229,32 @@ struct PullRequestsView: View {
     /// Review all: the author's run (the same as the long-press item), when the group is someone else's and the run
     /// may have anything in it. Pull requests whose E2E report isn't read yet count until the run reads it.
     private func reviewAll(_ group: PrGroupNode, all: [PrSummary]) -> OpenGroupHeader.ReviewAll? {
-        guard group.kind == .author, !group.pinned, !group.authorIsMe, let author = group.author else { return nil }
+        guard canActOnRows, group.kind == .author, !group.pinned, !group.authorIsMe, let author = group.author else { return nil }
         let world = app.focus.runWorld
         let plan = AuthorRun.plan(AuthorRun.candidates(all, author: author.login, myLogins: app.focus.myLogins), fit: world.fit)
         let count = plan.queue.count + plan.checking.count
         guard count > 0 else { return nil }
         let title = count == group.facts.count ? "Review all \(count)" : "Review \(count)"
         return OpenGroupHeader.ReviewAll(title: title) { app.router.reviewAuthor(author.login) }
+    }
+
+    private var canActOnRows: Bool { !app.isReview || app.focus.trouble == nil }
+
+    @ViewBuilder
+    private func reviewReadNotices(_ focus: Focus, trouble: ListTrouble?) -> some View {
+        Group {
+            if let trouble {
+                PrListReadBanner(trouble: trouble, generatedAt: focus.generatedAt) { app.router.present(.settings) }
+            } else {
+                ForEach(accountTroubles) { trouble in
+                    PrListReadBanner(account: trouble, known: app.direct?.credentials.gitHub.first { $0.id == trouble.id }) {
+                        app.router.present(.settings)
+                    }
+                }
+            }
+        }
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 
     // MARK: - Header
@@ -408,6 +433,12 @@ struct PullRequestsView: View {
             }
             .accessibilityLabel("Display")
             .accessibilityIdentifier("prs-display")
+        }
+        if app.isReview {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Settings", systemImage: "person.crop.circle") { app.router.present(.settings) }
+                    .accessibilityIdentifier("open-settings")
+            }
         }
     }
 
