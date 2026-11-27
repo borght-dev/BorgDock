@@ -11,6 +11,7 @@ struct MergeSheet: View {
     @State private var deleteBranch: Bool?
     @State private var commitTitle = ""
     @State private var commitMessage = ""
+    @State private var bypassRequest: MergeRequest?
     @FocusState private var editing: Bool
 
     var body: some View {
@@ -36,6 +37,19 @@ struct MergeSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if let detail { footer(detail) }
+            }
+            .overlay(alignment: .top) {
+                if app.isReview, app.toasts.current?.isError == true { ToastView() }
+            }
+            .alert(
+                "Bypass merge protections?",
+                isPresented: Binding(get: { bypassRequest != nil }, set: { if !$0 { bypassRequest = nil } }),
+                presenting: bypassRequest
+            ) { request in
+                Button("Cancel", role: .cancel) {}
+                Button("Bypass merge", role: .destructive) { Task { await merge(request, bypass: true) } }
+            } message: { _ in
+                Text("Merge #\(key.number) now if GitHub allows you to bypass the branch rules.")
             }
         }
         .presentationDetents([.large])
@@ -129,12 +143,34 @@ struct MergeSheet: View {
     private func footer(_ detail: PrDetail) -> some View {
         let busy = app.busy.contains("merge-\(key.key)")
         let whenReady = detail.checks.pending > 0
+        let canMerge = detail.viewerCanMerge && detail.mergeable != .conflicting
+        let mergeDisabled = busy || !canMerge || detail.checks.failed > 0
         return VStack(spacing: 12) {
-            Button { Task { await merge(detail) } } label: {
+            Button {
+                let request = mergeRequest(detail)
+                Task { await merge(request) }
+            } label: {
                 Label(busy ? "Merging…" : whenReady ? "Merge when ready" : "\((method ?? .squash).verb) and merge", systemImage: "arrow.triangle.merge")
             }
             .buttonStyle(.bdGo)
-            .disabled(busy || !detail.viewerCanMerge || detail.mergeable == .conflicting || detail.checks.failed > 0)
+            .disabled(mergeDisabled)
+            .opacity(app.isReview && mergeDisabled ? 0.45 : 1)
+            .accessibilityIdentifier("merge-submit")
+            if app.isReview, canMerge, detail.state == .open, !detail.isDraft {
+                Button {
+                    editing = false
+                    bypassRequest = mergeRequest(detail)
+                } label: {
+                    Text("Bypass merge")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(busy ? BD.text3 : BD.red)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(busy)
+                .accessibilityIdentifier("merge-bypass")
+            }
             if app.focus.faceIdForActions {
                 Label("Confirms with Face ID", systemImage: "faceid").font(.system(size: 14)).foregroundStyle(BD.text3)
             } else if !detail.viewerCanMerge {
@@ -153,16 +189,19 @@ struct MergeSheet: View {
         if chosen == .merge, wasSquash { commitTitle = "Merge pull request #\(detail.number) from \(detail.headRef)" }
     }
 
-    private func merge(_ detail: PrDetail) async {
-        editing = false
-        let request = MergeRequest(
+    private func mergeRequest(_ detail: PrDetail) -> MergeRequest {
+        MergeRequest(
             method: method ?? detail.defaultMergeMethod,
             commitTitle: commitTitle,
             commitMessage: commitMessage,
             deleteBranch: deleteBranch ?? detail.deleteBranchOnMerge,
             headSha: detail.headSha
         )
-        if await app.focus.merge(detail.summary.prKey, request) != nil {
+    }
+
+    private func merge(_ request: MergeRequest, bypass: Bool = false) async {
+        editing = false
+        if await app.focus.merge(key, request, bypass: bypass) != nil {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             dismiss()
         }

@@ -17,7 +17,7 @@ protocol PullRequestBackend: Sendable {
     func postComment(_ key: PrKey, _ request: PostCommentRequest) async throws -> OKResponse
     func resolveThread(_ key: PrKey, threadId: String) async throws -> OKResponse
     func submitReview(_ key: PrKey, _ request: SubmitReviewRequest) async throws -> SubmitReviewResponse
-    func merge(_ key: PrKey, _ request: MergeRequest) async throws -> MergeResponse
+    func merge(_ key: PrKey, _ request: MergeRequest, bypass: Bool) async throws -> MergeResponse
     func rerunFailed(_ key: PrKey) async throws -> RerunResponse
     func snooze(_ key: PrKey, until: Date?) async throws -> OKResponse
     func repositories() async throws -> PrRepositories
@@ -38,6 +38,10 @@ protocol WorkItemBackend: Sendable {
 }
 
 extension PullRequestBackend {
+    func merge(_ key: PrKey, _ request: MergeRequest) async throws -> MergeResponse {
+        try await merge(key, request, bypass: false)
+    }
+
     /// The server has no such read; its re-reviews mark the files that changed and show the whole diff.
     func pullRequestFilesSinceReview(_ key: PrKey) async throws -> PrFiles? { nil }
 }
