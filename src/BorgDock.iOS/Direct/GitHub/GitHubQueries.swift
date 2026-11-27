@@ -102,6 +102,14 @@ enum GitHubQueries {
         enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: $method, commitHeadline: $headline, commitBody: $body, expectedHeadOid: $head }) { clientMutationId }
       }
     """
+
+    static let bypassMerge = """
+      mutation BypassMerge($id: ID!, $method: PullRequestMergeMethod!, $headline: String, $body: String, $head: GitObjectID!) {
+        mergePullRequest(input: { pullRequestId: $id, mergeMethod: $method, commitHeadline: $headline, commitBody: $body, expectedHeadOid: $head }) {
+          pullRequest { merged }
+        }
+      }
+    """
 }
 
 // MARK: - Answers

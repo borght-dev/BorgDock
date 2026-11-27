@@ -244,8 +244,7 @@ final class FocusStore {
             .flatMap { PrKey(key: $0.key)?.number }
     }
 
-    /// After a decision posts: the pull request as GitHub has it now, and Focus.
-    private func refreshAfterReview(_ key: PrKey) async {
+    private func refreshPullRequestAndFocus(_ key: PrKey) async {
         _ = try? await fetchDetail(key)
         await load()
     }
@@ -310,13 +309,13 @@ final class FocusStore {
         await loadDetail(key)
     }
 
-    func merge(_ key: PrKey, _ request: MergeRequest) async -> MergeResponse? {
-        guard await confirmWithFaceID("Merge #\(key.number)") else { return nil }
+    func merge(_ key: PrKey, _ request: MergeRequest, bypass: Bool = false) async -> MergeResponse? {
+        guard await confirmWithFaceID(bypass ? "Bypass merge for #\(key.number)" : "Merge #\(key.number)") else { return nil }
         var response: MergeResponse?
-        let done = await run("merge-\(key.key)") { response = try await $0.merge(key, request) }
+        let done = await run("merge-\(key.key)") { response = try await $0.merge(key, request, bypass: bypass) }
         guard done, let response else { return nil }
         app?.toasts.show(response.message.isEmpty ? (response.autoMerge ? "Merges when checks pass" : "Merged #\(key.number)") : response.message)
-        await load()
+        if bypass { await refreshPullRequestAndFocus(key) } else { await load() }
         return response
     }
 
@@ -341,7 +340,7 @@ final class FocusStore {
         reviewDecisions[key.key] = ReviewDecisionRecord(event: event, body: draft.body, lineComments: draft.lineComments, headSha: headSha,
                                                         at: .now, autoMerge: false, status: .posted)
         app?.toasts.show(event == .requestChanges ? "Asked for changes on #\(key.number)" : event == .approve ? "Approved #\(key.number)" : "Commented on #\(key.number)")
-        await refreshAfterReview(key)
+        await refreshPullRequestAndFocus(key)
         return true
     }
 
@@ -379,7 +378,7 @@ final class FocusStore {
                             self?.app?.report(error)
                         }
                     }
-                    await self?.refreshAfterReview(key)
+                    await self?.refreshPullRequestAndFocus(key)
                 }
             },
             onFailure: { [weak self] error in
