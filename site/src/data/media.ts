@@ -1,7 +1,7 @@
 // Captures and recordings: the manifests in design/site/*.json joined with
 // the files the asset pipeline wrote to public/. Build-time only.
 //
-// Every visual on the site comes from these manifests. A manifest entry whose
+// A manifest entry whose
 // files do not exist yet is still valid: Capture renders nothing for it and
 // Recording falls back to its poster or its fallback capture, so the site
 // builds before the assets are generated.
@@ -18,6 +18,8 @@ export type GalleryPage =
   | 'Detail'
   | 'Quick review'
   | 'Notes'
+  | 'iPhone'
+  | 'Work items'
   | 'Rail'
   | 'Tools';
 export const GALLERY_PAGES: GalleryPage[] = [
@@ -27,6 +29,8 @@ export const GALLERY_PAGES: GalleryPage[] = [
   'Detail',
   'Quick review',
   'Notes',
+  'Work items',
+  'iPhone',
   'Rail',
   'Tools',
 ];

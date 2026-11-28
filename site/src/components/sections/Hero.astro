@@ -24,7 +24,7 @@ interface Props {
 }
 
 const {
-  badge = { href: '/quick-review', text: 'New: Quick review with the pull request in view' },
+  badge = { href: '/iphone', text: 'Explore BorgDock Review for iPhone' },
   title = 'Every pull request, one window.',
   lede = 'BorgDock watches your checks, tells you what needs you, keeps your work items next to the agents on them, and lets you review and merge without opening a browser tab.',
   secondary = { href: '/features', label: 'See how it works' },
@@ -47,6 +47,8 @@ const {
     </div>
   </div>
   <div class="hero__media reveal reveal--media" style="--i: 4">
-    {video ? <Recording recording={video} frame={false} eager /> : <Recording slug={fallback} eager />}
+    <slot name="media">
+      {video ? <Recording recording={video} frame={false} eager /> : <Recording slug={fallback} eager />}
+    </slot>
   </div>
 </section>

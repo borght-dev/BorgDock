@@ -30,7 +30,7 @@ const initial = choice.win;
   class:list={['btn btn--primary', `btn--${size}`]}
   href={initial.href}
   data-download
-  data-choices={JSON.stringify(choice)}
+  data-choices={JSON.stringify({ ...choice, ios: { href: '/iphone', label: 'BorgDock for iPhone', meta: 'Setup and builds' } })}
 >
   <svg
     width="15"

@@ -1,0 +1,79 @@
+---
+import { Image } from 'astro:assets';
+import Layout from '~/layouts/Layout.astro';
+import PageHeading from '~/components/PageHeading.astro';
+import SiteNav from '~/components/SiteNav.astro';
+import SiteFooter from '~/components/SiteFooter.astro';
+import { phoneScreens } from '~/data/iphone';
+import { REPO_URL } from '~/data/site';
+
+const sections: { title: string; text: string; screens: (keyof typeof phoneScreens)[] }[] = [
+  {
+    title: 'Pull requests',
+    text: 'Switch between Your turn, Mine and Failing. Filter by repository or author, group the results and save the view on your phone. Open a pull request to see the checks, review decisions and linked work item.',
+    screens: ['pull-requests-home', 'pull-requests-display', 'pull-request-reviewers'],
+  },
+  {
+    title: 'Review the change on your phone',
+    text: 'Read the brief, walk the diff and leave comments on a line or a range. Swipe between proof images and swipe down to close them. On a second review, go straight to the files changed since your verdict.',
+    screens: ['review-walk', 'review-comment-lines', 'review-rereview'],
+  },
+  {
+    title: 'Decide what happens next',
+    text: 'Approve, request changes or send comments. Turn on auto-merge to wait for checks, or confirm a bypass when your GitHub permissions allow it. Review one pull request or continue with the same author.',
+    screens: ['review-decide', 'confirm-merge', 'review-end'],
+  },
+  {
+    title: 'Connect your repositories',
+    text: 'BorgDock Review reads GitHub directly. Add your accounts, pick repositories and optionally connect Azure DevOps to read the work behind a change. Your tokens stay in the iPhone Keychain.',
+    screens: ['setup-repositories', 'work-item-details', 'settings'],
+  },
+  {
+    title: 'Run agents with the BorgDock companion app',
+    text: 'Connect the companion app to your BorgDock server. Focus lists agents waiting for you. Answer from a notification, open an assigned item in Work or check the sprint burndown. PR views sync with your linked desktop. BorgDock Review keeps its saved views on the device.',
+    screens: ['companion-focus', 'companion-work', 'companion-sprint'],
+  },
+];
+---
+<Layout title="BorgDock Review for iPhone" description="Review GitHub pull requests on iPhone with diffs, proof, CI checks and linked Azure DevOps work items. Connect directly to GitHub or use BorgDock with your server.">
+  <SiteNav current="iphone" />
+  <main id="main">
+    <PageHeading eyebrow="BorgDock Review for iPhone" title="Review a pull request from your phone."
+      lede="Find the change in a saved view, check the diff against the linked work item and send your review straight to GitHub." />
+    {sections.map((section, index) => (
+      <section class="phone-section" aria-label={section.title}>
+        {index > 0 && <><h2>{section.title}</h2><p>{section.text}</p></>}
+        <div class="phone-strip">
+          {section.screens.map((key) => {
+            const screen = phoneScreens[key];
+            return <figure>
+              <Image src={screen.image} alt={screen.title} widths={[300, 600]} sizes="(max-width: 720px) 54vw, 250px" format="webp" loading="lazy" />
+              <figcaption>{screen.title}</figcaption>
+            </figure>;
+          })}
+        </div>
+        {index === 0 && <p>{section.text}</p>}
+      </section>
+    ))}
+    <section class="phone-section">
+      <h2>Build the iPhone apps</h2>
+      <p>Both apps target iOS 26. The project includes build instructions and an internal TestFlight workflow.</p>
+      <a class="link" href={`${REPO_URL}/tree/main/src/BorgDock.iOS#borgdock-for-iphone`}>iPhone setup and builds on GitHub</a>
+    </section>
+  </main>
+  <SiteFooter />
+</Layout>
+
+<style>
+  .phone-section { max-width: 1040px; margin: 0 auto; padding: 40px var(--site-gutter); }
+  h2 { margin: 0 0 12px; font-size: clamp(1.5rem, 3vw, 2.25rem); }
+  .phone-section p { max-width: 65ch; color: var(--color-text-secondary); line-height: 1.65; }
+  .phone-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 24px; border-radius: var(--radius-xl); padding: 24px; background: var(--color-surface-raised); }
+  figure { margin: 0; min-width: 0; }
+  figure img { display: block; width: 100%; max-width: 250px; height: auto; margin: auto; border-radius: var(--radius-lg); border: 1px solid var(--color-subtle-border); }
+  figcaption { text-align: center; margin-top: 10px; font-size: .875rem; }
+  @media (max-width: 720px) {
+    .phone-strip { grid-template-columns: repeat(3, 58%); overflow-x: auto; scroll-snap-type: x proximity; padding: 16px; }
+    figure { scroll-snap-align: center; }
+  }
+</style>

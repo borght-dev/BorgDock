@@ -1005,6 +1005,8 @@ kbd {
 
 /* ---- Gallery ---- */
 
+.phone-preview { display: block; max-width: 100%; width: 240px; height: auto; margin: auto; border: 1px solid var(--color-subtle-border); border-radius: var(--radius-xl); }
+
 .gallery-filters {
   max-width: var(--site-max);
   margin: 40px auto 0;
@@ -1089,6 +1091,18 @@ kbd {
   border-bottom: 1px solid var(--color-subtle-border);
 }
 
+.gallery__item[data-page="iPhone"] img {
+  object-fit: contain;
+  object-position: center;
+  aspect-ratio: 4 / 3;
+  background: var(--color-surface-raised);
+}
+
+.lightbox__body img {
+  max-height: 78vh;
+  object-fit: contain;
+}
+
 .gallery__label {
   display: flex;
   align-items: center;
@@ -1128,12 +1142,16 @@ kbd {
   box-shadow: var(--elevation-3);
 }
 
+.lightbox--portrait { width: min(46vh, 94vw); }
+
 .lightbox::backdrop {
   background: var(--color-overlay-bg);
 }
 
-.lightbox[open] {
-  animation: site-lightbox var(--motion-base) var(--ease-out);
+@media (prefers-reduced-motion: no-preference) {
+  .lightbox[open] {
+    animation: site-lightbox var(--motion-base) var(--ease-out);
+  }
 }
 
 @keyframes site-lightbox {
@@ -1553,7 +1571,9 @@ kbd {
   .hero {
     padding-top: 56px;
   }
+}
 
+@media (max-width: 960px) {
   .site-nav__inner {
     padding: 0 var(--site-gutter-mobile);
   }
@@ -1606,7 +1626,9 @@ kbd {
     margin-top: 10px;
     justify-content: center;
   }
+}
 
+@media (max-width: 720px) {
   .teaser__row {
     grid-template-columns: 1fr;
     gap: 6px;

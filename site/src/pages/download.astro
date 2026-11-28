@@ -47,7 +47,7 @@ const notesHref = whatsNewPosts[latestRelease.version] ?? `/changelog#v${latestR
         {
           missing.length > 0 && (
             <p class="download__platforms" data-missing={missing.join(' ')}>
-              BorgDock is built for {installers.length > 0 ? [...new Set(installers.map((i) => OS_NAME[i.os]))].join(' and ') : 'no platform'} today.
+              This desktop release is available for {installers.length > 0 ? [...new Set(installers.map((i) => OS_NAME[i.os]))].join(' and ') : 'no platform'} today.
               There is no {missing.map((os) => OS_NAME[os]).join(' or ')} build yet.
             </p>
           )
@@ -93,6 +93,7 @@ const notesHref = whatsNewPosts[latestRelease.version] ?? `/changelog#v${latestR
         Your pull requests show up in the Pull requests section right after.
       </p>
       <Capture slug="workbench-list" />
+      <p>Looking for the phone apps? <a class="link" href="/iphone">Explore BorgDock for iPhone and its build options</a>.</p>
     </section>
   </main>
   <SiteFooter />

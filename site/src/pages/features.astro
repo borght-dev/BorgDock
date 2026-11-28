@@ -1,4 +1,7 @@
 ---
+import ReleaseCapture from '~/components/ui/ReleaseCapture.astro';
+import { Image } from 'astro:assets';
+import { phoneScreens } from '~/data/iphone';
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
@@ -17,15 +20,12 @@ const toc = [
   { id: 'dispatch', label: 'Dispatch' },
   { id: 'notes', label: 'Notes' },
   { id: 'fix', label: 'Fix with Claude' },
+  { id: 'work-items', label: 'Work items' },
+  { id: 'iphone', label: 'iPhone' },
   { id: 'tools', label: 'Tools' },
 ];
 
 const tools = [
-  {
-    slug: 'work-items',
-    name: 'Work items',
-    text: 'Your Azure DevOps queries in the same window, grouped by state. Open an item full screen and change it without a browser.',
-  },
   {
     slug: 'worktrees-window',
     name: 'Worktrees window',
@@ -34,7 +34,7 @@ const tools = [
   {
     slug: 'ai-limits',
     name: 'Limits left',
-    text: 'What is left of every Claude and Codex account on this machine, in the rail: this week, this session and when each resets. When an account runs out, Focus says so and names the threads that spend it.',
+    text: 'See the weekly and session allowance for each Claude and Codex account, and when it resets. GitHub appears last when its API quota runs low. Focus lists the threads affected by an exhausted account.',
   },
   {
     slug: 'machines',
@@ -47,9 +47,24 @@ const tools = [
     text: "Press Ctrl+F8 in any app and type. The note lands in today's note, linked to the pull request or work item you last had open.",
   },
   {
+    slug: 'work-item-palette',
+    name: 'Work item palette',
+    text: 'Press Ctrl+F9 to browse your assigned and recent items or search by ID and title.',
+  },
+  {
+    slug: 'tray-glance',
+    name: 'Tray flyout',
+    text: 'Open the tray to check review requests and CI while another app is in front.',
+  },
+  {
+    slug: 'settings-iphone',
+    name: 'Link your iPhone',
+    text: 'Link the desktop to your BorgDock server to share read status with your iPhone and keep phone notifications quiet while you work at your desk.',
+  },
+  {
     slug: 'sql',
     name: 'SQL',
-    text: 'Press Ctrl+F10, write a query and read the results in a grid you can copy straight from.',
+    text: 'Press Ctrl+F10 to query SQL Server. Run a selection with Ctrl+Enter, save snippets and copy results with their column headings.',
   },
   {
     slug: 'open-in-t3',
@@ -66,7 +81,7 @@ const tools = [
 
 <Layout
   title="GitHub PR reviews, CI monitoring and Azure DevOps | BorgDock"
-  description="What BorgDock does for you: watch your pull requests and the failures they share, decide what needs you, review and merge, walk your work items with the agents on them, keep goals and notes next to the work, and hand failures to an agent."
+  description="See how BorgDock handles GitHub reviews, shared CI failures, Azure DevOps work items, T3 agents and Markdown notes. Explore the desktop tools and iPhone apps."
 >
   <SiteNav current="features" />
   <main id="main">
@@ -97,10 +112,11 @@ const tools = [
           Click a row and the pull request opens full screen in the same window, with its whole
           description and screenshots. Back or Esc takes you straight back to where you were.
         </p>
-        <Recording slot="media" slug="pr-detail-push" />
+        <p>Batch-approve dependency updates from the list. Patch and minor updates with healthy checks start selected. Display can keep PRs visible when only unrelated checks failed.</p>
+        <ReleaseCapture slot="media" path="4.11.0/filters-views.png" alt="Filter chips and saved views above the pull request table" />
       </Job>
 
-      <Job id="failures" eyebrow="Shared failures" title="Fix a broken test once, not on every pull request" reverse reading>
+      <Job id="failures" eyebrow="Shared failures" title="Find the cause of a shared CI failure" reverse reading>
         <p>
           When the same CI failure breaks several pull requests, it gets one row above the list: the
           failing test, how many pull requests it blocks and who is on it. A pull request that is red
@@ -143,19 +159,19 @@ const tools = [
           what happened since you last looked: merges, deployments, new reviews. Something stops
           counting the moment it is handled, wherever you handled it.
         </p>
-        <p>All history opens the full list in a window of its own.</p>
+        <p>All history opens the full list in a window of its own. Turn on review reminders in Settings to get a Start Review action when a request has been waiting.</p>
         <Capture slot="media" slug="recent" />
       </Job>
 
-      <Job id="review" eyebrow="Quick review" title="Review file by file, decide on the last one" reading>
+      <Job id="review" eyebrow="Quick review" title="Read the files that need your review" reading>
         <p>
           Press Start Quick Review in Focus and every pull request that waits for your review lines up.
           The pull request stays above the diff, with its labels, CI and work item, and its proof sits
           in a panel beside the code.
         </p>
         <p>
-          Press V to mark a file reviewed and open the next. On the last file the footer becomes your
-          decision, and the next pull request opens as soon as you make it. Approvals wait five seconds,
+          Press V to mark a file reviewed and open the next. You can comment or approve while files
+          are still unread. Settings can require a complete file review before approval. Approvals wait five seconds,
           so you can still undo one.
         </p>
         <p>Back at a pull request you reviewed before? You see only the files that changed since.</p>
@@ -198,6 +214,12 @@ const tools = [
         <Recording slot="media" slug="dispatch-start" />
       </Job>
 
+      <Job id="work-items" eyebrow="Work items" title="Read the item behind the pull request" reading>
+        <p>Open an AB# link for a peek, or open the full item to change its state, assignment, priority or iteration. Now shows the linked pull request, checks and agent. Latest shows the newest update.</p>
+        <p>The Activity timeline puts field changes beside comments and linked pull requests. Expand an agent run to see each step.</p>
+        <ReleaseCapture slot="media" path="4.12.0/work-item-detail.png" alt="Azure DevOps work item with editable fields, Now and Latest" />
+      </Job>
+
       <Job id="notes" eyebrow="Notes" title="Write it down where your work is" reverse reading>
         <p>
           Notes are Markdown files in a folder that Obsidian and VS Code open as they are. Link them
@@ -208,11 +230,11 @@ const tools = [
           checks. Pull requests and work items get a Notes tab with every note that mentions them.
         </p>
         <p>
-          Today starts the day's note with what happened since yesterday. Start a T3 thread from a note
+          Choose a folder for your daily notes in Settings. Create folders, rename them or move notes between them in the vault. Start a T3 thread from a note
           and the agent's answer lands in it when it stops. Point Settings → Notes at a folder your sync
           client shares and your other machine has the same notes.
         </p>
-        <Capture slot="media" slug="notes" />
+        <ReleaseCapture slot="media" path="4.15.0/notes-vault-controls.png" alt="Notes vault with daily notes and folder controls" />
       </Job>
 
       <Job id="fix" eyebrow="Fix with Claude" title="Hand a failure to an agent" reading>
@@ -230,6 +252,11 @@ const tools = [
           you pick.
         </p>
         <Capture slot="media" slug="pr-detail-failing" />
+      </Job>
+      <Job id="iphone" eyebrow="iPhone" title="Review from your phone" reverse>
+        <p>BorgDock Review connects directly to your GitHub accounts. Find a pull request in a saved view, read the diff and send a review. Connect Azure DevOps to open the linked work item.</p>
+        <p><a class="link" href="/iphone">Explore the iPhone screens</a></p>
+        <Image slot="media" class="phone-preview" src={phoneScreens['pull-requests-home'].image} alt="Pull requests grouped by status in BorgDock Review on iPhone" width={480} format="webp" loading="lazy" />
       </Job>
     </div>
 

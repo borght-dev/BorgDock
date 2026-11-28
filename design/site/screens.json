@@ -253,7 +253,7 @@
     },
     "theme": "both",
     "delay": 2500,
-    "alt": "Today's note, with what happened since yesterday written in: merges, items that moved, threads that finished, checks that failed",
+    "alt": "Today's Markdown note in the Notes vault",
     "page": "Notes"
   },
   {
@@ -533,7 +533,7 @@
     "theme": "both",
     "delay": 3000,
     "alt": "The Work items section: your Azure DevOps queries, the items in them and the details of the one you picked",
-    "page": "Tools"
+    "page": "Work items"
   },
   {
     "slug": "sql",
@@ -569,6 +569,118 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Settings → Agents: pair with T3 Code on this machine, add other machines and edit the prompts Dispatch starts agents with",
+    "page": "Tools"
+  },
+  {
+    "slug": "main-rail",
+    "storyId": "main-window-mainwindow--rail-prs",
+    "viewport": {
+      "width": 1440,
+      "height": 860
+    },
+    "theme": "both",
+    "delay": 1200,
+    "alt": "Pull requests beside the five-section rail with account limits, machine storage and the notification bell",
+    "page": "Rail"
+  },
+  {
+    "slug": "activity-history",
+    "storyId": "activity-history-window--all-history",
+    "viewport": {
+      "width": 920,
+      "height": 680
+    },
+    "theme": "both",
+    "delay": 1200,
+    "alt": "Activity history with agent questions and recent events",
+    "page": "Rail"
+  },
+  {
+    "slug": "setup-repos",
+    "storyId": {
+      "light": "wizard-setupwizard--repositories",
+      "dark": "wizard-setupwizard--repositories-dark"
+    },
+    "viewport": {
+      "width": 900,
+      "height": 700
+    },
+    "theme": "both",
+    "delay": 1200,
+    "alt": "Choose repositories to watch in the desktop setup wizard",
+    "page": "Tools"
+  },
+  {
+    "slug": "settings-iphone",
+    "storyId": "settings-phonelinkcard--unlinked",
+    "viewport": {
+      "width": 760,
+      "height": 480
+    },
+    "theme": "both",
+    "delay": 1200,
+    "alt": "Desktop settings for linking an iPhone",
+    "page": "Tools"
+  },
+  {
+    "slug": "settings-accounts",
+    "storyId": "settings-ai-accounts--edited",
+    "viewport": {
+      "width": 800,
+      "height": 540
+    },
+    "theme": "both",
+    "delay": 1200,
+    "alt": "Labels and colours for Claude and Codex accounts",
+    "page": "Tools"
+  },
+  {
+    "slug": "settings-updates",
+    "storyId": "settings-updatesection--ready-to-restart",
+    "viewport": {
+      "width": 760,
+      "height": 520
+    },
+    "theme": "both",
+    "delay": 1200,
+    "alt": "Updates settings with a downloaded update ready to install",
+    "page": "Tools"
+  },
+  {
+    "slug": "notes-settings",
+    "storyId": "settings-notessettingssection--sync-folder",
+    "viewport": {
+      "width": 800,
+      "height": 570
+    },
+    "theme": "both",
+    "delay": 1200,
+    "alt": "Notes settings for the shared vault and daily note folder",
+    "page": "Notes"
+  },
+  {
+    "slug": "work-item-palette",
+    "storyId": "windows-workitempaletteapp--browse-full-sections",
+    "viewport": {
+      "width": 860,
+      "height": 600
+    },
+    "theme": "both",
+    "delay": 1200,
+    "alt": "Browse assigned, recent and active work items in the keyboard palette",
+    "page": "Work items"
+  },
+  {
+    "slug": "tray-glance",
+    "selector": ".bd-flyout-panel",
+    "storyId": "flyout-flyoutapp--glance-mixed",
+    "viewport": {
+      "width": 460,
+      "height": 640
+    },
+    "theme": "both",
+    "delay": 1200,
+    "alt": "Glance at pull requests and checks in the tray flyout",
     "page": "Tools"
   }
 ]

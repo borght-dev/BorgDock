@@ -103,11 +103,11 @@ export async function openStory(browser, entry, { theme, contextOptions = {} } =
 }
 
 export async function waitForStory(page, entry, theme) {
-  await page.goto(storyUrl(entry.storyId, theme, entry.args), { waitUntil: 'networkidle' });
+  await page.goto(storyUrl(entry.storyId, theme, entry.args), { waitUntil: 'domcontentloaded' });
   // Wait for the story root, not the clip target — the clip target (e.g. a
   // toast card injected below) may not exist until after seedIdle/emit.
   await page.waitForSelector('#storybook-root', { state: 'attached', timeout: 15_000 });
-  // networkidle can fire while Vite still compiles the story on demand, with
+  // Vite can still be compiling the story on demand, with
   // Storybook's spinner on screen; wait until the story (or its error) shows.
   await page.waitForSelector('body.sb-show-main, body.sb-show-errordisplay', {
     state: 'attached',

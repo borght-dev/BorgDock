@@ -86,7 +86,8 @@ const structuredData = {
         try {
           var ua = navigator.userAgent || '';
           var p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '').toLowerCase();
-          var os = /win/.test(p) || /windows/i.test(ua) ? 'win'
+          var os = /iphone|ipad|ipod/i.test(ua) || (/mac/.test(p) && navigator.maxTouchPoints > 1) ? 'ios'
+            : /win/.test(p) || /windows/i.test(ua) ? 'win'
             : /mac|iphone|ipad/.test(p) || /mac os/i.test(ua) ? 'mac'
             : /linux|x11|cros/.test(p) || /linux/i.test(ua) ? 'linux' : 'win';
           document.documentElement.dataset.os = os;
