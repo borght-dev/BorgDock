@@ -36,6 +36,7 @@ export const GALLERY_PAGES: GalleryPage[] = [
 ];
 
 interface ManifestEntry {
+  title?: string;
   slug: string;
   alt: string;
   page: string;
@@ -52,6 +53,7 @@ export interface Image {
 }
 
 export interface Capture {
+  title?: string;
   slug: string;
   alt: string;
   page: GalleryPage;
@@ -142,7 +144,7 @@ export const captures: Capture[] = (screensManifest as ManifestEntry[]).map((m) 
     const img = image(`/screens/${m.slug}-${t}@2x.png`, 2);
     if (img) images[t] = img;
   }
-  return { slug: m.slug, alt: m.alt, page: asPage(m.page), draft: m.draft === true, images };
+  return { slug: m.slug, title: m.title, alt: m.alt, page: asPage(m.page), draft: m.draft === true, images };
 });
 
 export const recordings: Recording[] = (

@@ -22,6 +22,7 @@ type Story = StoryObj<typeof PhoneLinkCard>;
 const unlinked = { linked: false, server: null, serverName: null };
 
 export const Unlinked: Story = {
+  args: { phoneLink: { ...DEFAULT_PHONE_LINK, serverUrl: 'https://dock.example.com' } },
   decorators: [
     withSettings(configuredSettings, { invokeResponses: { phone_link_state: unlinked } }),
   ],

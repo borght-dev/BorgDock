@@ -1,21 +1,26 @@
-import pullRequestsHome from '../../../docs/proof/ios-borgdock-review/pull-requests-home.png';
-import pullRequestsDisplay from '../../../docs/proof/ios-borgdock-review/pull-requests-display.png';
-import pullRequest from '../../../docs/proof/ios-borgdock-review/pull-request.png';
-import pullRequestReviewers from '../../../docs/proof/ios-borgdock-review/pull-request-reviewers.png';
-import workItem from '../../../docs/proof/ios-borgdock-review/work-item.png';
-import workItemDetails from '../../../docs/proof/ios-borgdock-review/work-item-details.png';
-import workItemDark from '../../../docs/proof/ios-borgdock-review/work-item-dark.png';
-import reviewBrief from '../../../docs/proof/ios-borgdock-review/review-brief.png';
-import reviewWalk from '../../../docs/proof/ios-borgdock-review/review-walk.png';
-import reviewCommentLines from '../../../docs/proof/ios-borgdock-review/review-comment-lines.png';
-import reviewRereview from '../../../docs/proof/ios-borgdock-review/review-rereview.png';
-import reviewDecide from '../../../docs/proof/ios-borgdock-review/review-decide.png';
-import reviewEnd from '../../../docs/proof/ios-borgdock-review/review-end.png';
-import connect from '../../../docs/proof/ios-borgdock-review/connect.png';
-import setupGithubToken from '../../../docs/proof/ios-borgdock-review/setup-github-token.png';
-import setupAzureDevops from '../../../docs/proof/ios-borgdock-review/setup-azure-devops.png';
-import setupRepositories from '../../../docs/proof/ios-borgdock-review/setup-repositories.png';
-import settings from '../../../docs/proof/ios-borgdock-review/settings.png';
+import pullRequestsHome from '../assets/iphone/review/pull-requests-home.png';
+import pullRequestsDisplay from '../assets/iphone/review/pull-requests-display.png';
+import pullRequestsFilter from '../assets/iphone/review/pull-requests-filter.png';
+import pullRequestsGrouped from '../assets/iphone/review/pull-requests-grouped.png';
+import watchedRepositories from '../assets/iphone/review/watched-repositories.png';
+import accountStatus from '../assets/iphone/review/account-status.png';
+import proofGallery from '../assets/iphone/review/proof-gallery.png';
+import pullRequest from '../assets/iphone/review/pull-request.png';
+import pullRequestReviewers from '../assets/iphone/review/pull-request-reviewers.png';
+import workItem from '../assets/iphone/review/work-item.png';
+import workItemDetails from '../assets/iphone/review/work-item-details.png';
+import workItemDark from '../assets/iphone/review/work-item-dark.png';
+import reviewBrief from '../assets/iphone/review/review-brief.png';
+import reviewWalk from '../assets/iphone/review/review-walk.png';
+import reviewCommentLines from '../assets/iphone/review/review-comment-lines.png';
+import reviewRereview from '../assets/iphone/review/review-rereview.png';
+import reviewDecide from '../assets/iphone/review/review-decide.png';
+import reviewEnd from '../assets/iphone/review/review-end.png';
+import connect from '../assets/iphone/review/connect.png';
+import setupGithubToken from '../assets/iphone/review/setup-github-token.png';
+import setupAzureDevops from '../assets/iphone/review/setup-azure-devops.png';
+import setupRepositories from '../assets/iphone/review/setup-repositories.png';
+import settings from '../assets/iphone/review/settings.png';
 import listDark from '../../../docs/proof/ios-pr-list/list-dark.png';
 import listFilters from '../../../docs/proof/ios-pr-list/list-filters.png';
 import filterSheet from '../../../docs/proof/ios-pr-list/filter-sheet.png';
@@ -29,8 +34,8 @@ import clearedBySharedFailure from '../../../docs/proof/ios-quick-review-next/cl
 import endCardRun from '../../../docs/proof/ios-quick-review-next/end-card-run.png';
 import endCardSingle from '../../../docs/proof/ios-quick-review-next/end-card-single.png';
 import endCardNext from '../../../docs/proof/ios-quick-review-next/end-card-next.png';
-import merge from '../../../docs/proof/ios-borgdock-review/bypass-merge.png';
-import confirmMerge from '../../../docs/proof/ios-borgdock-review/bypass-merge-confirm.png';
+import merge from '../assets/iphone/review/bypass-merge.png';
+import confirmMerge from '../assets/iphone/review/bypass-merge-confirm.png';
 
 import companionFocus from '../assets/iphone/focus.png';
 import companionWork from '../assets/iphone/work.png';
@@ -42,27 +47,37 @@ import companionItem from '../assets/iphone/item.png';
 import companionSources from '../assets/iphone/sources.png';
 import type { Theme } from './media';
 
-export const phoneScreens = {
+type PhoneScreen = { image: ImageMetadata; title: string; theme: Theme };
+
+export const reviewScreens = {
   'pull-requests-home': { image: pullRequestsHome, title: 'Pull requests across watched repositories', theme: 'light' },
   'pull-requests-display': { image: pullRequestsDisplay, title: 'Display and grouping options', theme: 'light' },
-  'pull-request': { image: pullRequest, title: 'Pull request checks and linked work', theme: 'light' },
+  'pull-requests-filter': { image: pullRequestsFilter, title: 'Filter for draft pull requests', theme: 'light' },
+  'pull-requests-grouped': { image: pullRequestsGrouped, title: 'Draft pull requests grouped by repository', theme: 'light' },
+  'pull-request': { image: pullRequest, title: 'Pull request checks and proof', theme: 'light' },
   'pull-request-reviewers': { image: pullRequestReviewers, title: 'Reviewers and their decisions', theme: 'light' },
   'work-item': { image: workItem, title: 'Linked Azure DevOps work item', theme: 'light' },
-  'work-item-details': { image: workItemDetails, title: 'Work item fields and links', theme: 'light' },
+  'work-item-details': { image: workItemDetails, title: 'Work item fields and discussion', theme: 'light' },
   'work-item-dark': { image: workItemDark, title: 'Work item in dark mode', theme: 'dark' },
   'review-brief': { image: reviewBrief, title: 'Review brief before opening the files', theme: 'light' },
-  'review-walk': { image: reviewWalk, title: 'File walk with a unified diff', theme: 'light' },
-  'review-comment-lines': { image: reviewCommentLines, title: 'Draft comment on a range of lines', theme: 'light' },
+  'review-walk': { image: reviewWalk, title: 'A review thread below the lines it discusses', theme: 'light' },
+  'review-comment-lines': { image: reviewCommentLines, title: 'Write a comment on selected lines', theme: 'light' },
   'review-rereview': { image: reviewRereview, title: 'Changes since your last review', theme: 'light' },
   'review-decide': { image: reviewDecide, title: 'Review decision and auto-merge', theme: 'light' },
   'merge': { image: merge, title: 'Merge methods and branch protections', theme: 'light' },
   'confirm-merge': { image: confirmMerge, title: 'Confirm a bypass merge', theme: 'light' },
-  'review-end': { image: reviewEnd, title: 'Completed review and the next pull request', theme: 'light' },
+  'review-end': { image: reviewEnd, title: 'Your merge-ready pull requests after a walk-through', theme: 'light' },
   'connect': { image: connect, title: 'Connect BorgDock Review', theme: 'light' },
-  'setup-github-token': { image: setupGithubToken, title: 'Add a GitHub account', theme: 'light' },
+  'setup-github-token': { image: setupGithubToken, title: 'Verify GitHub token permissions', theme: 'light' },
   'setup-azure-devops': { image: setupAzureDevops, title: 'Connect an Azure DevOps project', theme: 'light' },
   'setup-repositories': { image: setupRepositories, title: 'Choose which repositories to watch', theme: 'light' },
+  'watched-repositories': { image: watchedRepositories, title: 'Watched repositories and review requests', theme: 'light' },
+  'account-status': { image: accountStatus, title: 'Replace an expired GitHub token', theme: 'light' },
+  'proof-gallery': { image: proofGallery, title: 'Swipe between pull request screenshots', theme: 'light' },
   'settings': { image: settings, title: 'Account and refresh settings', theme: 'light' },
+} satisfies Record<string, PhoneScreen>;
+
+export const companionScreens = {
   'list-dark': { image: listDark, title: 'Pull request list in dark mode', theme: 'dark' },
   'list-filters': { image: listFilters, title: 'Pull requests with active filters', theme: 'light' },
   'filter-sheet': { image: filterSheet, title: 'Filter by pull request properties', theme: 'light' },
@@ -84,4 +99,6 @@ export const phoneScreens = {
   'companion-capture': { image: companionCapture, title: 'Quick capture linked to a pull request', theme: 'light' },
   'companion-item': { image: companionItem, title: 'Work item activity and agent actions', theme: 'light' },
   'companion-sources': { image: companionSources, title: 'Connected sources and agent machines', theme: 'light' },
-} satisfies Record<string, { image: ImageMetadata; title: string; theme: Theme }>;
+} satisfies Record<string, PhoneScreen>;
+
+export const phoneScreens = { ...reviewScreens, ...companionScreens };

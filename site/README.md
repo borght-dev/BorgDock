@@ -6,7 +6,9 @@ the changelog. It is an Astro 5 site with one
 React island (the theme toggle), deployed to GitHub Pages from `main` by
 `.github/workflows/deploy-site.yml`.
 
-Desktop pictures and recordings come from BorgDock's stories and release captures. The iPhone tour and gallery use simulator captures from `docs/proof/ios-*` and `src/assets/iphone/`. The companion app and Dispatch web screenshots use the sample API in `src/BorgDock.Server/e2e/ui-fixture.mjs`. The gallery catalogs in `src/data/desktop-screens.ts` and `src/data/iphone.ts` reuse these images in WebP at build time.
+The manifests in `design/site/` select the desktop app’s Storybook stories for screenshots and recordings. Dated release posts use their original captures.
+
+BorgDock Review screenshots live in `src/assets/iphone/review/`. Its simulator UI tests export PNGs when `TEST_RUNNER_LEDGER_SHOTS` points to an existing directory. The debug fixture routes `item/60379/details` and `item/60379` open the linked work item for the details and dark-mode captures. The companion iPhone app and Dispatch web use the sample API in `src/BorgDock.Server/e2e/ui-fixture.mjs`. The mobile catalog in `src/data/iphone.ts` identifies which app each screen belongs to.
 
 ## Search visibility
 
@@ -131,13 +133,13 @@ live in the app (`src/BorgDock.Tauri/scripts/`) because they use its Playwright 
 ```json
 {
   "slug": "focus-board",
-  "storyId": "main-window-mainwindow--rail-focus-board",
+  "storyId": "main-window-mainwindow--rail-focus",
   "viewport": { "width": 1280, "height": 800 },
   "theme": "both",
   "delay": 2500,
   "selector": "#storybook-root",
-  "args": { "section": "workitems" },
-  "alt": "Focus as a board with four columns…",
+  "title": "Focus queue",
+  "alt": "The pull requests that need your review",
   "page": "Focus",
   "draft": false
 }
@@ -149,6 +151,7 @@ text stays readable at the size the site shows it). `storyId` may be
 `{ "light": "…", "dark": "…" }` for stories that lock their theme. `args` passes string story args
 through the URL. `page` is the gallery filter (`Pull requests`, `Focus`, `Dispatch`,
 `Detail`, `Quick review`, `Work items`, `Notes`, `Rail`, `iPhone`, `Tools`; anything else lands in `Tools`). `draft: true` keeps a capture out of the gallery, for a screen that is still being built.
+Use `readySelector` when the capture depends on asynchronous content. The capture waits for that element to appear and for an image to decode. Recordings use the same check.
 Output: `public/screens/<slug>-<theme>@2x.png`. Run it on its own with
 `node scripts/screenshot-manifest.mjs [manifest] [outDir] [--only slug,slug]` from
 `src/BorgDock.Tauri`.

@@ -9,12 +9,13 @@ import PageHeading from '~/components/PageHeading.astro';
 import { GALLERY_PAGES, captures, recordings, type Theme } from '~/data/media';
 
 import { getImage } from 'astro:assets';
-import { desktopScreens } from '~/data/desktop-screens';
-import { phoneScreens } from '~/data/iphone';
+import { desktopScreens, type GalleryScreen } from '~/data/desktop-screens';
+import { reviewScreens, companionScreens } from '~/data/iphone';
 
 interface Tile {
   title?: string;
   full?: string;
+  app?: string;
   page: string;
   theme: Theme;
   alt: string;
@@ -22,9 +23,14 @@ interface Tile {
   video?: string;
 }
 
-const screens = [
+const screens: GalleryScreen[] = [
   ...desktopScreens,
-  ...Object.values(phoneScreens).map((s) => ({ ...s, page: 'iPhone', alt: s.title })),
+  ...[
+    { app: 'BorgDock Review', screens: reviewScreens },
+    { app: 'BorgDock companion', screens: companionScreens },
+  ].flatMap(({ app, screens }) => Object.values(screens).map((screen) => ({
+    ...screen, page: 'iPhone' as const, app, alt: `${app} · ${screen.title}`,
+  }))),
 ];
 const tiles: Tile[] = await Promise.all(screens.map(async (screen) => {
   const [thumb, full] = await Promise.all([
@@ -32,6 +38,7 @@ const tiles: Tile[] = await Promise.all(screens.map(async (screen) => {
     getImage({ src: screen.image, width: Math.min(1640, screen.image.width), format: 'webp' }),
   ]);
   return {
+    app: screen.app,
     title: screen.title, alt: screen.alt, page: screen.page, theme: screen.theme,
     thumb: { src: thumb.src, width: Number(thumb.attributes.width), height: Number(thumb.attributes.height), density: 1 },
     full: full.src,
@@ -41,7 +48,7 @@ for (const c of captures.filter((x) => !x.draft)) {
   for (const theme of ['light', 'dark'] as const) {
     const img = c.images[theme];
     if (img) {
-      tiles.push({ page: c.page, theme, alt: c.alt, thumb: { ...img, density: 2 } });
+      tiles.push({ title: c.title, page: c.page, theme, alt: c.alt, thumb: { ...img, density: 2 } });
     }
   }
 }
@@ -116,7 +123,7 @@ const pagesWithTiles = GALLERY_PAGES.filter((p) => tiles.some((t) => t.page === 
                 decoding="async"
               />
               <span class="gallery__label">
-                <span>{t.title ?? t.page}</span>
+                <span>{t.app && <small class="gallery__app">{t.app}</small>}{t.title ?? t.page}</span>
                 <span class="gallery__tags">
                   {t.video && <span class="tag">Recording</span>}
                   <span class="tag">{t.theme === 'dark' ? 'Dark' : 'Light'}</span>
@@ -208,3 +215,7 @@ const pagesWithTiles = GALLERY_PAGES.filter((p) => tiles.some((t) => t.page === 
   });
   dialog?.addEventListener('close', () => body?.replaceChildren());
 </script>
+
+<style>
+  .gallery__app { display: block; font-weight: 400; color: var(--color-text-secondary); }
+</style>

@@ -194,7 +194,8 @@
         "key": "]",
         "ms": 1000
       }
-    ]
+    ],
+    "readySelector": ".bd-image-thumbnail img[alt=\"Hidden fields in use · nl\"]"
   },
   {
     "slug": "quick-review-decide",
@@ -268,7 +269,8 @@
         "key": "Escape",
         "ms": 1000
       }
-    ]
+    ],
+    "readySelector": "button[aria-label=\"View after image\"] img"
   },
   {
     "slug": "fix-with-claude",

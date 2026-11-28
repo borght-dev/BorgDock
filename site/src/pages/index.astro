@@ -1,5 +1,4 @@
 ---
-import ReleaseCapture from '~/components/ui/ReleaseCapture.astro';
 import { Image } from 'astro:assets';
 import { iphoneReviewAnnouncement } from '~/data/site';
 import { phoneScreens } from '~/data/iphone';
@@ -84,7 +83,7 @@ import Recording from '~/components/ui/Recording.astro';
           Open your daily note with Today, or press Ctrl+F8 in any app to jot something down.
           Quick notes save as you type.
         </p>
-        <ReleaseCapture slot="media" path="4.14.0/quick-notes.png" alt="A quick note with a table and highlighted code" />
+        <Capture slot="media" slug="quick-notes" />
       </Job>
       <Job id="iphone" eyebrow={iphoneReviewAnnouncement} title="Review from your phone" reverse>
         <p>BorgDock Review connects directly to your GitHub accounts. Find a pull request in a saved view, read the diff and send a review. Connect Azure DevOps to open the linked work item.</p>

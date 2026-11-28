@@ -1,5 +1,4 @@
 ---
-import ReleaseCapture from '~/components/ui/ReleaseCapture.astro';
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
@@ -128,18 +127,18 @@ const keyGroups = [
           whole window.
         </p>
         <p>Read rendered Markdown, HTML and SVG, or press E to switch to the diff. Compare the old and new HTML side by side.</p>
-        <ReleaseCapture slot="media" path="4.15.0/quick-review-rendered-files.png" alt="Rendered Markdown with change markers beside the file tree" />
+        <Capture slot="media" slug="quick-review-rendered-files" />
       </Job>
 
       <Job id="risk" eyebrow="Regression risk" title="See what could break" reverse reading>
         <p>The assessment lists risks, the evidence for each and how much of the change the agent read. Open a cited line to see the code. A new commit marks the assessment outdated.</p>
         <p>Hover the CI chip for the failing test and its log. The Checks panel shows whether the same failure affects other pull requests.</p>
-        <ReleaseCapture slot="media" path="4.10.0/regression-risk-walk.png" alt="Cited risk reasons beside the changed code" />
+        <Capture slot="media" slug="regression-risk-walk" />
       </Job>
 
       <Job id="own" eyebrow="Your own pull request" title="Walk through your change before asking for review" reading>
         <p>Choose Walk through on your pull request. Check the guide, risk assessment and files, then press Done to finish privately or post your line notes as a comment.</p>
-        <ReleaseCapture slot="media" path="4.13.0/own-pr-walk-through.png" alt="File walk on your own pull request with the Done action" />
+        <Capture slot="media" slug="own-pr-walk-through" />
       </Job>
 
       <Job id="proof" eyebrow="Proof" title="See that it works before you read how" reverse reading>
@@ -175,7 +174,7 @@ const keyGroups = [
           on in the background, and BorgDock tells you if it doesn't go through.
         </p>
         <p>To review one author's work, choose their oldest-first run. The end card lists what you reviewed and which pull requests were skipped.</p>
-        <ReleaseCapture slot="media" path="4.16.0/quick-review-controls.png" alt="Approval available while files are still unread" />
+        <Capture slot="media" slug="quick-review-controls" />
       </Job>
 
       <Job id="re-review" eyebrow="Re-review" title="Read only what changed since your last review" reading>

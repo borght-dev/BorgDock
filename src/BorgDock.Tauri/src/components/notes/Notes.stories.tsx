@@ -8,8 +8,11 @@ import {
 } from '@/components/dispatch/__fixtures__/dispatch-data';
 import { MainWindow } from '@/components/layout/MainWindow';
 import { ViewStack } from '@/components/layout/ViewStack';
+import { makePr } from '@/components/pr-detail/__fixtures__/pr-detail-data';
 import { rememberCaptureContext } from '@/services/notes/capture';
 import { useDispatchStore } from '@/stores/dispatch-store';
+import { usePrStore } from '@/stores/pr-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { type ActiveSection, useUiStore } from '@/stores/ui-store';
 import { getControl } from '../../../.storybook/mocks/control';
 import { type NotesScene, seedNotes } from './__fixtures__/notes-data';
@@ -29,6 +32,39 @@ function Harness({ section = 'notes', prNotes, threadSheet, ...scene }: HarnessP
   useState(() => {
     getControl().invokeResponses.t3_catalogue = LAUNCH_CATALOGUE;
     getControl().invokeResponses.t3_list_branches = LAUNCH_BRANCHES;
+    if (prNotes) {
+      const pr = makePr({
+        pullRequest: {
+          repoOwner: 'acme',
+          repoName: 'shop',
+          number: 3712,
+          headRef: 'fix/60102-csv-last-column',
+          htmlUrl: 'https://github.com/acme/shop/pull/3712',
+          title: 'Fix the missing last column in CSV exports',
+          authorLogin: 'mira',
+          body: 'Preserve the trailing delimiter when the final cell is empty.',
+        },
+        overallStatus: 'green',
+        passedCount: 24,
+        totalCheckCount: 24,
+        pendingCheckNames: [],
+      });
+      usePrStore.getState().setPullRequests([pr]);
+      useSettingsStore.setState(({ settings }) => ({
+        settings: {
+          ...settings,
+          repos: [
+            {
+              owner: 'acme',
+              name: 'shop',
+              enabled: true,
+              worktreeBasePath: '',
+              worktreeSubfolder: '',
+            },
+          ],
+        },
+      }));
+    }
     seedNotes(scene);
     if (threadSheet) {
       const dispatch = makeDispatchScene();
@@ -109,7 +145,12 @@ export const QuickSwitcher: Story = {
 };
 
 /** A pull request's Notes tab: every note that mentions it. */
-export const PullRequestNotes: Story = { args: { prNotes: true } };
+export const PullRequestNotes: Story = {
+  args: { prNotes: true },
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('button', { name: /CSV export drops the last column/ });
+  },
+};
 
 /** Focus: today's note and the open tasks. */
 export const FocusCard: Story = { args: { section: 'focus', open: null } };

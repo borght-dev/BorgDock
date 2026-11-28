@@ -1,5 +1,4 @@
 ---
-import ReleaseCapture from '~/components/ui/ReleaseCapture.astro';
 import { Image } from 'astro:assets';
 import { iphoneReviewAnnouncement } from '~/data/site';
 import { phoneScreens } from '~/data/iphone';
@@ -109,7 +108,7 @@ const tools = [
           description and screenshots. Back or Esc takes you straight back to where you were.
         </p>
         <p>Batch-approve dependency updates from the list. Patch and minor updates with healthy checks start selected. Display can keep PRs visible when only unrelated checks failed.</p>
-        <ReleaseCapture slot="media" path="4.11.0/filters-views.png" alt="Filter chips and saved views above the pull request table" />
+        <Capture slot="media" slug="filters-views" />
       </Job>
 
       <Job id="failures" eyebrow="Shared failures" title="Find the cause of a shared CI failure" reverse reading>
@@ -213,7 +212,7 @@ const tools = [
       <Job id="work-items" eyebrow="Work items" title="Read the item behind the pull request" reading>
         <p>Open an AB# link for a peek, or open the full item to change its state, assignment, priority or iteration. Now shows the linked pull request, checks and agent. Latest shows the newest update.</p>
         <p>The Activity timeline puts field changes beside comments and linked pull requests. Expand an agent run to see each step.</p>
-        <ReleaseCapture slot="media" path="4.12.0/work-item-detail.png" alt="Azure DevOps work item with editable fields, Now and Latest" />
+        <Capture slot="media" slug="work-item-detail" />
       </Job>
 
       <Job id="notes" eyebrow="Notes" title="Write it down where your work is" reverse reading>

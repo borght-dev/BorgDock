@@ -122,6 +122,13 @@ export async function waitForStory(page, entry, theme) {
   }
   await page.evaluate(() => document.fonts?.ready).catch(() => {});
   await page.waitForTimeout(entry.delay ?? 600);
+  if (entry.readySelector) {
+    const ready = page.locator(entry.readySelector).first();
+    await ready.waitFor({ state: 'visible', timeout: 15_000 });
+    await ready.evaluate((element) => {
+      if (element instanceof HTMLImageElement) return element.decode();
+    });
+  }
 }
 
 /**
