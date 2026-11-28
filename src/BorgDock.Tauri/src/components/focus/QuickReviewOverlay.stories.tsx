@@ -13,8 +13,8 @@ import { resetRiskAssessments } from '@/stores/risk-assessment-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestFileChange, RepoSettings } from '@/types';
 import type { ClaudeReviewComment } from '@/types/claude-review';
-import beforeDispatch from '../../../../../docs/whats-new/4.0.0/dispatch.png?inline';
-import afterDispatch from '../../../../../docs/whats-new/4.0.1/dispatch-width.png?inline';
+import prBoardImage from '../../../../../docs/whats-new/4.11.0/pr-board.png?inline';
+import prTableImage from '../../../../../docs/whats-new/4.11.0/pr-table.png?inline';
 import { getControl } from '../../../.storybook/mocks/control';
 import { failingPr, failingPrFailures, sharedGroup } from '../pr/__fixtures__/checks-card-data';
 import { LARGE_PR_BODY, LARGE_PR_FILES, LARGE_PR_TITLE } from './__fixtures__/quick-review-large';
@@ -378,34 +378,52 @@ export const LongLinesWrapped: Story = {
   },
 };
 
+const imageReview = makePr({
+  number: 412,
+  repoOwner: 'acme',
+  repoName: 'shop',
+  authorLogin: 'mira-c',
+  title: 'Add a board view for pull requests',
+  body: 'The updated screenshot shows the same pull requests grouped by status.',
+  headRef: 'feat/pr-board',
+  headSha: 'image-head',
+  htmlUrl: 'https://github.com/acme/shop/pull/412',
+  changedFiles: 1,
+});
+
 export const ImageComparison: Story = {
+  beforeEach: () => {
+    useQuickReviewStore.getState().startSinglePr(imageReview);
+  },
   decorators: [
     (Story) => {
       const control = getControl();
       control.githubResponses.getPRReviewDetails = {
-        pr: { ...pr.pullRequest, title: 'Make room for every Dispatch lane' },
+        pr: imageReview.pullRequest,
         baseSha: 'review-base',
       };
-      control.githubResponses.getPRFiles = files.map((file, index) =>
-        index === 0
-          ? {
-              filename: 'screenshots/dispatch.png',
-              status: 'modified',
-              sha: 'image-head',
-              additions: 0,
-              deletions: 0,
-            }
-          : file,
-      );
+      control.githubResponses.getAllComments = [];
+      control.githubResponses.getReviews = [];
+      control.githubResponses.getPRFiles = [
+        {
+          filename: 'screenshots/pull-requests.png',
+          status: 'modified',
+          sha: 'image-head',
+          additions: 0,
+          deletions: 0,
+        },
+      ];
       control.githubResponses.getRepositoryObject = (path) => {
         if (path.includes('/compare/')) return { merge_base_commit: { sha: 'image-base' } };
         const after = path.endsWith('/git/blobs/image-head');
+        const imageUrl = after ? prBoardImage : prTableImage;
+        const content = imageUrl.slice(imageUrl.indexOf(',') + 1);
         return {
           type: 'file',
           sha: after ? 'image-head' : 'image-base',
           encoding: 'base64',
-          content: (after ? afterDispatch : beforeDispatch).split(',')[1],
-          size: after ? 490482 : 451698,
+          content,
+          size: atob(content).length,
         };
       };
       return <Story />;
@@ -415,10 +433,10 @@ export const ImageComparison: Story = {
     const canvas = await openFiles(canvasElement);
     // The tree's own button: the pane's header names the open file too.
     await userEvent.click(
-      canvasElement.querySelector<HTMLElement>('.qr-file[title="screenshots/dispatch.png"]')!,
+      canvasElement.querySelector<HTMLElement>('.qr-file[title="screenshots/pull-requests.png"]')!,
     );
-    await canvas.findByAltText('Before: screenshots/dispatch.png');
-    await canvas.findByAltText('After: screenshots/dispatch.png');
+    await canvas.findByAltText('Before: screenshots/pull-requests.png');
+    await canvas.findByAltText('After: screenshots/pull-requests.png');
     // A picture is always drawn: there is no diff to switch to.
     await expect(canvas.queryByRole('button', { name: 'Rich diff' })).toBeNull();
     await expect(canvas.queryByRole('group', { name: 'File view' })).toBeNull();

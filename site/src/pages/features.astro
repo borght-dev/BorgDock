@@ -28,11 +28,6 @@ const toc = [
 
 const tools = [
   {
-    slug: 'worktrees-window',
-    name: 'Worktrees window',
-    text: "Press Ctrl+F7 from anywhere for every worktree in a small window, grouped by the machine it lives on under that machine's free disk space. Enter opens a terminal in the one you picked.",
-  },
-  {
     slug: 'ai-limits',
     name: 'Limits left',
     text: 'See the weekly and session allowance for each Claude and Codex account, and when it resets. GitHub appears last when its API quota runs low. Focus lists the threads affected by an exhausted account.',
@@ -235,7 +230,7 @@ const tools = [
           and the agent's answer lands in it when it stops. Point Settings → Notes at a folder your sync
           client shares and your other machine has the same notes.
         </p>
-        <ReleaseCapture slot="media" path="4.15.0/notes-vault-controls.png" alt="Notes vault with daily notes and folder controls" />
+        <Capture slot="media" slug="notes-daily" />
       </Job>
 
       <Job id="fix" eyebrow="Fix with Claude" title="Hand a failure to an agent" reading>

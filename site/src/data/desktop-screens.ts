@@ -15,7 +15,7 @@ interface GalleryScreen {
 }
 
 const groups: Partial<Record<GalleryPage, string[]>> = {
-  Rail: ['rail', 'rail-folded'],
+  Rail: ['rail'],
   'Pull requests': ['pr-table', 'pr-board', 'display-menu', 'filters-views', 'pr-failure-filter', 'dependency-sheet', 'dependency-row'],
   'Work items': ['work-item-detail', 'work-item-activity', 'work-item-peek', 'work-item-hover-cards'],
   'Quick review': [
@@ -23,7 +23,7 @@ const groups: Partial<Record<GalleryPage, string[]>> = {
     'regression-risk', 'regression-risk-walk', 'review-guide', 'review-commits', 'folded-changes',
     'author-run', 'e2e-verdict', 'review-progress', 'next-review', 'guides-ahead', 'guide-skipped',
   ],
-  Notes: ['quick-notes', 'notes-vault-controls'],
+  Notes: ['quick-notes'],
 };
 
 const highlights = releases.flatMap(highlightsOf);

@@ -282,5 +282,5 @@ releases) link to the posts.
 
 Write like the changelog: benefit first, "you", plain verbs, sentence case. No exclamation marks,
 no "seamless", no engineering prose. Feature names match the labels in the app: Focus, Dispatch,
-Pull requests, Work items, Worktrees, Activity, Notes, Quick review, Fix with Claude,
+Pull requests, Work items, Notes, Quick review, Fix with Claude,
 Open in T3.

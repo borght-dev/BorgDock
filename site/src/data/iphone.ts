@@ -36,7 +36,6 @@ import companionFocus from '../assets/iphone/focus.png';
 import companionWork from '../assets/iphone/work.png';
 import companionSprint from '../assets/iphone/sprint.png';
 import companionSearch from '../assets/iphone/search.png';
-import companionActivity from '../assets/iphone/activity.png';
 import companionNotes from '../assets/iphone/notes.png';
 import companionCapture from '../assets/iphone/capture.png';
 import companionItem from '../assets/iphone/item.png';
@@ -81,7 +80,6 @@ export const phoneScreens = {
   'companion-work': { image: companionWork, title: 'Work items grouped by state', theme: 'light' },
   'companion-sprint': { image: companionSprint, title: 'Sprint burndown and items to watch', theme: 'light' },
   'companion-search': { image: companionSearch, title: 'Search across PRs, items, notes and threads', theme: 'light' },
-  'companion-activity': { image: companionActivity, title: 'Activity since you left your desk', theme: 'light' },
   'companion-notes': { image: companionNotes, title: 'Shared Markdown vault and recent notes', theme: 'light' },
   'companion-capture': { image: companionCapture, title: 'Quick capture linked to a pull request', theme: 'light' },
   'companion-item': { image: companionItem, title: 'Work item activity and agent actions', theme: 'light' },

@@ -509,18 +509,6 @@
     "page": "Quick review"
   },
   {
-    "slug": "worktrees-window",
-    "storyId": "worktree-worktreepaletteapp--two-repos-balanced",
-    "viewport": {
-      "width": 900,
-      "height": 640
-    },
-    "theme": "both",
-    "delay": 2000,
-    "alt": "The Worktrees window: every worktree of every repository, grouped by repository, with favourites and the main worktree marked",
-    "page": "Tools"
-  },
-  {
     "slug": "work-items",
     "storyId": "main-window-mainwindow--rail-prs",
     "args": {
@@ -584,15 +572,15 @@
     "page": "Rail"
   },
   {
-    "slug": "activity-history",
-    "storyId": "activity-history-window--all-history",
+    "slug": "main-rail-folded",
+    "storyId": "main-window-mainwindow--rail-collapsed",
     "viewport": {
-      "width": 920,
-      "height": 680
+      "width": 1440,
+      "height": 860
     },
     "theme": "both",
     "delay": 1200,
-    "alt": "Activity history with agent questions and recent events",
+    "alt": "Pull requests beside the folded navigation for Focus, Dispatch, Pull requests, Work items and Notes",
     "page": "Rail"
   },
   {
