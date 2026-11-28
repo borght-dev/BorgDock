@@ -13,9 +13,10 @@ import { resetRiskAssessments } from '@/stores/risk-assessment-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { PullRequestFileChange, RepoSettings } from '@/types';
 import type { ClaudeReviewComment } from '@/types/claude-review';
-import beforeDispatch from '../../../../../docs/whats-new/4.0.0/dispatch.png?inline';
-import afterDispatch from '../../../../../docs/whats-new/4.0.1/dispatch-width.png?inline';
+import prBoardImage from '../../../../../site/public/screens/pr-board-dark@2x.png?inline';
+import prTableImage from '../../../../../site/public/screens/pr-table-dark@2x.png?inline';
 import { getControl } from '../../../.storybook/mocks/control';
+import { hiddenFilter, orderAfter, orderBefore, timesheet } from '../../../.storybook/proof/images';
 import { failingPr, failingPrFailures, sharedGroup } from '../pr/__fixtures__/checks-card-data';
 import { LARGE_PR_BODY, LARGE_PR_FILES, LARGE_PR_TITLE } from './__fixtures__/quick-review-large';
 import {
@@ -152,7 +153,7 @@ const meta: Meta<typeof QuickReviewOverlay> = {
         {
           id: 'proof',
           author: 'sander',
-          body: `## Verification screenshots\n\nThe browser flow passed. This sample screenshot illustrates how proof appears in comments.\n\n![Browser verification](${window.location.origin}/whats-new/1.0.11/close-pr.png)`,
+          body: `## Verification screenshots\n\nThe browser flow passed. This sample screenshot illustrates how proof appears in comments.\n\n![Browser verification](${orderBefore})`,
           createdAt: '2026-09-09T12:00:00Z',
           htmlUrl: `${pr.pullRequest.htmlUrl}#issuecomment-1`,
           severity: 'unknown',
@@ -292,7 +293,7 @@ export const OverviewWithProof: Story = {
           createdAt: new Date(Date.now() - 600_000).toISOString(),
           sourceBody:
             '## PROOF\n\nVera CLI verification. Head SHA: a1b2c3d4e5f67890123456789012345678901234',
-          body: `## PROOF\n\nVera CLI verification: the add is refused before commit; the translated warning is shown. API regression tests passed.\n\n![Quick review screenshot](${window.location.origin}/whats-new/3.0.0/quick-review.png)\n\n![Browser verification](${window.location.origin}/whats-new/1.0.11/close-pr.png)`,
+          body: `## PROOF\n\nVera CLI verification: the add is refused before commit; the translated warning is shown. API regression tests passed.\n\n![Quick review screenshot](${orderAfter})\n\n![Browser verification](${orderBefore})`,
           htmlUrl: `${overviewPr.pullRequest.htmlUrl}#issuecomment-1`,
         },
       ];
@@ -322,7 +323,21 @@ const overviewPr = {
     commitCount: 2,
     updatedAt: new Date(Date.now() - 60_000).toISOString(),
     mergeable: false,
-    body: `## Summary\n\nAdding a questionnaire after replacing an order could leave it on the cancelled activity. The add is now refused before it commits, with a translated reason.\n\n**Stacked on #4525.** The backend build/test job does not run on this base branch. Retarget after the parent PR merges.\n\n## Changes\n\nThe handler checks the result before committing the transaction. Regression tests cover replacement with a missing or disabled setting.\n\n## Verification\n\nThe browser flow and API regression tests passed.\n\n### Before\n\n![Before: order actions](${window.location.origin}/whats-new/1.0.11/close-pr.png)\n\n### After\n\n<img alt="After: browser verification" src="${window.location.origin}/whats-new/3.0.0/quick-review.png">`,
+    body: `## Summary
+
+Warn before adding a questionnaire to a replaced order. The original order stays unchanged.
+
+## Verification
+
+### Before
+
+![Before: order actions](${orderBefore})
+
+### After
+
+![After: replacement order warning](${orderAfter})
+
+**Stacked on #4525.** Retarget after the parent merges so the backend tests run.`,
   },
 };
 export const LargeDiff: Story = {
@@ -378,34 +393,52 @@ export const LongLinesWrapped: Story = {
   },
 };
 
+const imageReview = makePr({
+  number: 412,
+  repoOwner: 'acme',
+  repoName: 'shop',
+  authorLogin: 'mira-c',
+  title: 'Add a board view for pull requests',
+  body: 'The updated screenshot shows the same pull requests grouped by status.',
+  headRef: 'feat/pr-board',
+  headSha: 'image-head',
+  htmlUrl: 'https://github.com/acme/shop/pull/412',
+  changedFiles: 1,
+});
+
 export const ImageComparison: Story = {
+  beforeEach: () => {
+    useQuickReviewStore.getState().startSinglePr(imageReview);
+  },
   decorators: [
     (Story) => {
       const control = getControl();
       control.githubResponses.getPRReviewDetails = {
-        pr: { ...pr.pullRequest, title: 'Make room for every Dispatch lane' },
+        pr: imageReview.pullRequest,
         baseSha: 'review-base',
       };
-      control.githubResponses.getPRFiles = files.map((file, index) =>
-        index === 0
-          ? {
-              filename: 'screenshots/dispatch.png',
-              status: 'modified',
-              sha: 'image-head',
-              additions: 0,
-              deletions: 0,
-            }
-          : file,
-      );
+      control.githubResponses.getAllComments = [];
+      control.githubResponses.getReviews = [];
+      control.githubResponses.getPRFiles = [
+        {
+          filename: 'screenshots/pull-requests.png',
+          status: 'modified',
+          sha: 'image-head',
+          additions: 0,
+          deletions: 0,
+        },
+      ];
       control.githubResponses.getRepositoryObject = (path) => {
         if (path.includes('/compare/')) return { merge_base_commit: { sha: 'image-base' } };
         const after = path.endsWith('/git/blobs/image-head');
+        const imageUrl = after ? prBoardImage : prTableImage;
+        const content = imageUrl.slice(imageUrl.indexOf(',') + 1);
         return {
           type: 'file',
           sha: after ? 'image-head' : 'image-base',
           encoding: 'base64',
-          content: (after ? afterDispatch : beforeDispatch).split(',')[1],
-          size: after ? 490482 : 451698,
+          content,
+          size: atob(content).length,
         };
       };
       return <Story />;
@@ -415,10 +448,10 @@ export const ImageComparison: Story = {
     const canvas = await openFiles(canvasElement);
     // The tree's own button: the pane's header names the open file too.
     await userEvent.click(
-      canvasElement.querySelector<HTMLElement>('.qr-file[title="screenshots/dispatch.png"]')!,
+      canvasElement.querySelector<HTMLElement>('.qr-file[title="screenshots/pull-requests.png"]')!,
     );
-    await canvas.findByAltText('Before: screenshots/dispatch.png');
-    await canvas.findByAltText('After: screenshots/dispatch.png');
+    await canvas.findByAltText('Before: screenshots/pull-requests.png');
+    await canvas.findByAltText('After: screenshots/pull-requests.png');
     // A picture is always drawn: there is no diff to switch to.
     await expect(canvas.queryByRole('button', { name: 'Rich diff' })).toBeNull();
     await expect(canvas.queryByRole('group', { name: 'File view' })).toBeNull();
@@ -582,7 +615,6 @@ export const ReviewNextPassingFirst: Story = {
 
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
 const HOUR = 3_600_000;
-const shot = (path: string) => `${window.location.origin}/whats-new/${path}`;
 
 /** The planboard PR of design/quick-review-v2 frames A and B. */
 const planboard = {
@@ -595,7 +627,7 @@ const planboard = {
     headRef: 'feature/ab60640-hidden-filters',
     baseRef: 'develop',
     authorLogin: 'mvisser',
-    body: `${PLANBOARD_BODY}\n\n## Verification\n\nHead SHA: ${PLANBOARD_HEAD}\n\n![Hidden fields in use · nl](${shot('2.0.0/main-window-focus.png')})`,
+    body: `${PLANBOARD_BODY}\n\n## Verification\n\nHead SHA: ${PLANBOARD_HEAD}\n\n![Hidden fields in use · nl](${hiddenFilter})`,
     changedFiles: PLANBOARD_FILES.length,
     additions: 634,
     deletions: 66,
@@ -615,7 +647,7 @@ const planboardComments = (): ClaudeReviewComment[] => [
     severity: 'unknown',
     createdAt: ago(HOUR),
     sourceBody: `## Vera proof\n\nHead SHA: ${PLANBOARD_HEAD}`,
-    body: `## Vera proof\n\nSaved search with a hidden **Region** filter now shows "Hidden fields in use" with the hint. API regression tests and the Playwright planboard suite passed.\n\n![Hidden fields in use · nl](${shot('2.0.0/main-window-focus.png')})\n\n![Hint tooltip](${shot('2.0.0/pr-detail.png')})\n\n![Saved search](${shot('2.0.0/main-window-prs.png')})\n\n![Translations](${shot('2.0.0/pr-discussion.png')})`,
+    body: `## Vera proof\n\nSaved search with a hidden **Region** filter now shows "Hidden fields in use" with the hint. API regression tests and the Playwright planboard suite passed.\n\n![Hidden fields in use · nl](${hiddenFilter})`,
     htmlUrl: `${planboard.pullRequest.htmlUrl}#issuecomment-4812`,
   },
   {
@@ -774,7 +806,7 @@ const timesheets = {
     headRef: 'fix/ab60612-split-shift-breaks',
     baseRef: 'develop',
     authorLogin: 'sbakker',
-    body: `${TIMESHEET_BODY}\n\n## Verification\n\nHead SHA: ${TIMESHEET_REVIEWED}\n\n![Timesheet week 43 · split shift](${shot('2.0.0/sql-results.png')})`,
+    body: `${TIMESHEET_BODY}\n\n## Verification\n\nHead SHA: ${TIMESHEET_REVIEWED}\n\n![Timesheet week 43 · split shift](${timesheet})`,
     changedFiles: TIMESHEET_FILES.length,
     additions: 278,
     deletions: 24,
@@ -829,7 +861,7 @@ const sessionDecorator: Decorator = (Story) => {
             severity: 'unknown',
             createdAt: ago(30 * HOUR),
             sourceBody: `## Vera proof\n\nHead SHA: ${TIMESHEET_REVIEWED}`,
-            body: `## Vera proof\n\nTimesheet week 43 with a split shift: breaks of 7 and 7 minutes.\n\n![Timesheet week 43 · split shift](${shot('2.0.0/sql-results.png')})`,
+            body: `## Vera proof\n\nTimesheet week 43 with a split shift: breaks of 7 and 7 minutes.\n\n![Timesheet week 43 · split shift](${timesheet})`,
             htmlUrl: timesheets.pullRequest.htmlUrl,
           },
         ];
@@ -1495,6 +1527,15 @@ export const RiskOnCard: Story = {
     await canvas.findByText(/A refund that names a cancelled line pays it out in full/);
     await canvas.findByText('High risk');
     await canvas.findByText(/Refunds can now return part of the shipping/);
+  },
+};
+
+export const ReviewGuideTour: Story = {
+  ...RiskOnCard,
+  play: async ({ canvasElement }) => {
+    const guide = await within(canvasElement).findByRole('region', { name: 'Review guide' });
+    await within(guide).findByRole('button', { name: /Refund total/ });
+    guide.scrollIntoView({ block: 'center' });
   },
 };
 

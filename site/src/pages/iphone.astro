@@ -5,7 +5,7 @@ import PageHeading from '~/components/PageHeading.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
 import { phoneScreens } from '~/data/iphone';
-import { REPO_URL } from '~/data/site';
+import { iphoneReviewAnnouncement, REPO_URL } from '~/data/site';
 
 const sections: { title: string; text: string; screens: (keyof typeof phoneScreens)[] }[] = [
   {
@@ -35,10 +35,10 @@ const sections: { title: string; text: string; screens: (keyof typeof phoneScree
   },
 ];
 ---
-<Layout title="BorgDock Review for iPhone" description="Review GitHub pull requests on iPhone with diffs, proof, CI checks and linked Azure DevOps work items. Connect directly to GitHub or use BorgDock with your server.">
+<Layout title={iphoneReviewAnnouncement} description="BorgDock Review for iPhone is coming soon. Preview its GitHub pull request list, diffs, proof, CI checks and linked Azure DevOps work items.">
   <SiteNav current="iphone" />
   <main id="main">
-    <PageHeading eyebrow="BorgDock Review for iPhone" title="Review a pull request from your phone."
+    <PageHeading eyebrow={iphoneReviewAnnouncement} title="Review a pull request from your phone."
       lede="Find the change in a saved view, check the diff against the linked work item and send your review straight to GitHub." />
     {sections.map((section, index) => (
       <section class="phone-section" aria-label={section.title}>

@@ -6,7 +6,9 @@ the changelog. It is an Astro 5 site with one
 React island (the theme toggle), deployed to GitHub Pages from `main` by
 `.github/workflows/deploy-site.yml`.
 
-Desktop pictures and recordings come from BorgDock's stories and release captures. The iPhone tour and gallery use simulator captures from `docs/proof/ios-*` and `src/assets/iphone/`. The companion app and Dispatch web screenshots use the sample API in `src/BorgDock.Server/e2e/ui-fixture.mjs`. The gallery catalogs in `src/data/desktop-screens.ts` and `src/data/iphone.ts` reuse these images in WebP at build time.
+The manifests in `design/site/` select the desktop app’s Storybook stories for screenshots and recordings. Dated release posts use their original captures.
+
+BorgDock Review screenshots live in `src/assets/iphone/review/`. Its simulator UI tests export PNGs when `TEST_RUNNER_LEDGER_SHOTS` points to an existing directory. The debug fixture routes `item/60379/details` and `item/60379` open the linked work item for the details and dark-mode captures. The companion iPhone app and Dispatch web use the sample API in `src/BorgDock.Server/e2e/ui-fixture.mjs`. The mobile catalog in `src/data/iphone.ts` identifies which app each screen belongs to.
 
 ## Search visibility
 
@@ -28,8 +30,7 @@ The target hostname is `borgdock.dev`. Before deploying the domain change:
    at its DNS/hosting provider. GitHub Pages supports one custom hostname per site; keeping its
    former DNS pointed at Pages does not provide this redirect. Preserve query strings.
 
-Existing rendered promo videos still display the former hostname; keep that redirect working
-until those videos are regenerated for the new address.
+Keep the old hostname redirect working for previously shared videos and links.
 
 See [GitHub's custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
 
@@ -132,13 +133,13 @@ live in the app (`src/BorgDock.Tauri/scripts/`) because they use its Playwright 
 ```json
 {
   "slug": "focus-board",
-  "storyId": "main-window-mainwindow--rail-focus-board",
+  "storyId": "main-window-mainwindow--rail-focus",
   "viewport": { "width": 1280, "height": 800 },
   "theme": "both",
   "delay": 2500,
   "selector": "#storybook-root",
-  "args": { "section": "workitems" },
-  "alt": "Focus as a board with four columns…",
+  "title": "Focus queue",
+  "alt": "The pull requests that need your review",
   "page": "Focus",
   "draft": false
 }
@@ -150,6 +151,7 @@ text stays readable at the size the site shows it). `storyId` may be
 `{ "light": "…", "dark": "…" }` for stories that lock their theme. `args` passes string story args
 through the URL. `page` is the gallery filter (`Pull requests`, `Focus`, `Dispatch`,
 `Detail`, `Quick review`, `Work items`, `Notes`, `Rail`, `iPhone`, `Tools`; anything else lands in `Tools`). `draft: true` keeps a capture out of the gallery, for a screen that is still being built.
+Use `readySelector` when the capture depends on asynchronous content. The capture waits for that element to appear and for an image to decode. Recordings use the same check.
 Output: `public/screens/<slug>-<theme>@2x.png`. Run it on its own with
 `node scripts/screenshot-manifest.mjs [manifest] [outDir] [--only slug,slug]` from
 `src/BorgDock.Tauri`.
@@ -204,9 +206,9 @@ built from the recordings above:
 - `DispatchHero`, 1920×1080: `LaunchHero` with the Dispatch scenes (`dispatchScenes`), about
   a minute. The Dispatch page's hero plays it.
 - `QuickReviewHero`, 1920×1080: `LaunchHero` with the Quick review scenes (`quickReviewScenes`):
-  the overview, the walk, image diffs and the decision. The Quick review page's hero plays it.
-- `Short`, 1080×1920 at 30 fps, about 20 s: three of the scenes, trimmed to the action and
-  cropped for portrait, under the headline, then the download card. For social.
+  the Review Guide chapter list, the file walk, image diffs and the decision. The Quick review page's hero plays it.
+- `Short`, 1080×1920 at 30 fps, shows the Dispatch briefing, a Review Guide chapter and a merge
+  from Focus, followed by the download card. Each scene is cropped for portrait.
 
 The scenes and captions live in `site/video/src/recordings.ts`. Each names a recording slug;
 the video reads `public/recordings/<slug>-<theme>.mp4` (or `.webm` when there is no MP4) through
@@ -283,5 +285,5 @@ releases) link to the posts.
 
 Write like the changelog: benefit first, "you", plain verbs, sentence case. No exclamation marks,
 no "seamless", no engineering prose. Feature names match the labels in the app: Focus, Dispatch,
-Pull requests, Work items, Worktrees, Activity, Notes, Quick review, Fix with Claude,
+Pull requests, Work items, Notes, Quick review, Fix with Claude,
 Open in T3.

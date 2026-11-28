@@ -1,5 +1,4 @@
 ---
-import ReleaseCapture from '~/components/ui/ReleaseCapture.astro';
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
@@ -8,11 +7,13 @@ import Job from '~/components/sections/Job.astro';
 import DownloadBlock from '~/components/sections/DownloadBlock.astro';
 import Capture from '~/components/ui/Capture.astro';
 import Recording from '~/components/ui/Recording.astro';
+import { iphoneReviewAnnouncement } from '~/data/site';
 import { quickReviewVideo } from '~/data/media';
 
 const toc = [
   { id: 'start', label: 'Start' },
   { id: 'in-view', label: 'The pull request in view' },
+  { id: 'guide', label: 'Review Guide' },
   { id: 'walk', label: 'File by file' },
   { id: 'risk', label: 'Regression risk' },
   { id: 'own', label: 'Your own PR' },
@@ -64,12 +65,12 @@ const keyGroups = [
   <SiteNav current="quick-review" />
   <main id="main">
     <Hero
-      badge={{ href: '/iphone', text: 'Quick Review is also on iPhone' }}
+      badge={{ href: '/iphone', text: iphoneReviewAnnouncement }}
       title="Review the change, file by file."
       lede="Follow the review guide or jump to the files you care about. Read the diff alongside its proof, leave a comment and approve when you are ready."
       secondary={{ href: '#start', label: 'Take the tour' }}
       video={quickReviewVideo}
-      fallback="quick-review-walk"
+      fallback="review-guide"
     />
 
     <nav class="toc dispatch-toc" aria-label="On this page">
@@ -106,6 +107,12 @@ const keyGroups = [
         <Capture slot="media" slug="quick-review-walk" />
       </Job>
 
+      <Job id="guide" eyebrow="Review Guide" title="Open the chapter you want to check" reading>
+        <p>The guide groups related files into chapters and explains what to check in each. Pick a chapter to open its first diff.</p>
+        <p>In this sample pull request, Refund total pairs the calculation with its tests. Press V after reading the calculation to move straight to the test cases.</p>
+        <Recording slot="media" slug="review-guide" />
+      </Job>
+
       <Job id="walk" eyebrow="File by file" title="Walk the changes one file at a time" reading>
         <p>
           Read files by folder, commit or guide chapter. Generated changes start folded. Press V to mark one reviewed and
@@ -120,18 +127,18 @@ const keyGroups = [
           whole window.
         </p>
         <p>Read rendered Markdown, HTML and SVG, or press E to switch to the diff. Compare the old and new HTML side by side.</p>
-        <ReleaseCapture slot="media" path="4.15.0/quick-review-rendered-files.png" alt="Rendered Markdown with change markers beside the file tree" />
+        <Capture slot="media" slug="quick-review-rendered-files" />
       </Job>
 
       <Job id="risk" eyebrow="Regression risk" title="See what could break" reverse reading>
         <p>The assessment lists risks, the evidence for each and how much of the change the agent read. Open a cited line to see the code. A new commit marks the assessment outdated.</p>
         <p>Hover the CI chip for the failing test and its log. The Checks panel shows whether the same failure affects other pull requests.</p>
-        <ReleaseCapture slot="media" path="4.10.0/regression-risk-walk.png" alt="Cited risk reasons beside the changed code" />
+        <Capture slot="media" slug="regression-risk-walk" />
       </Job>
 
       <Job id="own" eyebrow="Your own pull request" title="Walk through your change before asking for review" reading>
         <p>Choose Walk through on your pull request. Check the guide, risk assessment and files, then press Done to finish privately or post your line notes as a comment.</p>
-        <ReleaseCapture slot="media" path="4.13.0/own-pr-walk-through.png" alt="File walk on your own pull request with the Done action" />
+        <Capture slot="media" slug="own-pr-walk-through" />
       </Job>
 
       <Job id="proof" eyebrow="Proof" title="See that it works before you read how" reverse reading>
@@ -167,7 +174,7 @@ const keyGroups = [
           on in the background, and BorgDock tells you if it doesn't go through.
         </p>
         <p>To review one author's work, choose their oldest-first run. The end card lists what you reviewed and which pull requests were skipped.</p>
-        <ReleaseCapture slot="media" path="4.16.0/quick-review-controls.png" alt="Approval available while files are still unread" />
+        <Capture slot="media" slug="quick-review-controls" />
       </Job>
 
       <Job id="re-review" eyebrow="Re-review" title="Read only what changed since your last review" reading>

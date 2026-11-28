@@ -10,7 +10,8 @@
     "delay": 2500,
     "alt": "The Pull requests section: one row per pull request, with checks drawn as a bar and one review chip",
     "page": "Pull requests",
-    "selector": "main.bd-mainwindow__body"
+    "selector": "main.bd-mainwindow__body",
+    "title": "Pull requests by repository"
   },
   {
     "slug": "focus-list",
@@ -22,7 +23,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Focus as a list: the pull requests that need you, each with the reason why",
-    "page": "Focus"
+    "page": "Focus",
+    "title": "Focus queue"
   },
   {
     "slug": "focus-board",
@@ -37,7 +39,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Focus as a board with four columns: Needs you, Waiting on others, Ready to merge and Stale",
-    "page": "Focus"
+    "page": "Focus",
+    "title": "Focus board"
   },
   {
     "slug": "focus-agents",
@@ -49,7 +52,8 @@
     "theme": "both",
     "delay": 3000,
     "alt": "Focus with the agents that need you at the top, and a row of squares per state for your work items",
-    "page": "Focus"
+    "page": "Focus",
+    "title": "Agents waiting for you"
   },
   {
     "slug": "dispatch-briefing",
@@ -61,7 +65,8 @@
     "theme": "both",
     "delay": 3000,
     "alt": "Dispatch opens on the briefing: how many items need you, are out of sync, are worth a look, have an agent working or are fine, with one square per item for each state",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Dispatch briefing"
   },
   {
     "slug": "dispatch-sync-live",
@@ -73,7 +78,8 @@
     "theme": "both",
     "delay": 3000,
     "alt": "A sync at work in Code Review: the agent, how many items it has moved and a bar per item",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Sync in progress"
   },
   {
     "slug": "dispatch-fix-sheet",
@@ -85,7 +91,8 @@
     "theme": "both",
     "delay": 3500,
     "alt": "Fix out of sync: the items grouped by the state they move to, each with its reason and pull request, and where the agent runs: the machine, the repository and a fresh worktree",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Fix out-of-sync items"
   },
   {
     "slug": "dispatch-list",
@@ -97,7 +104,8 @@
     "theme": "both",
     "delay": 3000,
     "alt": "Dispatch as a list: your work items with the T3 threads on them, and an agent's question open beside the list",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Work items and their threads"
   },
   {
     "slug": "dispatch-plan",
@@ -109,7 +117,8 @@
     "theme": "both",
     "delay": 3000,
     "alt": "An agent's plan in Dispatch, with Approve plan beside it",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Approve an agent plan"
   },
   {
     "slug": "dispatch-launch",
@@ -121,7 +130,8 @@
     "theme": "both",
     "delay": 3500,
     "alt": "The launch sheet: the machine T3 runs on, the repository, a new worktree from a branch or an existing thread, the model, how the agent begins and its first message",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Start a thread"
   },
   {
     "slug": "dispatch-handoff",
@@ -133,7 +143,8 @@
     "theme": "both",
     "delay": 4000,
     "alt": "Update for QA goes back to the thread that did the work: Existing thread, with that agent's checkout",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Continue an existing thread"
   },
   {
     "slug": "dispatch-board",
@@ -145,7 +156,8 @@
     "theme": "both",
     "delay": 3000,
     "alt": "Dispatch as a board: Needs you, Agents working, Up next and Not started side by side",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Dispatch board"
   },
   {
     "slug": "dispatch-walk",
@@ -158,7 +170,8 @@
     "delay": 3000,
     "selector": "section.bd-dp-wlane",
     "alt": "Code Review in the walk: each item with its verdict (CI red, Out of sync, Ready to merge), its pull request and the latest note about it",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Code Review items"
   },
   {
     "slug": "dispatch-move-sheet",
@@ -170,7 +183,8 @@
     "theme": "both",
     "delay": 3500,
     "alt": "The sheet for one move: the item, where the agent runs and its model, and the first message that tells it to follow your repository's ADO skills",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Move one work item"
   },
   {
     "slug": "dispatch-sync-sheet",
@@ -182,7 +196,8 @@
     "theme": "both",
     "delay": 3500,
     "alt": "Sync all: every item you own for one agent, with a schedule to repeat it on the days and at the time you pick",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Schedule a sync"
   },
   {
     "slug": "dispatch-runs",
@@ -194,7 +209,8 @@
     "theme": "both",
     "delay": 3000,
     "alt": "The walk after a sync: the agent's report on each item it moved or kept, with Open in T3 and Settle",
-    "page": "Dispatch"
+    "page": "Dispatch",
+    "title": "Agent sync report"
   },
   {
     "slug": "recent",
@@ -206,7 +222,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Recent, opened from the bell in the rail's corner: three things that need you with the action for each, then the morning's merge, deployment and review",
-    "page": "Rail"
+    "page": "Rail",
+    "title": "Recent notifications"
   },
   {
     "slug": "ai-limits",
@@ -218,7 +235,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Limits left: what remains of each Claude and Codex account this week and this session, with when it resets, opened from the rail",
-    "page": "Rail"
+    "page": "Rail",
+    "title": "Account usage limits"
   },
   {
     "slug": "machines",
@@ -230,7 +248,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Machines: free disk space per machine and the worktrees whose pull request already merged, opened from the rail",
-    "page": "Rail"
+    "page": "Rail",
+    "title": "Machine storage"
   },
   {
     "slug": "notes",
@@ -242,7 +261,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "The Notes section: folders, a note in live preview with chips for pull requests and work items, its backlinks, tags and local graph",
-    "page": "Notes"
+    "page": "Notes",
+    "title": "Linked notes"
   },
   {
     "slug": "notes-daily",
@@ -254,7 +274,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Today's Markdown note in the Notes vault",
-    "page": "Notes"
+    "page": "Notes",
+    "title": "Daily note"
   },
   {
     "slug": "notes-pr",
@@ -266,7 +287,9 @@
     "theme": "both",
     "delay": 2500,
     "alt": "A pull request's Notes tab: every note that mentions it, and New note",
-    "page": "Notes"
+    "page": "Notes",
+    "readySelector": ".bd-notes-tab__note",
+    "title": "Notes about a pull request"
   },
   {
     "slug": "notes-tasks",
@@ -278,7 +301,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Every open task from every note in one list",
-    "page": "Notes"
+    "page": "Notes",
+    "title": "Tasks across the vault"
   },
   {
     "slug": "notes-quick",
@@ -291,7 +315,8 @@
     "delay": 2500,
     "selector": ".bd-notes-capture",
     "alt": "The quick note window on Ctrl+F8, linked to the pull request you last had open",
-    "page": "Notes"
+    "page": "Notes",
+    "title": "Quick note"
   },
   {
     "slug": "notes-thread",
@@ -303,7 +328,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Starting a T3 thread from a note",
-    "page": "Notes"
+    "page": "Notes",
+    "title": "Start a thread from a note"
   },
   {
     "slug": "t3-hosts",
@@ -314,9 +340,10 @@
     },
     "theme": "both",
     "delay": 2000,
-    "alt": "T3 Code on three machines in Settings → Agents: this machine, a Mac mini and a build machine",
+    "alt": "Remote T3 machines in Settings with pairing status for a Mac mini, a build VM and a laptop",
     "page": "Tools",
-    "selector": "#field-t3-hosts"
+    "selector": "#field-t3-hosts",
+    "title": "Remote T3 machines"
   },
   {
     "slug": "ci-shared",
@@ -331,7 +358,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Shared CI failures above the pull request list: the failing test, how many pull requests it blocks, who's on it and the next step",
-    "page": "Pull requests"
+    "page": "Pull requests",
+    "title": "Shared CI failures"
   },
   {
     "slug": "ci-investigate",
@@ -344,7 +372,8 @@
     "delay": 2500,
     "selector": "[role=\"dialog\"]",
     "alt": "The Investigate sheet: the failure, the evidence from every affected pull request and what is still unknown, for one agent",
-    "page": "Pull requests"
+    "page": "Pull requests",
+    "title": "Investigate a failure"
   },
   {
     "slug": "open-in-t3",
@@ -357,7 +386,8 @@
     "delay": 2500,
     "selector": "[role=\"dialog\"]",
     "alt": "Open in T3: pick the machine, and T3 checks out the pull request's branch, reusing the worktree that already has it",
-    "page": "Pull requests"
+    "page": "Pull requests",
+    "title": "Open a pull request in T3"
   },
   {
     "slug": "ci-related",
@@ -370,7 +400,8 @@
     "delay": 1500,
     "selector": "div:has(> .bd-ci-related)",
     "alt": "Related failures above a pull request's checks: the same failure on other pull requests, the likely cause and who owns it",
-    "page": "Detail"
+    "page": "Detail",
+    "title": "Related failures"
   },
   {
     "slug": "ci-broke",
@@ -383,7 +414,8 @@
     "delay": 1500,
     "selector": "div:has(> .bd-ci-related)",
     "alt": "A failure on master traced to the pull request merged between the last passing run and the first failing one",
-    "page": "Detail"
+    "page": "Detail",
+    "title": "Failing default branch"
   },
   {
     "slug": "ci-guard",
@@ -396,7 +428,8 @@
     "delay": 1500,
     "selector": ".bd-ci-dialog",
     "alt": "BorgDock asking before a second fix: someone already owns this failure",
-    "page": "Detail"
+    "page": "Detail",
+    "title": "An investigation already in progress"
   },
   {
     "slug": "pr-detail-failing",
@@ -409,7 +442,8 @@
     "delay": 2000,
     "alt": "A pull request with failing checks, open full screen with Rerun failed and Fix with Claude in the action bar",
     "page": "Detail",
-    "selector": "article.bd-detail"
+    "selector": "article.bd-detail",
+    "title": "Failed pull request checks"
   },
   {
     "slug": "pr-detail-ready",
@@ -422,7 +456,8 @@
     "delay": 2000,
     "alt": "A pull request that is ready to merge, with the readiness sentence in the header and Merge as the main action",
     "page": "Detail",
-    "selector": "article.bd-detail"
+    "selector": "article.bd-detail",
+    "title": "Merge-ready pull request"
   },
   {
     "slug": "pr-description",
@@ -433,8 +468,11 @@
     },
     "theme": "both",
     "delay": 3000,
-    "alt": "A pull request's overview: the whole description with its screenshots, and the linked work items beside it",
-    "page": "Detail"
+    "alt": "Before and after screenshots in a pull request description",
+    "page": "Detail",
+    "selector": ".bd-overview__section[aria-label=\"PR description\"]",
+    "readySelector": "img[alt=\"After: replacement order warning\"]",
+    "title": "Screenshots in a pull request description"
   },
   {
     "slug": "quick-review-card",
@@ -446,7 +484,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Quick review opens on the pull request: its description, review progress and checks, with Review files, Write review and Review later",
-    "page": "Quick review"
+    "page": "Quick review",
+    "title": "Review overview"
   },
   {
     "slug": "quick-review-walk",
@@ -458,7 +497,9 @@
     "theme": "both",
     "delay": 3500,
     "alt": "The file walk with the pull request above the diff: author, branch, CI, the work item and labels in their GitHub colours, and the proof beside the changes",
-    "page": "Quick review"
+    "page": "Quick review",
+    "readySelector": ".bd-image-thumbnail img[alt=\"Hidden fields in use · nl\"]",
+    "title": "Diff and proof"
   },
   {
     "slug": "quick-review-images",
@@ -470,7 +511,9 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Quick review comparing a changed screenshot: Before and After side by side",
-    "page": "Quick review"
+    "page": "Quick review",
+    "readySelector": "button[aria-label=\"View after image\"] img",
+    "title": "Compare two image revisions"
   },
   {
     "slug": "quick-review-overview",
@@ -482,7 +525,9 @@
     "theme": "both",
     "delay": 3000,
     "alt": "Quick review's overview: the description with its Before and After screenshots, and the linked work item beside it",
-    "page": "Quick review"
+    "page": "Quick review",
+    "readySelector": "img[alt=\"Before: order actions\"]",
+    "title": "Pull request description and linked work"
   },
   {
     "slug": "quick-review-decide",
@@ -494,7 +539,8 @@
     "theme": "both",
     "delay": 3500,
     "alt": "Every file reviewed: the footer is the decision, Request changes, Comment, Approve or Approve & auto-merge, with the overall comment and your drafts above it",
-    "page": "Quick review"
+    "page": "Quick review",
+    "title": "Review decision"
   },
   {
     "slug": "quick-review-re-review",
@@ -506,34 +552,22 @@
     "theme": "both",
     "delay": 3500,
     "alt": "A re-review: only the files changed since your last review, the commits in between, stale proof flagged, and Undo for the approval you just gave",
-    "page": "Quick review"
-  },
-  {
-    "slug": "worktrees-window",
-    "storyId": "worktree-worktreepaletteapp--two-repos-balanced",
-    "viewport": {
-      "width": 900,
-      "height": 640
-    },
-    "theme": "both",
-    "delay": 2000,
-    "alt": "The Worktrees window: every worktree of every repository, grouped by repository, with favourites and the main worktree marked",
-    "page": "Tools"
+    "page": "Quick review",
+    "readySelector": ".bd-image-thumbnail img[alt=\"Timesheet week 43 · split shift\"]",
+    "title": "Changes since your last review"
   },
   {
     "slug": "work-items",
-    "storyId": "main-window-mainwindow--rail-prs",
-    "args": {
-      "section": "workitems"
-    },
+    "storyId": "main-window-mainwindow--rail-work-items",
     "viewport": {
       "width": 1440,
       "height": 860
     },
     "theme": "both",
     "delay": 3000,
-    "alt": "The Work items section: your Azure DevOps queries, the items in them and the details of the one you picked",
-    "page": "Work items"
+    "alt": "The Work items section with Azure DevOps queries and the matching items",
+    "page": "Work items",
+    "title": "Work item queries"
   },
   {
     "slug": "sql",
@@ -545,7 +579,8 @@
     "theme": "both",
     "delay": 2000,
     "alt": "The SQL window with a query and its results",
-    "page": "Tools"
+    "page": "Tools",
+    "title": "SQL query results"
   },
   {
     "slug": "settings",
@@ -557,7 +592,8 @@
     "theme": "both",
     "delay": 2000,
     "alt": "Settings, with sections on the left and search at the top",
-    "page": "Tools"
+    "page": "Tools",
+    "title": "GitHub settings"
   },
   {
     "slug": "settings-agents",
@@ -569,7 +605,8 @@
     "theme": "both",
     "delay": 2500,
     "alt": "Settings → Agents: pair with T3 Code on this machine, add other machines and edit the prompts Dispatch starts agents with",
-    "page": "Tools"
+    "page": "Tools",
+    "title": "Agent settings"
   },
   {
     "slug": "main-rail",
@@ -581,19 +618,21 @@
     "theme": "both",
     "delay": 1200,
     "alt": "Pull requests beside the five-section rail with account limits, machine storage and the notification bell",
-    "page": "Rail"
+    "page": "Rail",
+    "title": "Desktop navigation"
   },
   {
-    "slug": "activity-history",
-    "storyId": "activity-history-window--all-history",
+    "slug": "main-rail-folded",
+    "storyId": "main-window-mainwindow--rail-collapsed",
     "viewport": {
-      "width": 920,
-      "height": 680
+      "width": 1440,
+      "height": 860
     },
     "theme": "both",
     "delay": 1200,
-    "alt": "Activity history with agent questions and recent events",
-    "page": "Rail"
+    "alt": "Pull requests beside the folded navigation for Focus, Dispatch, Pull requests, Work items and Notes",
+    "page": "Rail",
+    "title": "Collapsed desktop navigation"
   },
   {
     "slug": "setup-repos",
@@ -608,7 +647,8 @@
     "theme": "both",
     "delay": 1200,
     "alt": "Choose repositories to watch in the desktop setup wizard",
-    "page": "Tools"
+    "page": "Tools",
+    "title": "Watched repositories"
   },
   {
     "slug": "settings-iphone",
@@ -620,7 +660,8 @@
     "theme": "both",
     "delay": 1200,
     "alt": "Desktop settings for linking an iPhone",
-    "page": "Tools"
+    "page": "Tools",
+    "title": "Connect the companion app"
   },
   {
     "slug": "settings-accounts",
@@ -632,7 +673,8 @@
     "theme": "both",
     "delay": 1200,
     "alt": "Labels and colours for Claude and Codex accounts",
-    "page": "Tools"
+    "page": "Tools",
+    "title": "AI account labels"
   },
   {
     "slug": "settings-updates",
@@ -644,7 +686,8 @@
     "theme": "both",
     "delay": 1200,
     "alt": "Updates settings with a downloaded update ready to install",
-    "page": "Tools"
+    "page": "Tools",
+    "title": "Install a downloaded update"
   },
   {
     "slug": "notes-settings",
@@ -656,7 +699,8 @@
     "theme": "both",
     "delay": 1200,
     "alt": "Notes settings for the shared vault and daily note folder",
-    "page": "Notes"
+    "page": "Notes",
+    "title": "Notes vault settings"
   },
   {
     "slug": "work-item-palette",
@@ -668,7 +712,8 @@
     "theme": "both",
     "delay": 1200,
     "alt": "Browse assigned, recent and active work items in the keyboard palette",
-    "page": "Work items"
+    "page": "Work items",
+    "title": "Work item palette"
   },
   {
     "slug": "tray-glance",
@@ -681,6 +726,360 @@
     "theme": "both",
     "delay": 1200,
     "alt": "Glance at pull requests and checks in the tray flyout",
-    "page": "Tools"
+    "page": "Tools",
+    "title": "Pull requests in the tray"
+  },
+  {
+    "slug": "pr-table",
+    "storyId": "pr-prlist--overview",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "delay": 2500,
+    "theme": "dark",
+    "alt": "The Pull requests table grouped by status, with a Next step for every pull request",
+    "title": "Pull requests that tell you what's next",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "pr-board",
+    "storyId": "pr-prlist--board",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "delay": 2500,
+    "theme": "dark",
+    "alt": "Pull requests as a board with a column per status",
+    "title": "See your pull requests as a board",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "display-menu",
+    "storyId": "pr-prlist--display-menu",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "delay": 3000,
+    "theme": "light",
+    "alt": "The Display menu with layout, grouping, ordering, switches and columns",
+    "title": "Group, sort and lay out the list your way",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "filters-views",
+    "storyId": "pr-prlist--filter-menu",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "delay": 3000,
+    "theme": "light",
+    "alt": "Filter chips, the Repository values with their counts, and saved views as tabs",
+    "title": "Type a filter, save it as a view",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "pr-failure-filter",
+    "storyId": "pr-prlist--keep-unrelated-failures-display",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "delay": 2500,
+    "theme": "dark",
+    "alt": "The Display menu keeping unrelated CI failures visible",
+    "title": "Keep reviewable PRs in view",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "dependency-sheet",
+    "storyId": "pr-dependency-updates--sheet",
+    "viewport": {
+      "width": 1100,
+      "height": 760
+    },
+    "delay": 2500,
+    "theme": "dark",
+    "alt": "The Approve dependency updates sheet with the safe updates picked",
+    "title": "Approve your dependency updates in one go",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "dependency-row",
+    "storyId": "pr-dependency-updates--strip",
+    "viewport": {
+      "width": 1100,
+      "height": 640
+    },
+    "delay": 2500,
+    "theme": "dark",
+    "alt": "A dependency pull request with Approve on its row, under the dependency updates strip",
+    "title": "Approve a dependency update right from the list",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "work-item-detail",
+    "storyId": "work-items-redesign--full-view-dark",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "delay": 3000,
+    "theme": "dark",
+    "alt": "The work item page with the fact strip, Now and Latest",
+    "title": "A work item page that tells you where it stands",
+    "page": "Work items"
+  },
+  {
+    "slug": "work-item-activity",
+    "storyId": "work-items-activity-tab--timeline",
+    "viewport": {
+      "width": 1000,
+      "height": 700
+    },
+    "delay": 2500,
+    "theme": "dark",
+    "alt": "The Activity timeline with an agent run",
+    "title": "The whole history on one timeline",
+    "page": "Work items"
+  },
+  {
+    "slug": "work-item-peek",
+    "storyId": "work-items-redesign--peek-dark",
+    "viewport": {
+      "width": 1600,
+      "height": 1000
+    },
+    "delay": 3000,
+    "theme": "dark",
+    "alt": "The work item peek on a large screen",
+    "title": "A work item peek that grows with your screen",
+    "page": "Work items"
+  },
+  {
+    "slug": "work-item-hover-cards",
+    "storyId": "work-items-hover-card--in-description",
+    "viewport": {
+      "width": 800,
+      "height": 580
+    },
+    "delay": 2500,
+    "theme": "dark",
+    "alt": "A bug preview opened from an Azure DevOps reference in a pull request description",
+    "title": "Preview a linked work item",
+    "page": "Work items",
+    "readySelector": "[data-work-item-card=\"61021\"] .bd-wi-card__title"
+  },
+  {
+    "slug": "quick-review-controls",
+    "storyId": "focus-quick-review--large-pr-walk-fullscreen",
+    "theme": "dark",
+    "alt": "Quick Review with unread files and the Approve and maximize controls",
+    "title": "Approve and maximize from Quick Review",
+    "page": "Quick review",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "delay": 3000
+  },
+  {
+    "slug": "quick-review-rendered-files",
+    "storyId": "focus-quick-review-rendered-files--markdown-rendered",
+    "theme": "dark",
+    "alt": "Quick Review showing rendered Markdown with inline change markers",
+    "title": "Read rendered files in Quick Review",
+    "page": "Quick review",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "delay": 3000
+  },
+  {
+    "slug": "own-pr-walk-through",
+    "storyId": "focus-quick-review--own-pr-all-files-read",
+    "viewport": {
+      "width": 1600,
+      "height": 1000
+    },
+    "delay": 3500,
+    "theme": "dark",
+    "alt": "Walking through your own pull request in Quick Review",
+    "title": "Walk through your own pull requests",
+    "page": "Quick review"
+  },
+  {
+    "slug": "quick-review-checks",
+    "storyId": "focus-quick-review--checks-on-hover",
+    "viewport": {
+      "width": 1600,
+      "height": 1000
+    },
+    "delay": 2500,
+    "theme": "dark",
+    "alt": "The checks card under the CI chip in Quick Review",
+    "title": "See why CI failed without leaving Quick Review",
+    "page": "Quick review"
+  },
+  {
+    "slug": "regression-risk",
+    "storyId": "focus-quick-review--risk-on-card",
+    "viewport": {
+      "width": 1440,
+      "height": 940
+    },
+    "delay": 2500,
+    "theme": "dark",
+    "alt": "Regression risk with reasons and code evidence above the review guide",
+    "title": "See what could break before you merge",
+    "page": "Quick review"
+  },
+  {
+    "slug": "regression-risk-walk",
+    "storyId": "focus-quick-review--risk-walk",
+    "viewport": {
+      "width": 1440,
+      "height": 940
+    },
+    "delay": 3500,
+    "theme": "dark",
+    "alt": "Risk reasons and cited lines in the Quick Review file walk",
+    "title": "Follow a risk to the code",
+    "page": "Quick review"
+  },
+  {
+    "slug": "review-guide",
+    "storyId": "focus-quick-review--guide-walk",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 3000,
+    "theme": "dark",
+    "alt": "Quick Review with chapters in the file tree and the current chapter above the diff",
+    "title": "Follow a guide through your review",
+    "page": "Quick review"
+  },
+  {
+    "slug": "review-commits",
+    "storyId": "focus-quick-review--commits-walk",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 3000,
+    "theme": "dark",
+    "alt": "Quick Review showing the commits reading order",
+    "title": "Read the changes commit by commit",
+    "page": "Quick review",
+    "readySelector": ".bd-image-thumbnail img[alt=\"Hidden fields in use · nl\"]"
+  },
+  {
+    "slug": "folded-changes",
+    "storyId": "focus-quick-review--noise-folded",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 3000,
+    "theme": "dark",
+    "alt": "Quick Review with moved code folded into one line",
+    "title": "Skip the mechanical changes",
+    "page": "Quick review"
+  },
+  {
+    "slug": "author-run",
+    "storyId": "focus-quick-review--author-run-complete",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 3000,
+    "theme": "dark",
+    "alt": "The end of an author run listing the pull requests it left out and the author's next one",
+    "title": "Review one author's pull requests, oldest first",
+    "page": "Quick review"
+  },
+  {
+    "slug": "e2e-verdict",
+    "storyId": "focus-quick-review--e-2-e-failure-not-its-own",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 4000,
+    "theme": "dark",
+    "alt": "Quick Review saying the failing E2E test also fails on another pull request, with Approve & merge",
+    "title": "Know whether a pull request broke its E2E tests",
+    "page": "Quick review"
+  },
+  {
+    "slug": "review-progress",
+    "storyId": "pr-prlist--review-progress",
+    "theme": "light",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "delay": 1000,
+    "alt": "Approval and review totals beneath the Pull Requests toolbar",
+    "title": "See your review progress",
+    "page": "Pull requests"
+  },
+  {
+    "slug": "next-review",
+    "storyId": "focus-quick-review--author-run-fallback",
+    "theme": "dark",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "delay": 1000,
+    "alt": "An explicit failing-check fallback beside a passing PR from another author",
+    "title": "Move on to a PR that's ready for review",
+    "page": "Quick review"
+  },
+  {
+    "slug": "guides-ahead",
+    "storyId": "settings-settingsapp--agents-codex-summaries",
+    "viewport": {
+      "width": 1280,
+      "height": 1100
+    },
+    "delay": 3000,
+    "theme": "dark",
+    "alt": "The Summaries settings with Write review guides ahead turned on",
+    "title": "Review guides that are ready before you are",
+    "page": "Quick review"
+  },
+  {
+    "slug": "guide-skipped",
+    "storyId": "focus-quick-review--guide-skipped",
+    "viewport": {
+      "width": 1400,
+      "height": 900
+    },
+    "delay": 4000,
+    "theme": "dark",
+    "alt": "Quick Review on a small change, saying why there is no guide",
+    "title": "Small changes skip the guide",
+    "page": "Quick review"
+  },
+  {
+    "slug": "quick-notes",
+    "storyId": "notes-release--live-markdown",
+    "viewport": {
+      "width": 1000,
+      "height": 660
+    },
+    "delay": 1200,
+    "theme": "light",
+    "alt": "Quick notes with live Markdown, a rendered table, TypeScript highlighting and an embedded image",
+    "title": "Quick notes that save while you write",
+    "page": "Notes"
   }
 ]

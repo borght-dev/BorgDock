@@ -69,6 +69,41 @@
     "crop": "main.bd-mainwindow__body"
   },
   {
+    "slug": "review-guide",
+    "storyId": "focus-quick-review--review-guide-tour",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "theme": "both",
+    "delay": 2500,
+    "alt": "Open the Refund total chapter in the Review Guide, inspect the calculation diff and mark it reviewed to read the tests.",
+    "page": "Quick review",
+    "fallback": "quick-review-walk",
+    "steps": [
+      {
+        "do": "hover",
+        "selector": ".qr-guide__chapters button:has-text(\"Refund total\")",
+        "ms": 2400
+      },
+      {
+        "do": "click",
+        "selector": ".qr-guide__chapters button:has-text(\"Refund total\")",
+        "ms": 2300
+      },
+      {
+        "do": "wait",
+        "selector": "text=\"Chapter 2 of 4\"",
+        "ms": 700
+      },
+      {
+        "do": "press",
+        "key": "v",
+        "ms": 2800
+      }
+    ]
+  },
+  {
     "slug": "quick-review",
     "storyId": "focus-quick-review--large-pr-card",
     "viewport": {
@@ -159,7 +194,8 @@
         "key": "]",
         "ms": 1000
       }
-    ]
+    ],
+    "readySelector": ".bd-image-thumbnail img[alt=\"Hidden fields in use · nl\"]"
   },
   {
     "slug": "quick-review-decide",
@@ -233,7 +269,8 @@
         "key": "Escape",
         "ms": 1000
       }
-    ]
+    ],
+    "readySelector": "button[aria-label=\"View after image\"] img"
   },
   {
     "slug": "fix-with-claude",

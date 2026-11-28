@@ -9,6 +9,7 @@
 // only, poster under reduced motion. It is unframed, because the video draws
 // its own window frames on the page's background. Without it, the `fallback`
 // recording stands in.
+import { iphoneReviewAnnouncement } from '~/data/site';
 import DownloadButton from '~/components/DownloadButton.astro';
 import Recording from '~/components/ui/Recording.astro';
 import { type Recording as RecordingEntry, launchVideo } from '~/data/media';
@@ -24,7 +25,7 @@ interface Props {
 }
 
 const {
-  badge = { href: '/iphone', text: 'Explore BorgDock Review for iPhone' },
+  badge = { href: '/iphone', text: iphoneReviewAnnouncement },
   title = 'Every pull request, one window.',
   lede = 'BorgDock watches your checks, tells you what needs you, keeps your work items next to the agents on them, and lets you review and merge without opening a browser tab.',
   secondary = { href: '/features', label: 'See how it works' },

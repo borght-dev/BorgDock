@@ -3,6 +3,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import { getControl } from '../../../.storybook/mocks/control';
+import { orderAfter, orderBefore } from '../../../.storybook/proof/images';
 import {
   approvedPr,
   changesRequestedPr,
@@ -77,7 +78,7 @@ const descriptionPr = {
   ...approvedPr,
   pullRequest: {
     ...approvedPr.pullRequest,
-    body: `## Summary\n\nShow verification screenshots directly in the PR description.\n\n## Verification\n\n### Before\n\n![Before: order actions](${window.location.origin}/whats-new/1.0.11/close-pr.png)\n\n### After\n\n<img src="${window.location.origin}/whats-new/3.0.0/quick-review.png" alt="After: browser verification">`,
+    body: `## Summary\n\nShow a warning when a questionnaire is added to a replaced order.\n\n## Verification\n\n### Before\n\n![Before: order actions](${orderBefore})\n\n### After\n\n![After: replacement order warning](${orderAfter})`,
   },
 };
 

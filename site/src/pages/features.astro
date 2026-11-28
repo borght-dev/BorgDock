@@ -1,6 +1,6 @@
 ---
-import ReleaseCapture from '~/components/ui/ReleaseCapture.astro';
 import { Image } from 'astro:assets';
+import { iphoneReviewAnnouncement } from '~/data/site';
 import { phoneScreens } from '~/data/iphone';
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
@@ -26,11 +26,6 @@ const toc = [
 ];
 
 const tools = [
-  {
-    slug: 'worktrees-window',
-    name: 'Worktrees window',
-    text: "Press Ctrl+F7 from anywhere for every worktree in a small window, grouped by the machine it lives on under that machine's free disk space. Enter opens a terminal in the one you picked.",
-  },
   {
     slug: 'ai-limits',
     name: 'Limits left',
@@ -81,7 +76,7 @@ const tools = [
 
 <Layout
   title="GitHub PR reviews, CI monitoring and Azure DevOps | BorgDock"
-  description="See how BorgDock handles GitHub reviews, shared CI failures, Azure DevOps work items, T3 agents and Markdown notes. Explore the desktop tools and iPhone apps."
+  description="See how BorgDock handles GitHub reviews, shared CI failures, Azure DevOps work items, T3 agents and Markdown notes. Preview the upcoming BorgDock Review app for iPhone."
 >
   <SiteNav current="features" />
   <main id="main">
@@ -113,7 +108,7 @@ const tools = [
           description and screenshots. Back or Esc takes you straight back to where you were.
         </p>
         <p>Batch-approve dependency updates from the list. Patch and minor updates with healthy checks start selected. Display can keep PRs visible when only unrelated checks failed.</p>
-        <ReleaseCapture slot="media" path="4.11.0/filters-views.png" alt="Filter chips and saved views above the pull request table" />
+        <Capture slot="media" slug="filters-views" />
       </Job>
 
       <Job id="failures" eyebrow="Shared failures" title="Find the cause of a shared CI failure" reverse reading>
@@ -176,7 +171,7 @@ const tools = [
         </p>
         <p>Back at a pull request you reviewed before? You see only the files that changed since.</p>
         <p><a class="link" href="/quick-review">Everything Quick review does</a></p>
-        <Recording slot="media" slug="quick-review-walk" />
+        <Recording slot="media" slug="review-guide" />
       </Job>
 
       <Job id="dispatch" eyebrow="Dispatch" title="Walk your work every morning" reverse reading>
@@ -217,7 +212,7 @@ const tools = [
       <Job id="work-items" eyebrow="Work items" title="Read the item behind the pull request" reading>
         <p>Open an AB# link for a peek, or open the full item to change its state, assignment, priority or iteration. Now shows the linked pull request, checks and agent. Latest shows the newest update.</p>
         <p>The Activity timeline puts field changes beside comments and linked pull requests. Expand an agent run to see each step.</p>
-        <ReleaseCapture slot="media" path="4.12.0/work-item-detail.png" alt="Azure DevOps work item with editable fields, Now and Latest" />
+        <Capture slot="media" slug="work-item-detail" />
       </Job>
 
       <Job id="notes" eyebrow="Notes" title="Write it down where your work is" reverse reading>
@@ -234,7 +229,7 @@ const tools = [
           and the agent's answer lands in it when it stops. Point Settings → Notes at a folder your sync
           client shares and your other machine has the same notes.
         </p>
-        <ReleaseCapture slot="media" path="4.15.0/notes-vault-controls.png" alt="Notes vault with daily notes and folder controls" />
+        <Capture slot="media" slug="notes-daily" />
       </Job>
 
       <Job id="fix" eyebrow="Fix with Claude" title="Hand a failure to an agent" reading>
@@ -253,9 +248,9 @@ const tools = [
         </p>
         <Capture slot="media" slug="pr-detail-failing" />
       </Job>
-      <Job id="iphone" eyebrow="iPhone" title="Review from your phone" reverse>
+      <Job id="iphone" eyebrow={iphoneReviewAnnouncement} title="Review from your phone" reverse>
         <p>BorgDock Review connects directly to your GitHub accounts. Find a pull request in a saved view, read the diff and send a review. Connect Azure DevOps to open the linked work item.</p>
-        <p><a class="link" href="/iphone">Explore the iPhone screens</a></p>
+        <p><a class="link" href="/iphone">Preview the iPhone app</a></p>
         <Image slot="media" class="phone-preview" src={phoneScreens['pull-requests-home'].image} alt="Pull requests grouped by status in BorgDock Review on iPhone" width={480} format="webp" loading="lazy" />
       </Job>
     </div>

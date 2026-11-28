@@ -99,7 +99,9 @@ final class PullRequestsUITests: XCTestCase {
         let app = launch(mode: "offline")
         let request = app.buttons["pr-row-acme/shop#412"]
         XCTAssertTrue(request.waitForExistence(timeout: 15))
-        app.swipeDown()
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85))
+        start.press(forDuration: 0.05, thenDragTo: end)
         let offline = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'No connection.'")).firstMatch
         XCTAssertTrue(offline.waitForExistence(timeout: 15))
         XCTAssertTrue(request.exists)

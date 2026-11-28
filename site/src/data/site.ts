@@ -26,6 +26,7 @@ export interface Release {
 
 export const REPO_URL = `https://github.com/${release.repo}`;
 export const RELEASES_URL = `${REPO_URL}/releases`;
+export const iphoneReviewAnnouncement = 'BorgDock Review for iPhone · Coming soon';
 export const appVersion: string = appPackage.version;
 export const latestRelease: Release = release;
 

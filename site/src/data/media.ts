@@ -36,6 +36,7 @@ export const GALLERY_PAGES: GalleryPage[] = [
 ];
 
 interface ManifestEntry {
+  title?: string;
   slug: string;
   alt: string;
   page: string;
@@ -52,6 +53,7 @@ export interface Image {
 }
 
 export interface Capture {
+  title?: string;
   slug: string;
   alt: string;
   page: GalleryPage;
@@ -142,7 +144,7 @@ export const captures: Capture[] = (screensManifest as ManifestEntry[]).map((m) 
     const img = image(`/screens/${m.slug}-${t}@2x.png`, 2);
     if (img) images[t] = img;
   }
-  return { slug: m.slug, alt: m.alt, page: asPage(m.page), draft: m.draft === true, images };
+  return { slug: m.slug, title: m.title, alt: m.alt, page: asPage(m.page), draft: m.draft === true, images };
 });
 
 export const recordings: Recording[] = (
@@ -196,7 +198,7 @@ function heroVideo(name: string, alt: string): Recording | null {
 export const launchVideo = heroVideo(
   'launch-hero',
   'BorgDock in a minute: open a pull request full screen, filter to what needs you, ' +
-    'review file by file and approve on the last one, merge from Focus, then walk your work in Dispatch and start an agent',
+    'open a Review Guide chapter and read its tests, merge from Focus, then pick a work item in Dispatch and start an agent',
 );
 
 /** The Dispatch page's hero: composition `DispatchHero`. */
@@ -209,7 +211,7 @@ export const dispatchVideo = heroVideo(
 /** The Quick review page's hero: composition `QuickReviewHero`. */
 export const quickReviewVideo = heroVideo(
   'quick-review-hero',
-  'Quick review in a minute: open the next pull request, walk its files with the description and proof in view, ' +
+  'Pick a Review Guide chapter, walk its files with the description and proof in view, ' +
     'compare a changed image, then approve on the last file and move straight on to the next one',
 );
 

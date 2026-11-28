@@ -110,11 +110,9 @@ final class ReviewScreensUITests: XCTestCase {
 
     @MainActor
     func testProofClosesOnSwipeDownAndStillPagesHorizontally() {
-        let app = launch()
-        let start = app.buttons["ledger-start-review"]
-        XCTAssertTrue(start.waitForExistence(timeout: 20))
-        start.tap()
-        XCTAssertTrue(app.buttons["brief-start"].waitForExistence(timeout: 15))
+        let app = launch(route: "url/borgdock://review/acme/shop/412")
+        XCTAssertTrue(app.buttons["brief-start"].waitForExistence(timeout: 30))
+        capture("review-brief")
 
         let thumbnail = app.buttons["The basket is empty after a timeout"]
         for _ in 0..<3 where !thumbnail.isHittable { app.swipeUp() }
