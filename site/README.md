@@ -1,13 +1,12 @@
 # BorgDock marketing site
 
 The site at [borgdock.dev](https://borgdock.dev): what BorgDock does for
-you, a page each for Dispatch and Quick review, a gallery of every screen, the download page and
+you, tours of Dispatch, Quick review and the iPhone apps, a gallery of every screen, the download page and
 the changelog. It is an Astro 5 site with one
 React island (the theme toggle), deployed to GitHub Pages from `main` by
 `.github/workflows/deploy-site.yml`.
 
-Every picture and video on the site is captured from BorgDock's own Storybook stories with sample
-data. Nothing is drawn by hand, and nothing comes from a real account.
+Desktop pictures and recordings come from BorgDock's stories and release captures. The iPhone tour and gallery use simulator captures from `docs/proof/ios-*` and `src/assets/iphone/`. The companion app and Dispatch web screenshots use the sample API in `src/BorgDock.Server/e2e/ui-fixture.mjs`. The gallery catalogs in `src/data/desktop-screens.ts` and `src/data/iphone.ts` reuse these images in WebP at build time.
 
 ## Search visibility
 
@@ -150,7 +149,7 @@ element (the Pull requests captures use `main.bd-mainwindow__body` to leave the 
 text stays readable at the size the site shows it). `storyId` may be
 `{ "light": "…", "dark": "…" }` for stories that lock their theme. `args` passes string story args
 through the URL. `page` is the gallery filter (`Pull requests`, `Focus`, `Dispatch`,
-`Detail`, `Quick review`, `Notes`, `Activity`, `Tools`; anything else lands in `Tools`). `draft: true` keeps a capture out of the gallery, for a screen that is still being built.
+`Detail`, `Quick review`, `Work items`, `Notes`, `Rail`, `iPhone`, `Tools`; anything else lands in `Tools`). `draft: true` keeps a capture out of the gallery, for a screen that is still being built.
 Output: `public/screens/<slug>-<theme>@2x.png`. Run it on its own with
 `node scripts/screenshot-manifest.mjs [manifest] [outDir] [--only slug,slug]` from
 `src/BorgDock.Tauri`.
@@ -201,7 +200,7 @@ built from the recordings above:
   recording (each in a window frame with a two-line caption), then a download card. For YouTube
   and anywhere the video stands on its own.
 - `LaunchHero`, 1920×1080: the same scenes without the title and download cards, fading to the
-  background at the end so it loops cleanly. The home page hero plays it, in the page's theme.
+  background at the end so it loops cleanly. The home page hero shows the current desktop rail. This cut remains available as a video.
 - `DispatchHero`, 1920×1080: `LaunchHero` with the Dispatch scenes (`dispatchScenes`), about
   a minute. The Dispatch page's hero plays it.
 - `QuickReviewHero`, 1920×1080: `LaunchHero` with the Quick review scenes (`quickReviewScenes`):
@@ -246,12 +245,9 @@ Chrome (about 110 MB); the whole set takes a few minutes. Any composition render
 Remotion Studio.
 
 It is rendered locally per release, not in CI; the rendered files are committed like the
-recordings. `Hero.astro` shows `launch-hero.mp4` / `launch-hero-light.mp4` (the Dispatch page:
-`dispatch-hero*.mp4`, the Quick review page: `quick-review-hero*.mp4`) through `Recording.astro`,
-unframed (the video draws its own window frames), playing while on screen and showing the poster
-under reduced motion. When neither file exists the hero falls back to a recording (`pr-detail-push`,
-on the Dispatch page `dispatch-layouts`, on the Quick review page `quick-review-walk`), so the site
-builds either way. A Chrome that takes longer than 25 s to start fails a render; rerun the
+recordings. The home hero uses the current rail capture. Dispatch and Quick review use their
+theme-specific hero videos, show a poster under reduced motion and fall back to a story
+recording when the hero cut is missing. A Chrome that takes longer than 25 s to start fails a render; rerun the
 script when the machine is less busy.
 
 ## Releases and the download page
@@ -260,14 +256,14 @@ script when the machine is less busy.
 size, URL and SHA-256. `bun run site:release` refreshes it (no token needed; on any error it keeps
 the old file). The download page picks the installer for the visitor's platform and lists the rest.
 
-The version badge and the hero show the release version, which is what the button downloads.
+The navigation badge and download page show the release version, which is what the button downloads.
 The build fails when `/CHANGELOG.md` lists two or more releases newer than `release.json` that are
 dated before today, with a message to run `bun run site:release`. An app version ahead of the latest
 release (the normal state between a version bump and its release) only prints a warning.
 
 `deploy-site.yml` runs `site:release` before `site:build`, so a deploy always picks up the latest
-release. It deploys on pushes to `main` that touch the site, its manifests, the changelog, the
-app's version or tokens, and on `release: published`. Pull requests build the site in the `site`
+release. The workflow deploys on pushes to `main` that touch the site, its manifests, the changelog, the
+app's version or tokens, and after a successful Release Tauri workflow. Pull requests build the site in the `site`
 job of `test.yml`.
 
 ## Changelog and What's new posts
@@ -280,7 +276,7 @@ that the changelog already points at: `release-images.mjs` imports exactly those
 the original of any image imported but not shown), and Astro writes WebP copies at the sizes the
 post shows, so the site keeps no copy of its own. A hand-written page for a version
 (`src/pages/whats-new/<version>.astro`, dots or dashes: `2.0.0.astro` and `2-0-0.astro` both count)
-replaces the generated post. The hero badge, the changelog and the home page teaser (the last three
+replaces the generated post. The changelog and the home page teaser (the last three
 releases) link to the posts.
 
 ## Voice

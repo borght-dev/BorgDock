@@ -1,29 +1,29 @@
 {
   "repo": "borght-dev/BorgDock",
-  "tag": "v4.9.1",
-  "version": "4.9.1",
-  "name": "BorgDock v4.9.1",
-  "date": "2026-10-29",
-  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v4.9.1",
-  "fetchedAt": "2026-10-29T11:02:23.538Z",
+  "tag": "v4.17.1",
+  "version": "4.17.1",
+  "name": "BorgDock v4.17.1",
+  "date": "2026-11-25",
+  "url": "https://github.com/borght-dev/BorgDock/releases/tag/v4.17.1",
+  "fetchedAt": "2026-11-28T10:51:52.735Z",
   "assets": [
     {
-      "name": "BorgDock_4.9.1_x64-setup.exe",
-      "size": 39441789,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.9.1/BorgDock_4.9.1_x64-setup.exe",
-      "digest": "sha256:f464b4e470cb96e5f1477366d669afe0012dbacd845df5a5b1cb3494f9cf8063"
+      "name": "BorgDock_4.17.1_x64-setup.exe",
+      "size": 56056180,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.17.1/BorgDock_4.17.1_x64-setup.exe",
+      "digest": "sha256:ca43d945be61b2e5ada8d5cc92032363d9f3173603a457b71734372f33dc2958"
     },
     {
-      "name": "BorgDock_4.9.1_x64-setup.exe.sig",
+      "name": "BorgDock_4.17.1_x64-setup.exe.sig",
       "size": 420,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.9.1/BorgDock_4.9.1_x64-setup.exe.sig",
-      "digest": "sha256:8208744c999e705a289854e01074669d3ba01bce189ec96ccb2f5ab1793e8074"
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.17.1/BorgDock_4.17.1_x64-setup.exe.sig",
+      "digest": "sha256:b2bbde7fe13d30eba83b3da241fd86e9ca9bc0825a7b206b286a20b7e049c502"
     },
     {
       "name": "latest.json",
-      "size": 1628,
-      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.9.1/latest.json",
-      "digest": "sha256:e52ec8b35d8646a7472908324d9de9acdc3fb013be68d8fad86b855bd0051957"
+      "size": 1747,
+      "url": "https://github.com/borght-dev/BorgDock/releases/download/v4.17.1/latest.json",
+      "digest": "sha256:cf912c41752f0ad866870ab5cd63e2db804c6d8d1ae87e09cbf329049c1ae7a7"
     }
   ]
 }

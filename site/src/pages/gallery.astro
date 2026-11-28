@@ -8,8 +8,13 @@ import SiteFooter from '~/components/SiteFooter.astro';
 import PageHeading from '~/components/PageHeading.astro';
 import { GALLERY_PAGES, captures, recordings, type Theme } from '~/data/media';
 
+import { getImage } from 'astro:assets';
+import { desktopScreens } from '~/data/desktop-screens';
+import { phoneScreens } from '~/data/iphone';
+
 interface Tile {
-  key: string;
+  title?: string;
+  full?: string;
   page: string;
   theme: Theme;
   alt: string;
@@ -17,12 +22,26 @@ interface Tile {
   video?: string;
 }
 
-const tiles: Tile[] = [];
+const screens = [
+  ...desktopScreens,
+  ...Object.values(phoneScreens).map((s) => ({ ...s, page: 'iPhone', alt: s.title })),
+];
+const tiles: Tile[] = await Promise.all(screens.map(async (screen) => {
+  const [thumb, full] = await Promise.all([
+    getImage({ src: screen.image, width: screen.page === 'iPhone' ? 360 : 720, format: 'webp' }),
+    getImage({ src: screen.image, width: Math.min(1640, screen.image.width), format: 'webp' }),
+  ]);
+  return {
+    title: screen.title, alt: screen.alt, page: screen.page, theme: screen.theme,
+    thumb: { src: thumb.src, width: Number(thumb.attributes.width), height: Number(thumb.attributes.height), density: 1 },
+    full: full.src,
+  };
+}));
 for (const c of captures.filter((x) => !x.draft)) {
   for (const theme of ['light', 'dark'] as const) {
     const img = c.images[theme];
     if (img) {
-      tiles.push({ key: `${c.slug}-${theme}`, page: c.page, theme, alt: c.alt, thumb: { ...img, density: 2 } });
+      tiles.push({ page: c.page, theme, alt: c.alt, thumb: { ...img, density: 2 } });
     }
   }
 }
@@ -32,7 +51,6 @@ for (const r of recordings.filter((x) => !x.draft)) {
     const video = v?.mp4 ?? v?.webm;
     if (v?.poster && video) {
       tiles.push({
-        key: `rec-${r.slug}-${theme}`,
         page: r.page,
         theme,
         alt: r.alt,
@@ -47,13 +65,13 @@ const pagesWithTiles = GALLERY_PAGES.filter((p) => tiles.some((t) => t.page === 
 
 <Layout
   title="Gallery: BorgDock"
-  description="Every BorgDock screen in light and dark, captured from the app's own components."
+  description="Explore BorgDock desktop and iPhone screenshots and recordings. Filter by screen or theme and open the full-size view."
 >
   <SiteNav current="gallery" />
   <main id="main">
     <PageHeading
       eyebrow="Gallery"
-      title="Every screen, both themes."
+      title="BorgDock on desktop and iPhone."
       lede="Every picture is captured from BorgDock's own screens with sample data. Pick a part of the app or a theme, and open any picture full size."
     />
 
@@ -82,7 +100,8 @@ const pagesWithTiles = GALLERY_PAGES.filter((p) => tiles.some((t) => t.page === 
             <button
               type="button"
               class="gallery__tile"
-              data-full={t.thumb.src}
+              data-portrait={t.thumb.height > t.thumb.width || undefined}
+              data-full={t.full ?? t.thumb.src}
               data-video={t.video}
               data-alt={t.alt}
               aria-label={`Open full size: ${t.alt} (${t.theme} theme${t.video ? ', recording' : ''})`}
@@ -97,7 +116,7 @@ const pagesWithTiles = GALLERY_PAGES.filter((p) => tiles.some((t) => t.page === 
                 decoding="async"
               />
               <span class="gallery__label">
-                <span>{t.page}</span>
+                <span>{t.title ?? t.page}</span>
                 <span class="gallery__tags">
                   {t.video && <span class="tag">Recording</span>}
                   <span class="tag">{t.theme === 'dark' ? 'Dark' : 'Light'}</span>
@@ -179,6 +198,7 @@ const pagesWithTiles = GALLERY_PAGES.filter((p) => tiles.some((t) => t.page === 
         img.alt = alt;
         body.append(img);
       }
+      dialog.classList.toggle('lightbox--portrait', tile.hasAttribute('data-portrait'));
       caption.textContent = alt;
       dialog.showModal();
     });

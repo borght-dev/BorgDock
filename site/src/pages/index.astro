@@ -1,4 +1,7 @@
 ---
+import ReleaseCapture from '~/components/ui/ReleaseCapture.astro';
+import { Image } from 'astro:assets';
+import { phoneScreens } from '~/data/iphone';
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
@@ -10,10 +13,12 @@ import Capture from '~/components/ui/Capture.astro';
 import Recording from '~/components/ui/Recording.astro';
 ---
 
-<Layout title="BorgDock | GitHub pull request manager for desktop">
+<Layout title="BorgDock | GitHub pull requests on desktop and iPhone" description="Review GitHub pull requests, investigate CI and track Azure DevOps work with your agents on desktop. Read diffs and send reviews from your iPhone.">
   <SiteNav current="home" />
   <main id="main">
-    <Hero />
+    <Hero>
+      <Capture slot="media" slug="main-rail" />
+    </Hero>
 
     <div class="jobs">
       <Job id="watch" eyebrow="Watch" title="See every check at a glance">
@@ -26,7 +31,7 @@ import Recording from '~/components/ui/Recording.astro';
           what has to happen next and whose move it is. When one failure breaks several pull
           requests, one line on top says so, with who is on it.
         </p>
-        <Recording slot="media" slug="filter-flip" />
+        <Capture slot="media" slug="workbench-list" />
       </Job>
 
       <Job id="decide" eyebrow="Decide" title="Know what needs you next" reverse>
@@ -42,17 +47,17 @@ import Recording from '~/components/ui/Recording.astro';
         <Capture slot="media" slug="focus-board" />
       </Job>
 
-      <Job id="review" eyebrow="Quick review" title="Review file by file, decide on the last one">
+      <Job id="review" eyebrow="Quick review" title="Read the changes and send your review">
         <p>
           Quick review keeps the pull request above the diff and its proof beside it. Press V to mark a
           file reviewed and move to the next.
         </p>
         <p>
-          On the last file the footer becomes your decision. Approve & auto-merge, and the next pull
-          request is already open.
+          Follow a risk assessment to its cited lines, leave a comment or approve when you have seen enough.
+          On your own pull request, finish the walk with Done.
         </p>
         <p><a class="link" href="/quick-review">See everything Quick review does</a></p>
-        <Recording slot="media" slug="quick-review-decide" />
+        <ReleaseCapture slot="media" path="4.16.0/quick-review-controls.png" alt="Quick Review with the approval controls above the file diff" />
       </Job>
 
       <Job id="dispatch" eyebrow="Dispatch" title="See your work and the agents on it" reverse>
@@ -75,10 +80,15 @@ import Recording from '~/components/ui/Recording.astro';
           shop#3712 and it turns into a chip that shows the item or pull request as it is right now.
         </p>
         <p>
-          Press Today for a note that already lists what happened since yesterday, or Ctrl+F8 in any
-          app to jot something down.
+          Open your daily note with Today, or press Ctrl+F8 in any app to jot something down.
+          Quick notes save as you type.
         </p>
-        <Capture slot="media" slug="notes" />
+        <ReleaseCapture slot="media" path="4.14.0/quick-notes.png" alt="A quick note with a table and highlighted code" />
+      </Job>
+      <Job id="iphone" eyebrow="iPhone" title="Review from your phone" reverse>
+        <p>BorgDock Review connects directly to your GitHub accounts. Find a pull request in a saved view, read the diff and send a review. Connect Azure DevOps to open the linked work item.</p>
+        <p><a class="link" href="/iphone">Explore the iPhone screens</a></p>
+        <Image slot="media" class="phone-preview" src={phoneScreens['pull-requests-home'].image} alt="Pull requests grouped by status in BorgDock Review on iPhone" width={480} format="webp" loading="lazy" />
       </Job>
     </div>
 

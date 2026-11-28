@@ -1,4 +1,5 @@
 ---
+import ReleaseCapture from '~/components/ui/ReleaseCapture.astro';
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
@@ -13,6 +14,8 @@ const toc = [
   { id: 'start', label: 'Start' },
   { id: 'in-view', label: 'The pull request in view' },
   { id: 'walk', label: 'File by file' },
+  { id: 'risk', label: 'Regression risk' },
+  { id: 'own', label: 'Your own PR' },
   { id: 'proof', label: 'Proof' },
   { id: 'images', label: 'Images' },
   { id: 'decide', label: 'Decide' },
@@ -31,12 +34,14 @@ const keyGroups = [
       [']', 'Fold the panel beside the diff into a rail'],
       ['1–4', 'Proof, Checks, Work item, Comments'],
       ['W', 'Wrap long lines'],
+      ['O', 'Cycle through guide, folders and commits'],
+      ['E', 'Switch between the rendered file and its diff'],
       ['S', 'Switch between the changes since your review and all files'],
       ['Esc', 'Back to the overview'],
     ],
   },
   {
-    name: 'Once every file is reviewed',
+    name: 'When deciding a review',
     keys: [
       ['Enter', 'Approve & auto-merge'],
       ['A', 'Approve'],
@@ -54,14 +59,14 @@ const keyGroups = [
 
 <Layout
   title="Quick review: BorgDock"
-  description="Quick review walks a pull request one file at a time with its description and proof in view, turns the last file into your decision, and opens the next pull request."
+  description="Quick review walks a pull request one file at a time with its description and proof in view, shows what could break, and lets you approve or comment as you read."
 >
   <SiteNav current="quick-review" />
   <main id="main">
     <Hero
-      badge={{ href: '/whats-new/4-8-0', text: 'New in BorgDock 4.8: review with the pull request in view' }}
-      title="Review file by file, decide on the last one."
-      lede="Quick review keeps the pull request above the diff and its proof beside it. Mark the last file reviewed and the footer asks for your verdict. Approve, and the next pull request is already open."
+      badge={{ href: '/iphone', text: 'Quick Review is also on iPhone' }}
+      title="Review the change, file by file."
+      lede="Follow the review guide or jump to the files you care about. Read the diff alongside its proof, leave a comment and approve when you are ready."
       secondary={{ href: '#start', label: 'Take the tour' }}
       video={quickReviewVideo}
       fallback="quick-review-walk"
@@ -98,12 +103,12 @@ const keyGroups = [
           The panel beside the diff holds the proof, the checks, the work item and the comments. Keys 1
           to 4 switch between them, and ] folds the panel into a rail when the code needs the room.
         </p>
-        <Recording slot="media" slug="quick-review-walk" />
+        <Capture slot="media" slug="quick-review-walk" />
       </Job>
 
       <Job id="walk" eyebrow="File by file" title="Walk the changes one file at a time" reading>
         <p>
-          Files are grouped by folder, with generated files left out. Press V to mark one reviewed and
+          Read files by folder, commit or guide chapter. Generated changes start folded. Press V to mark one reviewed and
           open the next, or N and P to move without marking.
         </p>
         <p>
@@ -114,7 +119,19 @@ const keyGroups = [
           Switch between Unified and Split, press W to wrap long lines, or give a large pull request the
           whole window.
         </p>
-        <Recording slot="media" slug="quick-review" />
+        <p>Read rendered Markdown, HTML and SVG, or press E to switch to the diff. Compare the old and new HTML side by side.</p>
+        <ReleaseCapture slot="media" path="4.15.0/quick-review-rendered-files.png" alt="Rendered Markdown with change markers beside the file tree" />
+      </Job>
+
+      <Job id="risk" eyebrow="Regression risk" title="See what could break" reverse reading>
+        <p>The assessment lists risks, the evidence for each and how much of the change the agent read. Open a cited line to see the code. A new commit marks the assessment outdated.</p>
+        <p>Hover the CI chip for the failing test and its log. The Checks panel shows whether the same failure affects other pull requests.</p>
+        <ReleaseCapture slot="media" path="4.10.0/regression-risk-walk.png" alt="Cited risk reasons beside the changed code" />
+      </Job>
+
+      <Job id="own" eyebrow="Your own pull request" title="Walk through your change before asking for review" reading>
+        <p>Choose Walk through on your pull request. Check the guide, risk assessment and files, then press Done to finish privately or post your line notes as a comment.</p>
+        <ReleaseCapture slot="media" path="4.13.0/own-pr-walk-through.png" alt="File walk on your own pull request with the Done action" />
       </Job>
 
       <Job id="proof" eyebrow="Proof" title="See that it works before you read how" reverse reading>
@@ -139,8 +156,7 @@ const keyGroups = [
 
       <Job id="decide" eyebrow="Decide" title="Decide the moment you're done" reverse reading>
         <p>
-          Mark the last file reviewed and the footer turns into your decision: Request changes,
-          Comment, Approve, or Approve & auto-merge. Your overall comment and every draft go with it.
+          Comment or request changes from the first file. Approve whenever you are ready, or turn on Require file review before approving under Settings → Appearance → Quick Review.
         </p>
         <p>
           The next pull request opens straight away. Approvals wait five seconds before BorgDock posts
@@ -150,7 +166,8 @@ const keyGroups = [
           Approve & auto-merge lets GitHub merge as soon as the required checks pass. The merge carries
           on in the background, and BorgDock tells you if it doesn't go through.
         </p>
-        <Recording slot="media" slug="quick-review-decide" />
+        <p>To review one author's work, choose their oldest-first run. The end card lists what you reviewed and which pull requests were skipped.</p>
+        <ReleaseCapture slot="media" path="4.16.0/quick-review-controls.png" alt="Approval available while files are still unread" />
       </Job>
 
       <Job id="re-review" eyebrow="Re-review" title="Read only what changed since your last review" reading>

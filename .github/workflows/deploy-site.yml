@@ -7,6 +7,7 @@ on:
       - "site/**"
       - "CHANGELOG.md"
       - "docs/whats-new/**"
+      - "docs/proof/ios-*/**"
       - "design/site/**"
       - "src/BorgDock.Tauri/package.json"
       - "src/BorgDock.Tauri/src/styles/index.css"

@@ -1,4 +1,6 @@
 ---
+import { Image } from 'astro:assets';
+import webQueue from '../assets/dispatch/work.png';
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
 import SiteFooter from '~/components/SiteFooter.astro';
@@ -19,6 +21,7 @@ const toc = [
   { id: 'layouts', label: 'States, List, Board' },
   { id: 'find-you', label: 'Focus and notifications' },
   { id: 'machines', label: 'Other machines' },
+  { id: 'web', label: 'Web app' },
   { id: 'setup', label: 'What you need' },
 ];
 
@@ -91,7 +94,7 @@ const needs = [
   <SiteNav current="dispatch" />
   <main id="main">
     <Hero
-      badge={{ href: '/whats-new/4-9-0', text: 'New in 4.9: start agents in a fresh worktree on any machine' }}
+      badge={{ href: '/iphone', text: 'Work items and agents on iPhone' }}
       title="Your work items and the agents on them."
       lede="Dispatch puts every Azure DevOps item assigned to you next to the T3 Code threads and pull requests that belong to it, tells you what each one needs, and hands the busywork to agents."
       secondary={{ href: '#briefing', label: 'Take the tour' }}
@@ -237,6 +240,13 @@ const needs = [
         </p>
         <Capture slot="media" slug="t3-hosts" />
       </Job>
+
+      <Job id="web" eyebrow="Dispatch on the web" title="Answer agents from a browser" reading>
+        <p>With the Dispatch server, you can open your decision queue on a phone or computer. Read the agent's update next to the work item, answer its question or confirm a state change.</p>
+        <p>Browse the team sprint to queue work or start an agent in a free worktree. Device settings control which events send a browser notification.</p>
+        <p><a class="link" href="https://github.com/borght-dev/BorgDock/tree/main/src/BorgDock.Server#dispatch">Set up the Dispatch server</a></p>
+        <Image slot="media" class="web-queue" src={webQueue} alt="The web decision queue with an agent update beside the selected work item" widths={[640, 1280]} sizes="(max-width: 960px) 92vw, 54vw" format="webp" loading="lazy" />
+      </Job>
     </div>
 
     <section class="also" aria-labelledby="also-title">
@@ -274,3 +284,7 @@ const needs = [
   </main>
   <SiteFooter />
 </Layout>
+
+<style>
+  .web-queue { display: block; width: 100%; height: auto; border-radius: var(--radius-lg); }
+</style>
