@@ -3,7 +3,7 @@ import { Logo } from '../components/Logo';
 import { captionEntrance, enter } from '../motion';
 import { fonts, type Palette } from '../theme';
 
-export const SITE_HOST = 'borgdock.koenvdborght.nl';
+export const SITE_HOST = 'borgdock.dev';
 
 /** Wordmark, the address, and what it costs. The URL is the one accent. */
 export const DownloadCard: React.FC<{ palette: Palette; scale?: number }> = ({

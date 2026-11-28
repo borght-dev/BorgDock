@@ -28,8 +28,7 @@ The target hostname is `borgdock.dev`. Before deploying the domain change:
    at its DNS/hosting provider. GitHub Pages supports one custom hostname per site; keeping its
    former DNS pointed at Pages does not provide this redirect. Preserve query strings.
 
-Existing rendered promo videos still display the former hostname; keep that redirect working
-until those videos are regenerated for the new address.
+Keep the old hostname redirect working for previously shared videos and links.
 
 See [GitHub's custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
 
@@ -204,9 +203,9 @@ built from the recordings above:
 - `DispatchHero`, 1920×1080: `LaunchHero` with the Dispatch scenes (`dispatchScenes`), about
   a minute. The Dispatch page's hero plays it.
 - `QuickReviewHero`, 1920×1080: `LaunchHero` with the Quick review scenes (`quickReviewScenes`):
-  the overview, the walk, image diffs and the decision. The Quick review page's hero plays it.
-- `Short`, 1080×1920 at 30 fps, about 20 s: three of the scenes, trimmed to the action and
-  cropped for portrait, under the headline, then the download card. For social.
+  the Review Guide chapter list, the file walk, image diffs and the decision. The Quick review page's hero plays it.
+- `Short`, 1080×1920 at 30 fps, shows the Dispatch briefing, a Review Guide chapter and a merge
+  from Focus, followed by the download card. Each scene is cropped for portrait.
 
 The scenes and captions live in `site/video/src/recordings.ts`. Each names a recording slug;
 the video reads `public/recordings/<slug>-<theme>.mp4` (or `.webm` when there is no MP4) through

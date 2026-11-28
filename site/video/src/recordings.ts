@@ -25,6 +25,13 @@ export type SceneSpec = {
 /** Quick review at 1440×900 without the story's black backdrop. */
 const QUICK_REVIEW_CROP: Crop = { x: 20, y: 20, width: 1400, height: 860 };
 
+const reviewGuideScene: SceneSpec = {
+  slug: 'review-guide',
+  headline: 'Open a chapter in the Review Guide.',
+  detail: 'Follow the refund calculation to its diff, then mark the file reviewed to read its tests.',
+  crop: QUICK_REVIEW_CROP,
+};
+
 export const launchScenes: SceneSpec[] = [
   {
     slug: 'pr-detail-push',
@@ -41,13 +48,7 @@ export const launchScenes: SceneSpec[] = [
     headline: 'Hand a failing check to Claude.',
     detail: 'Fix with Claude starts an agent on the failure, straight from the pull request.',
   },
-  {
-    slug: 'quick-review-decide',
-    headline: 'Review file by file, decide on the last one.',
-    detail: 'Mark the last file and Quick review asks for your verdict. The next pull request opens.',
-    // The story draws Quick review on a black backdrop; leave that out.
-    crop: QUICK_REVIEW_CROP,
-  },
+  reviewGuideScene,
   {
     slug: 'focus-merge',
     headline: 'Merge the moment it is ready.',
@@ -111,14 +112,9 @@ export const dispatchScenes: SceneSpec[] = [
   },
 ];
 
-// The Quick review page's hero: the overview, the walk, images and the decision.
+// The Quick review page opens with the guide, then shows the walk, images and decision.
 export const quickReviewScenes: SceneSpec[] = [
-  {
-    slug: 'quick-review',
-    headline: 'Start with what is waiting on you.',
-    detail: 'Quick review opens on the pull request. Review files walks its changes.',
-    crop: { x: 21, y: 21, width: 1318, height: 838 },
-  },
+  reviewGuideScene,
   {
     slug: 'quick-review-walk',
     headline: 'Keep the pull request in view.',
@@ -139,9 +135,7 @@ export const quickReviewScenes: SceneSpec[] = [
   },
 ];
 
-// Short: three scenes, trimmed to the action and cropped to a portrait-friendly
-// part of each recording. Times and rectangles are for the dark recordings
-// as recorded on 2026-10-21; re-check them when the recordings are redone.
+// Recheck the portrait crops and timing when the dark recordings change.
 export const shortScenes: SceneSpec[] = [
   {
     slug: 'dispatch-briefing',
@@ -152,12 +146,11 @@ export const shortScenes: SceneSpec[] = [
     crop: { x: 205, y: 0, width: 760, height: 860 },
   },
   {
-    slug: 'quick-review',
-    headline: 'Review one file at a time.',
-    detail: 'Quick review walks the changes. V marks a file reviewed.',
-    trimStart: 1.2,
-    trimEnd: 5.8,
-    crop: { x: 21, y: 21, width: 1100, height: 838 },
+    ...reviewGuideScene,
+    detail: 'Choose Refund total to open the calculation and its tests.',
+    trimStart: 0.5,
+    trimEnd: 7.5,
+    crop: { x: 20, y: 20, width: 970, height: 860 },
   },
   {
     slug: 'focus-merge',

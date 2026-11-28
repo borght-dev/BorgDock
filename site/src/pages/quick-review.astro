@@ -13,6 +13,7 @@ import { quickReviewVideo } from '~/data/media';
 const toc = [
   { id: 'start', label: 'Start' },
   { id: 'in-view', label: 'The pull request in view' },
+  { id: 'guide', label: 'Review Guide' },
   { id: 'walk', label: 'File by file' },
   { id: 'risk', label: 'Regression risk' },
   { id: 'own', label: 'Your own PR' },
@@ -69,7 +70,7 @@ const keyGroups = [
       lede="Follow the review guide or jump to the files you care about. Read the diff alongside its proof, leave a comment and approve when you are ready."
       secondary={{ href: '#start', label: 'Take the tour' }}
       video={quickReviewVideo}
-      fallback="quick-review-walk"
+      fallback="review-guide"
     />
 
     <nav class="toc dispatch-toc" aria-label="On this page">
@@ -104,6 +105,12 @@ const keyGroups = [
           to 4 switch between them, and ] folds the panel into a rail when the code needs the room.
         </p>
         <Capture slot="media" slug="quick-review-walk" />
+      </Job>
+
+      <Job id="guide" eyebrow="Review Guide" title="Open the chapter you want to check" reading>
+        <p>The guide groups related files into chapters and explains what to check in each. Pick a chapter to open its first diff.</p>
+        <p>In this sample pull request, Refund total pairs the calculation with its tests. Press V after reading the calculation to move straight to the test cases.</p>
+        <Recording slot="media" slug="review-guide" />
       </Job>
 
       <Job id="walk" eyebrow="File by file" title="Walk the changes one file at a time" reading>

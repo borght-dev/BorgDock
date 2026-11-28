@@ -1498,6 +1498,15 @@ export const RiskOnCard: Story = {
   },
 };
 
+export const ReviewGuideTour: Story = {
+  ...RiskOnCard,
+  play: async ({ canvasElement }) => {
+    const guide = await within(canvasElement).findByRole('region', { name: 'Review guide' });
+    await within(guide).findByRole('button', { name: /Refund total/ });
+    guide.scrollIntoView({ block: 'center' });
+  },
+};
+
 export const RiskOnCardLight: Story = { ...RiskOnCard, globals: { theme: 'light' } };
 
 /** "Open in walk": the cited file, R1 tagged in the tree, the reason above the diff and under its lines. */

@@ -49,15 +49,15 @@ import Recording from '~/components/ui/Recording.astro';
 
       <Job id="review" eyebrow="Quick review" title="Read the changes and send your review">
         <p>
-          Quick review keeps the pull request above the diff and its proof beside it. Press V to mark a
-          file reviewed and move to the next.
+          Pick a chapter in the Review Guide to open its first diff. Press V to mark the file reviewed
+          and move to the next file in the chapter.
         </p>
         <p>
           Follow a risk assessment to its cited lines, leave a comment or approve when you have seen enough.
           On your own pull request, finish the walk with Done.
         </p>
         <p><a class="link" href="/quick-review">See everything Quick review does</a></p>
-        <ReleaseCapture slot="media" path="4.16.0/quick-review-controls.png" alt="Quick Review with the approval controls above the file diff" />
+        <Recording slot="media" slug="review-guide" />
       </Job>
 
       <Job id="dispatch" eyebrow="Dispatch" title="See your work and the agents on it" reverse>
