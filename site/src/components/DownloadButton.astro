@@ -30,7 +30,7 @@ const initial = choice.win;
   class:list={['btn btn--primary', `btn--${size}`]}
   href={initial.href}
   data-download
-  data-choices={JSON.stringify({ ...choice, ios: { href: '/iphone', label: 'BorgDock for iPhone', meta: 'Setup and builds' } })}
+  data-choices={JSON.stringify({ ...choice, ios: { href: '/iphone', label: 'Preview BorgDock Review', meta: 'Coming soon' } })}
 >
   <svg
     width="15"
@@ -48,6 +48,10 @@ const initial = choice.win;
   <span data-download-label>{initial.label}</span>
   <span class="btn__meta" data-download-meta>{initial.meta}</span>
 </a>
+
+<style>
+  :global(html[data-os='ios']) [data-download] svg { display: none; }
+</style>
 
 <script>
   const os = document.documentElement.dataset.os ?? 'win';

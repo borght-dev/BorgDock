@@ -8,6 +8,7 @@ import Job from '~/components/sections/Job.astro';
 import DownloadBlock from '~/components/sections/DownloadBlock.astro';
 import Capture from '~/components/ui/Capture.astro';
 import Recording from '~/components/ui/Recording.astro';
+import { iphoneReviewAnnouncement } from '~/data/site';
 import { quickReviewVideo } from '~/data/media';
 
 const toc = [
@@ -65,7 +66,7 @@ const keyGroups = [
   <SiteNav current="quick-review" />
   <main id="main">
     <Hero
-      badge={{ href: '/iphone', text: 'Quick Review is also on iPhone' }}
+      badge={{ href: '/iphone', text: iphoneReviewAnnouncement }}
       title="Review the change, file by file."
       lede="Follow the review guide or jump to the files you care about. Read the diff alongside its proof, leave a comment and approve when you are ready."
       secondary={{ href: '#start', label: 'Take the tour' }}

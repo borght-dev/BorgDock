@@ -1,6 +1,7 @@
 ---
 import ReleaseCapture from '~/components/ui/ReleaseCapture.astro';
 import { Image } from 'astro:assets';
+import { iphoneReviewAnnouncement } from '~/data/site';
 import { phoneScreens } from '~/data/iphone';
 import Layout from '~/layouts/Layout.astro';
 import SiteNav from '~/components/SiteNav.astro';
@@ -81,7 +82,7 @@ const tools = [
 
 <Layout
   title="GitHub PR reviews, CI monitoring and Azure DevOps | BorgDock"
-  description="See how BorgDock handles GitHub reviews, shared CI failures, Azure DevOps work items, T3 agents and Markdown notes. Explore the desktop tools and iPhone apps."
+  description="See how BorgDock handles GitHub reviews, shared CI failures, Azure DevOps work items, T3 agents and Markdown notes. Preview the upcoming BorgDock Review app for iPhone."
 >
   <SiteNav current="features" />
   <main id="main">
@@ -253,9 +254,9 @@ const tools = [
         </p>
         <Capture slot="media" slug="pr-detail-failing" />
       </Job>
-      <Job id="iphone" eyebrow="iPhone" title="Review from your phone" reverse>
+      <Job id="iphone" eyebrow={iphoneReviewAnnouncement} title="Review from your phone" reverse>
         <p>BorgDock Review connects directly to your GitHub accounts. Find a pull request in a saved view, read the diff and send a review. Connect Azure DevOps to open the linked work item.</p>
-        <p><a class="link" href="/iphone">Explore the iPhone screens</a></p>
+        <p><a class="link" href="/iphone">Preview the iPhone app</a></p>
         <Image slot="media" class="phone-preview" src={phoneScreens['pull-requests-home'].image} alt="Pull requests grouped by status in BorgDock Review on iPhone" width={480} format="webp" loading="lazy" />
       </Job>
     </div>
