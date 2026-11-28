@@ -132,7 +132,7 @@ The BorgDock desktop app links to the server so it shares read state and reports
 | GET | /api/desktop/links/:linkId?secret= | none | | `{status: 'pending'}`, `{status: 'expired'}`, or once `{status: 'approved', token, sessionId, serverName}`; then the link is gone (404, as for a wrong secret) |
 | PUT | /api/desktop/repositories | the desktop's | `DesktopRepositoriesRequest` | `{ok}`. The desktop's watched repositories (`owner/repo`; invalid names are dropped). It sends them after linking, at startup and within a minute of a change. 403 for any session that isn't a linked desktop's |
 | GET | /api/pr-views | phone or desktop | | `PrViews`: the saved pull request views both apps share, with their `revision` (0 before the first write) |
-| PUT | /api/pr-views | phone or desktop | `PutPrViewsRequest` | `PrViews`, the new revision. 409 `PrViewsConflict` with `current` when `baseRevision` is not the current one: merge (spec `docs/superpowers/specs/2026-11-22-ios-pr-list.md`) and send again. 400 for more than 100 views, an unknown tab, a missing name or id, or a duplicate id |
+| PUT | /api/pr-views | phone or desktop | `PutPrViewsRequest` | `PrViews`, the new revision. 409 `PrViewsConflict` with `current` when `baseRevision` is not the current one: merge (spec `docs/superpowers/specs/2026-11-22-ios-pr-list.md`) and send again. 400 for more than 100 views, an unknown tab, an id that is missing, longer than 100 characters or used twice, a name that is blank or longer than 80, a query longer than 2000, or a display that is not an object or is over 8 KB of JSON; 413 for a body over 64 KB, the limit of every request. The server stores each view as sent: it never merges and never trims |
 
 - Links live in memory: a server restart drops the ones in progress. After an approval the desktop has at least two
   minutes to pick up its token; a token nobody picks up revokes its session.
@@ -158,6 +158,12 @@ The BorgDock desktop app links to the server so it shares read state and reports
 - `includeInvolving` (default on) adds the searches for pull requests that involve you anywhere: `involves:@me`,
   `review-requested:@me`, `reviewed-by:@me`. `includeTeamRequests` off searches `user-review-requested:@me` instead,
   and a request to one of your teams no longer counts as yours.
+- `GET /api/focus` sends GitHub's own facts next to the server's buckets, so the phone works out the desktop's list
+  facts itself: each `PrSummary` has `requestedReviewerLogins`, `requestedTeams`, `latestReviews` (each reviewer's
+  latest review: `login`, `state`, `commitSha`) and `priorityScore`; `Focus` has `teams` (your team slugs per
+  lower-case account login, empty while `includeTeamRequests` is off) and `staleAfterDays` (`github.staleAfterDays`,
+  default 7). The PR detail keeps its own `requestedReviewers` (people) and `reviews` (with their text), hence the
+  summary's other names.
 - `GET /api/prs/:owner/:repo/:number/files` sends each file's `category` (`server/src/github/file-category.ts`, the
   same patterns as the desktop's Quick Review). `GET /api/prs/:owner/:repo/:number` answers without waiting for the
   logs of failed jobs; their reasons come with the next read.

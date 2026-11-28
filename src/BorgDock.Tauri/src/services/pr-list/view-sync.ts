@@ -98,13 +98,16 @@ export type PullPlan =
  * Nothing changed here since the base: take theirs. Changed: merge and write
  * over theirs' revision, unless the merge is theirs already. Without a base
  * (just linked) every view here counts as added, so neither side loses one.
+ * A revision below the base's means the server lost its list (revisions only
+ * go up), so the base says nothing about it: taking its list would delete
+ * every view here.
  */
 export function planPull(
   base: ViewsBase | null,
   mine: readonly SharedView[],
   theirs: ViewsBase,
 ): PullPlan {
-  const before = base?.views ?? [];
+  const before = base && theirs.revision >= base.revision ? base.views : [];
   if (sameViews(before, mine)) return { kind: 'adopt' };
   const views = mergeViews(before, mine, theirs.views);
   return sameViews(views, theirs.views)

@@ -8,7 +8,7 @@ const MAX_VIEWS = 100;
 const MAX_NAME = 80;
 const MAX_QUERY = 2000;
 const MAX_ID = 100;
-const MAX_DISPLAY_JSON = 4000;
+const MAX_DISPLAY_BYTES = 8 * 1024;
 
 /** Another device wrote first: the client merges with `current` and sends again over its revision. */
 export class PrViewsConflict extends Error {
@@ -63,7 +63,7 @@ function validViews(value: unknown): SavedPrView[] {
     if (typeof view.query !== 'string' || view.query.length > MAX_QUERY) throw new UserError(`${where} needs a query of at most ${MAX_QUERY} characters.`);
     const display = view.display;
     if (!display || typeof display !== 'object' || Array.isArray(display)) throw new UserError(`${where} needs a display.`);
-    if (JSON.stringify(display).length > MAX_DISPLAY_JSON) throw new UserError(`${where} has too large a display.`);
+    if (Buffer.byteLength(JSON.stringify(display)) > MAX_DISPLAY_BYTES) throw new UserError(`${where} has a display of more than 8 KB.`);
     return { id: view.id, name: view.name, filter: view.filter as PrViewKey, query: view.query, display: display as Record<string, unknown> };
   });
 }

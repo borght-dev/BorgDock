@@ -430,6 +430,9 @@ test('saved pull request views: the phone and a linked desktop compare and set o
     assert.equal(first.status, 200, await first.clone().text());
     assert.equal(((await first.json()) as any).revision, 1);
 
+    const onDesk = await call('/api/pr-views', { headers: desk });
+    assert.equal(onDesk.status, 200, 'a linked desktop reads the list too');
+    assert.equal(((await onDesk.json()) as any).revision, 1);
     const read = (await (await call('/api/pr-views', { headers: phoneAuth })).json()) as any;
     assert.equal(read.revision, 1);
     assert.deepEqual(read.views, [shop], 'the display comes back as sent, layout and columns included');

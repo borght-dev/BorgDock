@@ -240,7 +240,9 @@ export type PrViews = { revision: number; views: SavedPrView[]; updatedAt: strin
 /**
  * PUT /api/pr-views: the whole list, written only over `baseRevision` → PrViews. When another device wrote first the
  * server answers 409 with `PrViewsConflict`: merge with `current` against the list you last saw, then send again over
- * `current.revision`. At most 100 views; a name is at most 80 characters, a query at most 2000.
+ * `current.revision`. At most 100 views; an id is unique and at most 100 characters, a name 1 to 80 (not only
+ * spaces), a query at most 2000, a display an object of at most 8 KB of JSON. Anything else answers 400. The whole
+ * request is at most 64 KB, like every request (413).
  */
 export type PutPrViewsRequest = { baseRevision: number; views: SavedPrView[] };
 export type PrViewsConflict = { error: string; current: PrViews };
